@@ -163,7 +163,7 @@ export default function Dashboard() {
                     Log Workout
                   </div>
                   <div className="text-sm text-green-600 dark:text-green-400">
-                    Record today's session
+                    Record today&apos;s session
                   </div>
                 </div>
               </a>

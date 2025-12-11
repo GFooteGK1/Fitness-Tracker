@@ -335,7 +335,7 @@ RPE: 8/10"
             style={{ minHeight: '180px' }}
           />
           <p className="mt-2 sm:mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-            Type naturally, like you'd write on a whiteboard
+            Type naturally, like you&apos;d write on a whiteboard
           </p>
         </div>
 
