@@ -93,16 +93,43 @@ export default function LogWorkout() {
       if (file) {
         // Convert to base64 for preview
         const reader = new FileReader()
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
           const result = e.target?.result as string
           setCapturedImage(result)
           
-          // TODO: Here you could send the image to Claude Vision API
-          // for workout text extraction
+          // Extract workout text using OCR
           setStatus({ 
-            message: '📸 Photo captured! (Vision parsing coming soon)', 
+            message: '🔍 Reading workout text from image...', 
             type: 'info' 
           })
+          
+          try {
+            const response = await fetch('/api/ocr-workout', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: result })
+            })
+            
+            const data = await response.json()
+            
+            if (data.success && data.extractedText) {
+              setWorkoutText(data.extractedText)
+              setStatus({ 
+                message: '✅ Workout text extracted! Review and edit if needed.', 
+                type: 'success' 
+              })
+            } else {
+              setStatus({ 
+                message: '⚠️ Could not extract text clearly. Try a clearer photo or type manually.', 
+                type: 'error' 
+              })
+            }
+          } catch (error) {
+            setStatus({ 
+              message: 'Failed to extract text from image', 
+              type: 'error' 
+            })
+          }
         }
         reader.onerror = () => {
           setStatus({ 
