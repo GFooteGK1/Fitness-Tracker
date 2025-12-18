@@ -22,11 +22,13 @@ export async function POST(request: Request) {
     const base64Data = image.includes(',') ? image.split(',')[1] : image
     
     // Determine media type from base64 prefix
-    let mediaType = 'image/jpeg'
+    let mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' = 'image/jpeg'
     if (image.includes('image/png')) {
       mediaType = 'image/png'
     } else if (image.includes('image/webp')) {
       mediaType = 'image/webp'
+    } else if (image.includes('image/gif')) {
+      mediaType = 'image/gif'
     }
     
     console.log('Image size:', (base64Data.length / 1024).toFixed(2), 'KB')
@@ -63,7 +65,7 @@ Please transcribe ALL workout information you see, including:
 
 Format the output as clean, readable text that can be parsed into a workout log. Keep the structure clear with line breaks between sections.
 
-If you can see text but it's unclear, transcribe what you can and note what's unclear. Only say you can't read it if the image is truly unreadable.`
+IMPORTANT: Even if the handwriting is messy or partially unclear, do your best to transcribe what you can see. Make reasonable assumptions for unclear text and note any uncertainties. Only refuse if the image is completely unreadable or contains no workout information.`
             }
           ],
         },

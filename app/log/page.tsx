@@ -18,10 +18,10 @@ export default function LogWorkout() {
   const [status, setStatus] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const [recognition, setRecognition] = useState<any>(null)
+  const [finalTranscript, setFinalTranscript] = useState('')
 
-  // Pre-fill from URL parameters
+  // Pre-fill from URL parameters and setup speech recognition
   useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
@@ -30,6 +30,67 @@ export default function LogWorkout() {
       
       if (workoutParam) setWorkoutText(decodeURIComponent(workoutParam))
       if (dateParam) setWorkoutDate(dateParam)
+
+      // Setup Web Speech API
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        const recognitionInstance = new SpeechRecognition()
+        
+        recognitionInstance.continuous = true
+        recognitionInstance.interimResults = true
+        recognitionInstance.lang = 'en-US'
+        
+        recognitionInstance.onstart = () => {
+          console.log('Speech recognition started')
+          setIsRecording(true)
+          setStatus({ message: '🎤 Listening... Speak your workout', type: 'info' })
+        }
+        
+        recognitionInstance.onresult = (event: any) => {
+          let interimTranscript = ''
+          let newFinalTranscript = finalTranscript
+          
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript
+            if (event.results[i].isFinal) {
+              newFinalTranscript += transcript + ' '
+            } else {
+              interimTranscript += transcript
+            }
+          }
+          
+          setFinalTranscript(newFinalTranscript)
+          setWorkoutText(newFinalTranscript + interimTranscript)
+        }
+        
+        recognitionInstance.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error)
+          setIsRecording(false)
+          
+          if (event.error === 'not-allowed') {
+            setStatus({ message: 'Microphone access denied. Please enable it in your browser settings.', type: 'error' })
+          } else if (event.error === 'no-speech') {
+            setStatus({ message: 'No speech detected. Try again.', type: 'error' })
+          } else {
+            setStatus({ message: 'Voice recognition error: ' + event.error, type: 'error' })
+          }
+        }
+        
+        recognitionInstance.onend = () => {
+          console.log('Speech recognition ended')
+          setIsRecording(false)
+          
+          if (finalTranscript.trim()) {
+            setWorkoutText(finalTranscript.trim())
+            setStatus({ message: '✓ Voice input captured', type: 'success' })
+            setTimeout(() => {
+              setStatus(null)
+            }, 2000)
+          }
+        }
+        
+        setRecognition(recognitionInstance)
+      }
     }
   })
 
@@ -152,53 +213,28 @@ export default function LogWorkout() {
     setStatus(null)
   }
 
-  async function startVoiceRecording() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
-      const chunks: BlobPart[] = []
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunks.push(e.data)
-        }
-      }
-
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' })
-        setAudioBlob(blob)
-        setStatus({ 
-          message: '🎤 Voice recorded! (Transcription coming soon)', 
-          type: 'info' 
-        })
-        
-        // Stop all tracks to release microphone
-        stream.getTracks().forEach(track => track.stop())
-      }
-
-      recorder.start()
-      setMediaRecorder(recorder)
-      setIsRecording(true)
-      setStatus({ message: '🎤 Recording...', type: 'info' })
-
-    } catch (error) {
+  function toggleVoiceRecording() {
+    if (!recognition) {
       setStatus({ 
-        message: 'Microphone access denied or not available', 
+        message: 'Voice input not supported in this browser. Try Chrome or Safari.', 
         type: 'error' 
       })
+      return
+    }
+
+    if (isRecording) {
+      recognition.stop()
+    } else {
+      // Clear previous transcript and start fresh
+      setFinalTranscript('')
+      setWorkoutText('')
+      recognition.start()
     }
   }
 
-  function stopVoiceRecording() {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop()
-      setIsRecording(false)
-      setMediaRecorder(null)
-    }
-  }
-
-  function removeVoiceRecording() {
-    setAudioBlob(null)
+  function clearVoiceRecording() {
+    setFinalTranscript('')
+    setWorkoutText('')
     setStatus(null)
   }
 
@@ -270,7 +306,7 @@ export default function LogWorkout() {
                       Photo
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                      Capture whiteboard
+                      Auto-extract text
                     </div>
                   </div>
                 </div>
@@ -288,9 +324,9 @@ export default function LogWorkout() {
 
             {/* Voice Recording - Second */}
             <div className="relative">
-              {audioBlob && (
+              {finalTranscript && !isRecording && (
                 <button
-                  onClick={removeVoiceRecording}
+                  onClick={clearVoiceRecording}
                   className="absolute -top-2 -right-2 z-10 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
                 >
                   ×
@@ -298,11 +334,11 @@ export default function LogWorkout() {
               )}
               <button
                 type="button"
-                onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+                onClick={toggleVoiceRecording}
                 className={`w-full p-6 rounded-xl border-2 transition-colors group ${
                   isRecording 
                     ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-500' 
-                    : audioBlob
+                    : finalTranscript
                     ? 'bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-500'
                     : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-green-400 dark:hover:border-green-500'
                 }`}
@@ -311,20 +347,20 @@ export default function LogWorkout() {
                   <div className={`text-4xl transition-transform ${
                     isRecording ? 'animate-pulse' : 'group-hover:scale-110'
                   }`}>
-                    {isRecording ? '⏹️' : audioBlob ? '✅' : '🎤'}
+                    {isRecording ? '⏹️' : finalTranscript ? '✅' : '🎤'}
                   </div>
                   <div className="text-center">
                     <div className={`font-semibold mb-1 ${
                       isRecording 
                         ? 'text-red-700 dark:text-red-300' 
-                        : audioBlob
+                        : finalTranscript
                         ? 'text-green-700 dark:text-green-300'
                         : 'text-gray-900 dark:text-gray-100'
                     }`}>
                       Voice
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {isRecording ? 'Recording...' : audioBlob ? 'Recorded!' : 'Speak your workout'}
+                      {isRecording ? 'Tap to stop' : finalTranscript ? 'Captured!' : 'Speak your workout'}
                     </div>
                   </div>
                 </div>
