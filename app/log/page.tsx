@@ -112,17 +112,20 @@ export default function LogWorkout() {
             
             const data = await response.json()
             
-            if (data.success && data.extractedText) {
+            if (data.success && data.extractedText && data.extractedText.trim().length > 0) {
               setWorkoutText(data.extractedText)
               setStatus({ 
                 message: '✅ Workout text extracted! Review and edit if needed.', 
                 type: 'success' 
               })
             } else {
+              // Show the actual error or a generic message
+              const errorMsg = data.error || 'Could not extract text from image'
               setStatus({ 
-                message: '⚠️ Could not extract text clearly. Try a clearer photo or type manually.', 
+                message: `⚠️ ${errorMsg}. Try a different angle or type manually.`, 
                 type: 'error' 
               })
+              console.log('OCR failed:', data)
             }
           } catch (error) {
             setStatus({ 
