@@ -137,6 +137,38 @@ Example: "7 rounds + 5 pullups" with round of "5 pullups, 10 pushups, 15 squats"
 ## STRENGTH Work
 - Calculate tonnage: sum of (weight × reps) for all sets
 
+## CARDIO Work
+- Use CARDIO block_type for pure cardiovascular exercises
+- Examples: running, rowing, cycling, swimming, walking, elliptical
+- Can be time-based or distance-based
+- Record time in seconds for time-based cardio
+
+# BLOCK TYPE CLASSIFICATION RULES
+
+**CARDIO**: Pure cardiovascular work without complex movements
+- Running (any distance/time)
+- Rowing (any distance/time) 
+- Cycling/bike (any distance/time)
+- Swimming
+- Walking/hiking
+- Elliptical, stair climber, etc.
+
+**FOR_TIME**: Mixed movement workouts completed for time
+- Multiple different exercises in sequence
+- CrossFit-style workouts with varied movements
+
+**AMRAP**: As Many Rounds/Reps As Possible in time limit
+- Repeated rounds of same movement pattern
+- Time cap with round counting
+
+**STRENGTH**: Pure strength/lifting work
+- Barbell/dumbbell lifting
+- Powerlifting movements (squat, bench, deadlift)
+- Olympic lifting
+- Accessory strength work
+
+**EMOM**: Every Minute On the Minute structured work
+
 # REQUIRED JSON SCHEMA
 
 {
@@ -175,6 +207,38 @@ Example: "7 rounds + 5 pullups" with round of "5 pullups, 10 pushups, 15 squats"
   "tags": ["amrap"],
   "notes": "",
   "rpe": 8
+}
+
+## CARDIO Example:
+{
+  "blocks": [
+    {
+      "block_type": "CARDIO",
+      "title": "Morning Run",
+      "score_model": {
+        "scoring": "TIME"
+      },
+      "segments": [
+        {
+          "rounds": 1,
+          "events": [
+            {
+              "movement_name": "Running",
+              "prescribed": { "distance": {"value": 5000, "unit": "m"} },
+              "performed": { "distance": {"value": 5000, "unit": "m"} }
+            }
+          ]
+        }
+      ],
+      "block_score": {
+        "time_s": 1800,
+        "rx_status": "RX"
+      }
+    }
+  ],
+  "tags": ["cardio", "running"],
+  "notes": "Easy pace",
+  "rpe": 6
 }
 
 Return ONLY valid JSON. No markdown, no explanations.`

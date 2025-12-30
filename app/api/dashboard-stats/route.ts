@@ -82,7 +82,10 @@ function categorizeBlockType(blockType: string): string {
     return 'strength'
   }
   
-  if (type.includes('cardio') || type.includes('monostructural')) {
+  if (type.includes('cardio') || type.includes('monostructural') || 
+      type.includes('running') || type.includes('rowing') || 
+      type.includes('cycling') || type.includes('swimming') ||
+      type.includes('bike') || type.includes('run')) {
     return 'cardio'
   }
   
