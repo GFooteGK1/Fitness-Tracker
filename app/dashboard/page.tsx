@@ -169,16 +169,46 @@ export default function Dashboard() {
               </a>
               
               <a
-                href="/query"
+                href="/food-progress"
+                className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+              >
+                <span className="text-2xl">🍽️</span>
+                <div>
+                  <div className="font-semibold text-blue-700 dark:text-blue-300">
+                    Track Nutrition
+                  </div>
+                  <div className="text-sm text-blue-600 dark:text-blue-400">
+                    Log meals and view progress
+                  </div>
+                </div>
+              </a>
+              
+              <a
+                href="/food-progress?view=targets"
                 className="flex items-center gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
               >
-                <span className="text-2xl">🔍</span>
+                <span className="text-2xl">🎯</span>
                 <div>
                   <div className="font-semibold text-purple-700 dark:text-purple-300">
-                    Search History
+                    Set Targets
                   </div>
                   <div className="text-sm text-purple-600 dark:text-purple-400">
-                    Find past workouts
+                    Configure daily macro goals
+                  </div>
+                </div>
+              </a>
+
+              <a
+                href="/food-progress?view=camera"
+                className="flex items-center gap-3 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+              >
+                <span className="text-2xl">📷</span>
+                <div>
+                  <div className="font-semibold text-orange-700 dark:text-orange-300">
+                    Quick Meal Log
+                  </div>
+                  <div className="text-sm text-orange-600 dark:text-orange-400">
+                    Snap a photo to log meal
                   </div>
                 </div>
               </a>

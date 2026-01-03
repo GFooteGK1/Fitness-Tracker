@@ -204,6 +204,36 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Nutrition Quick Access */}
+      <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-semibold text-blue-900 dark:text-blue-100">Track your nutrition</div>
+            <div className="text-sm text-blue-700 dark:text-blue-300">Log meals and monitor your daily progress</div>
+          </div>
+          <div className="flex gap-2">
+            <a
+              href="/food-progress?view=camera"
+              className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors font-semibold whitespace-nowrap text-sm"
+            >
+              📷 Quick Log
+            </a>
+            <a
+              href="/food-progress"
+              className="bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 px-4 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-600 transition-colors font-semibold whitespace-nowrap text-sm"
+            >
+              View Progress
+            </a>
+            <a
+              href="/food-progress?view=targets"
+              className="bg-purple-600 dark:bg-purple-700 text-white px-4 py-2 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors font-semibold whitespace-nowrap text-sm"
+            >
+              🎯 Targets
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

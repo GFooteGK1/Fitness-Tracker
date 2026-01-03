@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { compressImage, isSupportedImageFormat, formatFileSize, type ImageCompressionResult } from '../lib/imageUtils'
 
 // Helper function to get local date in YYYY-MM-DD format
 function getLocalDate() {
@@ -20,6 +21,11 @@ export default function LogWorkout() {
   const [isRecording, setIsRecording] = useState(false)
   const [recognition, setRecognition] = useState<any>(null)
   const [finalTranscript, setFinalTranscript] = useState('')
+  
+  // Image processing states
+  const [isCompressing, setIsCompressing] = useState(false)
+  const [compressionResult, setCompressionResult] = useState<ImageCompressionResult | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   // Pre-fill from URL parameters and setup speech recognition
   useState(() => {
@@ -151,57 +157,51 @@ export default function LogWorkout() {
     
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        // Convert to base64 for preview
-        const reader = new FileReader()
-        reader.onload = async (e) => {
-          const result = e.target?.result as string
-          setCapturedImage(result)
-          
-          // Extract workout text using OCR
-          setStatus({ 
-            message: '🔍 Reading workout text from image...', 
-            type: 'info' 
-          })
-          
-          try {
-            const response = await fetch('/api/ocr-workout', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ image: result })
-            })
-            
-            const data = await response.json()
-            
-            if (data.success && data.extractedText && data.extractedText.trim().length > 0) {
-              setWorkoutText(data.extractedText)
-              setStatus({ 
-                message: '✅ Workout text extracted! Review and edit if needed.', 
-                type: 'success' 
-              })
-            } else {
-              // Show the actual error or a generic message
-              const errorMsg = data.error || 'Could not extract text from image'
-              setStatus({ 
-                message: `⚠️ ${errorMsg}. Try a different angle or type manually.`, 
-                type: 'error' 
-              })
-              console.log('OCR failed:', data)
-            }
-          } catch (error) {
-            setStatus({ 
-              message: 'Failed to extract text from image', 
-              type: 'error' 
-            })
-          }
-        }
-        reader.onerror = () => {
-          setStatus({ 
-            message: 'Failed to process image', 
-            type: 'error' 
-          })
-        }
-        reader.readAsDataURL(file)
+      if (!file) return
+      
+      // Validate file format
+      if (!isSupportedImageFormat(file)) {
+        setStatus({ 
+          message: 'Unsupported image format. Please use JPEG, PNG, WebP, or GIF.', 
+          type: 'error' 
+        })
+        return
+      }
+      
+      // Show file size validation
+      const fileSizeMB = file.size / (1024 * 1024)
+      if (fileSizeMB > 50) { // Reasonable upper limit before compression
+        setStatus({ 
+          message: 'Image too large. Please use a smaller image.', 
+          type: 'error' 
+        })
+        return
+      }
+      
+      setIsCompressing(true)
+      setStatus({ 
+        message: `🔄 Compressing image (${formatFileSize(file.size)})...`, 
+        type: 'info' 
+      })
+      
+      try {
+        // Compress the image
+        const result = await compressImage(file)
+        setCompressionResult(result)
+        setCapturedImage(result.compressedDataUrl)
+        
+        setStatus({ 
+          message: `📸 Image ready! Compressed from ${formatFileSize(file.size)} to ${result.compressedSizeMB.toFixed(1)}MB`, 
+          type: 'success' 
+        })
+      } catch (error) {
+        console.error('Compression error:', error)
+        setStatus({ 
+          message: 'Failed to process image. Please try again.', 
+          type: 'error' 
+        })
+      } finally {
+        setIsCompressing(false)
       }
     }
     
@@ -210,7 +210,57 @@ export default function LogWorkout() {
 
   function removePhoto() {
     setCapturedImage(null)
+    setCompressionResult(null)
     setStatus(null)
+  }
+
+  async function analyzeImage() {
+    if (!capturedImage) {
+      setStatus({ 
+        message: 'No image to analyze', 
+        type: 'error' 
+      })
+      return
+    }
+    
+    setIsAnalyzing(true)
+    setStatus({ 
+      message: '🔍 Analyzing image with AI (15-20 seconds)...', 
+      type: 'info' 
+    })
+    
+    try {
+      const response = await fetch('/api/ocr-workout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: capturedImage })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success && data.extractedText && data.extractedText.trim().length > 0) {
+        setWorkoutText(data.extractedText)
+        setStatus({ 
+          message: `✅ Workout text extracted in ${(data.duration_ms / 1000).toFixed(1)}s! Review and edit if needed.`, 
+          type: 'success' 
+        })
+      } else {
+        const errorMsg = data.error || 'Could not extract text from image'
+        setStatus({ 
+          message: `⚠️ ${errorMsg}. Try a different angle or type manually.`, 
+          type: 'error' 
+        })
+        console.log('OCR failed:', data)
+      }
+    } catch (error) {
+      console.error('OCR error:', error)
+      setStatus({ 
+        message: 'Failed to extract text from image. Please try again.', 
+        type: 'error' 
+      })
+    } finally {
+      setIsAnalyzing(false)
+    }
   }
 
   function toggleVoiceRecording() {
@@ -295,29 +345,58 @@ export default function LogWorkout() {
               <button
                 type="button"
                 onClick={handlePhotoCapture}
-                className="w-full p-6 bg-gray-50 dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors group"
+                disabled={isCompressing || isAnalyzing}
+                className="w-full p-6 bg-gray-50 dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex flex-col items-center gap-3">
-                  <div className="text-4xl group-hover:scale-110 transition-transform">
-                    📷
+                  <div className={`text-4xl transition-transform ${isCompressing ? 'animate-pulse' : 'group-hover:scale-110'}`}>
+                    {isCompressing ? '🔄' : '📷'}
                   </div>
                   <div className="text-center">
                     <div className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                      Photo
+                      {isCompressing ? 'Processing...' : 'Photo'}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                      Auto-extract text
+                      {isCompressing ? 'Compressing image' : 'Auto-extract text'}
                     </div>
                   </div>
                 </div>
               </button>
+              
+              {/* Enhanced Image Preview */}
               {capturedImage && (
-                <div className="mt-2">
+                <div className="mt-3 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
                   <img 
                     src={capturedImage} 
                     alt="Captured workout" 
-                    className="w-full h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+                    className="w-full h-32 object-cover"
                   />
+                  <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+                    {compressionResult && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                        Compressed to {compressionResult.compressedSizeMB.toFixed(1)}MB 
+                        ({compressionResult.compressionRatio.toFixed(1)}x smaller)
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={removePhoto}
+                        disabled={isAnalyzing}
+                        className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Retake
+                      </button>
+                      <button
+                        type="button"
+                        onClick={analyzeImage}
+                        disabled={isAnalyzing}
+                        className="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-700 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isAnalyzing ? '🔍 Analyzing...' : '🔍 Analyze'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
