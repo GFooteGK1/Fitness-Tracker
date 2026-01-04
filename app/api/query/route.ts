@@ -1,18 +1,25 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@/app/lib/auth/supabase-server'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!
 })
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 export async function POST(request: Request) {
   try {
+    const supabase = await createServerClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const { question } = await request.json()
 
     if (!question || !question.trim()) {
@@ -22,13 +29,14 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get recent workouts (last 6 months)
+    // Get recent workouts (last 6 months) for authenticated user
     const sixMonthsAgo = new Date()
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
     const { data: workouts, error: workoutsError } = await supabase
       .from('workouts')
       .select('workout_date, input_text, primary_score')
+      .eq('user_id', user.id)
       .gte('workout_date', sixMonthsAgo.toISOString().split('T')[0])
       .order('workout_date', { ascending: false })
 
@@ -36,10 +44,11 @@ export async function POST(request: Request) {
       throw new Error('Failed to fetch workouts: ' + workoutsError.message)
     }
 
-    // Get benchmark PRs
+    // Get benchmark PRs for authenticated user
     const { data: prs, error: prsError } = await supabase
       .from('benchmark_prs')
       .select('benchmark_name, date, score_value, score_display, rx_status')
+      .eq('user_id', user.id)
       .order('date', { ascending: false })
 
     if (prsError) {

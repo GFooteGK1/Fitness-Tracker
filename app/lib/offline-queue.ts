@@ -3,6 +3,8 @@
  * Implements Requirements 10.5 - queue operations when network is unavailable
  */
 
+import React from 'react'
+
 export interface QueuedOperation {
   id: string
   type: 'photo_upload' | 'meal_analysis' | 'meal_update' | 'target_update'
@@ -11,7 +13,7 @@ export interface QueuedOperation {
   retryCount: number
   maxRetries: number
   priority: 'high' | 'medium' | 'low'
-  userId: string
+  userId?: string // Optional since we now use authenticated users
   status: 'pending' | 'processing' | 'completed' | 'failed'
   error?: string
 }
@@ -71,7 +73,7 @@ class OfflineQueueManager {
     console.log(`Operation ${queuedOperation.type} queued for offline processing:`, queuedOperation.id)
 
     // Try to process immediately if online
-    if (navigator.onLine) {
+    if (typeof window !== 'undefined' && navigator.onLine) {
       this.processQueue()
     }
 
@@ -119,7 +121,7 @@ class OfflineQueueManager {
       failedOperations: failed,
       completedOperations: completed,
       lastSyncAttempt: this.getLastSyncAttempt(),
-      isOnline: navigator.onLine
+      isOnline: typeof window !== 'undefined' ? navigator.onLine : true
     }
   }
 
@@ -127,7 +129,7 @@ class OfflineQueueManager {
    * Process all pending operations in queue
    */
   async processQueue(): Promise<void> {
-    if (this.isProcessing || !navigator.onLine) {
+    if (this.isProcessing || (typeof window !== 'undefined' && !navigator.onLine)) {
       return
     }
 
@@ -228,11 +230,10 @@ class OfflineQueueManager {
   }
 
   private async processPhotoUpload(operation: QueuedOperation): Promise<void> {
-    const { file, userId, timestamp } = operation.data
+    const { file, timestamp } = operation.data
 
     const formData = new FormData()
     formData.append('photo', file)
-    formData.append('userId', userId)
     formData.append('timestamp', timestamp)
 
     const response = await fetch('/api/meals/upload', {
@@ -333,6 +334,9 @@ class OfflineQueueManager {
   }
 
   private setupNetworkListeners(): void {
+    // Only run on client-side to avoid SSR issues
+    if (typeof window === 'undefined') return
+
     const handleOnline = () => {
       console.log('Network connection restored, processing offline queue...')
       this.processQueue()
@@ -350,7 +354,7 @@ class OfflineQueueManager {
 
   private startSyncInterval(): void {
     this.syncInterval = setInterval(() => {
-      if (navigator.onLine && !this.isProcessing) {
+      if (typeof window !== 'undefined' && navigator.onLine && !this.isProcessing) {
         const pendingCount = this.queue.filter(op => op.status === 'pending').length
         if (pendingCount > 0) {
           console.log(`Periodic sync: ${pendingCount} pending operations`)
@@ -410,43 +414,39 @@ export const offlineQueue = new OfflineQueueManager()
  * Helper functions for common operations
  */
 
-export function queuePhotoUpload(file: File, userId: string, timestamp: string): string {
+export function queuePhotoUpload(file: File, timestamp: string): string {
   return offlineQueue.enqueue({
     type: 'photo_upload',
-    data: { file, userId, timestamp },
+    data: { file, timestamp },
     maxRetries: DEFAULT_MAX_RETRIES,
-    priority: 'high',
-    userId
+    priority: 'high'
   })
 }
 
-export function queueMealAnalysis(photoUrl: string, mealId: string, userId: string): string {
+export function queueMealAnalysis(photoUrl: string, mealId: string): string {
   return offlineQueue.enqueue({
     type: 'meal_analysis',
     data: { photoUrl, mealId },
     maxRetries: DEFAULT_MAX_RETRIES,
-    priority: 'high',
-    userId
+    priority: 'high'
   })
 }
 
-export function queueMealUpdate(mealId: string, updates: any, userId: string): string {
+export function queueMealUpdate(mealId: string, updates: any): string {
   return offlineQueue.enqueue({
     type: 'meal_update',
     data: { mealId, updates },
     maxRetries: DEFAULT_MAX_RETRIES,
-    priority: 'medium',
-    userId
+    priority: 'medium'
   })
 }
 
-export function queueTargetUpdate(targets: any, userId: string): string {
+export function queueTargetUpdate(targets: any): string {
   return offlineQueue.enqueue({
     type: 'target_update',
     data: { targets },
     maxRetries: DEFAULT_MAX_RETRIES,
-    priority: 'low',
-    userId
+    priority: 'medium'
   })
 }
 
@@ -455,7 +455,7 @@ export function queueTargetUpdate(targets: any, userId: string): string {
  */
 export function useOfflineQueue() {
   const [stats, setStats] = React.useState<QueueStats>(offlineQueue.getStats())
-  const [isOnline, setIsOnline] = React.useState(navigator.onLine)
+  const [isOnline, setIsOnline] = React.useState(typeof window !== 'undefined' ? navigator.onLine : true)
 
   React.useEffect(() => {
     const updateStats = () => setStats(offlineQueue.getStats())
@@ -482,6 +482,3 @@ export function useOfflineQueue() {
     getUserOperations: (userId: string) => offlineQueue.getUserOperations(userId)
   }
 }
-
-// Import React for the hook
-import React from 'react'

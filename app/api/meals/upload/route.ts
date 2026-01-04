@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { 
   uploadMealPhoto, 
   generateSignedUrl, 
@@ -15,11 +15,6 @@ import {
   ErrorContext 
 } from '@/app/lib/error-handling'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 // Maximum file size: 30MB
 const MAX_FILE_SIZE = 30 * 1024 * 1024
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg']
@@ -32,6 +27,20 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const supabase = await createServerClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    context.userId = user.id
+
     // Initialize storage if needed with retry logic
     try {
       await retryWithBackoff(
@@ -52,17 +61,14 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData()
     const file = formData.get('photo') as File
-    const userId = formData.get('userId') as string
     const timestamp = formData.get('timestamp') as string
 
-    context.userId = userId
-
     // Validate required fields
-    if (!file || !userId || !timestamp) {
-      const error = new Error('Missing required fields: photo, userId, timestamp')
+    if (!file || !timestamp) {
+      const error = new Error('Missing required fields: photo, timestamp')
       logError(error, context)
       return NextResponse.json(
-        { error: 'Missing required fields: photo, userId, timestamp' },
+        { error: 'Missing required fields: photo, timestamp' },
         { status: 400 }
       )
     }
@@ -101,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // Generate unique filename with timestamp
     const fileExtension = file.name.split('.').pop() || 'jpg'
-    const fileName = `meal_${userId}_${Date.now()}.${fileExtension}`
+    const fileName = `meal_${user.id}_${Date.now()}.${fileExtension}`
 
     // Convert file to buffer for upload
     const fileBuffer = Buffer.from(await file.arrayBuffer())
@@ -117,7 +123,7 @@ export async function POST(request: NextRequest) {
     try {
       const uploadResult = await retryWithBackoff(
         async () => {
-          const result = await uploadMealPhoto(fileBuffer, fileName, file.type, userId)
+          const result = await uploadMealPhoto(fileBuffer, fileName, file.type, user.id)
           if (!result.success) {
             throw new Error(result.error || 'Upload failed')
           }
@@ -169,7 +175,7 @@ export async function POST(request: NextRequest) {
           const { data, error } = await supabase
             .from('meals')
             .insert({
-              user_id: userId,
+              user_id: user.id,
               meal_timestamp: new Date(timestamp).toISOString(),
               photo_url: photoUrl,
               photo_expires_at: photoUrl ? expiresAt.toISOString() : null,

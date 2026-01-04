@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '../../../lib/auth/supabase-server'
 import { 
   calculateWeeklyAdherence, 
   generateCorrectionGuidance,
@@ -14,26 +14,25 @@ import {
 } from '../../../lib/adherence-calculator'
 import { DailyTargets, DailySummary } from '../../../lib/types/food-tracking'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 /**
  * GET /api/adherence/weekly - Get weekly adherence analysis
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    const weekStartStr = searchParams.get('weekStart')
+    const supabase = await createServerClient()
 
-    if (!userId) {
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
       return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
+
+    const { searchParams } = new URL(request.url)
+    const weekStartStr = searchParams.get('weekStart')
 
     if (!weekStartStr) {
       return NextResponse.json(
@@ -58,7 +57,7 @@ export async function GET(request: NextRequest) {
     const { data: targetsData, error: targetsError } = await supabase
       .from('daily_targets')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .single()
 
     if (targetsError) {
@@ -84,7 +83,7 @@ export async function GET(request: NextRequest) {
     const { data: summariesData, error: summariesError } = await supabase
       .from('daily_summaries')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .gte('date', weekStart.toISOString().split('T')[0])
       .lte('date', weekEnd.toISOString().split('T')[0])
       .order('date', { ascending: true })
@@ -158,13 +157,15 @@ function getMondayOfWeek(date: Date): Date {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { userId } = body
+    const supabase = await createServerClient()
 
-    if (!userId) {
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
       return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
@@ -175,7 +176,6 @@ export async function POST(request: NextRequest) {
     // Redirect to GET with calculated week start
     const url = new URL(request.url)
     url.pathname = '/api/adherence/weekly'
-    url.searchParams.set('userId', userId)
     url.searchParams.set('weekStart', weekStart.toISOString().split('T')[0])
 
     // Make internal request to GET endpoint

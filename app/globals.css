@@ -25,3 +25,51 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Mobile-First Touch Targets - Following Development Principles */
+@layer components {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Ensure buttons are accessible on mobile */
+  button {
+    min-height: 44px;
+  }
+  
+  /* Mobile-optimized input fields */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  textarea,
+  select {
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px;
+  }
+  
+  /* Dark mode improvements */
+  @media (prefers-color-scheme: dark) {
+    /* Ensure proper contrast in dark mode */
+    .bg-white {
+      @apply bg-gray-800;
+    }
+    
+    .text-gray-900 {
+      @apply text-gray-100;
+    }
+    
+    .text-gray-600 {
+      @apply text-gray-400;
+    }
+    
+    .border-gray-200 {
+      @apply border-gray-700;
+    }
+  }
+}

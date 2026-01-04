@@ -3,6 +3,8 @@
  * Implements Requirements 10.5 - handle authentication session expiry
  */
 
+import React from 'react'
+
 export interface SessionInfo {
   isValid: boolean
   expiresAt?: number
@@ -363,6 +365,3 @@ export function withAuth<P extends object>(
     return React.createElement(Component, props)
   }
 }
-
-// Import React for hooks and components
-import React from 'react'

@@ -5,28 +5,26 @@
  */
 
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { MealEntry, DailyMealsResponse, DailyTargets } from '@/app/lib/types/food-tracking'
 import { calculateAdherenceStatus, calculateDailyTotals, isPhotoUrlValid } from '@/app/lib/adherence-calculator'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    const date = searchParams.get('date')
+    const supabase = await createServerClient()
 
-    // Validate required parameters
-    if (!userId) {
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
       return NextResponse.json(
-        { error: 'userId parameter is required' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
+
+    const { searchParams } = new URL(request.url)
+    const date = searchParams.get('date')
 
     if (!date) {
       return NextResponse.json(
@@ -51,7 +49,7 @@ export async function GET(request: Request) {
     const { data: mealsData, error: mealsError } = await supabase
       .from('meals')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .gte('meal_timestamp', startOfDay)
       .lte('meal_timestamp', endOfDay)
       .order('meal_timestamp', { ascending: true })
@@ -93,7 +91,7 @@ export async function GET(request: Request) {
     const { data: targetsData, error: targetsError } = await supabase
       .from('daily_targets')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .single()
 
     let adherence = {
@@ -146,15 +144,19 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    const { userId, targetProtein, targetCarbs, targetFat, targetCalories, tolerancePct } = await request.json()
+    const supabase = await createServerClient()
 
-    // Validate required fields
-    if (!userId) {
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
       return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
+
+    const { targetProtein, targetCarbs, targetFat, targetCalories, tolerancePct } = await request.json()
 
     const requiredTargets = { targetProtein, targetCarbs, targetFat, targetCalories }
     for (const [key, value] of Object.entries(requiredTargets)) {
@@ -179,7 +181,7 @@ export async function POST(request: Request) {
     const { error: upsertError } = await supabase
       .from('daily_targets')
       .upsert({
-        user_id: userId,
+        user_id: user.id,
         target_protein: targetProtein,
         target_carbs: targetCarbs,
         target_fat: targetFat,

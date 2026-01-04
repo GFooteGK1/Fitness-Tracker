@@ -2,14 +2,20 @@
 
 import React from 'react'
 import { useOfflineQueue } from '@/app/lib/offline-queue'
+import { useAuth } from '@/app/lib/auth/AuthContext'
 
 interface OfflineQueueStatusProps {
-  userId: string
   className?: string
 }
 
-export default function OfflineQueueStatus({ userId, className = '' }: OfflineQueueStatusProps) {
+export default function OfflineQueueStatus({ className = '' }: OfflineQueueStatusProps) {
+  const { user } = useAuth()
   const { stats, isOnline, processQueue, clearCompleted } = useOfflineQueue()
+
+  // Don't show if user is not authenticated
+  if (!user) {
+    return null
+  }
 
   if (isOnline && stats.pendingOperations === 0 && stats.failedOperations === 0) {
     return null // Don't show anything when online with no pending operations

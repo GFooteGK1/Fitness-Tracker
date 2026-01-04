@@ -5,33 +5,30 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '../../lib/auth/supabase-server'
 import { DailyTargets, DailyTargetsInsert } from '../../lib/types/food-tracking'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 /**
  * GET /api/targets - Retrieve user's daily targets
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const supabase = await createServerClient()
 
-    if (!userId) {
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
       return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
     const { data, error } = await supabase
       .from('daily_targets')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .single()
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
@@ -45,7 +42,7 @@ export async function GET(request: NextRequest) {
     // If no targets found, return default values
     if (!data) {
       return NextResponse.json({
-        userId,
+        userId: user.id,
         targetProtein: 0,
         targetCarbs: 0,
         targetFat: 0,
@@ -81,9 +78,20 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createServerClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const {
-      userId,
       targetProtein,
       targetCarbs,
       targetFat,
@@ -92,10 +100,10 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validate required fields
-    if (!userId || targetProtein === undefined || targetCarbs === undefined || 
+    if (targetProtein === undefined || targetCarbs === undefined || 
         targetFat === undefined || targetCalories === undefined) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, targetProtein, targetCarbs, targetFat, targetCalories' },
+        { error: 'Missing required fields: targetProtein, targetCarbs, targetFat, targetCalories' },
         { status: 400 }
       )
     }
@@ -118,7 +126,7 @@ export async function POST(request: NextRequest) {
 
     // Prepare data for database insert/update
     const targetsData: DailyTargetsInsert = {
-      user_id: userId,
+      user_id: user.id,
       target_protein: targetProtein,
       target_carbs: targetCarbs,
       target_fat: targetFat,
@@ -167,22 +175,26 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
+    const supabase = await createServerClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const {
-      userId,
       targetProtein,
       targetCarbs,
       targetFat,
       targetCalories,
       tolerancePct
     } = body
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      )
-    }
 
     // Build update object with only provided fields
     const updateData: Partial<DailyTargetsInsert> = {}
@@ -247,7 +259,7 @@ export async function PUT(request: NextRequest) {
     const { data, error } = await supabase
       .from('daily_targets')
       .update(updateData)
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .select()
       .single()
 

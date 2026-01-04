@@ -1,18 +1,25 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@/app/lib/auth/supabase-server'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!
 })
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 export async function POST(request: Request) {
   try {
+    const supabase = await createServerClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const { text, date } = await request.json()
 
     if (!text || !text.trim()) {
@@ -64,7 +71,7 @@ export async function POST(request: Request) {
         notes: parsed.notes || '',
         rpe: parsed.rpe || null,
         parse_confidence: 0.85,
-        user_id: null  // Single-user mode, no auth required
+        user_id: user.id
       })
       .select()
       .single()
@@ -81,6 +88,7 @@ export async function POST(request: Request) {
     if (parsed.blocks && parsed.blocks.length > 0) {
       const blockScores = parsed.blocks.map((block: any) => ({
         workout_id: workout.id,
+        user_id: user.id,
         block_type: block.block_type,
         block_title: block.title || null,
         rounds_completed: block.block_score?.rounds_completed || null,
@@ -92,7 +100,11 @@ export async function POST(request: Request) {
         is_pr: block.block_score?.is_pr || false
       }))
 
-      await supabase.from('block_scores').insert(blockScores)
+      const { error: blockError } = await supabase.from('block_scores').insert(blockScores)
+      if (blockError) {
+        console.error('Block scores error:', blockError)
+        // Don't fail the whole request for block score errors
+      }
     }
 
     return NextResponse.json({

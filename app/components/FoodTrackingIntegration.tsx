@@ -7,9 +7,9 @@ import DailyProgressView from './DailyProgressView'
 import WeeklyAdherenceView from './WeeklyAdherenceView'
 import TargetManagement from './TargetManagement'
 import OfflineQueueStatus from './OfflineQueueStatus'
+import { useAuth } from '@/app/lib/auth/AuthContext'
 
 interface FoodTrackingIntegrationProps {
-  userId: string
   initialView?: 'daily' | 'weekly' | 'camera' | 'targets'
   onViewChange?: (view: string) => void
 }
@@ -25,10 +25,10 @@ interface FoodTrackingIntegrationProps {
  * - Integrate target management with progress tracking
  */
 export default function FoodTrackingIntegration({
-  userId,
   initialView = 'daily',
   onViewChange
 }: FoodTrackingIntegrationProps) {
+  const { user } = useAuth()
   const [currentView, setCurrentView] = useState(initialView)
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [targets, setTargets] = useState<DailyTargets | null>(null)
@@ -154,7 +154,6 @@ export default function FoodTrackingIntegration({
         {currentView === 'daily' && (
           <DailyProgressView
             date={selectedDate}
-            userId={userId}
             onAddMeal={handleAddMeal}
             key={`daily-${refreshTrigger}`} // Force refresh when needed
           />
@@ -163,7 +162,6 @@ export default function FoodTrackingIntegration({
         {currentView === 'weekly' && (
           <WeeklyAdherenceView
             weekStart={getWeekStart(selectedDate)}
-            userId={userId}
             onDateSelect={handleDateSelect}
             key={`weekly-${refreshTrigger}`} // Force refresh when needed
           />
@@ -184,7 +182,6 @@ export default function FoodTrackingIntegration({
             </div>
             
             <MealCameraCapture
-              userId={userId}
               onUploadComplete={handlePhotoUploadComplete}
               onError={handleCameraError}
             />
@@ -193,7 +190,6 @@ export default function FoodTrackingIntegration({
 
         {currentView === 'targets' && (
           <TargetManagement
-            userId={userId}
             onTargetsUpdated={handleTargetsUpdated}
           />
         )}
@@ -201,7 +197,7 @@ export default function FoodTrackingIntegration({
 
       {/* Offline Queue Status - Always visible */}
       <div className="mt-6">
-        <OfflineQueueStatus userId={userId} />
+        <OfflineQueueStatus />
       </div>
 
       {/* Integration Debug Info (only in development) */}
@@ -211,7 +207,7 @@ export default function FoodTrackingIntegration({
           <div className="text-sm text-gray-600 space-y-1">
             <div>Current View: {currentView}</div>
             <div>Selected Date: {selectedDate.toISOString().split('T')[0]}</div>
-            <div>User ID: {userId}</div>
+            <div>User ID: {user?.id || 'Not authenticated'}</div>
             <div>Targets Set: {targets ? 'Yes' : 'No'}</div>
             <div>Refresh Trigger: {refreshTrigger}</div>
           </div>

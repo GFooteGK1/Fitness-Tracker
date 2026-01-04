@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@/app/lib/auth/supabase-server'
 import Anthropic from '@anthropic-ai/sdk'
 import { NutritionalAnalysis, FoodItem, MacroTotals } from '@/app/lib/types/food-tracking'
 import { validateMealData, calculateTotalMacros } from '@/app/lib/macro-validation'
@@ -10,11 +10,6 @@ import {
   DEFAULT_RETRY_CONFIG,
   ErrorContext 
 } from '@/app/lib/error-handling'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -62,6 +57,18 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const supabase = await createServerClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const { photoUrl, mealId } = await request.json()
 
     // Validate required fields
@@ -76,24 +83,24 @@ export async function POST(request: NextRequest) {
 
     context.mealId = mealId
     context.photoUrl = photoUrl
+    context.userId = user.id
 
-    // Verify meal exists and get current data
+    // Verify meal exists and belongs to authenticated user
     const { data: mealData, error: mealError } = await supabase
       .from('meals')
       .select('*')
       .eq('id', mealId)
+      .eq('user_id', user.id)
       .single()
 
     if (mealError || !mealData) {
-      const error = new Error('Meal not found')
+      const error = new Error('Meal not found or access denied')
       logError(error, context)
       return NextResponse.json(
-        { error: 'Meal not found' },
+        { error: 'Meal not found or access denied' },
         { status: 404 }
       )
     }
-
-    context.userId = mealData.user_id
 
     let nutritionalData: NutritionalAnalysis
 
@@ -131,6 +138,7 @@ export async function POST(request: NextRequest) {
           ai_confidence: null
         })
         .eq('id', mealId)
+        .eq('user_id', user.id)
 
       return NextResponse.json(
         { 
@@ -160,6 +168,7 @@ export async function POST(request: NextRequest) {
           ai_confidence: nutritionalData.confidence || null
         })
         .eq('id', mealId)
+        .eq('user_id', user.id)
 
       return NextResponse.json(
         { 
@@ -194,6 +203,7 @@ export async function POST(request: NextRequest) {
           ai_confidence: nutritionalData.confidence || null
         })
         .eq('id', mealId)
+        .eq('user_id', user.id)
 
       return NextResponse.json(
         { 
@@ -236,6 +246,7 @@ export async function POST(request: NextRequest) {
               needs_review: mealValidation.needsReview // Use validation result
             })
             .eq('id', mealId)
+            .eq('user_id', user.id)
 
           if (updateError) {
             throw updateError

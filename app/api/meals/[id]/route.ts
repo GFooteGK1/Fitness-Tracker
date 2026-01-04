@@ -1,18 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { MealUpdates, MealEntry } from '@/app/lib/types/food-tracking'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const mealId = params.id
+    const supabase = await createServerClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const { id: mealId } = await params
     const updates: MealUpdates = await request.json()
 
     // Validate required fields
@@ -76,16 +83,17 @@ export async function PUT(
       }
     }
 
-    // First, get the current meal to preserve original AI data
+    // First, get the current meal to ensure it belongs to authenticated user
     const { data: currentMeal, error: fetchError } = await supabase
       .from('meals')
       .select('*')
       .eq('id', mealId)
+      .eq('user_id', user.id)
       .single()
 
     if (fetchError || !currentMeal) {
       return NextResponse.json(
-        { error: 'Meal not found' },
+        { error: 'Meal not found or access denied' },
         { status: 404 }
       )
     }
@@ -122,11 +130,12 @@ export async function PUT(
       updateData.needs_review = false
     }
 
-    // Update the meal in the database
+    // Update the meal in the database (ensure user owns the meal)
     const { data: updatedMeal, error: updateError } = await supabase
       .from('meals')
       .update(updateData)
       .eq('id', mealId)
+      .eq('user_id', user.id)
       .select('*')
       .single()
 
@@ -174,10 +183,10 @@ export async function PUT(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const mealId = params.id
+    const { id: mealId } = await params
 
     if (!mealId) {
       return NextResponse.json(
@@ -186,11 +195,24 @@ export async function GET(
       )
     }
 
-    // Get the meal from the database
+    const supabase = await createServerClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Get the meal from the database (ensure user owns the meal)
     const { data: meal, error } = await supabase
       .from('meals')
       .select('*')
       .eq('id', mealId)
+      .eq('user_id', user.id)
       .single()
 
     if (error || !meal) {

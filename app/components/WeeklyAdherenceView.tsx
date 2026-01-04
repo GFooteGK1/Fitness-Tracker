@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from 'react'
 import { DailyTargets, DailySummary } from '@/app/lib/types/food-tracking'
 import { WeeklyAdherenceScore, CorrectionGuidance } from '@/app/lib/adherence-calculator'
+import { useAuth } from '@/app/lib/auth/AuthContext'
 
 interface WeeklyAdherenceViewProps {
   weekStart: Date
-  userId: string
   onDateSelect?: (date: Date) => void
 }
 
@@ -19,22 +19,27 @@ interface WeeklyAdherenceResponse {
   weekEnd: string
 }
 
-export default function WeeklyAdherenceView({ weekStart, userId, onDateSelect }: WeeklyAdherenceViewProps) {
+export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyAdherenceViewProps) {
+  const { user } = useAuth()
   const [weeklyData, setWeeklyData] = useState<WeeklyAdherenceResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetchWeeklyData()
-  }, [weekStart, userId])
+    if (user) {
+      fetchWeeklyData()
+    }
+  }, [weekStart, user])
 
   const fetchWeeklyData = async () => {
+    if (!user) return
+    
     try {
       setLoading(true)
       setError('')
 
       const weekStartStr = weekStart.toISOString().split('T')[0]
-      const response = await fetch(`/api/adherence/weekly?userId=${userId}&weekStart=${weekStartStr}`)
+      const response = await fetch(`/api/adherence/weekly?weekStart=${weekStartStr}`)
       
       if (!response.ok) {
         const errorData = await response.json()

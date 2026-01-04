@@ -1,21 +1,21 @@
 'use client'
 
 import React, { useState } from 'react'
+import { useAuth } from '@/app/lib/auth/AuthContext'
+import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import DailyProgressView from '@/app/components/DailyProgressView'
 import WeeklyAdherenceView from '@/app/components/WeeklyAdherenceView'
-import MealCameraCapture from '@/app/components/MealCameraCapture'
+import MealCameraCaptureFixed from '@/app/components/MealCameraCaptureFixed'
 import TargetManagement from '@/app/components/TargetManagement'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
 import OfflineQueueStatus from '@/app/components/OfflineQueueStatus'
 import { MealUploadResponse, DailyTargets } from '@/app/lib/types/food-tracking'
 
 export default function FoodProgressPage() {
+  const { user } = useAuth()
   const [currentView, setCurrentView] = useState<'daily' | 'weekly' | 'camera' | 'targets'>('daily')
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [targets, setTargets] = useState<DailyTargets | null>(null)
-  
-  // Mock user ID for testing - in real app this would come from auth
-  const userId = 'test-user-id'
 
   // Handle URL parameters for direct camera access
   React.useEffect(() => {
@@ -196,84 +196,89 @@ export default function FoodProgressPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Breadcrumbs */}
-        <div className="mb-4">
+    <ProtectedRoute requireOnboarding={true}>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        {/* Breadcrumbs - Hidden on mobile to save space */}
+        <div className="mb-3 sm:mb-4 hidden sm:block">
           <Breadcrumbs items={getBreadcrumbs()} />
         </div>
 
-        {/* Page Title */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">
+        {/* Mobile-First Page Title */}
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
             {currentView === 'camera' ? 'Add New Meal' :
              currentView === 'weekly' ? `Weekly Progress` :
              currentView === 'targets' ? 'Manage Targets' :
              'Daily Progress'}
           </h1>
           {currentView === 'daily' && (
-            <p className="text-gray-600 mt-1">{formatDateForTitle(selectedDate)}</p>
+            <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base">{formatDateForTitle(selectedDate)}</p>
           )}
           {currentView === 'weekly' && (
-            <p className="text-gray-600 mt-1">{formatWeekForTitle(getWeekStart(selectedDate))}</p>
+            <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base">{formatWeekForTitle(getWeekStart(selectedDate))}</p>
           )}
           {currentView === 'targets' && (
-            <p className="text-gray-600 mt-1">Set your daily macro and calorie targets</p>
+            <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base">Set your daily macro and calorie targets</p>
           )}
         </div>
-        {/* Navigation Header */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
-          <div className="flex items-center justify-between">
-            {/* View Toggle */}
-            <div className="flex bg-gray-100 rounded-lg p-1">
+
+        {/* Mobile-Optimized Navigation Header */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700 mb-4 sm:mb-6">
+          {/* Mobile View Toggle - Horizontal scroll on small screens */}
+          <div className="mb-4 sm:mb-0">
+            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 overflow-x-auto">
               <button
                 onClick={() => setCurrentView('daily')}
-                className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                className={`px-3 sm:px-4 py-2 rounded-md font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
                   currentView === 'daily'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               >
                 Daily View
               </button>
               <button
                 onClick={() => setCurrentView('weekly')}
-                className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                className={`px-3 sm:px-4 py-2 rounded-md font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
                   currentView === 'weekly'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               >
                 Weekly View
               </button>
               <button
                 onClick={() => setCurrentView('camera')}
-                className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                className={`px-3 sm:px-4 py-2 rounded-md font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
                   currentView === 'camera'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               >
                 📷 Add Meal
               </button>
               <button
                 onClick={() => setCurrentView('targets')}
-                className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                className={`px-3 sm:px-4 py-2 rounded-md font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
                   currentView === 'targets'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               >
                 🎯 Targets
               </button>
             </div>
+          </div>
 
-            {/* Date Navigation - only show for daily/weekly views */}
-            {(currentView === 'daily' || currentView === 'weekly') && (
-              <div className="flex items-center space-x-4">
+          {/* Mobile-Optimized Date Navigation */}
+          {(currentView === 'daily' || currentView === 'weekly') && (
+            <div className="flex items-center justify-between sm:justify-end sm:space-x-4">
+              <div className="flex items-center space-x-2 sm:space-x-4">
                 <button
                   onClick={() => navigateDate('prev')}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-target"
+                  aria-label="Previous day"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -282,56 +287,56 @@ export default function FoodProgressPage() {
                 
                 <button
                   onClick={goToToday}
-                  className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                  className="px-3 sm:px-4 py-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors text-sm sm:text-base touch-target"
                 >
                   Today
                 </button>
                 
                 <button
                   onClick={() => navigateDate('next')}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-target"
+                  aria-label="Next day"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
               </div>
-            )}
 
-            {/* Back button for camera and targets view */}
-            {(currentView === 'camera' || currentView === 'targets') && (
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={handleBackToDaily}
-                  className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  <span>Back to Daily</span>
-                </button>
-                
-                <div className="text-sm text-gray-500">
-                  Press <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Esc</kbd> to go back
-                </div>
-              </div>
-            )}
-
-            {/* Keyboard shortcuts help */}
-            {(currentView === 'daily' || currentView === 'weekly') && (
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
+              {/* Keyboard shortcuts help - Hidden on mobile */}
+              <div className="hidden lg:flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
                 <span>Shortcuts:</span>
-                <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">←→</kbd>
+                <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">←→</kbd>
                 <span>navigate</span>
-                <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">T</kbd>
+                <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">T</kbd>
                 <span>today</span>
-                <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Cmd+C</kbd>
+                <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Cmd+C</kbd>
                 <span>camera</span>
-                <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Cmd+T</kbd>
+                <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Cmd+T</kbd>
                 <span>targets</span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Mobile-Optimized Back button for camera and targets view */}
+          {(currentView === 'camera' || currentView === 'targets') && (
+            <div className="flex items-center justify-between">
+              <button
+                onClick={handleBackToDaily}
+                className="flex items-center space-x-2 px-3 sm:px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-target"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="text-sm sm:text-base">Back to Daily</span>
+              </button>
+              
+              {/* Escape hint - Hidden on mobile */}
+              <div className="hidden sm:block text-sm text-gray-500 dark:text-gray-400">
+                Press <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Esc</kbd> to go back
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -339,13 +344,12 @@ export default function FoodProgressPage() {
           <>
             <DailyProgressView
               date={selectedDate}
-              userId={userId}
               onAddMeal={handleAddMeal}
             />
             
             {/* Offline Queue Status */}
-            <div className="mt-6">
-              <OfflineQueueStatus userId={userId} />
+            <div className="mt-4 sm:mt-6">
+              <OfflineQueueStatus />
             </div>
           </>
         )}
@@ -354,13 +358,12 @@ export default function FoodProgressPage() {
           <>
             <WeeklyAdherenceView
               weekStart={getWeekStart(selectedDate)}
-              userId={userId}
               onDateSelect={handleDateSelect}
             />
             
             {/* Offline Queue Status */}
-            <div className="mt-6">
-              <OfflineQueueStatus userId={userId} />
+            <div className="mt-4 sm:mt-6">
+              <OfflineQueueStatus />
             </div>
           </>
         )}
@@ -368,22 +371,20 @@ export default function FoodProgressPage() {
         {currentView === 'targets' && (
           <>
             <TargetManagement
-              userId={userId}
               onTargetsUpdated={handleTargetsUpdated}
             />
             
             {/* Offline Queue Status */}
-            <div className="mt-6">
-              <OfflineQueueStatus userId={userId} />
+            <div className="mt-4 sm:mt-6">
+              <OfflineQueueStatus />
             </div>
           </>
         )}
         
         {currentView === 'camera' && (
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Add New Meal</h2>
-            <MealCameraCapture
-              userId={userId}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">Add New Meal</h2>
+            <MealCameraCaptureFixed
               onUploadComplete={handlePhotoUploadComplete}
               onError={handleCameraError}
             />
@@ -391,5 +392,6 @@ export default function FoodProgressPage() {
         )}
       </div>
     </div>
+    </ProtectedRoute>
   )
 }

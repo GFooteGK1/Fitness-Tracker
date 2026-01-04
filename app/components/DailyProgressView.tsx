@@ -5,14 +5,15 @@ import { MealEntry, DailyTargets, MacroTotals, AdherenceStatus, DailyMealsRespon
 import MealEntryCard from './MealEntryCard'
 import MealEditModal from './MealEditModal'
 import { useToast } from './Toast'
+import { useAuth } from '@/app/lib/auth/AuthContext'
 
 interface DailyProgressViewProps {
   date: Date
-  userId: string
   onAddMeal?: () => void
 }
 
-export default function DailyProgressView({ date, userId, onAddMeal }: DailyProgressViewProps) {
+export default function DailyProgressView({ date, onAddMeal }: DailyProgressViewProps) {
+  const { user } = useAuth()
   const [meals, setMeals] = useState<MealEntry[]>([])
   const [dailyTotals, setDailyTotals] = useState<MacroTotals>({ protein: 0, carbs: 0, fat: 0, calories: 0 })
   const [adherence, setAdherence] = useState<AdherenceStatus>({
@@ -31,16 +32,20 @@ export default function DailyProgressView({ date, userId, onAddMeal }: DailyProg
   const { showToast } = useToast()
 
   useEffect(() => {
-    fetchDailyData()
-  }, [date, userId])
+    if (user) {
+      fetchDailyData()
+    }
+  }, [date, user])
 
   const fetchDailyData = async () => {
+    if (!user) return
+    
     try {
       setLoading(true)
       setError('')
 
       const dateStr = date.toISOString().split('T')[0]
-      const response = await fetch(`/api/meals/daily?userId=${userId}&date=${dateStr}`)
+      const response = await fetch(`/api/meals/daily?date=${dateStr}`)
       
       if (!response.ok) {
         const errorData = await response.json()
@@ -62,8 +67,10 @@ export default function DailyProgressView({ date, userId, onAddMeal }: DailyProg
   }
 
   const fetchTargets = async () => {
+    if (!user) return
+    
     try {
-      const response = await fetch(`/api/targets?userId=${userId}`)
+      const response = await fetch('/api/targets')
       if (response.ok) {
         const targetsData = await response.json()
         setTargets(targetsData)
@@ -140,20 +147,20 @@ export default function DailyProgressView({ date, userId, onAddMeal }: DailyProg
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-3"></div>
+      <div className="flex items-center justify-center py-8 sm:py-12">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-blue-600 dark:border-blue-400 mb-3"></div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="text-6xl mb-4">⚠️</div>
-        <p className="text-red-600 mb-4">{error}</p>
+      <div className="text-center py-8 sm:py-12">
+        <div className="text-4xl sm:text-6xl mb-4">⚠️</div>
+        <p className="text-red-600 dark:text-red-400 mb-4 text-sm sm:text-base px-4">{error}</p>
         <button
           onClick={fetchDailyData}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+          className="bg-blue-600 dark:bg-blue-500 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors font-semibold text-sm sm:text-base touch-target"
         >
           Try Again
         </button>
@@ -162,12 +169,12 @@ export default function DailyProgressView({ date, userId, onAddMeal }: DailyProg
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header - Mobile Optimized */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{formatDate(date)}</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{formatDate(date)}</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base">
             {meals.length} meal{meals.length !== 1 ? 's' : ''} logged
           </p>
         </div>
@@ -175,7 +182,7 @@ export default function DailyProgressView({ date, userId, onAddMeal }: DailyProg
         {onAddMeal && (
           <button
             onClick={onAddMeal}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center space-x-2"
+            className="bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors font-semibold flex items-center justify-center space-x-2 text-sm sm:text-base touch-target w-full sm:w-auto"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -185,43 +192,43 @@ export default function DailyProgressView({ date, userId, onAddMeal }: DailyProg
         )}
       </div>
 
-      {/* Daily Totals and Targets */}
+      {/* Daily Totals and Targets - Mobile Optimized */}
       {targets && (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Daily Progress</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Daily Progress</h2>
           
           {/* Overall Adherence Score */}
-          <div className={`rounded-lg p-4 mb-4 border ${getAdherenceColor(adherence.overallScore)}`}>
+          <div className={`rounded-lg p-3 sm:p-4 mb-4 border ${getAdherenceColor(adherence.overallScore)}`}>
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold">Overall Adherence</h3>
-                <p className="text-sm opacity-75">
+                <h3 className="font-semibold text-sm sm:text-base">Overall Adherence</h3>
+                <p className="text-xs sm:text-sm opacity-75">
                   {adherence.withinTolerance ? 'Within target range' : 'Outside target range'}
                 </p>
               </div>
-              <div className="text-2xl font-bold">
+              <div className="text-xl sm:text-2xl font-bold">
                 {Math.round(adherence.overallScore)}%
               </div>
             </div>
           </div>
 
-          {/* Macro Progress Bars */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Macro Progress Bars - Mobile Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {/* Protein */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">Protein</span>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Protein</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
                   {formatMacro(dailyTotals.protein)} / {formatMacro(targets.targetProtein)}
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                 <div
                   className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(adherence.proteinAdherence)}`}
                   style={{ width: `${calculateProgress(dailyTotals.protein, targets.targetProtein)}%` }}
                 ></div>
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
                 {Math.round(adherence.proteinAdherence)}% adherence
               </div>
             </div>
@@ -229,18 +236,18 @@ export default function DailyProgressView({ date, userId, onAddMeal }: DailyProg
             {/* Carbs */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">Carbs</span>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Carbs</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
                   {formatMacro(dailyTotals.carbs)} / {formatMacro(targets.targetCarbs)}
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                 <div
                   className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(adherence.carbsAdherence)}`}
                   style={{ width: `${calculateProgress(dailyTotals.carbs, targets.targetCarbs)}%` }}
                 ></div>
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
                 {Math.round(adherence.carbsAdherence)}% adherence
               </div>
             </div>
@@ -248,18 +255,18 @@ export default function DailyProgressView({ date, userId, onAddMeal }: DailyProg
             {/* Fat */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">Fat</span>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Fat</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
                   {formatMacro(dailyTotals.fat)} / {formatMacro(targets.targetFat)}
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                 <div
                   className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(adherence.fatAdherence)}`}
                   style={{ width: `${calculateProgress(dailyTotals.fat, targets.targetFat)}%` }}
                 ></div>
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
                 {Math.round(adherence.fatAdherence)}% adherence
               </div>
             </div>
@@ -267,18 +274,18 @@ export default function DailyProgressView({ date, userId, onAddMeal }: DailyProg
             {/* Calories */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">Calories</span>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Calories</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
                   {formatMacro(dailyTotals.calories, '')} / {formatMacro(targets.targetCalories, '')}
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                 <div
                   className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(adherence.caloriesAdherence)}`}
                   style={{ width: `${calculateProgress(dailyTotals.calories, targets.targetCalories)}%` }}
                 ></div>
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
                 {Math.round(adherence.caloriesAdherence)}% adherence
               </div>
             </div>
@@ -286,24 +293,24 @@ export default function DailyProgressView({ date, userId, onAddMeal }: DailyProg
         </div>
       )}
 
-      {/* No targets message */}
+      {/* No targets message - Mobile Optimized */}
       {!targets && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-start sm:items-center">
+              <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mr-2 mt-0.5 sm:mt-0 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
               <div>
-                <h3 className="font-medium text-yellow-800">No Daily Targets Set</h3>
-                <p className="text-sm text-yellow-700 mt-1">
+                <h3 className="font-medium text-yellow-800 dark:text-yellow-200 text-sm sm:text-base">No Daily Targets Set</h3>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
                   Set your daily macro targets to see adherence tracking and progress indicators.
                 </p>
               </div>
             </div>
             <a
               href="/food-progress?view=targets"
-              className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors font-medium text-sm whitespace-nowrap"
+              className="bg-yellow-600 dark:bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 dark:hover:bg-yellow-600 transition-colors font-medium text-sm whitespace-nowrap touch-target w-full sm:w-auto text-center"
             >
               Set Targets
             </a>
@@ -311,26 +318,26 @@ export default function DailyProgressView({ date, userId, onAddMeal }: DailyProg
         </div>
       )}
 
-      {/* Meals List */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-gray-900">Today&apos;s Meals</h2>
+      {/* Meals List - Mobile Optimized */}
+      <div className="space-y-3 sm:space-y-4">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Today&apos;s Meals</h2>
         
         {meals.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-            <div className="text-6xl mb-4">🍽️</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No meals logged yet</h3>
-            <p className="text-gray-600 mb-4">Start tracking your nutrition by adding your first meal.</p>
+          <div className="text-center py-8 sm:py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+            <div className="text-4xl sm:text-6xl mb-4">🍽️</div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No meals logged yet</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4 px-4 text-sm sm:text-base">Start tracking your nutrition by adding your first meal.</p>
             {onAddMeal && (
               <button
                 onClick={onAddMeal}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                className="bg-blue-600 dark:bg-blue-500 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors font-semibold text-sm sm:text-base touch-target"
               >
                 Add Your First Meal
               </button>
             )}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {meals.map((meal) => (
               <MealEntryCard
                 key={meal.id}
