@@ -5,10 +5,14 @@ AI-powered workout logging and analytics platform. Log workouts using natural la
 ## Features
 
 - 📝 **Natural Language Logging** - Write workouts like you would on a whiteboard
+- 📷 **Photo OCR** - Snap a photo of the whiteboard, AI extracts the workout
+- 🎤 **Voice Input** - Speak your workout using Web Speech API
+- 🍽️ **Nutrition Tracking** - Photo-based meal logging with AI macro estimation
 - 🤖 **AI Parsing** - Claude automatically structures your data
-- 📊 **Analytics Dashboard** - Track progress and PRs
+- 📊 **Analytics Dashboard** - Track progress, PRs, and workout types
 - 🔍 **Conversational Queries** - Ask questions about your workout history
-- 📱 **Mobile-First** - Optimized for gym-floor logging
+- 📅 **Program View** - View coach programming from Google Sheets
+- 📱 **Mobile-First** - Optimized for gym-floor and kitchen use
 - 🔒 **Secure** - Row-level security with Supabase
 
 ## Tech Stack
@@ -142,27 +146,56 @@ See `migration-guide.md` for detailed instructions (coming soon).
 
 ```
 fitness-tracker/
-├── app/
-│   ├── api/
-│   │   ├── parse-workout/route.ts  # Workout parsing endpoint
-│   │   └── query/route.ts          # Query endpoint
-│   ├── log/page.tsx                # Workout logging UI
-│   ├── query/page.tsx              # Query UI
-│   ├── layout.tsx                  # Root layout
-│   ├── page.tsx                    # Home page
-│   └── globals.css                 # Global styles
-├── supabase-migration.sql          # Database schema
-├── package.json
-├── tsconfig.json
-├── tailwind.config.ts
-└── README.md
+├── app/                        # Next.js application
+│   ├── api/                    # API routes
+│   │   ├── meals/              # Food tracking endpoints
+│   │   ├── parse-workout/      # Workout parsing
+│   │   ├── query/              # Natural language queries
+│   │   └── ...
+│   ├── components/             # React components
+│   ├── lib/                    # Utilities and helpers
+│   ├── dashboard/              # Dashboard page
+│   ├── food-progress/          # Nutrition tracking
+│   ├── log/                    # Workout logging
+│   ├── program/                # Coach programming view
+│   └── query/                  # Query interface
+├── docs/                       # Documentation
+│   ├── architecture/           # System design docs
+│   ├── guides/                 # Setup & deployment guides
+│   ├── migrations/             # SQL migration files
+│   ├── security/               # Security documentation
+│   ├── sessions/               # Development session logs
+│   └── errors/                 # Error documentation
+├── scripts/                    # Utility scripts
+├── test/                       # Test files
+└── public/                     # Static assets
 ```
+
+## Documentation
+
+All documentation is organized in the `docs/` folder:
+
+| Folder | Contents |
+|--------|----------|
+| `docs/architecture/` | System design, component dependencies, development principles |
+| `docs/guides/` | Setup, deployment, testing, and migration guides |
+| `docs/migrations/` | SQL migration files for Supabase |
+| `docs/security/` | Security checklists, RLS policies, vulnerability fixes |
+| `docs/sessions/` | Development session summaries and project status |
+| `docs/errors/` | Documented errors and their solutions |
+
+Key documents:
+- `docs/architecture/PROJECT-OVERVIEW.md` - Full system overview
+- `docs/guides/SETUP-GUIDE.md` - Step-by-step setup instructions
+- `docs/guides/DEPLOYMENT-READINESS.md` - Pre-deployment checklist
+- `docs/sessions/CURRENT-STATE-SUMMARY.md` - Latest project state
 
 ## Roadmap
 
-- [ ] Dashboard with charts and analytics
-- [ ] Voice input (Web Speech API)
-- [ ] Photo OCR (Claude Vision)
+- [x] Dashboard with charts and analytics
+- [x] Voice input (Web Speech API)
+- [x] Photo OCR (Claude Vision)
+- [x] Nutrition tracking with AI analysis
 - [ ] PWA support for offline mode
 - [ ] Workout templates library
 - [ ] PR detection and notifications
