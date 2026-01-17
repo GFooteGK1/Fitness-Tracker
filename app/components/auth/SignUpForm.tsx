@@ -19,7 +19,7 @@ export default function SignUpForm() {
   const router = useRouter()
 
   // Validate form fields
-  const validateForm = (): boolean => {
+  const validateForm = async (): Promise<boolean> => {
     const newErrors: FormErrors = {}
 
     // Email validation
@@ -36,6 +36,24 @@ export default function SignUpForm() {
       newErrors.password = 'Password must be at least 8 characters long'
     } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
       newErrors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+    } else {
+      // Check if password is compromised (only if basic validation passes)
+      try {
+        const response = await fetch('/api/auth/check-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        })
+        
+        const data = await response.json()
+        
+        if (data.isCompromised) {
+          newErrors.password = 'This password has been found in data breaches. Please choose a different password.'
+        }
+      } catch (error) {
+        // If check fails, continue (fail open for better UX)
+        console.error('Password check failed:', error)
+      }
     }
 
     // Confirm password validation
@@ -52,12 +70,14 @@ export default function SignUpForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateForm()) {
-      return
-    }
-
     setLoading(true)
     setErrors({})
+    
+    const isValid = await validateForm()
+    if (!isValid) {
+      setLoading(false)
+      return
+    }
 
     try {
       await signUp(email, password)

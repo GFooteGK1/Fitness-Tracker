@@ -1,0 +1,125 @@
+'use client';
+
+import Link from 'next/link';
+import { useAuth } from '../lib/auth/AuthContext';
+import UserMenu from './UserMenu';
+
+export default function Navigation() {
+  const { user, loading } = useAuth();
+
+  return (
+    <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <Link href="/" className="text-xl font-bold text-blue-600 dark:text-blue-400">
+            SociusFit
+          </Link>
+
+          {/* Navigation Links */}
+          {!loading && user && (
+            <div className="hidden md:flex space-x-6">
+              <Link 
+                href="/dashboard" 
+                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                Dashboard
+              </Link>
+              <Link 
+                href="/program" 
+                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                Program
+              </Link>
+              <Link 
+                href="/log" 
+                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                Log Workout
+              </Link>
+              <Link 
+                href="/food-progress" 
+                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                Food Progress
+              </Link>
+              <Link 
+                href="/query" 
+                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                Query
+              </Link>
+            </div>
+          )}
+
+          {/* User Menu or Auth Links */}
+          <div className="flex items-center space-x-4">
+            {loading ? (
+              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+            ) : user ? (
+              <UserMenu />
+            ) : (
+              <div className="flex space-x-2">
+                <Link 
+                  href="/auth/signin" 
+                  className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link 
+                  href="/auth/signup" 
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Navigation */}
+      {!loading && user && (
+        <div className="md:hidden border-t border-gray-200 dark:border-gray-700">
+          <div className="flex justify-around py-2">
+            <Link 
+              href="/dashboard" 
+              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              <span className="text-lg mb-1">📊</span>
+              Dashboard
+            </Link>
+            <Link 
+              href="/program" 
+              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              <span className="text-lg mb-1">💪</span>
+              Program
+            </Link>
+            <Link 
+              href="/log" 
+              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              <span className="text-lg mb-1">📝</span>
+              Log
+            </Link>
+            <Link 
+              href="/food-progress" 
+              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              <span className="text-lg mb-1">🍽️</span>
+              Food
+            </Link>
+            <Link 
+              href="/query" 
+              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              <span className="text-lg mb-1">🔍</span>
+              Query
+            </Link>
+          </div>
+        </div>
+      )}
+    </nav>
+  );
+}

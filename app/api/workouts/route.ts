@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 const SHEET_ID = '1Y0n4WgGu_MzJDDS-6-iAQlaMuZpULj1DIYioSbVW08g'
+const SHEET_GID = '30816788' // The specific tab with workout data
 
 export async function GET(request: Request) {
   try {
@@ -14,8 +15,8 @@ export async function GET(request: Request) {
       )
     }
 
-    // Fetch the sheet as CSV (publicly accessible)
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`
+    // Fetch the specific sheet tab as CSV (publicly accessible)
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`
     
     const response = await fetch(csvUrl, {
       cache: 'no-store' // Always fetch fresh data
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
     const csvText = await response.text()
     
     // Parse CSV - scan ALL rows to find date headers (multiple weeks)
+    // Focus on columns C-J (indices 2-9) where workout data is located
     const lines = csvText.split('\n').filter(line => line.trim())
     const requestDate = normalizeDate(date)
     
@@ -37,11 +39,12 @@ export async function GET(request: Request) {
     
     // Scan through all rows to find date headers
     // IMPORTANT: We want the LAST occurrence of each date (most recent week)
+    // Only look in columns C-J (indices 2-9)
     for (let rowIdx = 0; rowIdx < lines.length; rowIdx++) {
       const cells = parseCSVLine(lines[rowIdx])
       
-      // Check if this row contains dates (look for date patterns)
-      for (let colIdx = 0; colIdx < cells.length; colIdx++) {
+      // Check if this row contains dates (look for date patterns in columns C-J only)
+      for (let colIdx = 2; colIdx <= 9 && colIdx < cells.length; colIdx++) {
         const normalized = normalizeDate(cells[colIdx])
         if (normalized) {
           allDates.push(normalized)
@@ -58,6 +61,7 @@ export async function GET(request: Request) {
     
     console.log('Looking for date:', requestDate)
     console.log('Found dates:', allDates.sort())
+    console.log('Recent dates (2026):', allDates.filter(d => d.startsWith('2026')).sort())
     console.log('Using header row:', headerRowIndex, 'column:', dateColumnIndex)
     
     if (dateColumnIndex === -1 || headerRowIndex === -1) {
@@ -81,9 +85,9 @@ export async function GET(request: Request) {
     for (let i = headerRowIndex + 1; i < lines.length; i++) {
       const cells = parseCSVLine(lines[i])
       
-      // Stop if we hit another header row (contains dates)
+      // Stop if we hit another header row (contains dates in columns C-J)
       let isHeaderRow = false
-      for (let colIdx = 0; colIdx < cells.length; colIdx++) {
+      for (let colIdx = 2; colIdx <= 9 && colIdx < cells.length; colIdx++) {
         if (normalizeDate(cells[colIdx])) {
           isHeaderRow = true
           break
@@ -159,7 +163,7 @@ function normalizeDate(dateStr: string): string {
     return cleaned
   }
   
-  // Handle M/D/YYYY format (like 7/28/2025)
+  // Handle M/D/YYYY format (like 1/9/2026)
   const slashMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
   if (slashMatch) {
     const [, month, day, year] = slashMatch

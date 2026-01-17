@@ -93,9 +93,9 @@ Create proper icon files or remove references:
 ### 3. Environment Variables for Production
 Prepare these for your deployment platform:
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://auolnfwetmfcwhtvakzy.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-ANTHROPIC_API_KEY=sk-ant-api03-[YOUR_API_KEY_HERE]
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+ANTHROPIC_API_KEY=your-anthropic-api-key-here
 ```
 
 ### 4. Database Verification

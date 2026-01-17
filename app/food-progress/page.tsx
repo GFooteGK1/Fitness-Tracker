@@ -1,15 +1,27 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, lazy, Suspense } from 'react'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
-import DailyProgressView from '@/app/components/DailyProgressView'
-import WeeklyAdherenceView from '@/app/components/WeeklyAdherenceView'
-import MealCameraCaptureFixed from '@/app/components/MealCameraCaptureFixed'
-import TargetManagement from '@/app/components/TargetManagement'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
 import OfflineQueueStatus from '@/app/components/OfflineQueueStatus'
 import { MealUploadResponse, DailyTargets } from '@/app/lib/types/food-tracking'
+
+// Lazy load heavy components to improve initial page load
+const DailyProgressView = lazy(() => import('@/app/components/DailyProgressView'))
+const WeeklyAdherenceView = lazy(() => import('@/app/components/WeeklyAdherenceView'))
+const MealCameraCapture = lazy(() => import('@/app/components/MealCameraCapture'))
+const TargetManagement = lazy(() => import('@/app/components/TargetManagement'))
+
+// Loading component for lazy-loaded components
+const ComponentLoader = ({ children }: { children: string }) => (
+  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+    <div className="flex items-center justify-center py-12">
+      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mr-3"></div>
+      <span className="text-gray-600 dark:text-gray-400">Loading {children}...</span>
+    </div>
+  </div>
+)
 
 export default function FoodProgressPage() {
   const { user } = useAuth()
@@ -52,35 +64,10 @@ export default function FoodProgressPage() {
           }
           break
         case '3':
-        case 'c':
-          if (event.ctrlKey || event.metaKey) {
-            event.preventDefault()
-            setCurrentView('camera')
-          }
-          break
-        case '4':
         case 't':
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault()
             setCurrentView('targets')
-          }
-          break
-        case 'ArrowLeft':
-          if (currentView !== 'camera') {
-            event.preventDefault()
-            navigateDate('prev')
-          }
-          break
-        case 'ArrowRight':
-          if (currentView !== 'camera') {
-            event.preventDefault()
-            navigateDate('next')
-          }
-          break
-        case 't':
-          if (currentView !== 'camera') {
-            event.preventDefault()
-            goToToday()
           }
           break
         case 'Escape':
@@ -108,20 +95,6 @@ export default function FoodProgressPage() {
     weekStart.setDate(diff)
     weekStart.setHours(0, 0, 0, 0)
     return weekStart
-  }
-
-  const navigateDate = (direction: 'prev' | 'next') => {
-    const newDate = new Date(selectedDate)
-    if (currentView === 'daily') {
-      newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1))
-    } else {
-      newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7))
-    }
-    setSelectedDate(newDate)
-  }
-
-  const goToToday = () => {
-    setSelectedDate(new Date())
   }
 
   const handleAddMeal = () => {
@@ -249,16 +222,6 @@ export default function FoodProgressPage() {
                 Weekly View
               </button>
               <button
-                onClick={() => setCurrentView('camera')}
-                className={`px-3 sm:px-4 py-2 rounded-md font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
-                  currentView === 'camera'
-                    ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
-                }`}
-              >
-                📷 Add Meal
-              </button>
-              <button
                 onClick={() => setCurrentView('targets')}
                 className={`px-3 sm:px-4 py-2 rounded-md font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
                   currentView === 'targets'
@@ -271,56 +234,37 @@ export default function FoodProgressPage() {
             </div>
           </div>
 
-          {/* Mobile-Optimized Date Navigation */}
+          {/* Date Picker */}
           {(currentView === 'daily' || currentView === 'weekly') && (
-            <div className="flex items-center justify-between sm:justify-end sm:space-x-4">
-              <div className="flex items-center space-x-2 sm:space-x-4">
-                <button
-                  onClick={() => navigateDate('prev')}
-                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-target"
-                  aria-label="Previous day"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                
-                <button
-                  onClick={goToToday}
-                  className="px-3 sm:px-4 py-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors text-sm sm:text-base touch-target"
-                >
-                  Today
-                </button>
-                
-                <button
-                  onClick={() => navigateDate('next')}
-                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-target"
-                  aria-label="Next day"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Keyboard shortcuts help - Hidden on mobile */}
-              <div className="hidden lg:flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                <span>Shortcuts:</span>
-                <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">←→</kbd>
-                <span>navigate</span>
-                <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">T</kbd>
-                <span>today</span>
-                <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Cmd+C</kbd>
-                <span>camera</span>
-                <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Cmd+T</kbd>
-                <span>targets</span>
-              </div>
+            <div className="mt-4">
+              <label htmlFor="nutrition-date" className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                📅 {currentView === 'daily' ? 'Date' : 'Week Of'}
+              </label>
+              <input
+                type="date"
+                id="nutrition-date"
+                value={selectedDate.toISOString().split('T')[0]}
+                onChange={(e) => {
+                  const newDate = new Date(e.target.value + 'T00:00:00')
+                  setSelectedDate(newDate)
+                }}
+                className="block w-full px-3 py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 box-border"
+                style={{
+                  minHeight: '48px',
+                  fontSize: '16px',
+                  colorScheme: 'light dark',
+                  maxWidth: '100%',
+                  margin: '0',
+                  WebkitAppearance: 'none',
+                  appearance: 'none'
+                }}
+              />
             </div>
           )}
 
-          {/* Mobile-Optimized Back button for camera and targets view */}
+          {/* Back button for camera and targets view */}
           {(currentView === 'camera' || currentView === 'targets') && (
-            <div className="flex items-center justify-between">
+            <div className="mt-4">
               <button
                 onClick={handleBackToDaily}
                 className="flex items-center space-x-2 px-3 sm:px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-target"
@@ -330,18 +274,13 @@ export default function FoodProgressPage() {
                 </svg>
                 <span className="text-sm sm:text-base">Back to Daily</span>
               </button>
-              
-              {/* Escape hint - Hidden on mobile */}
-              <div className="hidden sm:block text-sm text-gray-500 dark:text-gray-400">
-                Press <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Esc</kbd> to go back
-              </div>
             </div>
           )}
         </div>
 
         {/* Content */}
         {currentView === 'daily' && (
-          <>
+          <Suspense fallback={<ComponentLoader>Daily Progress</ComponentLoader>}>
             <DailyProgressView
               date={selectedDate}
               onAddMeal={handleAddMeal}
@@ -351,11 +290,11 @@ export default function FoodProgressPage() {
             <div className="mt-4 sm:mt-6">
               <OfflineQueueStatus />
             </div>
-          </>
+          </Suspense>
         )}
         
         {currentView === 'weekly' && (
-          <>
+          <Suspense fallback={<ComponentLoader>Weekly Progress</ComponentLoader>}>
             <WeeklyAdherenceView
               weekStart={getWeekStart(selectedDate)}
               onDateSelect={handleDateSelect}
@@ -365,11 +304,11 @@ export default function FoodProgressPage() {
             <div className="mt-4 sm:mt-6">
               <OfflineQueueStatus />
             </div>
-          </>
+          </Suspense>
         )}
         
         {currentView === 'targets' && (
-          <>
+          <Suspense fallback={<ComponentLoader>Target Management</ComponentLoader>}>
             <TargetManagement
               onTargetsUpdated={handleTargetsUpdated}
             />
@@ -378,16 +317,18 @@ export default function FoodProgressPage() {
             <div className="mt-4 sm:mt-6">
               <OfflineQueueStatus />
             </div>
-          </>
+          </Suspense>
         )}
         
         {currentView === 'camera' && (
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">Add New Meal</h2>
-            <MealCameraCaptureFixed
-              onUploadComplete={handlePhotoUploadComplete}
-              onError={handleCameraError}
-            />
+            <Suspense fallback={<ComponentLoader>Camera</ComponentLoader>}>
+              <MealCameraCapture
+                onUploadComplete={handlePhotoUploadComplete}
+                onError={handleCameraError}
+              />
+            </Suspense>
           </div>
         )}
       </div>

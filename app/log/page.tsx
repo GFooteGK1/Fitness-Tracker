@@ -414,7 +414,7 @@ export default function LogWorkout() {
               <button
                 type="button"
                 onClick={toggleVoiceRecording}
-                className={`w-full p-6 rounded-xl border-2 transition-colors group ${
+                className={`w-full h-full p-6 rounded-xl border-2 transition-colors group ${
                   isRecording 
                     ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-500' 
                     : finalTranscript
@@ -438,8 +438,8 @@ export default function LogWorkout() {
                     }`}>
                       Voice
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {isRecording ? 'Tap to stop' : finalTranscript ? 'Captured!' : 'Speak your workout'}
+                    <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                      {isRecording ? 'Tap to stop' : finalTranscript ? 'Captured!' : 'Speak workout'}
                     </div>
                   </div>
                 </div>

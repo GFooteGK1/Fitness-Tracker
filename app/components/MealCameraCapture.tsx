@@ -56,7 +56,8 @@ export default function MealCameraCapture({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { stats: queueStats, isOnline } = useOfflineQueue()
-  const { isValid: isSessionValid, authorizedFetch } = useSession()
+  const { user } = useAuth() // Use Supabase auth instead of session manager
+  const isSessionValid = !!user // Session is valid if user exists
 
   const [cameraState, setCameraState] = useState<CameraState>({
     isActive: false,
@@ -403,8 +404,8 @@ export default function MealCameraCapture({
           })
         }, 300)
 
-        // Use authorized fetch for session management
-        const response = await authorizedFetch('/api/meals/upload', {
+        // Upload photo with regular fetch (Supabase auth handles session)
+        const response = await fetch('/api/meals/upload', {
           method: 'POST',
           body: formData
         })
@@ -536,7 +537,7 @@ export default function MealCameraCapture({
     }
 
     await attemptUpload()
-  }, [photoState.file, userId, networkState.isOnline, isSessionValid, authorizedFetch, onUploadComplete, onError])
+  }, [photoState.file, userId, networkState.isOnline, isSessionValid, onUploadComplete, onError])
 
   // Retake photo
   const retakePhoto = useCallback(() => {

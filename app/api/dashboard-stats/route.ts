@@ -20,70 +20,51 @@ export async function GET() {
     const currentYear = now.getFullYear()
     const currentMonth = now.getMonth() + 1
     const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-    
-    // Get total workouts count for authenticated user
-    const { data: totalWorkouts, error: totalError } = await supabase
-      .from('workouts')
-      .select('id', { count: 'exact' })
-      .eq('user_id', user.id)
-    
-    if (totalError) {
-      throw new Error(`Failed to fetch total workouts: ${totalError.message}`)
-    }
-
-    // Get month-to-date workouts for authenticated user
     const monthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`
-    const { data: monthWorkouts, error: monthError } = await supabase
+    
+    // Single optimized query for all workout data including blocks for type categorization
+    const { data: workouts, error: workoutsError } = await supabase
       .from('workouts')
-      .select('id', { count: 'exact' })
+      .select('id, workout_date, created_at, blocks, input_text')
       .eq('user_id', user.id)
-      .gte('workout_date', monthStart)
+      .order('workout_date', { ascending: false })
     
-    if (monthError) {
-      throw new Error(`Failed to fetch month workouts: ${monthError.message}`)
+    if (workoutsError) {
+      throw new Error(`Failed to fetch workouts: ${workoutsError.message}`)
     }
 
-    // Get block scores to categorize workout types for authenticated user
-    let blockScores = []
-    try {
-      const { data, error: blockError } = await supabase
-        .from('block_scores')
-        .select('block_type, workout_id')
-        .eq('user_id', user.id)
-        .gte('created_at', monthStart)
-      
-      if (blockError) {
-        console.log('Block scores query error (likely RLS):', blockError.message)
-        // This is expected if RLS policies aren't set up yet
-      } else {
-        blockScores = data || []
-      }
-    } catch (error) {
-      // Handle any other errors gracefully
-      console.log('Block scores table access issue:', error.message)
-    }
+    // Calculate stats from the single query result
+    const totalWorkouts = workouts?.length || 0
+    const monthWorkouts = workouts?.filter(w => w.workout_date >= monthStart) || []
+    const monthToDate = monthWorkouts.length
 
-    // Categorize workouts by type
-    const workoutTypes = new Map<string, Set<string>>()
-    
-    blockScores.forEach(block => {
-      const type = categorizeBlockType(block.block_type)
-      if (!workoutTypes.has(type)) {
-        workoutTypes.set(type, new Set())
-      }
-      workoutTypes.get(type)!.add(block.workout_id)
+    // Categorize workouts by type from the blocks JSONB data
+    let strengthSessions = 0
+    let metcons = 0
+    let cardio = 0
+
+    workouts?.forEach(workout => {
+      const types = categorizeWorkout(workout.blocks, workout.input_text)
+      if (types.has('strength')) strengthSessions++
+      if (types.has('metcon')) metcons++
+      if (types.has('cardio')) cardio++
     })
 
     const stats = {
-      totalWorkouts: totalWorkouts?.length || 0,
-      monthToDate: monthWorkouts?.length || 0,
-      strengthSessions: workoutTypes.get('strength')?.size || 0,
-      metcons: workoutTypes.get('metcon')?.size || 0,
-      cardio: workoutTypes.get('cardio')?.size || 0,
+      totalWorkouts,
+      monthToDate,
+      strengthSessions,
+      metcons,
+      cardio,
       currentMonth: monthName
     }
 
-    return NextResponse.json(stats)
+    // Add cache headers for better performance
+    return NextResponse.json(stats, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+      }
+    })
 
   } catch (error) {
     console.error('Dashboard stats error:', error)
@@ -94,26 +75,66 @@ export async function GET() {
   }
 }
 
-function categorizeBlockType(blockType: string): string {
-  const type = blockType.toLowerCase()
+function categorizeWorkout(blocks: any, inputText: string): Set<string> {
+  const types = new Set<string>()
+  const text = (inputText || '').toLowerCase()
   
-  if (type.includes('strength') || type.includes('lifting')) {
-    return 'strength'
+  // Check blocks array for block_type
+  if (Array.isArray(blocks)) {
+    blocks.forEach((block: any) => {
+      const blockType = (block.block_type || block.type || '').toLowerCase()
+      
+      if (blockType.includes('strength') || blockType.includes('lifting') || 
+          blockType.includes('build') || blockType.includes('heavy')) {
+        types.add('strength')
+      }
+      
+      if (blockType.includes('cardio') || blockType.includes('monostructural') || 
+          blockType.includes('running') || blockType.includes('rowing') || 
+          blockType.includes('cycling') || blockType.includes('swimming') ||
+          blockType.includes('bike') || blockType.includes('run')) {
+        types.add('cardio')
+      }
+      
+      if (blockType.includes('amrap') || blockType.includes('for_time') || 
+          blockType.includes('for time') || blockType.includes('emom') || 
+          blockType.includes('tabata') || blockType.includes('metcon') ||
+          blockType.includes('wod') || blockType.includes('chipper') ||
+          blockType.includes('rounds')) {
+        types.add('metcon')
+      }
+    })
   }
   
-  if (type.includes('cardio') || type.includes('monostructural') || 
-      type.includes('running') || type.includes('rowing') || 
-      type.includes('cycling') || type.includes('swimming') ||
-      type.includes('bike') || type.includes('run')) {
-    return 'cardio'
+  // Also check input text for keywords if no types found from blocks
+  if (types.size === 0) {
+    // Strength indicators
+    if (text.includes('squat') || text.includes('deadlift') || text.includes('press') ||
+        text.includes('bench') || text.includes('clean') || text.includes('snatch') ||
+        text.includes('jerk') || text.match(/\d+\s*x\s*\d+/) || text.includes('1rm') ||
+        text.includes('5x5') || text.includes('3x3') || text.includes('heavy')) {
+      types.add('strength')
+    }
+    
+    // Cardio indicators
+    if (text.includes('run') || text.includes('row') || text.includes('bike') ||
+        text.includes('swim') || text.includes('ski erg') || text.includes('assault')) {
+      types.add('cardio')
+    }
+    
+    // Metcon indicators
+    if (text.includes('amrap') || text.includes('for time') || text.includes('emom') ||
+        text.includes('rounds') || text.includes('reps') || text.includes('wod') ||
+        text.includes('fran') || text.includes('grace') || text.includes('helen') ||
+        text.includes('diane') || text.includes('cindy') || text.includes('murph')) {
+      types.add('metcon')
+    }
   }
   
-  // AMRAP, FOR_TIME, EMOM, etc. are metcons
-  if (type.includes('amrap') || type.includes('for_time') || type.includes('emom') || 
-      type.includes('tabata') || type.includes('metcon')) {
-    return 'metcon'
+  // Default to metcon if still nothing found (most CrossFit workouts are metcons)
+  if (types.size === 0) {
+    types.add('metcon')
   }
   
-  // Default to metcon for most CrossFit-style workouts
-  return 'metcon'
+  return types
 }

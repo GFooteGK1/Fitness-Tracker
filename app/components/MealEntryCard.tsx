@@ -16,12 +16,41 @@ export default function MealEntryCard({
   showPhoto = true, 
   compact = false 
 }: MealEntryCardProps) {
-  const formatTime = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    }).format(date)
+  const formatTime = (date: Date | string | undefined | null) => {
+    if (!date) return 'Unknown time'
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date
+      if (!dateObj || isNaN(dateObj.getTime())) {
+        return 'Unknown time'
+      }
+      return new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }).format(dateObj)
+    } catch (error) {
+      console.error('Error formatting time:', error)
+      return 'Unknown time'
+    }
+  }
+
+  const formatDateTime = (date: Date | string | undefined | null) => {
+    if (!date) return 'Unknown'
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date
+      if (!dateObj || isNaN(dateObj.getTime())) {
+        return 'Unknown'
+      }
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      }).format(dateObj)
+    } catch (error) {
+      console.error('Error formatting date:', error)
+      return 'Unknown'
+    }
   }
 
   const formatMacro = (value: number, unit: string = 'g') => {
@@ -42,7 +71,10 @@ export default function MealEntryCard({
     return 'Low'
   }
 
-  const isPhotoExpired = meal.photoExpiresAt && new Date() > meal.photoExpiresAt
+  const isPhotoExpired = meal.photoExpiresAt && 
+    meal.photoExpiresAt instanceof Date && 
+    !isNaN(meal.photoExpiresAt.getTime()) && 
+    new Date() > meal.photoExpiresAt
 
   return (
     <div className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow ${
@@ -204,24 +236,14 @@ export default function MealEntryCard({
             {/* Review timestamp */}
             {meal.reviewedAt && (
               <span>
-                Reviewed: {new Intl.DateTimeFormat('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit'
-                }).format(meal.reviewedAt)}
+                Reviewed: {formatDateTime(meal.reviewedAt)}
               </span>
             )}
           </div>
           
           {/* Created timestamp */}
           <span>
-            Logged: {new Intl.DateTimeFormat('en-US', {
-              month: 'short',
-              day: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit'
-            }).format(meal.createdAt)}
+            Logged: {formatDateTime(meal.createdAt)}
           </span>
         </div>
       </div>

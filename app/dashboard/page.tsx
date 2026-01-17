@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
+import PerformanceMonitor from '@/app/components/PerformanceMonitor'
 
 interface WorkoutStats {
   totalWorkouts: number
@@ -47,6 +48,7 @@ export default function Dashboard() {
 
   return (
     <ProtectedRoute>
+      <PerformanceMonitor pageName="Dashboard" />
       <div>
         <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Dashboard</h1>
 

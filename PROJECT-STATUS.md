@@ -50,14 +50,14 @@
 
 ### **Required Environment Variables**
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://auolnfwetmfcwhtvakzy.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-ANTHROPIC_API_KEY=[NEW KEY NEEDED - old one deactivated]
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+ANTHROPIC_API_KEY=your-anthropic-api-key-here
 ```
 
 ### **Security Notes**
-- Original API key was deactivated by Anthropic (detected in GitHub)
-- New API key required for deployment
+- Never commit actual API keys to git
+- Use environment variables for all secrets
 - All secrets properly excluded from git via `.gitignore`
 
 ## 📱 Mobile Optimizations

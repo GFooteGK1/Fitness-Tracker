@@ -106,13 +106,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser(initialSession.user)
           setSession(initialSession)
           
-          // Fetch user profile
-          const userProfile = await fetchProfile(initialSession.user.id)
-          setProfile(userProfile)
+          // Fetch user profile asynchronously but ensure loading state is handled
+          fetchProfile(initialSession.user.id)
+            .then(setProfile)
+            .catch(error => {
+              console.error('Error fetching profile:', error)
+              setProfile(null)
+            })
+        } else {
+          // No session, set loading to false immediately
+          setLoading(false)
         }
       } catch (error) {
         console.error('Error initializing auth:', error)
-      } finally {
         setLoading(false)
       }
     }
@@ -126,9 +132,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(session?.user ?? null)
 
         if (session?.user) {
-          // Fetch profile when user signs in
-          const userProfile = await fetchProfile(session.user.id)
-          setProfile(userProfile)
+          // Fetch profile asynchronously when user signs in
+          fetchProfile(session.user.id)
+            .then(setProfile)
+            .catch(error => {
+              console.error('Error fetching profile:', error)
+              setProfile(null)
+            })
         } else {
           // Clear profile when user signs out
           setProfile(null)

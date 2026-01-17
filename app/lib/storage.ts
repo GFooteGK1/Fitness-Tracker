@@ -1,48 +1,52 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { SupabaseClient } from '@supabase/supabase-js'
 
 export const STORAGE_BUCKET = 'meal-photos'
 export const PHOTO_EXPIRY_DAYS = 30
 
 /**
  * Initialize the meal photos storage bucket if it doesn't exist
+ * Note: On free tier, bucket must be created manually in Supabase Dashboard
+ * This function just checks if the bucket exists
  */
-export async function initializeStorage() {
+export async function initializeStorage(supabase: SupabaseClient) {
   try {
-    // Check if bucket exists
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets()
+    console.log('[Storage] Checking if bucket exists:', STORAGE_BUCKET)
     
-    if (listError) {
-      console.error('Error listing buckets:', listError)
-      return { success: false, error: listError.message }
-    }
+    // Check if bucket exists by attempting to list files
+    // This is a lightweight check that doesn't require admin permissions
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .list('', { limit: 1 })
 
-    const bucketExists = buckets?.some(bucket => bucket.name === STORAGE_BUCKET)
-
-    if (!bucketExists) {
-      // Create the bucket with public access for signed URLs
-      const { data, error } = await supabase.storage.createBucket(STORAGE_BUCKET, {
-        public: false, // Keep private, use signed URLs
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
-        fileSizeLimit: 30 * 1024 * 1024 // 30MB
+    if (error) {
+      console.error('[Storage] Bucket check failed:', {
+        message: error.message,
+        status: (error as any).status,
+        statusCode: (error as any).statusCode
       })
-
-      if (error) {
-        console.error('Error creating bucket:', error)
-        return { success: false, error: error.message }
+      
+      // If bucket doesn't exist, return a helpful error
+      if (error.message.includes('not found') || error.message.includes('Bucket not found')) {
+        console.warn('[Storage] Bucket not found. Please create "meal-photos" bucket in Supabase Dashboard.')
+        return { 
+          success: false, 
+          error: 'Storage bucket not configured. Photos will be saved without images.' 
+        }
       }
-
-      console.log('Created meal-photos bucket:', data)
+      
+      // Other errors (like RLS issues) should also be handled gracefully
+      console.error('[Storage] Storage check error:', error)
+      return { success: false, error: error.message }
     }
 
+    console.log('[Storage] Bucket exists and is accessible')
     return { success: true }
   } catch (error) {
-    console.error('Storage initialization error:', error)
-    return { success: false, error: 'Failed to initialize storage' }
+    console.error('[Storage] Storage initialization error:', error)
+    return { 
+      success: false, 
+      error: 'Storage service unavailable. Photos will be saved without images.' 
+    }
   }
 }
 
@@ -50,6 +54,7 @@ export async function initializeStorage() {
  * Upload a meal photo to storage with expiration metadata
  */
 export async function uploadMealPhoto(
+  supabase: SupabaseClient,
   file: Buffer,
   fileName: string,
   contentType: string,
@@ -57,6 +62,16 @@ export async function uploadMealPhoto(
 ): Promise<{ success: boolean; filePath?: string; error?: string }> {
   try {
     const filePath = `meals/${userId}/${fileName}`
+    console.log('[Storage] Attempting upload:', { filePath, contentType, fileSize: file.length })
+    console.log('[Storage] Supabase client check:', { 
+      hasStorage: !!supabase.storage,
+      hasFrom: !!(supabase.storage?.from),
+      clientType: supabase.constructor.name
+    })
+
+    if (!supabase.storage) {
+      throw new Error('Supabase client does not have storage API')
+    }
 
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
@@ -72,13 +87,19 @@ export async function uploadMealPhoto(
       })
 
     if (error) {
-      console.error('Upload error:', error)
+      console.error('[Storage] Upload error:', {
+        message: error.message,
+        status: (error as any).status,
+        statusCode: (error as any).statusCode,
+        filePath
+      })
       return { success: false, error: error.message }
     }
 
+    console.log('[Storage] Upload successful:', data.path)
     return { success: true, filePath: data.path }
   } catch (error) {
-    console.error('Upload error:', error)
+    console.error('[Storage] Upload exception:', error)
     return { success: false, error: 'Failed to upload photo' }
   }
 }
@@ -87,6 +108,7 @@ export async function uploadMealPhoto(
  * Generate a signed URL for a meal photo
  */
 export async function generateSignedUrl(
+  supabase: SupabaseClient,
   filePath: string,
   expiresIn: number = PHOTO_EXPIRY_DAYS * 24 * 60 * 60
 ): Promise<{ success: boolean; signedUrl?: string; error?: string }> {
