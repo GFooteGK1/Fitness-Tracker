@@ -25,14 +25,28 @@ export default function MealEditModal({
   isLoading = false
 }: MealEditModalProps) {
   const [editableItems, setEditableItems] = useState<EditableFoodItem[]>([])
-  const [totalProtein, setTotalProtein] = useState(meal.totalProtein)
-  const [totalCarbs, setTotalCarbs] = useState(meal.totalCarbs)
-  const [totalFat, setTotalFat] = useState(meal.totalFat)
-  const [totalCalories, setTotalCalories] = useState(meal.totalCalories)
+  const [totalProtein, setTotalProtein] = useState<number | string>(meal.totalProtein)
+  const [totalCarbs, setTotalCarbs] = useState<number | string>(meal.totalCarbs)
+  const [totalFat, setTotalFat] = useState<number | string>(meal.totalFat)
+  const [totalCalories, setTotalCalories] = useState<number | string>(meal.totalCalories)
   const [autoCalculate, setAutoCalculate] = useState(true)
   const [hasChanges, setHasChanges] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
+
+  // Helper to parse number, allowing empty string during editing
+  const parseNumber = (value: string): number | string => {
+    if (value === '' || value === '-') return value
+    const num = parseFloat(value)
+    return isNaN(num) ? '' : num
+  }
+
+  // Helper to get numeric value for calculations
+  const toNumber = (value: number | string): number => {
+    if (typeof value === 'number') return value
+    const num = parseFloat(value)
+    return isNaN(num) ? 0 : num
+  }
 
   // Initialize editable items when modal opens
   useEffect(() => {
@@ -231,13 +245,13 @@ export default function MealEditModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Edit Meal</h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Edit Meal</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {new Intl.DateTimeFormat('en-US', {
                 weekday: 'long',
                 year: 'numeric',
@@ -245,12 +259,12 @@ export default function MealEditModal({
                 day: 'numeric',
                 hour: 'numeric',
                 minute: '2-digit'
-              }).format(meal.mealTimestamp)}
+              }).format(new Date(meal.mealTimestamp))}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -258,8 +272,8 @@ export default function MealEditModal({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        {/* Content - Scrollable */}
+        <div className="p-6 overflow-y-auto flex-1 min-h-0">
           {/* Error messages */}
           {errors.length > 0 && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -300,7 +314,7 @@ export default function MealEditModal({
           {/* Totals Section */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Nutritional Totals</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Nutritional Totals</h3>
               <div className="flex items-center space-x-4">
                 <label className="flex items-center">
                   <input
@@ -324,7 +338,7 @@ export default function MealEditModal({
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Protein (g)
                 </label>
                 <input
@@ -333,13 +347,15 @@ export default function MealEditModal({
                   min="0"
                   max="500"
                   value={totalProtein}
-                  onChange={(e) => setTotalProtein(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setTotalProtein(parseNumber(e.target.value))}
+                  onBlur={(e) => setTotalProtein(toNumber(e.target.value))}
+                  onFocus={(e) => e.target.select()}
                   disabled={autoCalculate}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Carbs (g)
                 </label>
                 <input
@@ -348,13 +364,15 @@ export default function MealEditModal({
                   min="0"
                   max="1000"
                   value={totalCarbs}
-                  onChange={(e) => setTotalCarbs(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setTotalCarbs(parseNumber(e.target.value))}
+                  onBlur={(e) => setTotalCarbs(toNumber(e.target.value))}
+                  onFocus={(e) => e.target.select()}
                   disabled={autoCalculate}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Fat (g)
                 </label>
                 <input
@@ -363,13 +381,15 @@ export default function MealEditModal({
                   min="0"
                   max="300"
                   value={totalFat}
-                  onChange={(e) => setTotalFat(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setTotalFat(parseNumber(e.target.value))}
+                  onBlur={(e) => setTotalFat(toNumber(e.target.value))}
+                  onFocus={(e) => e.target.select()}
                   disabled={autoCalculate}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Calories
                 </label>
                 <input
@@ -378,9 +398,11 @@ export default function MealEditModal({
                   min="0"
                   max="5000"
                   value={totalCalories}
-                  onChange={(e) => setTotalCalories(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setTotalCalories(parseNumber(e.target.value))}
+                  onBlur={(e) => setTotalCalories(toNumber(e.target.value))}
+                  onFocus={(e) => e.target.select()}
                   disabled={autoCalculate}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 />
               </div>
             </div>
@@ -389,7 +411,7 @@ export default function MealEditModal({
           {/* Food Items Section */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Food Items</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Food Items</h3>
               <button
                 onClick={addItem}
                 className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -403,9 +425,9 @@ export default function MealEditModal({
 
             <div className="space-y-4">
               {editableItems.map((item, index) => (
-                <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+                <div key={item.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 dark:bg-gray-700">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-medium text-gray-900">Item {index + 1}</h4>
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Item {index + 1}</h4>
                     {editableItems.length > 1 && (
                       <button
                         onClick={() => removeItem(item.id)}
@@ -421,26 +443,26 @@ export default function MealEditModal({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Food Name
                       </label>
                       <input
                         type="text"
                         value={item.food}
                         onChange={(e) => updateItem(item.id, 'food', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="e.g., Grilled chicken breast"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Portion
                       </label>
                       <input
                         type="text"
                         value={item.portion}
                         onChange={(e) => updateItem(item.id, 'portion', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="e.g., 6 oz, 1 cup, 150g"
                       />
                     </div>
@@ -448,7 +470,7 @@ export default function MealEditModal({
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Protein (g)
                       </label>
                       <input
@@ -456,12 +478,14 @@ export default function MealEditModal({
                         step="0.1"
                         min="0"
                         value={item.protein}
-                        onChange={(e) => updateItem(item.id, 'protein', parseFloat(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        onChange={(e) => updateItem(item.id, 'protein', parseNumber(e.target.value))}
+                        onBlur={(e) => updateItem(item.id, 'protein', toNumber(e.target.value))}
+                        onFocus={(e) => e.target.select()}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Carbs (g)
                       </label>
                       <input
@@ -469,12 +493,14 @@ export default function MealEditModal({
                         step="0.1"
                         min="0"
                         value={item.carbs}
-                        onChange={(e) => updateItem(item.id, 'carbs', parseFloat(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        onChange={(e) => updateItem(item.id, 'carbs', parseNumber(e.target.value))}
+                        onBlur={(e) => updateItem(item.id, 'carbs', toNumber(e.target.value))}
+                        onFocus={(e) => e.target.select()}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Fat (g)
                       </label>
                       <input
@@ -482,12 +508,14 @@ export default function MealEditModal({
                         step="0.1"
                         min="0"
                         value={item.fat}
-                        onChange={(e) => updateItem(item.id, 'fat', parseFloat(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        onChange={(e) => updateItem(item.id, 'fat', parseNumber(e.target.value))}
+                        onBlur={(e) => updateItem(item.id, 'fat', toNumber(e.target.value))}
+                        onFocus={(e) => e.target.select()}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Calories
                       </label>
                       <input
@@ -495,8 +523,10 @@ export default function MealEditModal({
                         step="1"
                         min="0"
                         value={item.calories}
-                        onChange={(e) => updateItem(item.id, 'calories', parseFloat(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        onChange={(e) => updateItem(item.id, 'calories', parseNumber(e.target.value))}
+                        onBlur={(e) => updateItem(item.id, 'calories', toNumber(e.target.value))}
+                        onFocus={(e) => e.target.select()}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -507,10 +537,10 @@ export default function MealEditModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
-          <div className="text-sm text-gray-600">
+        <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             {hasChanges ? (
-              <span className="text-orange-600 font-medium">You have unsaved changes</span>
+              <span className="text-orange-600 dark:text-orange-400 font-medium">You have unsaved changes</span>
             ) : (
               <span>No changes made</span>
             )}
@@ -519,7 +549,7 @@ export default function MealEditModal({
             <button
               onClick={onClose}
               disabled={isSaving}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
               Cancel
             </button>
