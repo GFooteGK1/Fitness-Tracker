@@ -115,6 +115,24 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
     }
   }
 
+  const handleDeleteMeal = async (mealId: string) => {
+    try {
+      const response = await fetch(`/api/meals/${mealId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete meal')
+      }
+
+      // Refresh data after successful delete
+      await fetchDailyData()
+      console.log('Meal deleted successfully')
+    } catch (err) {
+      console.error('Error deleting meal:', err)
+    }
+  }
+
   const formatMacro = (value: number, unit: string = 'g') => {
     return `${Math.round(value * 10) / 10}${unit}`
   }
@@ -328,6 +346,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
                 key={meal.id}
                 meal={meal}
                 onEdit={handleEditMeal}
+                onDelete={handleDeleteMeal}
                 showPhoto={true}
                 compact={false}
               />

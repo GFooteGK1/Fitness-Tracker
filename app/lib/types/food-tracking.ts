@@ -3,10 +3,36 @@
  * Based on the database schema and design requirements
  */
 
+// Relative portion size options (hand-based estimates)
+export type RelativePortionSize = 
+  | 'palm'        // ~3-4oz protein
+  | 'fist'        // ~1 cup carbs/veggies
+  | 'cupped-hand' // ~½ cup grains/snacks
+  | 'thumb'       // ~1 tbsp fats/oils
+  | 'half-plate'  // large portion
+  | 'quarter-plate'; // small portion
+
+// Exact measurement units
+export type MeasurementUnit = 'g' | 'oz' | 'cup' | 'tsp' | 'tbsp';
+
+// Fractional amounts for exact measurements
+export type FractionalAmount = '1/8' | '1/4' | '1/3' | '1/2' | '2/3' | '3/4' | '1' | '1.5' | '2' | '3' | '4';
+
+// Portion specification - either relative or exact
+export interface PortionSpec {
+  type: 'relative' | 'exact';
+  relative?: RelativePortionSize;
+  exact?: {
+    amount: number | FractionalAmount;
+    unit: MeasurementUnit;
+  };
+}
+
 // Core food item interface for individual food items within a meal
 export interface FoodItem {
   food: string;
-  portion: string;
+  portion: string;           // AI's initial portion description
+  portionSpec?: PortionSpec; // User-specified portion for refinement
   protein: number;
   carbs: number;
   fat: number;
@@ -130,6 +156,15 @@ export interface MealUploadResponse {
   fallbackAction?: string;
   shouldRetry?: boolean;
   retryAfter?: number;
+  analysis?: {
+    items: FoodItem[];
+    total_protein: number;
+    total_carbs: number;
+    total_fat: number;
+    total_calories: number;
+    confidence: number;
+    notes?: string;
+  };
 }
 
 export interface DailyMealsResponse {

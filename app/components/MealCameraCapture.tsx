@@ -2,11 +2,12 @@
 
 import React, { useState, useRef, useCallback } from 'react'
 import { compressImage, isSupportedImageFormat, formatFileSize } from '@/app/lib/imageUtils'
-import { MealUploadResponse } from '@/app/lib/types/food-tracking'
+import { MealUploadResponse, FoodItem } from '@/app/lib/types/food-tracking'
 import { createUserErrorMessage, ErrorContext } from '@/app/lib/error-handling'
 import { queuePhotoUpload, useOfflineQueue } from '@/app/lib/offline-queue'
 import { useSession } from '@/app/lib/session-management'
 import { useAuth } from '@/app/lib/auth/AuthContext'
+import PortionSelector from './PortionSelector'
 
 interface MealCameraCaptureProps {
   onPhotoCapture?: (photo: File) => void
@@ -14,6 +15,17 @@ interface MealCameraCaptureProps {
   onError?: (error: string) => void
   isLoading?: boolean
   userId?: string
+}
+
+interface AnalysisResult {
+  mealId: string
+  items: FoodItem[]
+  totals: {
+    protein: number
+    carbs: number
+    fat: number
+    calories: number
+  }
 }
 
 interface CameraState {
@@ -30,7 +42,7 @@ interface PhotoState {
   isUploading: boolean
   uploadError: string | null
   uploadProgress: number
-  analysisStatus: 'idle' | 'uploading' | 'analyzing' | 'complete' | 'failed'
+  analysisStatus: 'idle' | 'uploading' | 'analyzing' | 'portion-select' | 'refining' | 'complete' | 'failed'
   analysisProgress: number
   estimatedTimeRemaining: number | null
   retryCount: number
@@ -86,6 +98,10 @@ export default function MealCameraCapture({
     isOnline: isOnline,
     connectionType: null
   })
+
+  // State for portion selection flow
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  const [isRefining, setIsRefining] = useState(false)
 
   // Monitor network connectivity and sync with offline queue
   React.useEffect(() => {
@@ -496,17 +512,43 @@ export default function MealCameraCapture({
           })
         }, 800)
 
-        // Complete analysis after realistic time
+        // Complete analysis after realistic time - show portion selection
         setTimeout(() => {
           clearInterval(analysisInterval)
-          setPhotoState(prev => ({ 
-            ...prev, 
-            isUploading: false,
-            analysisStatus: 'complete',
-            analysisProgress: 100,
-            estimatedTimeRemaining: 0
-          }))
-          onUploadComplete?.(result)
+          
+          // Extract items from analysis result for portion selection
+          const analysisItems: FoodItem[] = result.analysis?.items || []
+          
+          if (analysisItems.length > 0) {
+            // Show portion selection UI
+            setAnalysisResult({
+              mealId: result.mealId,
+              items: analysisItems,
+              totals: {
+                protein: result.analysis?.total_protein || 0,
+                carbs: result.analysis?.total_carbs || 0,
+                fat: result.analysis?.total_fat || 0,
+                calories: result.analysis?.total_calories || 0
+              }
+            })
+            setPhotoState(prev => ({ 
+              ...prev, 
+              isUploading: false,
+              analysisStatus: 'portion-select',
+              analysisProgress: 100,
+              estimatedTimeRemaining: 0
+            }))
+          } else {
+            // No items detected, complete without portion selection
+            setPhotoState(prev => ({ 
+              ...prev, 
+              isUploading: false,
+              analysisStatus: 'complete',
+              analysisProgress: 100,
+              estimatedTimeRemaining: 0
+            }))
+            onUploadComplete?.(result)
+          }
         }, 3000) // 3 seconds for analysis simulation
 
       } catch (error) {
@@ -559,7 +601,73 @@ export default function MealCameraCapture({
       retryAfter: undefined,
       fallbackAction: undefined
     })
+    setAnalysisResult(null)
   }, [photoState.preview])
+
+  // Handle portion confirmation - refine macros with user-specified portions
+  const handlePortionConfirm = useCallback(async (items: FoodItem[]) => {
+    if (!analysisResult) return
+
+    const hasPortionSpecs = items.some(item => item.portionSpec)
+    
+    if (!hasPortionSpecs) {
+      // No portions specified, complete with original estimates
+      setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
+      onUploadComplete?.({
+        mealId: analysisResult.mealId,
+        analysisStatus: 'complete'
+      })
+      return
+    }
+
+    // Refine macros with portion specs
+    setIsRefining(true)
+    setPhotoState(prev => ({ ...prev, analysisStatus: 'refining' }))
+
+    try {
+      const response = await fetch('/api/meals/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mealId: analysisResult.mealId,
+          items
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to refine macros')
+      }
+
+      const result = await response.json()
+      
+      setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
+      onUploadComplete?.({
+        mealId: analysisResult.mealId,
+        analysisStatus: 'complete'
+      })
+    } catch (error) {
+      console.error('Portion refinement error:', error)
+      onError?.('Failed to refine portions. Meal saved with original estimates.')
+      setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
+      onUploadComplete?.({
+        mealId: analysisResult.mealId,
+        analysisStatus: 'complete'
+      })
+    } finally {
+      setIsRefining(false)
+    }
+  }, [analysisResult, onUploadComplete, onError])
+
+  // Handle skip portion selection
+  const handlePortionSkip = useCallback(() => {
+    if (!analysisResult) return
+    
+    setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
+    onUploadComplete?.({
+      mealId: analysisResult.mealId,
+      analysisStatus: 'complete'
+    })
+  }, [analysisResult, onUploadComplete])
 
   // Cleanup on unmount
   React.useEffect(() => {
@@ -756,6 +864,30 @@ export default function MealCameraCapture({
               Retake
             </button>
           </div>
+          
+          {/* Portion Selection UI - shown after initial analysis */}
+          {photoState.analysisStatus === 'portion-select' && analysisResult && (
+            <div className="mt-4">
+              <PortionSelector
+                items={analysisResult.items}
+                onConfirm={handlePortionConfirm}
+                onSkip={handlePortionSkip}
+                isRefining={isRefining}
+              />
+            </div>
+          )}
+
+          {/* Refining Status */}
+          {photoState.analysisStatus === 'refining' && (
+            <div className="mt-2 p-3 bg-blue-100 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400 mr-2"></div>
+                <span className="text-sm text-blue-800 dark:text-blue-200">
+                  Refining macro estimates with your portion sizes...
+                </span>
+              </div>
+            </div>
+          )}
           
           {/* Success Message - Mobile Optimized */}
           {photoState.analysisStatus === 'complete' && (
