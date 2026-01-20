@@ -43,15 +43,28 @@ export async function GET(request: Request) {
     }
 
     // Query meals for the specified date
-    const startOfDay = `${date}T00:00:00.000Z`
-    const endOfDay = `${date}T23:59:59.999Z`
-
+    // The date parameter is in user's local timezone (YYYY-MM-DD)
+    // The tzOffset parameter is the client's timezone offset in minutes (e.g., 360 for CST)
+    const tzOffset = searchParams.get('tzOffset')
+    const offsetMinutes = tzOffset ? parseInt(tzOffset, 10) : 0
+    
+    // Calculate UTC boundaries for the local date
+    // If user is in CST (UTC-6), offset is 360 minutes
+    // Local midnight = UTC midnight + offset
+    // e.g., Jan 19 00:00 CST = Jan 19 06:00 UTC
+    const startLocal = new Date(`${date}T00:00:00`)
+    const endLocal = new Date(`${date}T23:59:59.999`)
+    
+    // Add offset to convert local time to UTC
+    const startUTC = new Date(startLocal.getTime() + offsetMinutes * 60000)
+    const endUTC = new Date(endLocal.getTime() + offsetMinutes * 60000)
+    
     const { data: mealsData, error: mealsError } = await supabase
       .from('meals')
       .select('*')
       .eq('user_id', user.id)
-      .gte('meal_timestamp', startOfDay)
-      .lte('meal_timestamp', endOfDay)
+      .gte('meal_timestamp', startUTC.toISOString())
+      .lt('meal_timestamp', endUTC.toISOString())
       .order('meal_timestamp', { ascending: true })
 
     if (mealsError) {
@@ -66,7 +79,8 @@ export async function GET(request: Request) {
     const meals: MealEntry[] = mealsData.map(meal => ({
       id: meal.id,
       userId: meal.user_id,
-      mealTimestamp: new Date(meal.meal_timestamp),
+      // Keep the timestamp as a string to preserve local time (no UTC conversion)
+      mealTimestamp: meal.meal_timestamp,
       photoUrl: isPhotoUrlValid(meal.photo_expires_at ? new Date(meal.photo_expires_at) : undefined) 
         ? meal.photo_url 
         : undefined, // Don't return expired photo URLs

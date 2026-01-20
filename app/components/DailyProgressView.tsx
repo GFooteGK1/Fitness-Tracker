@@ -44,8 +44,10 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
       setLoading(true)
       setError('')
 
-      const dateStr = date.toISOString().split('T')[0]
-      const response = await fetch(`/api/meals/daily?date=${dateStr}`)
+      const dateStr = date.toLocaleDateString('en-CA')
+      // Send timezone offset so server can query correct UTC range
+      const tzOffset = new Date().getTimezoneOffset()
+      const response = await fetch(`/api/meals/daily?date=${dateStr}&tzOffset=${tzOffset}`)
       
       if (!response.ok) {
         const errorData = await response.json()

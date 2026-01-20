@@ -21,6 +21,7 @@ export default function MealEntryCard({
   const formatTime = (date: Date | string | undefined | null) => {
     if (!date) return 'Unknown time'
     try {
+      // Simply parse the date - JavaScript will handle timezone conversion automatically
       const dateObj = typeof date === 'string' ? new Date(date) : date
       if (!dateObj || isNaN(dateObj.getTime())) {
         return 'Unknown time'

@@ -243,7 +243,7 @@ export default function FoodProgressPage() {
               <input
                 type="date"
                 id="nutrition-date"
-                value={selectedDate.toISOString().split('T')[0]}
+                value={selectedDate.toLocaleDateString('en-CA')}
                 onChange={(e) => {
                   const newDate = new Date(e.target.value + 'T00:00:00')
                   setSelectedDate(newDate)
