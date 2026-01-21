@@ -313,6 +313,9 @@ class OfflineQueueManager {
   }
 
   private loadQueue(): void {
+    // Only run on client-side to avoid SSR issues
+    if (typeof window === 'undefined') return
+    
     try {
       const stored = localStorage.getItem(QUEUE_STORAGE_KEY)
       if (stored) {
@@ -326,6 +329,9 @@ class OfflineQueueManager {
   }
 
   private saveQueue(): void {
+    // Only run on client-side to avoid SSR issues
+    if (typeof window === 'undefined') return
+    
     try {
       localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(this.queue))
     } catch (error) {
@@ -353,8 +359,11 @@ class OfflineQueueManager {
   }
 
   private startSyncInterval(): void {
+    // Only run on client-side to avoid SSR issues
+    if (typeof window === 'undefined') return
+    
     this.syncInterval = setInterval(() => {
-      if (typeof window !== 'undefined' && navigator.onLine && !this.isProcessing) {
+      if (navigator.onLine && !this.isProcessing) {
         const pendingCount = this.queue.filter(op => op.status === 'pending').length
         if (pendingCount > 0) {
           console.log(`Periodic sync: ${pendingCount} pending operations`)

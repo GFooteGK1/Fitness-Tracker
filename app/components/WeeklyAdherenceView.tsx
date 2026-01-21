@@ -38,8 +38,10 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
       setLoading(true)
       setError('')
 
-      const weekStartStr = weekStart.toISOString().split('T')[0]
-      const response = await fetch(`/api/adherence/weekly?weekStart=${weekStartStr}`)
+      const weekStartStr = weekStart.toLocaleDateString('en-CA')
+      // Send timezone offset so server can query correct UTC range
+      const tzOffset = new Date().getTimezoneOffset()
+      const response = await fetch(`/api/adherence/weekly?weekStart=${weekStartStr}&tzOffset=${tzOffset}`)
       
       if (!response.ok) {
         const errorData = await response.json()
@@ -111,9 +113,9 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
   const getDayData = (date: Date) => {
     if (!weeklyData) return null
     
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = date.toLocaleDateString('en-CA')
     return weeklyData.weeklyAdherence.dailyScores.find(
-      day => day.date.toString().split('T')[0] === dateStr
+      day => new Date(day.date).toLocaleDateString('en-CA') === dateStr
     )
   }
 

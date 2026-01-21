@@ -391,7 +391,10 @@ export default function MealCameraCapture({
         const formData = new FormData()
         formData.append('photo', photoState.file!)
         formData.append('userId', userId)
-        formData.append('timestamp', new Date().toISOString())
+        // Send full ISO timestamp with timezone - database will store in UTC
+        // and the client will convert back to local time for display
+        const timestamp = new Date().toISOString()
+        formData.append('timestamp', timestamp)
 
         // Enhanced upload progress simulation with time estimation
         const progressInterval = setInterval(() => {

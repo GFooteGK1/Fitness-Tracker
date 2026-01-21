@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -97,12 +97,15 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[Upload] Saving meal with', result.items.length, 'items')
+    
+    // Use the timestamp as-is (it's already in UTC ISO format from the client)
+    const mealTimestamp = timestamp
 
     const { data: meal, error: dbError } = await supabase
       .from('meals')
       .insert({
         user_id: user.id,
-        meal_timestamp: new Date(timestamp).toISOString(),
+        meal_timestamp: mealTimestamp,
         photo_url: null,
         items: result.items,
         total_protein: result.total_protein,
