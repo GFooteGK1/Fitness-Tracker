@@ -1,121 +1,205 @@
-import { NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
-import { createServerClient } from '@/app/lib/auth/supabase-server'
+/**
+ * Holistic Query API Route
+ * Unified cross-domain fitness intelligence endpoint
+ * Requirements: 1.1, 2.1, 2.2, 2.3, 7.1, 7.2, 7.3, 7.4, 7.5
+ */
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!
-})
+import { NextResponse } from 'next/server'
+import { createServerClient } from '@/app/lib/auth/supabase-server'
+import { classifyIntent } from './lib/intent-classifier'
+import {
+  fetchWorkoutData,
+  fetchNutritionData,
+  fetchCrossDomainData,
+  createDefaultTimeWindow,
+} from './lib/domain-fetchers'
+import { generateResponse, ResponseGeneratorError } from './lib/response-generator'
+import { QueryResponse, QueryErrorResponse, QueryIntent } from './lib/types'
+
+// Maximum question length (Requirement 7.2)
+const MAX_QUESTION_LENGTH = 2000
+
+/**
+ * Validates the question input
+ * Requirements: 7.1, 7.2
+ */
+function validateQuestion(question: unknown): { valid: true; question: string } | { valid: false; error: string } {
+  // Check if question is present (Requirement 7.1)
+  if (!question || typeof question !== 'string') {
+    return { valid: false, error: 'Question is required' }
+  }
+
+  const trimmedQuestion = question.trim()
+
+  // Check if question is empty (Requirement 7.1)
+  if (!trimmedQuestion) {
+    return { valid: false, error: 'Question is required' }
+  }
+
+  // Check question length (Requirement 7.2)
+  if (trimmedQuestion.length > MAX_QUESTION_LENGTH) {
+    return { valid: false, error: 'Question too long' }
+  }
+
+  return { valid: true, question: trimmedQuestion }
+}
+
+/**
+ * Counts the data fetched for metadata
+ */
+function countFetchedData(
+  intent: QueryIntent,
+  data: Awaited<ReturnType<typeof fetchWorkoutData>> | Awaited<ReturnType<typeof fetchNutritionData>> | Awaited<ReturnType<typeof fetchCrossDomainData>>
+): { workouts?: number; meals?: number; prs?: number } {
+  if (intent === 'WORKOUT_ONLY') {
+    const workoutData = data as Awaited<ReturnType<typeof fetchWorkoutData>>
+    return {
+      workouts: workoutData.workouts.length,
+      prs: workoutData.benchmarkPrs.length,
+    }
+  }
+
+  if (intent === 'NUTRITION_ONLY') {
+    const nutritionData = data as Awaited<ReturnType<typeof fetchNutritionData>>
+    return {
+      meals: nutritionData.meals.length,
+    }
+  }
+
+  // CROSS_DOMAIN
+  const crossDomainData = data as Awaited<ReturnType<typeof fetchCrossDomainData>>
+  return {
+    workouts: crossDomainData.workout.workouts.length,
+    meals: crossDomainData.nutrition.meals.length,
+    prs: crossDomainData.workout.benchmarkPrs.length,
+  }
+}
 
 export async function POST(request: Request) {
+  const startTime = Date.now()
+
   try {
     const supabase = await createServerClient()
 
-    // Get authenticated user
+    // Authentication check at start of handler (Requirement 7.4)
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized' } as QueryErrorResponse,
         { status: 401 }
       )
     }
 
-    const { question } = await request.json()
-
-    if (!question || !question.trim()) {
+    // Parse request body
+    let body: { question?: unknown; timeWindowDays?: number; tzOffset?: number }
+    try {
+      body = await request.json()
+    } catch {
       return NextResponse.json(
-        { error: 'Question is required' },
+        { error: 'Invalid request body' } as QueryErrorResponse,
         { status: 400 }
       )
     }
 
-    // Get recent workouts (last 6 months) for authenticated user
-    const sixMonthsAgo = new Date()
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
-
-    const { data: workouts, error: workoutsError } = await supabase
-      .from('workouts')
-      .select('workout_date, input_text, primary_score')
-      .eq('user_id', user.id)
-      .gte('workout_date', sixMonthsAgo.toISOString().split('T')[0])
-      .order('workout_date', { ascending: false })
-
-    if (workoutsError) {
-      throw new Error('Failed to fetch workouts: ' + workoutsError.message)
+    // Validate question input (Requirements 7.1, 7.2)
+    const validation = validateQuestion(body.question)
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error } as QueryErrorResponse,
+        { status: 400 }
+      )
     }
 
-    // Get benchmark PRs for authenticated user
-    const { data: prs, error: prsError } = await supabase
-      .from('benchmark_prs')
-      .select('benchmark_name, date, score_value, score_display, rx_status')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false })
+    const question = validation.question
+    const timeWindowDays = body.timeWindowDays || 180
+    const tzOffset = body.tzOffset || 0 // Client timezone offset in minutes
 
-    if (prsError) {
-      throw new Error('Failed to fetch PRs: ' + prsError.message)
+    // Classify intent from user question (Requirement 1.1)
+    const classification = await classifyIntent(question)
+    const { intent, confidence } = classification
+
+    // Create time window for data fetching
+    const timeWindow = createDefaultTimeWindow(timeWindowDays)
+
+    // Fetch data based on classified intent (Requirements 2.1, 2.2, 2.3)
+    let data: Awaited<ReturnType<typeof fetchWorkoutData>> | Awaited<ReturnType<typeof fetchNutritionData>> | Awaited<ReturnType<typeof fetchCrossDomainData>>
+
+    switch (intent) {
+      case 'WORKOUT_ONLY':
+        data = await fetchWorkoutData(supabase, user.id, timeWindow)
+        break
+      case 'NUTRITION_ONLY':
+        data = await fetchNutritionData(supabase, user.id, timeWindow, tzOffset)
+        break
+      case 'CROSS_DOMAIN':
+        data = await fetchCrossDomainData(supabase, user.id, timeWindow, tzOffset)
+        break
+      default:
+        // TypeScript exhaustiveness check
+        const _exhaustiveCheck: never = intent
+        throw new Error(`Unknown intent: ${_exhaustiveCheck}`)
     }
 
-    // Build context for Claude
-    const context = {
-      parsed_workouts: workouts?.map(w => ({
-        date: w.workout_date,
-        input_text: w.input_text?.substring(0, 400), // First 400 chars
-        primary_score: w.primary_score
-      })) || [],
-      benchmark_prs: prs || []
-    }
-
-    // Query Claude
-    const systemPrompt = `You are a fitness tracking assistant analyzing workout history data.
-
-DATA AVAILABLE:
-- parsed_workouts: Array of workout logs with date, input_text (full workout description), and primary_score
-- benchmark_prs: Personal records for named benchmark workouts
-
-YOUR TASK:
-Answer the user's question by analyzing the workout data. Parse the input_text field to find:
-- Movement patterns (squats, deadlifts, presses, etc.)
-- Rep schemes (5x5, 3x3, 1RM, etc.)
-- Weights and loads
-- Workout types (AMRAP, For Time, EMOM, etc.)
-- Performance scores
-
-RESPONSE GUIDELINES:
-1. Be conversational and specific
-2. Use human-readable dates (e.g., "November 8, 2024" not "2024-11-08")
-3. Include relative time context (e.g., "3 days ago", "last week")
-4. If you find the answer, state it clearly with the date
-5. If you don't find a clear answer, explain what you searched and what you found instead
-6. Quote relevant parts of the workout description when helpful
-
-Now answer the user's question.`
-
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      system: systemPrompt,
-      messages: [{
-        role: 'user',
-        content: `Question: ${question}
-
-Workout Data:
-${JSON.stringify(context, null, 2)}
-
-Analyze the data and provide a conversational answer.`
-      }]
+    // Generate response using appropriate prompt (Requirements 3.1, 4.1)
+    const answer = await generateResponse({
+      question,
+      intent,
+      data,
     })
 
-    const answer = message.content[0].type === 'text' ? message.content[0].text : ''
+    const processingTimeMs = Date.now() - startTime
 
-    return NextResponse.json({
+    // Return response with optional metadata
+    const response: QueryResponse = {
       success: true,
-      answer
-    })
+      answer,
+      metadata: {
+        intent,
+        confidence,
+        dataFetched: countFetchedData(intent, data),
+        processingTimeMs,
+      },
+    }
+
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error('Query error:', error)
+
+    // Handle AI provider errors with appropriate status codes (Requirement 7.3)
+    if (error instanceof ResponseGeneratorError) {
+      switch (error.code) {
+        case 'API_TIMEOUT':
+          return NextResponse.json(
+            { error: 'Request timed out. Please try again.' } as QueryErrorResponse,
+            { status: 504 }
+          )
+        case 'API_RATE_LIMIT':
+          return NextResponse.json(
+            { error: 'Service busy. Please try again in a moment.' } as QueryErrorResponse,
+            { status: 429 }
+          )
+        case 'API_ERROR':
+        case 'INVALID_RESPONSE':
+          return NextResponse.json(
+            { error: 'Unable to process question. Please try again.' } as QueryErrorResponse,
+            { status: 502 }
+          )
+      }
+    }
+
+    // Handle database errors
+    if (error instanceof Error && error.message.includes('Failed to fetch')) {
+      return NextResponse.json(
+        { error: 'Unable to retrieve your data. Please try again.' } as QueryErrorResponse,
+        { status: 500 }
+      )
+    }
+
+    // Generic error response
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'An unexpected error occurred. Please try again.' } as QueryErrorResponse,
       { status: 500 }
     )
   }
