@@ -466,6 +466,25 @@ export default function MealCameraCapture({
 
         const result: MealUploadResponse = await response.json()
         
+        // Handle analysis failure
+        if (result.analysisStatus === 'failed' || result.error) {
+          console.error('Analysis failed:', result.error)
+          
+          setPhotoState(prev => ({ 
+            ...prev, 
+            isUploading: false,
+            uploadError: result.error || 'AI could not analyze the photo. Please try again with a clearer image.',
+            analysisStatus: 'failed',
+            uploadProgress: 0,
+            analysisProgress: 0,
+            estimatedTimeRemaining: null,
+            shouldRetry: true
+          }))
+          
+          onError?.(result.error || 'Analysis failed')
+          return
+        }
+        
         // Handle storage warnings gracefully
         if (result.storageWarning) {
           console.warn('Storage warning:', result.storageWarning)

@@ -43,11 +43,15 @@ export default function PortionSelector({
 }: PortionSelectorProps) {
   const [editedItems, setEditedItems] = useState<FoodItem[]>(items)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [foodName, setFoodName] = useState<string>('')
   const [portionAmount, setPortionAmount] = useState<string>('')
   const [portionUnit, setPortionUnit] = useState<string>('oz')
 
   const handleEditClick = (index: number) => {
     const item = editedItems[index]
+    
+    // Set food name
+    setFoodName(item.food)
     
     // Parse existing portionSpec if available
     if (item.portionSpec) {
@@ -69,38 +73,42 @@ export default function PortionSelector({
   const handleSavePortion = () => {
     if (editingIndex === null) return
     
+    const name = foodName.trim()
     const amount = portionAmount.trim()
     const unit = portionUnit.trim()
     
-    if (amount && unit) {
-      setEditedItems(prev => {
-        const updated = [...prev]
-        updated[editingIndex] = {
-          ...updated[editingIndex],
-          portionSpec: {
-            type: 'exact',
-            exact: {
-              amount: parseFloat(amount) || amount as any,
-              unit: unit as any
-            }
+    setEditedItems(prev => {
+      const updated = [...prev]
+      updated[editingIndex] = {
+        ...updated[editingIndex],
+        food: name || updated[editingIndex].food,
+        portionSpec: amount && unit ? {
+          type: 'exact',
+          exact: {
+            amount: parseFloat(amount) || amount as any,
+            unit: unit as any
           }
-        }
-        return updated
-      })
-    }
+        } : updated[editingIndex].portionSpec
+      }
+      return updated
+    })
     
     setEditingIndex(null)
+    setFoodName('')
     setPortionAmount('')
     setPortionUnit('oz')
   }
 
   const handleCancelEdit = () => {
     setEditingIndex(null)
+    setFoodName('')
     setPortionAmount('')
     setPortionUnit('oz')
   }
 
-  const hasAnyPortions = editedItems.some(item => item.portionSpec)
+  const hasAnyEdits = editedItems.some((item, i) => 
+    item.portionSpec || item.food !== items[i]?.food
+  )
 
   return (
     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -109,7 +117,7 @@ export default function PortionSelector({
       </h3>
       
       <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
-        Click the edit icon to adjust portion sizes for more accurate macros
+        Click the edit icon to correct food names or adjust portions for more accurate macros
       </p>
 
       <div className="space-y-3">
@@ -118,9 +126,20 @@ export default function PortionSelector({
             {editingIndex === index ? (
               // Edit mode
               <div>
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
-                  {item.food}
-                </h4>
+                <div className="mb-3">
+                  <label htmlFor={`food-${index}`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Food Name
+                  </label>
+                  <input
+                    id={`food-${index}`}
+                    type="text"
+                    value={foodName}
+                    onChange={(e) => setFoodName(e.target.value)}
+                    placeholder="e.g., Grilled chicken breast"
+                    className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                    autoFocus
+                  />
+                </div>
                 
                 <div className="flex gap-2 mb-3">
                   <div className="flex-1">
@@ -135,7 +154,6 @@ export default function PortionSelector({
                       onChange={(e) => setPortionAmount(e.target.value)}
                       placeholder="e.g., 6"
                       className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                      autoFocus
                     />
                   </div>
                   
@@ -216,7 +234,7 @@ export default function PortionSelector({
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
               Refining...
             </>
-          ) : hasAnyPortions ? (
+          ) : hasAnyEdits ? (
             'Refine Macros'
           ) : (
             'Continue'
