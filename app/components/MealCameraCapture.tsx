@@ -66,6 +66,7 @@ export default function MealCameraCapture({
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const { stats: queueStats, isOnline } = useOfflineQueue()
   const { user } = useAuth() // Use Supabase auth instead of session manager
@@ -687,11 +688,21 @@ export default function MealCameraCapture({
       {/* Hidden canvas for photo capture */}
       <canvas ref={canvasRef} style={{ display: 'none' }} />
       
-      {/* Hidden file input */}
+      {/* Hidden file input for gallery selection */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        onChange={handleFileSelect}
+        style={{ display: 'none' }}
+      />
+      
+      {/* Hidden file input for native camera capture (mobile) */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
         onChange={handleFileSelect}
         style={{ display: 'none' }}
       />
@@ -1024,20 +1035,11 @@ export default function MealCameraCapture({
             
             <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
               <button
-                onClick={startCamera}
+                onClick={() => cameraInputRef.current?.click()}
                 disabled={isLoading || cameraState.isInitializing}
                 className="bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white px-4 sm:px-6 py-2 rounded-lg font-medium flex items-center justify-center text-sm sm:text-base touch-target"
               >
-                {cameraState.isInitializing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Starting Camera...
-                  </>
-                ) : isLoading ? (
-                  'Loading...'
-                ) : (
-                  'Open Camera'
-                )}
+                {isLoading ? 'Loading...' : 'Open Camera'}
               </button>
               
               <button
