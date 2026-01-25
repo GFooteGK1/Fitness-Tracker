@@ -156,6 +156,7 @@ export interface MealUploadResponse {
   fallbackAction?: string;
   shouldRetry?: boolean;
   retryAfter?: number;
+  error?: string;
   analysis?: {
     items: FoodItem[];
     total_protein: number;
@@ -185,4 +186,42 @@ export interface ValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
+}
+
+
+// Cumulative week-to-date adherence data for weekly progress tracking
+// Requirements: 1.4, 6.1, 6.3, 6.4, 6.5
+export interface CumulativeAdherenceData {
+  // Actual cumulative totals across logged days
+  totalProtein: number
+  totalCarbs: number
+  totalFat: number
+  totalCalories: number
+  
+  // Prorated targets (daily target × days elapsed)
+  proratedProteinTarget: number
+  proratedCarbsTarget: number
+  proratedFatTarget: number
+  proratedCaloriesTarget: number
+  
+  // Adherence percentages (actual / prorated × 100, capped at 100 for display)
+  proteinAdherence: number
+  carbsAdherence: number
+  fatAdherence: number
+  caloriesAdherence: number
+  
+  // Tolerance status (within user's tolerancePct)
+  proteinWithinTolerance: boolean
+  carbsWithinTolerance: boolean
+  fatWithinTolerance: boolean
+  caloriesWithinTolerance: boolean
+  
+  // Deviation amounts (actual - prorated target)
+  proteinDeviation: number
+  carbsDeviation: number
+  fatDeviation: number
+  caloriesDeviation: number
+  
+  // Overall status based on average adherence
+  overallStatus: 'on-track' | 'ahead' | 'behind'
 }

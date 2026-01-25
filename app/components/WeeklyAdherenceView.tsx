@@ -1,22 +1,33 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { DailyTargets, DailySummary } from '@/app/lib/types/food-tracking'
+import { DailyTargets, DailySummary, CumulativeAdherenceData } from '@/app/lib/types/food-tracking'
 import { WeeklyAdherenceScore, CorrectionGuidance } from '@/app/lib/adherence-calculator'
 import { useAuth } from '@/app/lib/auth/AuthContext'
+import WeekToDateSection from './WeekToDateSection'
+import DailyBreakdown from './DailyBreakdown'
 
 interface WeeklyAdherenceViewProps {
   weekStart: Date
   onDateSelect?: (date: Date) => void
 }
 
+/**
+ * Enhanced API response interface with cumulative tracking fields
+ * Requirements: 1.1, 4.4, 4.5
+ */
 interface WeeklyAdherenceResponse {
+  // Existing fields
   weeklyAdherence: WeeklyAdherenceScore
   correctionGuidance: CorrectionGuidance
   targets: DailyTargets
   daysWithData: number
   weekStart: string
   weekEnd: string
+  
+  // New fields for cumulative tracking
+  daysElapsed: number
+  cumulativeData: CumulativeAdherenceData
 }
 
 export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyAdherenceViewProps) {
@@ -72,30 +83,6 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
     return `${startStr} - ${endStr}`
   }
 
-  const getDayOfWeek = (dayIndex: number) => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    return days[dayIndex]
-  }
-
-  const getFullDayName = (dayIndex: number) => {
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    return days[dayIndex]
-  }
-
-  const getScoreColor = (score: number) => {
-    if (score >= 95) return 'bg-green-500 text-white'
-    if (score >= 85) return 'bg-yellow-500 text-white'
-    if (score >= 70) return 'bg-orange-500 text-white'
-    return 'bg-red-500 text-white'
-  }
-
-  const getScoreBorderColor = (score: number) => {
-    if (score >= 95) return 'border-green-500'
-    if (score >= 85) return 'border-yellow-500'
-    if (score >= 70) return 'border-orange-500'
-    return 'border-red-500'
-  }
-
   const formatMacro = (value: number, unit: string = 'g') => {
     return `${Math.round(value * 10) / 10}${unit}`
   }
@@ -108,26 +95,6 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
       days.push(date)
     }
     return days
-  }
-
-  const getDayData = (date: Date) => {
-    if (!weeklyData) return null
-    
-    const dateStr = date.toLocaleDateString('en-CA')
-    return weeklyData.weeklyAdherence.dailyScores.find(
-      day => new Date(day.date).toLocaleDateString('en-CA') === dateStr
-    )
-  }
-
-  const isToday = (date: Date) => {
-    const today = new Date()
-    return date.toDateString() === today.toDateString()
-  }
-
-  const isFutureDate = (date: Date) => {
-    const today = new Date()
-    today.setHours(23, 59, 59, 999) // End of today
-    return date > today
   }
 
   if (loading) {
@@ -173,107 +140,26 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
         </div>
       </div>
 
-      {/* Weekly Score Summary */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Weekly Score</h2>
-          <div className={`px-4 py-2 rounded-lg font-bold text-xl ${getScoreColor(weeklyData.weeklyAdherence.averageScore)}`}>
-            {Math.round(weeklyData.weeklyAdherence.averageScore)}%
-          </div>
-        </div>
+      {/* Week-to-Date Section */}
+      {/* Requirements: 1.1, 4.4, 4.5 */}
+      <WeekToDateSection
+        cumulativeData={weeklyData.cumulativeData}
+        targets={weeklyData.targets}
+        daysElapsed={weeklyData.daysElapsed}
+        daysWithData={weeklyData.daysWithData}
+      />
 
-        {/* Macro Scores */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">
-              {Math.round(weeklyData.weeklyAdherence.proteinWeeklyScore)}%
-            </div>
-            <div className="text-sm text-gray-600">Protein</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">
-              {Math.round(weeklyData.weeklyAdherence.carbsWeeklyScore)}%
-            </div>
-            <div className="text-sm text-gray-600">Carbs</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">
-              {Math.round(weeklyData.weeklyAdherence.fatWeeklyScore)}%
-            </div>
-            <div className="text-sm text-gray-600">Fat</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">
-              {Math.round(weeklyData.weeklyAdherence.caloriesWeeklyScore)}%
-            </div>
-            <div className="text-sm text-gray-600">Calories</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Daily Grid */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Daily Breakdown</h2>
+      {/* Daily Breakdown (horizontal scroll) - replaces existing daily grid */}
+      {/* Requirements: 2.1, 4.3 */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <DailyBreakdown
+          weekDays={weekDays}
+          dailyScores={weeklyData.weeklyAdherence.dailyScores}
+          onDateSelect={onDateSelect}
+        />
         
-        <div className="grid grid-cols-7 gap-2">
-          {weekDays.map((date, index) => {
-            const dayData = getDayData(date)
-            const isCurrentDay = isToday(date)
-            const isFuture = isFutureDate(date)
-            
-            return (
-              <div
-                key={index}
-                className={`p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
-                  isCurrentDay ? 'ring-2 ring-blue-500 ring-opacity-50' : ''
-                } ${
-                  isFuture ? 'bg-gray-50 border-gray-200' : 
-                  dayData ? `border-2 ${getScoreBorderColor(dayData.adherenceStatus.overallScore)}` : 
-                  'border-gray-200 bg-gray-50'
-                }`}
-                onClick={() => onDateSelect && onDateSelect(date)}
-              >
-                <div className="text-center">
-                  <div className="text-xs font-medium text-gray-600 mb-1">
-                    {getDayOfWeek(index)}
-                  </div>
-                  <div className="text-sm font-bold text-gray-900 mb-2">
-                    {date.getDate()}
-                  </div>
-                  
-                  {isFuture ? (
-                    <div className="text-xs text-gray-400">Future</div>
-                  ) : dayData ? (
-                    <>
-                      <div className={`text-xs font-bold px-2 py-1 rounded ${getScoreColor(dayData.adherenceStatus.overallScore)}`}>
-                        {Math.round(dayData.adherenceStatus.overallScore)}%
-                      </div>
-                      <div className="mt-2 space-y-1">
-                        <div className="text-xs text-gray-600">
-                          P: {formatMacro(dayData.dailyTotals.protein)}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          C: {formatMacro(dayData.dailyTotals.carbs)}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          F: {formatMacro(dayData.dailyTotals.fat)}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          Cal: {formatMacro(dayData.dailyTotals.calories, '')}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-xs text-gray-400">No data</div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
         {/* Legend */}
-        <div className="mt-4 flex items-center justify-center space-x-4 text-xs">
+        <div className="mt-4 flex items-center justify-center flex-wrap gap-3 text-xs">
           <div className="flex items-center space-x-1">
             <div className="w-3 h-3 bg-green-500 rounded"></div>
             <span className="text-gray-600">95%+ Excellent</span>

@@ -3,7 +3,7 @@
  * Calculates daily adherence scores and status based on targets
  */
 
-import { MacroTotals, DailyTargets, AdherenceStatus, DailySummary } from './types/food-tracking'
+import { MacroTotals, DailyTargets, AdherenceStatus, DailySummary, CumulativeAdherenceData } from './types/food-tracking'
 
 // Weekly adherence interfaces
 export interface WeeklyAdherenceScore {
@@ -18,7 +18,8 @@ export interface WeeklyAdherenceScore {
 }
 
 export interface DailyAdherenceScore {
-  date: Date
+  /** Date as YYYY-MM-DD string for consistent timezone handling */
+  date: string
   adherenceStatus: AdherenceStatus
   dailyTotals: MacroTotals
 }
@@ -140,6 +141,9 @@ export function calculateDailyTotals(meals: any[]): MacroTotals {
 /**
  * Calculates weekly adherence scores from daily summaries
  * Requirements: 6.5 - Compute weekly scores as average of daily scores
+ * 
+ * Note: Dates are handled as YYYY-MM-DD strings to avoid timezone issues.
+ * The DailySummary.date can be either a Date object or string depending on context.
  */
 export function calculateWeeklyAdherence(
   dailySummaries: DailySummary[],
@@ -160,8 +164,13 @@ export function calculateWeeklyAdherence(
 
     const adherenceStatus = calculateAdherenceStatus(dailyTotals, targets)
 
+    // Convert date to YYYY-MM-DD string format for consistent handling
+    const dateStr = summary.date instanceof Date 
+      ? summary.date.toISOString().split('T')[0]
+      : String(summary.date).split('T')[0]
+
     return {
-      date: summary.date,
+      date: dateStr,
       adherenceStatus,
       dailyTotals
     }
@@ -359,4 +368,229 @@ function generateOverallGuidance(weeklyScore: number, guidance: CorrectionGuidan
                           'need some adjustments'
 
   return `Your weekly adherence score is ${weeklyScore.toFixed(1)}% - you're ${scoreDescription}. Focus on improving your ${improvements.join(' and ')} intake this week.`
+}
+
+
+/**
+ * Calculates days elapsed from week start to today (or end of week if viewing past week)
+ * Returns a value between 1 and 7 (inclusive)
+ * Requirements: 5.1, 6.2
+ */
+export function calculateDaysElapsed(weekStart: Date, today: Date): number {
+  // Normalize dates to start of day to avoid time zone issues
+  const start = new Date(weekStart)
+  start.setHours(0, 0, 0, 0)
+  
+  const current = new Date(today)
+  current.setHours(0, 0, 0, 0)
+  
+  // Calculate difference in days
+  const diffTime = current.getTime() - start.getTime()
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  
+  // Days elapsed is diffDays + 1 (inclusive of start day)
+  // Minimum is 1 (same day as week start), maximum is 7 (full week)
+  const daysElapsed = diffDays + 1
+  
+  return Math.max(1, Math.min(7, daysElapsed))
+}
+
+/**
+ * Formats deviation for display (e.g., "+15g", "-200")
+ * Requirements: 1.6, 6.5
+ */
+export function formatDeviation(deviation: number, unit: string = 'g'): string {
+  const sign = deviation >= 0 ? '+' : ''
+  return `${sign}${Math.round(deviation)}${unit}`
+}
+
+/**
+ * Gets color class based on adherence score
+ * Requirements: 3.1, 3.2
+ */
+export function getAdherenceColor(score: number): string {
+  if (score >= 95) return 'green'
+  if (score >= 85) return 'yellow'
+  if (score >= 70) return 'orange'
+  return 'red'
+}
+
+/**
+ * Checks if deviation exceeds 10% threshold for highlighting
+ * Requirements: 3.3, 3.4
+ */
+export function shouldHighlightDeviation(actual: number, target: number): boolean {
+  if (target === 0) return false
+  return Math.abs(actual - target) / target > 0.10
+}
+
+
+/**
+ * Helper function for safe percentage calculation
+ * Prevents division by zero
+ */
+function safePercentage(actual: number, target: number): number {
+  if (target === 0) return 0
+  return (actual / target) * 100
+}
+
+/**
+ * Checks if a value is within tolerance of target
+ * Requirements: 1.7, 1.8, 1.9
+ * 
+ * @param actual - The actual value achieved
+ * @param target - The target value
+ * @param tolerancePct - The tolerance percentage (e.g., 10 for 10%)
+ * @returns true if actual is within ±tolerancePct of target
+ */
+export function isWithinTolerance(
+  actual: number,
+  target: number,
+  tolerancePct: number
+): boolean {
+  if (target === 0) return actual === 0
+  const toleranceAmount = target * (tolerancePct / 100)
+  return Math.abs(actual - target) <= toleranceAmount
+}
+
+/**
+ * Determines overall status based on cumulative adherence
+ * Requirements: 3.5
+ * 
+ * @param cumulativeData - The cumulative adherence data
+ * @param tolerancePct - The tolerance percentage for determining "on-track"
+ * @returns 'on-track' | 'ahead' | 'behind'
+ */
+export function determineOverallStatus(
+  cumulativeData: CumulativeAdherenceData,
+  tolerancePct: number
+): 'on-track' | 'ahead' | 'behind' {
+  // Calculate average adherence across all macros
+  const avgAdherence = (
+    cumulativeData.proteinAdherence +
+    cumulativeData.carbsAdherence +
+    cumulativeData.fatAdherence +
+    cumulativeData.caloriesAdherence
+  ) / 4
+
+  // On-track: average adherence is within tolerance of 100%
+  // Using the tolerance percentage to determine the acceptable range
+  const lowerBound = 100 - tolerancePct
+  const upperBound = 100 + tolerancePct
+
+  if (avgAdherence >= lowerBound && avgAdherence <= upperBound) {
+    return 'on-track'
+  } else if (avgAdherence > upperBound) {
+    return 'ahead'
+  } else {
+    return 'behind'
+  }
+}
+
+/**
+ * Calculates cumulative week-to-date adherence data
+ * Requirements: 1.2, 1.3, 1.4, 5.2, 5.3, 6.3, 6.4
+ * 
+ * @param dailySummaries - Array of daily summaries for the week
+ * @param targets - The user's daily targets
+ * @param daysElapsed - Number of days elapsed in the week (1-7)
+ * @param tolerancePct - Optional tolerance percentage (defaults to targets.tolerancePct)
+ * @returns CumulativeAdherenceData with all calculated fields
+ */
+export function calculateCumulativeAdherence(
+  dailySummaries: DailySummary[],
+  targets: DailyTargets,
+  daysElapsed: number
+): CumulativeAdherenceData {
+  // Handle edge case: zero days elapsed
+  if (daysElapsed <= 0) {
+    return {
+      totalProtein: 0,
+      totalCarbs: 0,
+      totalFat: 0,
+      totalCalories: 0,
+      proratedProteinTarget: 0,
+      proratedCarbsTarget: 0,
+      proratedFatTarget: 0,
+      proratedCaloriesTarget: 0,
+      proteinAdherence: 0,
+      carbsAdherence: 0,
+      fatAdherence: 0,
+      caloriesAdherence: 0,
+      proteinWithinTolerance: true,
+      carbsWithinTolerance: true,
+      fatWithinTolerance: true,
+      caloriesWithinTolerance: true,
+      proteinDeviation: 0,
+      carbsDeviation: 0,
+      fatDeviation: 0,
+      caloriesDeviation: 0,
+      overallStatus: 'on-track'
+    }
+  }
+
+  // Sum macro totals from daily summaries (Requirement 5.2)
+  // Missing days are treated as 0 intake (stricter approach per Requirement 5.3)
+  const totalProtein = dailySummaries.reduce((sum, day) => sum + day.totalProtein, 0)
+  const totalCarbs = dailySummaries.reduce((sum, day) => sum + day.totalCarbs, 0)
+  const totalFat = dailySummaries.reduce((sum, day) => sum + day.totalFat, 0)
+  const totalCalories = dailySummaries.reduce((sum, day) => sum + day.totalCalories, 0)
+
+  // Calculate prorated targets (daily × daysElapsed) (Requirements 1.2, 1.3)
+  const proratedProteinTarget = targets.targetProtein * daysElapsed
+  const proratedCarbsTarget = targets.targetCarbs * daysElapsed
+  const proratedFatTarget = targets.targetFat * daysElapsed
+  const proratedCaloriesTarget = targets.targetCalories * daysElapsed
+
+  // Calculate adherence percentages (actual / prorated × 100) (Requirement 6.4)
+  const proteinAdherence = safePercentage(totalProtein, proratedProteinTarget)
+  const carbsAdherence = safePercentage(totalCarbs, proratedCarbsTarget)
+  const fatAdherence = safePercentage(totalFat, proratedFatTarget)
+  const caloriesAdherence = safePercentage(totalCalories, proratedCaloriesTarget)
+
+  // Calculate deviations (actual - prorated) (Requirement 6.5)
+  const proteinDeviation = totalProtein - proratedProteinTarget
+  const carbsDeviation = totalCarbs - proratedCarbsTarget
+  const fatDeviation = totalFat - proratedFatTarget
+  const caloriesDeviation = totalCalories - proratedCaloriesTarget
+
+  // Determine tolerance status for each macro (Requirements 1.7, 1.8, 1.9)
+  const tolerancePct = targets.tolerancePct
+  const proteinWithinTolerance = isWithinTolerance(totalProtein, proratedProteinTarget, tolerancePct)
+  const carbsWithinTolerance = isWithinTolerance(totalCarbs, proratedCarbsTarget, tolerancePct)
+  const fatWithinTolerance = isWithinTolerance(totalFat, proratedFatTarget, tolerancePct)
+  const caloriesWithinTolerance = isWithinTolerance(totalCalories, proratedCaloriesTarget, tolerancePct)
+
+  // Build partial result for determining overall status
+  const partialResult: CumulativeAdherenceData = {
+    totalProtein,
+    totalCarbs,
+    totalFat,
+    totalCalories,
+    proratedProteinTarget,
+    proratedCarbsTarget,
+    proratedFatTarget,
+    proratedCaloriesTarget,
+    proteinAdherence,
+    carbsAdherence,
+    fatAdherence,
+    caloriesAdherence,
+    proteinWithinTolerance,
+    carbsWithinTolerance,
+    fatWithinTolerance,
+    caloriesWithinTolerance,
+    proteinDeviation,
+    carbsDeviation,
+    fatDeviation,
+    caloriesDeviation,
+    overallStatus: 'on-track' // Placeholder, will be calculated
+  }
+
+  // Determine overall status (Requirement 3.5)
+  const overallStatus = determineOverallStatus(partialResult, tolerancePct)
+
+  return {
+    ...partialResult,
+    overallStatus
+  }
 }

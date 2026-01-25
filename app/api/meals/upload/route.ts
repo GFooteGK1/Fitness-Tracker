@@ -14,9 +14,37 @@ export async function POST(request: NextRequest) {
     const supabase = await createServerClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
+    console.log('[Upload] Auth check:', { 
+      hasUser: !!user, 
+      userId: user?.id,
+      authError: authError?.message 
+    })
+
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      console.error('[Upload] Authentication failed:', authError)
+      return NextResponse.json({ 
+        error: 'Unauthorized', 
+        details: authError?.message || 'No user session found'
+      }, { status: 401 })
     }
+
+    // Verify API key is configured
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('[Upload] ANTHROPIC_API_KEY not configured')
+      return NextResponse.json({ 
+        error: 'AI service not configured. Please contact support.',
+        analysisStatus: 'failed'
+      }, { status: 500 })
+    }
+
+    // Debug: Log API key info (first/last few chars only for security)
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    console.log('[Upload] API Key check:', {
+      length: apiKey.length,
+      prefix: apiKey.substring(0, 10),
+      suffix: apiKey.substring(apiKey.length - 4),
+      hasWhitespace: apiKey !== apiKey.trim()
+    })
 
     const formData = await request.formData()
     const file = formData.get('photo') as File
@@ -90,9 +118,17 @@ export async function POST(request: NextRequest) {
           confidence: parsed.confidence || 0.5,
           notes: parsed.notes || ''
         }
+        console.log('[Upload] Parsed result:', { itemCount: result.items.length, confidence: result.confidence })
+      } else {
+        console.error('[Upload] No JSON found in Claude response:', text)
+        result.notes = 'AI could not parse the image'
       }
     } catch (claudeError: any) {
-      console.error('[Upload] Claude API error:', claudeError.message || claudeError)
+      console.error('[Upload] Claude API error:', {
+        message: claudeError.message,
+        type: claudeError.type,
+        status: claudeError.status
+      })
       result.notes = 'AI analysis failed - please enter manually'
     }
 
@@ -123,9 +159,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database error' }, { status: 500 })
     }
 
+    // Check if analysis actually succeeded
+    if (result.items.length === 0) {
+      console.warn('[Upload] No items detected in photo')
+      return NextResponse.json({
+        mealId: meal.id,
+        analysisStatus: 'failed',
+        error: 'Could not identify food items in the photo. Please try again with a clearer image or enter manually.',
+        analysis: result
+      }, { status: 200 }) // 200 because meal was saved, just analysis failed
+    }
+
     return NextResponse.json({
       mealId: meal.id,
-      analysisStatus: result.items.length > 0 ? 'complete' : 'failed',
+      analysisStatus: 'complete',
       analysis: result
     })
 

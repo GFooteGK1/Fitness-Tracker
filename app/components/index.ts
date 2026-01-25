@@ -1,6 +1,8 @@
 // Food Tracking Components
 export { default as DailyProgressView } from './DailyProgressView'
 export { default as WeeklyAdherenceView } from './WeeklyAdherenceView'
+export { default as WeekToDateSection } from './WeekToDateSection'
+export { default as DayCard } from './DayCard'
 export { default as MealEntryCard } from './MealEntryCard'
 export { default as MealEditModal } from './MealEditModal'
 export { default as MealCameraCapture } from './MealCameraCapture'

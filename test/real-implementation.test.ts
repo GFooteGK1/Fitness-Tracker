@@ -1,8 +1,8 @@
 // Test actual implementation functions
 import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
-import { calculateTotalMacros, validateMacroRanges, validateMealData } from '@/lib/macro-validation'
-import { FoodItem, MacroTotals } from '@/lib/types/food-tracking'
+import { calculateTotalMacros, validateMacroRanges, validateMealData } from '@/app/lib/macro-validation'
+import { FoodItem, MacroTotals } from '@/app/lib/types/food-tracking'
 
 describe('Real Implementation Tests', () => {
   it('should calculate macro totals correctly using actual implementation', () => {
