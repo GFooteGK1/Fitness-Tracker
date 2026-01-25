@@ -331,121 +331,121 @@ export default function LogWorkout() {
             Choose how to log your workout:
           </h3>
           
-          <div className="grid grid-cols-2 gap-4">
-            {/* Photo Capture - First */}
+          {/* Show full-width photo preview when image is captured, otherwise show grid */}
+          {capturedImage ? (
             <div className="relative">
-              {capturedImage && (
-                <button
-                  onClick={removePhoto}
-                  className="absolute -top-2 -right-2 z-10 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
-                >
-                  ×
-                </button>
-              )}
               <button
-                type="button"
-                onClick={handlePhotoCapture}
-                disabled={isCompressing || isAnalyzing}
-                className="w-full p-6 bg-gray-50 dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={removePhoto}
+                className="absolute -top-2 -right-2 z-10 w-8 h-8 bg-red-500 text-white rounded-full text-sm flex items-center justify-center shadow-lg"
               >
-                <div className="flex flex-col items-center gap-3">
-                  <div className={`text-4xl transition-transform ${isCompressing ? 'animate-pulse' : 'group-hover:scale-110'}`}>
-                    {isCompressing ? '🔄' : '📷'}
-                  </div>
-                  <div className="text-center">
-                    <div className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                      {isCompressing ? 'Processing...' : 'Photo'}
+                ×
+              </button>
+              <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-blue-400 dark:border-blue-500 overflow-hidden">
+                <img 
+                  src={capturedImage} 
+                  alt="Captured workout" 
+                  className="w-full h-48 object-cover"
+                />
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                  {compressionResult && (
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-3 text-center">
+                      📸 Compressed to {compressionResult.compressedSizeMB.toFixed(1)}MB 
+                      ({compressionResult.compressionRatio.toFixed(1)}x smaller)
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {isCompressing ? 'Compressing image' : 'Auto-extract text'}
-                    </div>
+                  )}
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={removePhoto}
+                      disabled={isAnalyzing}
+                      className="flex-1 px-4 py-3 text-base font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      📷 Retake
+                    </button>
+                    <button
+                      type="button"
+                      onClick={analyzeImage}
+                      disabled={isAnalyzing}
+                      className="flex-1 px-4 py-3 text-base font-semibold text-white bg-blue-600 dark:bg-blue-700 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isAnalyzing ? '🔍 Analyzing...' : '🔍 Analyze'}
+                    </button>
                   </div>
                 </div>
-              </button>
-              
-              {/* Enhanced Image Preview */}
-              {capturedImage && (
-                <div className="mt-3 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
-                  <img 
-                    src={capturedImage} 
-                    alt="Captured workout" 
-                    className="w-full h-32 object-cover"
-                  />
-                  <div className="p-3 border-t border-gray-200 dark:border-gray-700">
-                    {compressionResult && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                        Compressed to {compressionResult.compressedSizeMB.toFixed(1)}MB 
-                        ({compressionResult.compressionRatio.toFixed(1)}x smaller)
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              {/* Photo Capture - First */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={handlePhotoCapture}
+                  disabled={isCompressing || isAnalyzing}
+                  className="w-full p-6 bg-gray-50 dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="flex flex-col items-center gap-3">
+                    <div className={`text-4xl transition-transform ${isCompressing ? 'animate-pulse' : 'group-hover:scale-110'}`}>
+                      {isCompressing ? '🔄' : '📷'}
+                    </div>
+                    <div className="text-center">
+                      <div className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        {isCompressing ? 'Processing...' : 'Photo'}
                       </div>
-                    )}
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={removePhoto}
-                        disabled={isAnalyzing}
-                        className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Retake
-                      </button>
-                      <button
-                        type="button"
-                        onClick={analyzeImage}
-                        disabled={isAnalyzing}
-                        className="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-700 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isAnalyzing ? '🔍 Analyzing...' : '🔍 Analyze'}
-                      </button>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {isCompressing ? 'Compressing image' : 'Auto-extract text'}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-
-            {/* Voice Recording - Second */}
-            <div className="relative">
-              {finalTranscript && !isRecording && (
-                <button
-                  onClick={clearVoiceRecording}
-                  className="absolute -top-2 -right-2 z-10 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
-                >
-                  ×
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={toggleVoiceRecording}
-                className={`w-full h-full p-6 rounded-xl border-2 transition-colors group ${
-                  isRecording 
-                    ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-500' 
-                    : finalTranscript
-                    ? 'bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-500'
-                    : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-green-400 dark:hover:border-green-500'
-                }`}
-              >
-                <div className="flex flex-col items-center gap-3">
-                  <div className={`text-4xl transition-transform ${
-                    isRecording ? 'animate-pulse' : 'group-hover:scale-110'
-                  }`}>
-                    {isRecording ? '⏹️' : finalTranscript ? '✅' : '🎤'}
-                  </div>
-                  <div className="text-center">
-                    <div className={`font-semibold mb-1 ${
-                      isRecording 
-                        ? 'text-red-700 dark:text-red-300' 
-                        : finalTranscript
-                        ? 'text-green-700 dark:text-green-300'
-                        : 'text-gray-900 dark:text-gray-100'
+              </div>
+
+              {/* Voice Recording - Second */}
+              <div className="relative">
+                {finalTranscript && !isRecording && (
+                  <button
+                    onClick={clearVoiceRecording}
+                    className="absolute -top-2 -right-2 z-10 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
+                  >
+                    ×
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={toggleVoiceRecording}
+                  className={`w-full h-full p-6 rounded-xl border-2 transition-colors group ${
+                    isRecording 
+                      ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-500' 
+                      : finalTranscript
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-500'
+                      : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-green-400 dark:hover:border-green-500'
+                  }`}
+                >
+                  <div className="flex flex-col items-center gap-3">
+                    <div className={`text-4xl transition-transform ${
+                      isRecording ? 'animate-pulse' : 'group-hover:scale-110'
                     }`}>
-                      Voice
+                      {isRecording ? '⏹️' : finalTranscript ? '✅' : '🎤'}
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                      {isRecording ? 'Tap to stop' : finalTranscript ? 'Captured!' : 'Speak workout'}
+                    <div className="text-center">
+                      <div className={`font-semibold mb-1 ${
+                        isRecording 
+                          ? 'text-red-700 dark:text-red-300' 
+                          : finalTranscript
+                          ? 'text-green-700 dark:text-green-300'
+                          : 'text-gray-900 dark:text-gray-100'
+                      }`}>
+                        Voice
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                        {isRecording ? 'Tap to stop' : finalTranscript ? 'Captured!' : 'Speak workout'}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </button>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-sm border border-gray-200 dark:border-gray-700">
