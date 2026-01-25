@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import type { CrossDomainAnalysisResponse, HolisticInsight, DailyFitnessSummary } from '@/app/lib/types/cross-domain'
+import type { WhoopRecovery, WhoopSleep, WhoopCycle } from '@/app/lib/types/whoop'
 
 export async function GET(request: Request) {
   try {
@@ -78,14 +79,49 @@ export async function GET(request: Request) {
       throw new Error(`Failed to fetch meals: ${mealError.message}`)
     }
 
-    // Generate holistic insights
-    const insights = generateHolisticInsights(workouts || [], meals || [], dailySummaries || [])
+    // Get WHOOP data if available
+    const { data: whoopRecovery } = await supabase
+      .from('whoop_recovery')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('date', startDate.toISOString().split('T')[0])
+      .order('date', { ascending: false })
+
+    const { data: whoopSleep } = await supabase
+      .from('whoop_sleep')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('date', startDate.toISOString().split('T')[0])
+      .order('date', { ascending: false })
+
+    const { data: whoopCycles } = await supabase
+      .from('whoop_cycles')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('date', startDate.toISOString().split('T')[0])
+      .order('date', { ascending: false })
+
+    // Generate holistic insights with WHOOP data
+    const insights = generateHolisticInsights(
+      workouts || [],
+      meals || [],
+      dailySummaries || [],
+      whoopRecovery || [],
+      whoopSleep || [],
+      whoopCycles || []
+    )
     
     // Calculate summary metrics
     const summary = calculateOverallSummary(dailySummaries || [])
 
-    // Generate recommendations
-    const recommendations = generateRecommendations(insights, workouts || [], meals || [])
+    // Generate recommendations with WHOOP context
+    const recommendations = generateRecommendations(
+      insights,
+      workouts || [],
+      meals || [],
+      whoopRecovery || [],
+      whoopSleep || []
+    )
 
     const response: CrossDomainAnalysisResponse = {
       insights,
@@ -105,10 +141,118 @@ export async function GET(request: Request) {
   }
 }
 
-function generateHolisticInsights(workouts: any[], meals: any[], summaries: any[]): HolisticInsight[] {
+function generateHolisticInsights(
+  workouts: any[],
+  meals: any[],
+  summaries: any[],
+  whoopRecovery: WhoopRecovery[],
+  whoopSleep: WhoopSleep[],
+  whoopCycles: WhoopCycle[]
+): HolisticInsight[] {
   const insights: HolisticInsight[] = []
 
-  // Insight 1: Workout-Nutrition Timing
+  // WHOOP Insight 1: Low Recovery with High Training Load
+  if (whoopRecovery.length > 0 && workouts.length > 0) {
+    const avgRecovery = whoopRecovery.reduce((sum, r) => sum + (r.recovery_score || 0), 0) / whoopRecovery.length
+    const highIntensityWorkouts = workouts.filter(w => w.rpe && w.rpe >= 8).length
+
+    if (avgRecovery < 34 && highIntensityWorkouts > 2) {
+      insights.push({
+        type: 'recovery_optimization',
+        title: 'Low Recovery with High Training Intensity',
+        description: `Your average recovery score is ${avgRecovery.toFixed(0)}% (red zone) while maintaining ${highIntensityWorkouts} high-intensity workouts. This indicates potential overtraining.`,
+        recommendations: [
+          'Consider reducing workout intensity or volume',
+          'Prioritize sleep quality and duration',
+          'Increase rest days between intense sessions',
+          'Focus on recovery nutrition and hydration'
+        ],
+        confidence: 0.9,
+        dataPoints: whoopRecovery.length + workouts.length,
+        timeframe: `${summaries.length} days`,
+        relatedWorkouts: workouts.filter(w => w.rpe >= 8).slice(0, 3).map(w => w.id)
+      })
+    }
+  }
+
+  // WHOOP Insight 2: Sleep Performance Impact
+  if (whoopSleep.length > 2) {
+    const avgSleepPerformance = whoopSleep.reduce((sum, s) => sum + (s.sleep_performance_percentage || 0), 0) / whoopSleep.length
+    const workoutsWithLowEnergy = workouts.filter(w => w.energy_level && w.energy_level < 3).length
+
+    if (avgSleepPerformance < 70 && workoutsWithLowEnergy > 0) {
+      insights.push({
+        type: 'sleep_performance',
+        title: 'Poor Sleep Affecting Workout Performance',
+        description: `Your average sleep performance is ${avgSleepPerformance.toFixed(0)}%, and you've reported low energy in ${workoutsWithLowEnergy} workouts. Sleep quality directly impacts training performance.`,
+        recommendations: [
+          'Aim for consistent sleep schedule (same bedtime/wake time)',
+          'Target 7-9 hours of sleep per night',
+          'Avoid caffeine 6+ hours before bed',
+          'Create a cool, dark sleep environment',
+          'Consider reducing evening screen time'
+        ],
+        confidence: 0.85,
+        dataPoints: whoopSleep.length + workoutsWithLowEnergy,
+        timeframe: `${summaries.length} days`,
+        relatedWorkouts: workouts.filter(w => w.energy_level < 3).slice(0, 3).map(w => w.id)
+      })
+    }
+  }
+
+  // WHOOP Insight 3: Recovery-Based Training Recommendations
+  if (whoopRecovery.length > 0) {
+    const recentRecovery = whoopRecovery[0]?.recovery_score || 0
+    const todayWorkouts = workouts.filter(w => {
+      const workoutDate = new Date(w.workout_date)
+      const today = new Date()
+      return workoutDate.toDateString() === today.toDateString()
+    })
+
+    if (recentRecovery < 34 && todayWorkouts.length > 0 && todayWorkouts[0].rpe >= 7) {
+      insights.push({
+        type: 'recovery_training',
+        title: 'Training Hard Despite Low Recovery',
+        description: `Today's recovery score is ${recentRecovery}% (red zone), but you completed a high-intensity workout (RPE ${todayWorkouts[0].rpe}). Training hard on low recovery increases injury risk.`,
+        recommendations: [
+          'On red recovery days, focus on active recovery or rest',
+          'Consider yoga, stretching, or light cardio instead',
+          'Save high-intensity work for green recovery days (67%+)',
+          'Listen to your body and adjust training accordingly'
+        ],
+        confidence: 0.95,
+        dataPoints: 2,
+        timeframe: 'Today',
+        relatedWorkouts: [todayWorkouts[0].id]
+      })
+    }
+  }
+
+  // WHOOP Insight 4: Strain and Nutrition Correlation
+  if (whoopCycles.length > 2 && meals.length > 0) {
+    const avgStrain = whoopCycles.reduce((sum, c) => sum + (c.strain || 0), 0) / whoopCycles.length
+    const avgCalories = summaries.reduce((sum, s) => sum + (s.total_calories || 0), 0) / summaries.length
+
+    if (avgStrain > 15 && avgCalories < 2000) {
+      insights.push({
+        type: 'nutrition_strain',
+        title: 'High Strain with Insufficient Caloric Intake',
+        description: `Your average daily strain is ${avgStrain.toFixed(1)} (high), but you're only consuming ${avgCalories.toFixed(0)} calories per day. This caloric deficit may impair recovery.`,
+        recommendations: [
+          'Increase daily caloric intake to match training demands',
+          'Focus on nutrient-dense whole foods',
+          'Ensure adequate carbohydrate intake for energy',
+          'Consider tracking macros to optimize fueling'
+        ],
+        confidence: 0.8,
+        dataPoints: whoopCycles.length + summaries.length,
+        timeframe: `${summaries.length} days`,
+        relatedMeals: meals.slice(0, 5).map(m => m.id)
+      })
+    }
+  }
+
+  // Existing Insight 1: Workout-Nutrition Timing
   const preWorkoutMeals = meals.filter(m => m.meal_timing === 'pre_workout').length
   const postWorkoutMeals = meals.filter(m => m.meal_timing === 'post_workout').length
   const totalWorkouts = workouts.length
@@ -152,7 +296,7 @@ function generateHolisticInsights(workouts: any[], meals: any[], summaries: any[
     }
   }
 
-  // Insight 2: Energy Level Patterns
+  // Existing Insight 2: Energy Level Patterns
   const workoutsWithEnergy = workouts.filter(w => w.energy_level !== null)
   if (workoutsWithEnergy.length > 2) {
     const avgEnergy = workoutsWithEnergy.reduce((sum, w) => sum + w.energy_level, 0) / workoutsWithEnergy.length
@@ -176,7 +320,7 @@ function generateHolisticInsights(workouts: any[], meals: any[], summaries: any[
     }
   }
 
-  // Insight 3: Protein Intake Analysis
+  // Existing Insight 3: Protein Intake Analysis
   const avgDailyProtein = summaries.reduce((sum, s) => sum + (s.total_protein || 0), 0) / summaries.length
   if (avgDailyProtein > 0 && avgDailyProtein < 1.2 * 70) { // Assuming 70kg average weight, 1.2g/kg minimum
     insights.push({
@@ -258,25 +402,53 @@ function calculateOverallSummary(summaries: any[]): DailyFitnessSummary {
   }
 }
 
-function generateRecommendations(insights: HolisticInsight[], workouts: any[], meals: any[]) {
+function generateRecommendations(
+  insights: HolisticInsight[],
+  workouts: any[],
+  meals: any[],
+  whoopRecovery: WhoopRecovery[],
+  whoopSleep: WhoopSleep[]
+) {
   const recommendations = {
     nutrition: [] as string[],
     workout: [] as string[],
-    timing: [] as string[]
+    timing: [] as string[],
+    recovery: [] as string[]
   }
 
   // Extract recommendations from insights
   insights.forEach(insight => {
     insight.recommendations.forEach(rec => {
-      if (insight.type === 'nutrition_performance') {
+      if (insight.type === 'nutrition_performance' || insight.type === 'nutrition_strain') {
         recommendations.nutrition.push(rec)
       } else if (insight.type === 'meal_timing' || insight.type === 'recovery_nutrition') {
         recommendations.timing.push(rec)
-      } else if (insight.type === 'energy_optimization') {
+      } else if (insight.type === 'energy_optimization' || insight.type === 'recovery_training') {
         recommendations.workout.push(rec)
+      } else if (insight.type === 'recovery_optimization' || insight.type === 'sleep_performance') {
+        recommendations.recovery.push(rec)
       }
     })
   })
+
+  // Add WHOOP-based recommendations if data available
+  if (whoopRecovery.length > 0) {
+    const avgRecovery = whoopRecovery.reduce((sum, r) => sum + (r.recovery_score || 0), 0) / whoopRecovery.length
+    
+    if (avgRecovery < 34 && recommendations.recovery.length === 0) {
+      recommendations.recovery.push('Your recovery is in the red zone - prioritize rest and recovery')
+    } else if (avgRecovery >= 67 && recommendations.workout.length === 0) {
+      recommendations.workout.push('Your recovery is strong - good time for high-intensity training')
+    }
+  }
+
+  if (whoopSleep.length > 0) {
+    const avgSleep = whoopSleep.reduce((sum, s) => sum + (s.sleep_performance_percentage || 0), 0) / whoopSleep.length
+    
+    if (avgSleep < 70 && recommendations.recovery.length === 0) {
+      recommendations.recovery.push('Focus on improving sleep quality and consistency')
+    }
+  }
 
   // Add general recommendations if no specific insights
   if (recommendations.nutrition.length === 0) {
@@ -289,6 +461,10 @@ function generateRecommendations(insights: HolisticInsight[], workouts: any[], m
   
   if (recommendations.workout.length === 0) {
     recommendations.workout.push('Track energy and hydration levels to optimize performance')
+  }
+
+  if (recommendations.recovery.length === 0 && whoopRecovery.length > 0) {
+    recommendations.recovery.push('Monitor recovery scores to optimize training intensity')
   }
 
   return recommendations
