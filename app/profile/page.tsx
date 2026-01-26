@@ -6,6 +6,7 @@ import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import BodyMetricsForm from '@/app/components/profile/BodyMetricsForm'
 import GoalsSelection from '@/app/components/profile/GoalsSelection'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
+import { WhoopConnectionSettings } from '@/app/components/whoop/WhoopConnectionSettings'
 
 export default function ProfilePage() {
   const { user, profile, updateProfile } = useAuth()
@@ -110,6 +111,9 @@ export default function ProfilePage() {
                 onActivityLevelChange={handleActivityLevelChange}
               />
             </div>
+
+            {/* WHOOP Connection */}
+            <WhoopConnectionSettings />
 
             {/* Preferences */}
             <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">

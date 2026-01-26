@@ -1,11 +1,78 @@
 /**
  * Domain Fetchers for Holistic Query System
- * Fetches workout, nutrition, and cross-domain data based on query intent
- * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 5.6
+ * Fetches workout, nutrition, WHOOP, and cross-domain data based on query intent
+ * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 5.6, 6.6
  */
 
 import { SupabaseClient } from '@supabase/supabase-js'
 import { WorkoutData, NutritionData, CrossDomainData, TimeWindow } from './types'
+import type { WhoopRecovery, WhoopSleep, WhoopCycle } from '@/app/lib/types/whoop'
+
+/**
+ * WHOOP data structure for query context
+ */
+export interface WhoopData {
+  recovery: WhoopRecovery[]
+  sleep: WhoopSleep[]
+  cycles: WhoopCycle[]
+  hasData: boolean
+}
+
+/**
+ * Fetches WHOOP data for a user within a time window
+ * Requirements: 6.6
+ * 
+ * @param supabase - Supabase client instance
+ * @param userId - Authenticated user's ID
+ * @param timeWindow - Start and end dates for data retrieval
+ * @returns WhoopData containing recovery, sleep, and cycle data
+ */
+export async function fetchWhoopData(
+  supabase: SupabaseClient,
+  userId: string,
+  timeWindow: TimeWindow
+): Promise<WhoopData> {
+  const startDate = timeWindow.start.toISOString().split('T')[0]
+  const endDate = timeWindow.end.toISOString().split('T')[0]
+
+  // Fetch all WHOOP data in parallel
+  const [recoveryResult, sleepResult, cyclesResult] = await Promise.all([
+    supabase
+      .from('whoop_recovery')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: false }),
+    
+    supabase
+      .from('whoop_sleep')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: false }),
+    
+    supabase
+      .from('whoop_cycles')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: false })
+  ])
+
+  const recovery = recoveryResult.data || []
+  const sleep = sleepResult.data || []
+  const cycles = cyclesResult.data || []
+
+  return {
+    recovery,
+    sleep,
+    cycles,
+    hasData: recovery.length > 0 || sleep.length > 0 || cycles.length > 0
+  }
+}
 
 /**
  * Fetches workout data for a user within a time window
@@ -206,30 +273,32 @@ function calculateDailySummaries(meals: any[], tzOffset: number = 0): NutritionD
 
 
 /**
- * Fetches cross-domain data combining workout and nutrition data
- * Requirements: 2.3, 5.6
+ * Fetches cross-domain data combining workout, nutrition, and WHOOP data
+ * Requirements: 2.3, 5.6, 6.6
  * 
  * @param supabase - Supabase client instance
  * @param userId - Authenticated user's ID
  * @param timeWindow - Start and end dates for data retrieval
  * @param tzOffset - Client timezone offset in minutes (optional)
- * @returns CrossDomainData containing both workout and nutrition data
+ * @returns CrossDomainData containing workout, nutrition, and WHOOP data
  */
 export async function fetchCrossDomainData(
   supabase: SupabaseClient,
   userId: string,
   timeWindow: TimeWindow,
   tzOffset: number = 0
-): Promise<CrossDomainData> {
-  // Fetch both domains in parallel for efficiency
-  const [workoutData, nutritionData] = await Promise.all([
+): Promise<CrossDomainData & { whoop?: WhoopData }> {
+  // Fetch all domains in parallel for efficiency
+  const [workoutData, nutritionData, whoopData] = await Promise.all([
     fetchWorkoutData(supabase, userId, timeWindow),
-    fetchNutritionData(supabase, userId, timeWindow, tzOffset)
+    fetchNutritionData(supabase, userId, timeWindow, tzOffset),
+    fetchWhoopData(supabase, userId, timeWindow)
   ])
 
   return {
     workout: workoutData,
-    nutrition: nutritionData
+    nutrition: nutritionData,
+    whoop: whoopData.hasData ? whoopData : undefined
   }
 }
 

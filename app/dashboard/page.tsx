@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import PerformanceMonitor from '@/app/components/PerformanceMonitor'
+import { WhoopMetricsCard } from '@/app/components/whoop/WhoopMetricsCard'
 
 interface WorkoutStats {
   totalWorkouts: number
@@ -73,6 +74,9 @@ export default function Dashboard() {
 
         {stats && !loading && !error && (
           <div className="space-y-6">
+            {/* WHOOP Metrics Card */}
+            <WhoopMetricsCard />
+
             {/* Month to Date Summary */}
             <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
