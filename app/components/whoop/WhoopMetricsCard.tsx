@@ -25,6 +25,37 @@ export function WhoopMetricsCard({ className = '' }: WhoopMetricsCardProps) {
     fetchWhoopData();
   }, []);
 
+  // Auto-sync if data is stale (>4 hours old)
+  useEffect(() => {
+    if (!data || !data.lastSyncAt) return;
+
+    const lastSync = new Date(data.lastSyncAt);
+    const hoursSinceSync = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60);
+
+    // If data is more than 4 hours old, trigger background sync
+    if (hoursSinceSync > 4) {
+      console.log('[WHOOP] Data is stale, triggering background sync');
+      
+      // Trigger sync in background (don't wait for it)
+      fetch('/api/whoop/sync', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullSync: false })
+      })
+        .then(res => res.json())
+        .then(result => {
+          if (result.success) {
+            console.log('[WHOOP] Background sync completed:', result.recordsSynced);
+            // Refresh data after sync
+            setTimeout(() => fetchWhoopData(), 2000);
+          }
+        })
+        .catch(err => {
+          console.error('[WHOOP] Background sync failed:', err);
+        });
+    }
+  }, [data]);
+
   const fetchWhoopData = async () => {
     try {
       setLoading(true);
