@@ -33,11 +33,16 @@ export interface AuthContextType {
   profile: UserProfile | null
   session: Session | null
   loading: boolean
+  whoopConnected: boolean
+  whoopTokensValid: boolean
   signUp: (email: string, password: string) => Promise<any>
   signIn: (email: string, password: string) => Promise<any>
   signOut: () => Promise<void>
   updateProfile: (updates: Partial<UserProfile>) => Promise<UserProfile>
   hasCompletedOnboarding: boolean
+  initializeWhoopConnection: () => Promise<void>
+  refreshWhoopTokens: () => Promise<void>
+  disconnectWhoop: () => Promise<void>
 }
 
 // API request/response types

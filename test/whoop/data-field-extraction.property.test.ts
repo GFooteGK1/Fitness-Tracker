@@ -34,7 +34,7 @@ const recoveryResponseArbitrary = fc.record({
 });
 
 const sleepResponseArbitrary = fc.record({
-  id: fc.integer({ min: 1, max: 1000000 }),
+  id: fc.uuid(), // Changed from fc.integer() to fc.uuid()
   created_at: validDateArbitrary.map(d => d.toISOString()),
   nap: fc.boolean(),
   score: fc.record({
@@ -60,7 +60,7 @@ const cycleResponseArbitrary = fc.record({
 });
 
 const workoutResponseArbitrary = fc.record({
-  id: fc.integer({ min: 1, max: 1000000 }),
+  id: fc.uuid(), // Changed from fc.integer() to fc.uuid()
   created_at: validDateArbitrary.map(d => d.toISOString()),
   sport_name: fc.option(fc.constantFrom('Running', 'Cycling', 'Weightlifting', 'Swimming'), { nil: null }),
   sport_id: fc.option(fc.integer({ min: 1, max: 100 }), { nil: null }),
