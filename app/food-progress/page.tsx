@@ -6,6 +6,7 @@ import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
 import OfflineQueueStatus from '@/app/components/OfflineQueueStatus'
 import { MealUploadResponse, DailyTargets } from '@/app/lib/types/food-tracking'
+import { getWeekStart, getLocalDate } from '@/app/lib/timezone-utils'
 
 // Lazy load heavy components to improve initial page load
 const DailyProgressView = lazy(() => import('@/app/components/DailyProgressView'))
@@ -86,15 +87,6 @@ export default function FoodProgressPage() {
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date)
     setCurrentView('daily')
-  }
-
-  const getWeekStart = (date: Date) => {
-    const weekStart = new Date(date)
-    const day = weekStart.getDay()
-    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1) // Adjust when day is Sunday
-    weekStart.setDate(diff)
-    weekStart.setHours(0, 0, 0, 0)
-    return weekStart
   }
 
   const handleAddMeal = () => {
@@ -326,6 +318,7 @@ export default function FoodProgressPage() {
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">Add New Meal</h2>
             <Suspense fallback={<ComponentLoader>Meal Input</ComponentLoader>}>
               <MealInputEnhanced
+                selectedDate={selectedDate}
                 onUploadComplete={handlePhotoUploadComplete}
                 onError={handleCameraError}
                 userId={user?.id}

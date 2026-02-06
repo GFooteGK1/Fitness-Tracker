@@ -134,7 +134,9 @@ export async function POST(request: NextRequest) {
 
     console.log('[Upload] Saving meal with', result.items.length, 'items')
     
-    // Use the timestamp as-is (it's already in UTC ISO format from the client)
+    // Timestamp is expected to be in ISO 8601 UTC format from the client
+    // Client should convert local time to UTC before sending
+    // Database stores as TIMESTAMPTZ (UTC)
     const mealTimestamp = timestamp
 
     const { data: meal, error: dbError } = await supabase

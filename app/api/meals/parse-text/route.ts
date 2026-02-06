@@ -85,6 +85,9 @@ export async function POST(request: NextRequest) {
       .from('meals')
       .insert({
         user_id: user.id,
+        // Timestamp is expected to be in ISO 8601 UTC format from the client
+        // Client should convert local time to UTC before sending
+        // Database stores as TIMESTAMPTZ (UTC)
         meal_timestamp: timestamp,
         input_text: text,
         photo_url: null, // No photo for text input

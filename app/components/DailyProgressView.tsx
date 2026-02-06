@@ -6,6 +6,7 @@ import MealEntryCard from './MealEntryCard'
 import MealEditModal from './MealEditModal'
 import { useToast } from './Toast'
 import { useAuth } from '@/app/lib/auth/AuthContext'
+import { getLocalDate, getTimezoneOffset } from '@/app/lib/timezone-utils'
 
 interface DailyProgressViewProps {
   date: Date
@@ -44,9 +45,9 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
       setLoading(true)
       setError('')
 
-      const dateStr = date.toLocaleDateString('en-CA')
+      const dateStr = getLocalDate(date)
       // Send timezone offset so server can query correct UTC range
-      const tzOffset = new Date().getTimezoneOffset()
+      const tzOffset = getTimezoneOffset()
       const response = await fetch(`/api/meals/daily?date=${dateStr}&tzOffset=${tzOffset}`)
       
       if (!response.ok) {

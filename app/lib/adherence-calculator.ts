@@ -1,9 +1,11 @@
 /**
  * Adherence Calculator Service
  * Calculates daily adherence scores and status based on targets
+ * Requirements: 3.1, 3.3, 3.5
  */
 
 import { MacroTotals, DailyTargets, AdherenceStatus, DailySummary, CumulativeAdherenceData } from './types/food-tracking'
+import { getWeekStart, getLocalDate } from './timezone-utils'
 
 // Weekly adherence interfaces
 export interface WeeklyAdherenceScore {
@@ -374,7 +376,10 @@ function generateOverallGuidance(weeklyScore: number, guidance: CorrectionGuidan
 /**
  * Calculates days elapsed from week start to today (or end of week if viewing past week)
  * Returns a value between 1 and 7 (inclusive)
- * Requirements: 5.1, 6.2
+ * Requirements: 5.1, 6.2, 3.1
+ * 
+ * NOTE: This function is now a wrapper around the centralized timezone utility.
+ * The actual implementation is in timezone-utils.ts for consistency.
  */
 export function calculateDaysElapsed(weekStart: Date, today: Date): number {
   // Normalize dates to start of day to avoid time zone issues
@@ -393,6 +398,17 @@ export function calculateDaysElapsed(weekStart: Date, today: Date): number {
   const daysElapsed = diffDays + 1
   
   return Math.max(1, Math.min(7, daysElapsed))
+}
+
+/**
+ * Helper function to get days elapsed in current week
+ * Uses timezone-aware week start calculation
+ * Requirements: 3.1, 3.5
+ */
+export function calculateDaysElapsedInWeek(): number {
+  const weekStartDate = getWeekStart()
+  const today = new Date()
+  return calculateDaysElapsed(weekStartDate, today)
 }
 
 /**
