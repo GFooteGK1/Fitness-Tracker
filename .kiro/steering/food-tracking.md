@@ -7,8 +7,22 @@ fileMatchPattern: '**/{food-progress,meals,components/Meal*,components/*Progress
 
 ## Food Tracking Flow
 
+### Multi-Modal Input (New: /food-log)
+
 ```
-1. PHOTO CAPTURE
+1. USER INPUT (Choose Method)
+   ├── Text: Natural language meal description
+   ├── Voice: Web Speech API → text transcription
+   └── Photo: Camera capture → AI analysis
+
+2. TEXT/VOICE FLOW
+   ├── User types or speaks meal details
+   ├── POST /api/meals/parse-text
+   ├── Claude AI extracts food items + macros
+   ├── Show results for review
+   └── Save to database
+
+3. PHOTO FLOW (Existing)
    ├── User opens camera via MealCameraCapture component
    ├── Take photo (mobile camera API)
    ├── Preview photo
@@ -263,6 +277,39 @@ CREATE POLICY "Users can delete own photos"
 
 ## API Endpoints
 
+### POST /api/meals/parse-text
+Parse natural language meal description using Claude AI.
+
+**Request:**
+```typescript
+{
+  text: string,           // "Chicken breast 6oz, brown rice 1 cup"
+  timestamp: string       // ISO 8601 timestamp
+}
+```
+
+**Response:**
+```typescript
+{
+  mealId: string,
+  items: Array<{
+    food: string,
+    portion: string,
+    protein: number,
+    carbs: number,
+    fat: number,
+    calories: number
+  }>,
+  totals: {
+    protein: number,
+    carbs: number,
+    fat: number,
+    calories: number
+  },
+  confidence: number // 0.0 - 1.0
+}
+```
+
 ### POST /api/meals/upload
 Upload meal photo and perform AI analysis.
 
@@ -363,6 +410,54 @@ Delete meal and associated photo.
 - Save/reset buttons
 - Validation
 
+## Voice Input Flow
+
+```
+1. User clicks microphone button
+2. Web Speech API starts listening
+3. Real-time transcription displayed
+4. User stops recording
+5. Transcribed text populated in textarea
+6. User reviews/edits
+7. Submit to /api/meals/parse-text
+```
+
+## Text Input Parsing
+
+### Natural Language Examples
+
+```typescript
+// With portions specified
+"Chicken breast 6oz, brown rice 1 cup, broccoli 1 cup, olive oil 1 tbsp"
+
+// Without portions (AI estimates)
+"Grilled salmon with sweet potato and asparagus"
+
+// With cooking methods
+"Fried chicken breast, baked potato with butter, steamed vegetables"
+
+// Mixed specificity
+"8oz steak, mashed potatoes, green beans"
+```
+
+### Portion Size Defaults (When Not Specified)
+
+- Meat/Protein: 4-6 oz (113-170g)
+- Grains/Starches: 1 cup cooked (150-200g)
+- Vegetables: 1 cup (150g)
+- Fats/Oils: 1 tablespoon (15ml)
+- Nuts: 1 oz (28g)
+- Cheese: 1 oz (28g)
+
+### Confidence Scoring
+
+AI assigns confidence (0.0-1.0) based on:
+- **Portion specificity** (higher if portions are specified)
+- **Food clarity** (higher if foods are clearly identified)
+- **Cooking method clarity** (higher if cooking method is specified)
+
+Meals with confidence < 0.7 are flagged for review.
+
 ## Best Practices
 
 1. **Always compress images** before upload (target <1MB)
@@ -373,3 +468,5 @@ Delete meal and associated photo.
 6. **Provide manual edit capability** for AI inaccuracies
 7. **Show progress immediately** after upload
 8. **Clean up orphaned photos** periodically
+9. **Include portion sizes in text input** for better accuracy
+10. **Test voice input in quiet environments** for best transcription

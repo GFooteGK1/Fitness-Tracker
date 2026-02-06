@@ -10,7 +10,7 @@ import { MealUploadResponse, DailyTargets } from '@/app/lib/types/food-tracking'
 // Lazy load heavy components to improve initial page load
 const DailyProgressView = lazy(() => import('@/app/components/DailyProgressView'))
 const WeeklyAdherenceView = lazy(() => import('@/app/components/WeeklyAdherenceView'))
-const MealCameraCapture = lazy(() => import('@/app/components/MealCameraCapture'))
+const MealInputEnhanced = lazy(() => import('@/app/components/MealInputEnhanced'))
 const TargetManagement = lazy(() => import('@/app/components/TargetManagement'))
 
 // Loading component for lazy-loaded components
@@ -98,6 +98,7 @@ export default function FoodProgressPage() {
   }
 
   const handleAddMeal = () => {
+    // Use the camera view which has full refinement flow
     setCurrentView('camera')
   }
 
@@ -323,10 +324,11 @@ export default function FoodProgressPage() {
         {currentView === 'camera' && (
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">Add New Meal</h2>
-            <Suspense fallback={<ComponentLoader>Camera</ComponentLoader>}>
-              <MealCameraCapture
+            <Suspense fallback={<ComponentLoader>Meal Input</ComponentLoader>}>
+              <MealInputEnhanced
                 onUploadComplete={handlePhotoUploadComplete}
                 onError={handleCameraError}
+                userId={user?.id}
               />
             </Suspense>
           </div>
