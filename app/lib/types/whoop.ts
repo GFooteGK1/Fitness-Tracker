@@ -49,7 +49,7 @@ export interface WhoopRecovery {
 export interface WhoopSleep {
   id: string;
   userId: string;
-  sleepId: number;
+  sleepId: string;  // UUID string from v2 API
   date: Date;
   sleepPerformancePercentage: number | null;
   sleepConsistencyPercentage: number | null;
@@ -75,7 +75,7 @@ export interface WhoopCycle {
 export interface WhoopWorkout {
   id: string;
   userId: string;
-  whoopWorkoutId: number;
+  whoopWorkoutId: string;  // UUID string from v2 API
   date: Date;
   sportName: string | null;
   sportId: number | null;

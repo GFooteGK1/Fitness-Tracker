@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@/app/lib/auth/supabase-server';
 import { WHOOP_SCOPES } from '@/app/lib/whoop/api-client';
+import { serverCookieHelpers } from '@/app/lib/auth/cookie-manager';
 import crypto from 'crypto';
 
 const WHOOP_API_HOSTNAME = process.env.WHOOP_API_HOSTNAME || 'https://api.prod.whoop.com';
@@ -46,13 +47,9 @@ export async function GET(request: Request) {
 
     // 4. Store state in cookie for validation in callback
     const cookieStore = await cookies();
-    cookieStore.set('whoop_oauth_state', state, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 600, // 10 minutes
-      path: '/',
-    });
+    const oauthCookieOptions = serverCookieHelpers.getOAuthStateCookieOptions();
+    
+    cookieStore.set('whoop_oauth_state', state, oauthCookieOptions);
 
     // 5. Build redirect URI
     const { origin } = new URL(request.url);

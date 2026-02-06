@@ -1,6 +1,7 @@
 import { createServerClient } from '@/app/lib/auth/supabase-server';
 import * as whoopClient from './api-client';
 import * as tokenService from './token-service';
+import { validateWhoopIdentifier, assertValidWhoopIdentifier } from './validation';
 import type {
   WhoopRecovery,
   WhoopSleep,
@@ -212,16 +213,28 @@ async function storeRecoveryData(
  * Transform WHOOP API recovery response to database format
  */
 function transformRecoveryData(userId: string, apiData: any): Partial<WhoopRecovery> {
-  return {
-    user_id: userId,
-    cycle_id: apiData.cycle_id,
-    date: apiData.created_at ? new Date(apiData.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    recovery_score: apiData.score?.recovery_score ?? null,
-    resting_heart_rate: apiData.score?.resting_heart_rate ?? null,
-    hrv_rmssd_milli: apiData.score?.hrv_rmssd_milli ?? null,
-    spo2_percentage: apiData.score?.spo2_percentage ?? null,
-    skin_temp_celsius: apiData.score?.skin_temp_celsius ?? null,
-  };
+  try {
+    // Validate cycle_id is a positive integer
+    assertValidWhoopIdentifier(apiData.cycle_id, 'recovery');
+    
+    return {
+      user_id: userId,
+      cycle_id: apiData.cycle_id,
+      date: apiData.created_at ? new Date(apiData.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      recovery_score: apiData.score?.recovery_score ?? null,
+      resting_heart_rate: apiData.score?.resting_heart_rate ?? null,
+      hrv_rmssd_milli: apiData.score?.hrv_rmssd_milli ?? null,
+      spo2_percentage: apiData.score?.spo2_percentage ?? null,
+      skin_temp_celsius: apiData.score?.skin_temp_celsius ?? null,
+    };
+  } catch (error) {
+    console.error('[WHOOP Sync] Failed to transform recovery data:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      apiData: JSON.stringify(apiData, null, 2),
+      userId
+    });
+    throw new Error(`Recovery data transformation failed: ${error instanceof Error ? error.message : 'Unknown error'}. API response structure: ${JSON.stringify(apiData)}`);
+  }
 }
 
 /**
@@ -253,17 +266,29 @@ async function storeSleepData(
  * Transform WHOOP API sleep response to database format
  */
 function transformSleepData(userId: string, apiData: any): Partial<WhoopSleep> {
-  return {
-    user_id: userId,
-    sleep_id: apiData.id,
-    date: apiData.created_at ? new Date(apiData.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    sleep_performance_percentage: apiData.score?.sleep_performance_percentage ?? null,
-    sleep_consistency_percentage: apiData.score?.sleep_consistency_percentage ?? null,
-    sleep_efficiency_percentage: apiData.score?.sleep_efficiency_percentage ?? null,
-    respiratory_rate: apiData.score?.respiratory_rate ?? null,
-    total_sleep_duration_ms: apiData.score?.stage_summary?.total_in_bed_time_milli ?? null,
-    is_nap: apiData.nap ?? false,
-  };
+  try {
+    // Validate sleep_id is a UUID string
+    assertValidWhoopIdentifier(apiData.id, 'sleep');
+    
+    return {
+      user_id: userId,
+      sleep_id: apiData.id,
+      date: apiData.created_at ? new Date(apiData.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      sleep_performance_percentage: apiData.score?.sleep_performance_percentage ?? null,
+      sleep_consistency_percentage: apiData.score?.sleep_consistency_percentage ?? null,
+      sleep_efficiency_percentage: apiData.score?.sleep_efficiency_percentage ?? null,
+      respiratory_rate: apiData.score?.respiratory_rate ?? null,
+      total_sleep_duration_ms: apiData.score?.stage_summary?.total_in_bed_time_milli ?? null,
+      is_nap: apiData.nap ?? false,
+    };
+  } catch (error) {
+    console.error('[WHOOP Sync] Failed to transform sleep data:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      apiData: JSON.stringify(apiData, null, 2),
+      userId
+    });
+    throw new Error(`Sleep data transformation failed: ${error instanceof Error ? error.message : 'Unknown error'}. API response structure: ${JSON.stringify(apiData)}`);
+  }
 }
 
 /**
@@ -295,15 +320,27 @@ async function storeCycleData(
  * Transform WHOOP API cycle response to database format
  */
 function transformCycleData(userId: string, apiData: any): Partial<WhoopCycle> {
-  return {
-    user_id: userId,
-    cycle_id: apiData.id,
-    date: apiData.created_at ? new Date(apiData.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    strain: apiData.score?.strain ?? null,
-    kilojoules: apiData.score?.kilojoule ?? null,
-    average_heart_rate: apiData.score?.average_heart_rate ?? null,
-    max_heart_rate: apiData.score?.max_heart_rate ?? null,
-  };
+  try {
+    // Validate cycle_id is a positive integer
+    assertValidWhoopIdentifier(apiData.id, 'cycle');
+    
+    return {
+      user_id: userId,
+      cycle_id: apiData.id,
+      date: apiData.created_at ? new Date(apiData.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      strain: apiData.score?.strain ?? null,
+      kilojoules: apiData.score?.kilojoule ?? null,
+      average_heart_rate: apiData.score?.average_heart_rate ?? null,
+      max_heart_rate: apiData.score?.max_heart_rate ?? null,
+    };
+  } catch (error) {
+    console.error('[WHOOP Sync] Failed to transform cycle data:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      apiData: JSON.stringify(apiData, null, 2),
+      userId
+    });
+    throw new Error(`Cycle data transformation failed: ${error instanceof Error ? error.message : 'Unknown error'}. API response structure: ${JSON.stringify(apiData)}`);
+  }
 }
 
 /**
@@ -335,19 +372,31 @@ async function storeWorkoutData(
  * Transform WHOOP API workout response to database format
  */
 function transformWorkoutData(userId: string, apiData: any): Partial<WhoopWorkout> {
-  return {
-    user_id: userId,
-    whoop_workout_id: apiData.id,
-    date: apiData.created_at ? new Date(apiData.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    sport_name: apiData.sport_name ?? null,
-    sport_id: apiData.sport_id ?? null,
-    strain: apiData.score?.strain ?? null,
-    average_heart_rate: apiData.score?.average_heart_rate ?? null,
-    max_heart_rate: apiData.score?.max_heart_rate ?? null,
-    distance_meter: apiData.score?.distance_meter ?? null,
-    altitude_gain_meter: apiData.score?.altitude_gain_meter ?? null,
-    duration_ms: apiData.score?.duration_milli ?? null,
-  };
+  try {
+    // Validate whoop_workout_id is a UUID string
+    assertValidWhoopIdentifier(apiData.id, 'workout');
+    
+    return {
+      user_id: userId,
+      whoop_workout_id: apiData.id,
+      date: apiData.created_at ? new Date(apiData.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      sport_name: apiData.sport_name ?? null,
+      sport_id: apiData.sport_id ?? null,
+      strain: apiData.score?.strain ?? null,
+      average_heart_rate: apiData.score?.average_heart_rate ?? null,
+      max_heart_rate: apiData.score?.max_heart_rate ?? null,
+      distance_meter: apiData.score?.distance_meter ?? null,
+      altitude_gain_meter: apiData.score?.altitude_gain_meter ?? null,
+      duration_ms: apiData.score?.duration_milli ?? null,
+    };
+  } catch (error) {
+    console.error('[WHOOP Sync] Failed to transform workout data:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      apiData: JSON.stringify(apiData, null, 2),
+      userId
+    });
+    throw new Error(`Workout data transformation failed: ${error instanceof Error ? error.message : 'Unknown error'}. API response structure: ${JSON.stringify(apiData)}`);
+  }
 }
 
 /**

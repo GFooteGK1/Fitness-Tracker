@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/auth-helpers-nextjs'
 import { createClient } from './supabase'
 import { AuthContextType, UserProfile, DatabaseUserProfile } from './types'
+import { sessionCleanupService } from './session-cleanup-service'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -24,6 +25,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [whoopConnected, setWhoopConnected] = useState(false)
+  const [whoopTokensValid, setWhoopTokensValid] = useState(false)
   const supabase = createClient()
 
   // Convert database profile to client profile format
@@ -106,12 +109,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser(initialSession.user)
           setSession(initialSession)
           
+          // Initialize WHOOP connection on startup
+          try {
+            const response = await fetch('/api/whoop/initialize', {
+              method: 'POST'
+            })
+            
+            if (response.ok) {
+              const { initialized } = await response.json()
+              setWhoopConnected(initialized)
+              setWhoopTokensValid(initialized)
+              
+              if (initialized) {
+                console.log('[AuthContext] WHOOP connection initialized successfully')
+              }
+            } else {
+              setWhoopConnected(false)
+              setWhoopTokensValid(false)
+            }
+          } catch (whoopError) {
+            console.error('[AuthContext] Failed to initialize WHOOP connection:', whoopError)
+            setWhoopConnected(false)
+            setWhoopTokensValid(false)
+          }
+          
           // Fetch user profile asynchronously but ensure loading state is handled
           fetchProfile(initialSession.user.id)
             .then(setProfile)
             .catch(error => {
               console.error('Error fetching profile:', error)
               setProfile(null)
+            })
+            .finally(() => {
+              setLoading(false)
             })
         } else {
           // No session, set loading to false immediately
@@ -132,6 +162,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(session?.user ?? null)
 
         if (session?.user) {
+          // Initialize WHOOP connection when user signs in
+          try {
+            const response = await fetch('/api/whoop/initialize', {
+              method: 'POST'
+            })
+            
+            if (response.ok) {
+              const { initialized } = await response.json()
+              setWhoopConnected(initialized)
+              setWhoopTokensValid(initialized)
+            } else {
+              setWhoopConnected(false)
+              setWhoopTokensValid(false)
+            }
+          } catch (whoopError) {
+            console.error('[AuthContext] Failed to initialize WHOOP on auth change:', whoopError)
+            setWhoopConnected(false)
+            setWhoopTokensValid(false)
+          }
+          
           // Fetch profile asynchronously when user signs in
           fetchProfile(session.user.id)
             .then(setProfile)
@@ -140,8 +190,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
               setProfile(null)
             })
         } else {
-          // Clear profile when user signs out
+          // Clear profile and WHOOP state when user signs out
           setProfile(null)
+          setWhoopConnected(false)
+          setWhoopTokensValid(false)
         }
 
         setLoading(false)
@@ -183,11 +235,41 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return data
   }
 
-  // Sign out function
+  // Sign out function - uses SessionCleanupService
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      throw error
+    try {
+      console.log('[AuthContext] Starting sign-out process')
+      
+      // Use comprehensive cleanup service
+      const result = await sessionCleanupService.signOut()
+      
+      if (!result.success) {
+        console.error('[AuthContext] Sign-out had errors:', result.errors)
+        // Still proceed with state reset and redirect
+      } else {
+        console.log('[AuthContext] Sign-out completed successfully')
+      }
+      
+      // Reset AuthContext state
+      setUser(null)
+      setProfile(null)
+      setSession(null)
+      setWhoopConnected(false)
+      setWhoopTokensValid(false)
+      
+      // Redirect to login
+      window.location.href = '/auth/signin'
+    } catch (error) {
+      console.error('[AuthContext] Sign-out error:', error)
+      
+      // Even if cleanup fails, reset state and redirect
+      setUser(null)
+      setProfile(null)
+      setSession(null)
+      setWhoopConnected(false)
+      setWhoopTokensValid(false)
+      
+      window.location.href = '/auth/signin'
     }
   }
 
@@ -247,16 +329,112 @@ export function AuthProvider({ children }: AuthProviderProps) {
     profile.fitnessGoals.length > 0
   ) : false
 
+  // Initialize WHOOP connection manually
+  const initializeWhoopConnection = async () => {
+    if (!user) {
+      console.warn('[AuthContext] Cannot initialize WHOOP: no user')
+      return
+    }
+    
+    try {
+      console.log('[AuthContext] Manually initializing WHOOP connection')
+      const response = await fetch('/api/whoop/initialize', {
+        method: 'POST'
+      })
+      
+      if (response.ok) {
+        const { initialized } = await response.json()
+        setWhoopConnected(initialized)
+        setWhoopTokensValid(initialized)
+        
+        if (initialized) {
+          console.log('[AuthContext] WHOOP connection initialized successfully')
+        } else {
+          console.log('[AuthContext] WHOOP connection not available')
+        }
+      } else {
+        console.error('[AuthContext] Failed to initialize WHOOP connection')
+        setWhoopConnected(false)
+        setWhoopTokensValid(false)
+      }
+    } catch (error) {
+      console.error('[AuthContext] Failed to initialize WHOOP connection:', error)
+      setWhoopConnected(false)
+      setWhoopTokensValid(false)
+    }
+  }
+
+  // Refresh WHOOP tokens manually
+  const refreshWhoopTokens = async () => {
+    if (!user) {
+      console.warn('[AuthContext] Cannot refresh WHOOP tokens: no user')
+      return
+    }
+    
+    try {
+      console.log('[AuthContext] Refreshing WHOOP tokens')
+      const response = await fetch('/api/whoop/refresh', {
+        method: 'POST'
+      })
+      
+      if (response.ok) {
+        setWhoopTokensValid(true)
+        setWhoopConnected(true)
+        console.log('[AuthContext] WHOOP tokens refreshed successfully')
+      } else {
+        console.error('[AuthContext] Failed to refresh WHOOP tokens')
+        setWhoopTokensValid(false)
+        setWhoopConnected(false)
+      }
+    } catch (error) {
+      console.error('[AuthContext] Failed to refresh WHOOP tokens:', error)
+      setWhoopTokensValid(false)
+      setWhoopConnected(false)
+    }
+  }
+
+  // Disconnect WHOOP
+  const disconnectWhoop = async () => {
+    if (!user) {
+      console.warn('[AuthContext] Cannot disconnect WHOOP: no user')
+      return
+    }
+    
+    try {
+      console.log('[AuthContext] Disconnecting WHOOP')
+      const response = await fetch('/api/whoop/disconnect', {
+        method: 'POST'
+      })
+      
+      if (response.ok) {
+        setWhoopConnected(false)
+        setWhoopTokensValid(false)
+        console.log('[AuthContext] WHOOP disconnected successfully')
+      } else {
+        console.error('[AuthContext] Failed to disconnect WHOOP')
+        throw new Error('Failed to disconnect WHOOP')
+      }
+    } catch (error) {
+      console.error('[AuthContext] Failed to disconnect WHOOP:', error)
+      throw error
+    }
+  }
+
   const value: AuthContextType = {
     user,
     profile,
     session,
     loading,
+    whoopConnected,
+    whoopTokensValid,
     signUp,
     signIn,
     signOut,
     updateProfile,
-    hasCompletedOnboarding
+    hasCompletedOnboarding,
+    initializeWhoopConnection,
+    refreshWhoopTokens,
+    disconnectWhoop
   }
 
   return (

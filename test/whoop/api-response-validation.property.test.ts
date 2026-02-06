@@ -65,8 +65,8 @@ function validateWorkoutResponse(response: any): boolean {
 const isoDateArbitrary = fc.integer({ min: 1577836800000, max: 1798761600000 }).map(ms => new Date(ms).toISOString());
 
 const validRecoveryResponseArbitrary = fc.record({
-  cycle_id: fc.integer({ min: 1, max: 1000000 }),
-  sleep_id: fc.integer({ min: 1, max: 1000000 }),
+  cycle_id: fc.integer({ min: 1, max: 1000000 }), // Correct: cycle_id is integer
+  sleep_id: fc.uuid(), // Changed: sleep_id should be UUID
   user_id: fc.integer({ min: 1, max: 100000 }),
   created_at: isoDateArbitrary,
   updated_at: isoDateArbitrary,
@@ -82,7 +82,7 @@ const validRecoveryResponseArbitrary = fc.record({
 });
 
 const validSleepResponseArbitrary = fc.record({
-  id: fc.oneof(fc.uuid(), fc.integer({ min: 1 }).map(String)),
+  id: fc.uuid(), // UUID string for v2 API
   cycle_id: fc.integer({ min: 1, max: 1000000 }),
   user_id: fc.integer({ min: 1, max: 100000 }),
   created_at: isoDateArbitrary,
@@ -118,7 +118,7 @@ const validCycleResponseArbitrary = fc.record({
 });
 
 const validWorkoutResponseArbitrary = fc.record({
-  id: fc.oneof(fc.uuid(), fc.integer({ min: 1 }).map(String)),
+  id: fc.uuid(), // UUID string for v2 API
   user_id: fc.integer({ min: 1, max: 100000 }),
   created_at: isoDateArbitrary,
   updated_at: isoDateArbitrary,
