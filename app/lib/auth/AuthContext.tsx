@@ -5,11 +5,6 @@ import { User, Session } from '@supabase/auth-helpers-nextjs'
 import { createClient } from './supabase'
 import { AuthContextType, UserProfile, DatabaseUserProfile } from './types'
 import { sessionCleanupService } from './session-cleanup-service'
-import { 
-  initializeConnection, 
-  refreshAccessToken, 
-  deleteTokens 
-} from '../whoop/token-service'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -116,12 +111,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
           
           // Initialize WHOOP connection on startup
           try {
-            const whoopInitialized = await initializeConnection(initialSession.user.id)
-            setWhoopConnected(whoopInitialized)
-            setWhoopTokensValid(whoopInitialized)
+            const response = await fetch('/api/whoop/initialize', {
+              method: 'POST'
+            })
             
-            if (whoopInitialized) {
-              console.log('[AuthContext] WHOOP connection initialized successfully')
+            if (response.ok) {
+              const { initialized } = await response.json()
+              setWhoopConnected(initialized)
+              setWhoopTokensValid(initialized)
+              
+              if (initialized) {
+                console.log('[AuthContext] WHOOP connection initialized successfully')
+              }
+            } else {
+              setWhoopConnected(false)
+              setWhoopTokensValid(false)
             }
           } catch (whoopError) {
             console.error('[AuthContext] Failed to initialize WHOOP connection:', whoopError)
@@ -160,9 +164,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (session?.user) {
           // Initialize WHOOP connection when user signs in
           try {
-            const whoopInitialized = await initializeConnection(session.user.id)
-            setWhoopConnected(whoopInitialized)
-            setWhoopTokensValid(whoopInitialized)
+            const response = await fetch('/api/whoop/initialize', {
+              method: 'POST'
+            })
+            
+            if (response.ok) {
+              const { initialized } = await response.json()
+              setWhoopConnected(initialized)
+              setWhoopTokensValid(initialized)
+            } else {
+              setWhoopConnected(false)
+              setWhoopTokensValid(false)
+            }
           } catch (whoopError) {
             console.error('[AuthContext] Failed to initialize WHOOP on auth change:', whoopError)
             setWhoopConnected(false)
@@ -325,14 +338,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     try {
       console.log('[AuthContext] Manually initializing WHOOP connection')
-      const initialized = await initializeConnection(user.id)
-      setWhoopConnected(initialized)
-      setWhoopTokensValid(initialized)
+      const response = await fetch('/api/whoop/initialize', {
+        method: 'POST'
+      })
       
-      if (initialized) {
-        console.log('[AuthContext] WHOOP connection initialized successfully')
+      if (response.ok) {
+        const { initialized } = await response.json()
+        setWhoopConnected(initialized)
+        setWhoopTokensValid(initialized)
+        
+        if (initialized) {
+          console.log('[AuthContext] WHOOP connection initialized successfully')
+        } else {
+          console.log('[AuthContext] WHOOP connection not available')
+        }
       } else {
-        console.log('[AuthContext] WHOOP connection not available')
+        console.error('[AuthContext] Failed to initialize WHOOP connection')
+        setWhoopConnected(false)
+        setWhoopTokensValid(false)
       }
     } catch (error) {
       console.error('[AuthContext] Failed to initialize WHOOP connection:', error)
@@ -350,10 +373,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     try {
       console.log('[AuthContext] Refreshing WHOOP tokens')
-      await refreshAccessToken(user.id)
-      setWhoopTokensValid(true)
-      setWhoopConnected(true)
-      console.log('[AuthContext] WHOOP tokens refreshed successfully')
+      const response = await fetch('/api/whoop/refresh', {
+        method: 'POST'
+      })
+      
+      if (response.ok) {
+        setWhoopTokensValid(true)
+        setWhoopConnected(true)
+        console.log('[AuthContext] WHOOP tokens refreshed successfully')
+      } else {
+        console.error('[AuthContext] Failed to refresh WHOOP tokens')
+        setWhoopTokensValid(false)
+        setWhoopConnected(false)
+      }
     } catch (error) {
       console.error('[AuthContext] Failed to refresh WHOOP tokens:', error)
       setWhoopTokensValid(false)
@@ -370,10 +402,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     try {
       console.log('[AuthContext] Disconnecting WHOOP')
-      await deleteTokens(user.id)
-      setWhoopConnected(false)
-      setWhoopTokensValid(false)
-      console.log('[AuthContext] WHOOP disconnected successfully')
+      const response = await fetch('/api/whoop/disconnect', {
+        method: 'POST'
+      })
+      
+      if (response.ok) {
+        setWhoopConnected(false)
+        setWhoopTokensValid(false)
+        console.log('[AuthContext] WHOOP disconnected successfully')
+      } else {
+        console.error('[AuthContext] Failed to disconnect WHOOP')
+        throw new Error('Failed to disconnect WHOOP')
+      }
     } catch (error) {
       console.error('[AuthContext] Failed to disconnect WHOOP:', error)
       throw error
