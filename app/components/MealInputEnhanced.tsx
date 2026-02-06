@@ -8,12 +8,14 @@ interface MealInputEnhancedProps {
   onUploadComplete?: (response: MealUploadResponse) => void
   onError?: (error: string) => void
   userId?: string
+  selectedDate?: Date  // Optional date for logging meals to past dates
 }
 
 export default function MealInputEnhanced({
   onUploadComplete,
   onError,
-  userId
+  userId,
+  selectedDate
 }: MealInputEnhancedProps) {
   const [mealText, setMealText] = useState('')
   const [isRecording, setIsRecording] = useState(false)
@@ -164,6 +166,7 @@ export default function MealInputEnhanced({
         onUploadComplete={onUploadComplete}
         onError={onError}
         userId={userId}
+        selectedDate={selectedDate}
       />
 
       {/* Divider with "OR" */}

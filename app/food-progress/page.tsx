@@ -318,6 +318,7 @@ export default function FoodProgressPage() {
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">Add New Meal</h2>
             <Suspense fallback={<ComponentLoader>Meal Input</ComponentLoader>}>
               <MealInputEnhanced
+                selectedDate={selectedDate}
                 onUploadComplete={handlePhotoUploadComplete}
                 onError={handleCameraError}
                 userId={user?.id}

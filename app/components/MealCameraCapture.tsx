@@ -15,6 +15,7 @@ interface MealCameraCaptureProps {
   onError?: (error: string) => void
   isLoading?: boolean
   userId?: string
+  selectedDate?: Date  // Optional date for logging meals to past dates
 }
 
 interface AnalysisResult {
@@ -61,7 +62,8 @@ export default function MealCameraCapture({
   onUploadComplete,
   onError,
   isLoading = false,
-  userId
+  userId,
+  selectedDate
 }: MealCameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -339,7 +341,9 @@ export default function MealCameraCapture({
         const queueId = queuePhotoUpload(
           photoState.file,
           userId,
-          new Date().toISOString()
+          selectedDate 
+            ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 12, 0, 0).toISOString()
+            : new Date().toISOString()
         )
 
         setPhotoState(prev => ({ 
@@ -394,7 +398,10 @@ export default function MealCameraCapture({
         formData.append('userId', userId)
         // Send full ISO timestamp with timezone - database will store in UTC
         // and the client will convert back to local time for display
-        const timestamp = new Date().toISOString()
+        // Use selectedDate if provided, otherwise use current time
+        const timestamp = selectedDate 
+          ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 12, 0, 0).toISOString()
+          : new Date().toISOString()
         formData.append('timestamp', timestamp)
 
         // Enhanced upload progress simulation with time estimation
