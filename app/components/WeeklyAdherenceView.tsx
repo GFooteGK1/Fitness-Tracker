@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { DailyTargets, DailySummary, CumulativeAdherenceData } from '@/app/lib/types/food-tracking'
 import { WeeklyAdherenceScore, CorrectionGuidance } from '@/app/lib/adherence-calculator'
 import { useAuth } from '@/app/lib/auth/AuthContext'
+import { getLocalDate, getTimezoneOffset } from '@/app/lib/timezone-utils'
 import WeekToDateSection from './WeekToDateSection'
 import DailyBreakdown from './DailyBreakdown'
 
@@ -49,9 +50,9 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
       setLoading(true)
       setError('')
 
-      const weekStartStr = weekStart.toLocaleDateString('en-CA')
+      const weekStartStr = getLocalDate(weekStart)
       // Send timezone offset so server can query correct UTC range
-      const tzOffset = new Date().getTimezoneOffset()
+      const tzOffset = getTimezoneOffset()
       const response = await fetch(`/api/adherence/weekly?weekStart=${weekStartStr}&tzOffset=${tzOffset}`)
       
       if (!response.ok) {

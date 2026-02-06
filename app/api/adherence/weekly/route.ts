@@ -1,7 +1,7 @@
 /**
  * Weekly Adherence Analysis API
  * Calculates weekly adherence scores and provides correction guidance
- * Requirements: 6.3, 6.4, 6.5, 9.1, 9.2, 9.3
+ * Requirements: 6.3, 6.4, 6.5, 9.1, 9.2, 9.3, 3.1, 3.2, 3.4, 3.5, 8.1, 8.2
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -15,6 +15,13 @@ import {
   CorrectionGuidance
 } from '../../../lib/adherence-calculator'
 import { DailyTargets, DailySummary, CumulativeAdherenceData } from '../../../lib/types/food-tracking'
+import { 
+  localDateToUTCStart, 
+  localDateToUTCEnd, 
+  isValidTimezoneOffset,
+  getWeekStart,
+  getLocalDate
+} from '../../../lib/timezone-utils'
 
 /**
  * GET /api/adherence/weekly - Get weekly adherence analysis
@@ -35,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const weekStartStr = searchParams.get('weekStart')
-    const tzOffset = searchParams.get('tzOffset')
+    const tzOffsetStr = searchParams.get('tzOffset')
 
     if (!weekStartStr) {
       return NextResponse.json(
@@ -44,20 +51,37 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const weekStart = new Date(weekStartStr)
-    if (isNaN(weekStart.getTime())) {
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+    if (!dateRegex.test(weekStartStr)) {
       return NextResponse.json(
         { error: 'Invalid week start date format. Use YYYY-MM-DD' },
         { status: 400 }
       )
     }
 
-    // Calculate week end date (7 days total, so +6 from start)
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekEnd.getDate() + 6)
+    // Parse and validate timezone offset
+    const tzOffset = tzOffsetStr ? parseInt(tzOffsetStr, 10) : 0
+    if (!tzOffsetStr) {
+      console.warn('No timezone offset provided, defaulting to UTC (offset = 0)')
+    }
     
-    // Get timezone offset in minutes (e.g., 360 for CST which is UTC-6)
-    const offsetMinutes = tzOffset ? parseInt(tzOffset, 10) : 0
+    if (!isValidTimezoneOffset(tzOffset)) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid timezone offset',
+          details: 'Offset must be between -720 and 840 minutes'
+        },
+        { status: 400 }
+      )
+    }
+
+    // Calculate week end date (7 days total, so +6 from start)
+    const [year, month, day] = weekStartStr.split('-').map(Number)
+    const weekStartDate = new Date(year, month - 1, day)
+    const weekEndDate = new Date(weekStartDate)
+    weekEndDate.setDate(weekEndDate.getDate() + 6)
+    const weekEndStr = getLocalDate(weekEndDate)
 
     // Fetch user's daily targets
     const { data: targetsData, error: targetsError } = await supabase
@@ -86,36 +110,26 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch daily summaries for the week
-    // Instead of using the daily_summaries view (which uses server timezone),
-    // we query meals directly with timezone-aware boundaries to match the daily API
+    // Query meals directly with timezone-aware boundaries using centralized utilities
     const dailySummaries: DailySummary[] = []
     
     // Generate each day's data with proper timezone handling
-    // Use string-based date arithmetic to avoid timezone issues with Date objects
     for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-      // Parse the weekStart string and add days using string manipulation
-      // This avoids timezone issues that occur when using Date.setDate()
-      const [year, month, day] = weekStartStr.split('-').map(Number)
-      const tempDate = new Date(Date.UTC(year, month - 1, day + dayOffset))
-      const dateStr = tempDate.toISOString().split('T')[0]
+      // Calculate date string for this day
+      const dayDate = new Date(weekStartDate)
+      dayDate.setDate(weekStartDate.getDate() + dayOffset)
+      const dateStr = getLocalDate(dayDate)
       
-      // Calculate UTC boundaries for this local date
-      // If user is in CST (UTC-6), offset is 360 minutes
-      // Local midnight = UTC midnight + offset
-      // e.g., Jan 20 00:00 CST = Jan 20 06:00 UTC
-      const startLocal = new Date(`${dateStr}T00:00:00`)
-      const endLocal = new Date(`${dateStr}T23:59:59.999`)
-      
-      // Add offset to convert local time to UTC
-      const startUTC = new Date(startLocal.getTime() + offsetMinutes * 60000)
-      const endUTC = new Date(endLocal.getTime() + offsetMinutes * 60000)
+      // Calculate UTC boundaries for this local date using timezone utilities
+      const startUTC = localDateToUTCStart(dateStr, tzOffset)
+      const endUTC = localDateToUTCEnd(dateStr, tzOffset)
       
       const { data: dayMeals, error: dayError } = await supabase
         .from('meals')
         .select('total_protein, total_carbs, total_fat, total_calories')
         .eq('user_id', user.id)
-        .gte('meal_timestamp', startUTC.toISOString())
-        .lt('meal_timestamp', endUTC.toISOString())
+        .gte('meal_timestamp', startUTC)
+        .lt('meal_timestamp', endUTC)
       
       if (dayError) {
         console.error(`Error fetching meals for ${dateStr}:`, dayError)
@@ -145,7 +159,7 @@ export async function GET(request: NextRequest) {
     const weeklyAdherence: WeeklyAdherenceScore = calculateWeeklyAdherence(
       dailySummaries,
       targets,
-      weekStart
+      weekStartDate
     )
 
     // Generate correction guidance
@@ -155,8 +169,9 @@ export async function GET(request: NextRequest) {
     )
 
     // Calculate days elapsed from week start to today (Requirements: 6.2)
+    // This uses local timezone to ensure correct day count
     const today = new Date()
-    const daysElapsed: number = calculateDaysElapsed(weekStart, today)
+    const daysElapsed: number = calculateDaysElapsed(weekStartDate, today)
 
     // Calculate cumulative adherence data (Requirements: 6.1, 6.3, 6.4, 6.5)
     const cumulativeData: CumulativeAdherenceData = calculateCumulativeAdherence(
@@ -171,8 +186,8 @@ export async function GET(request: NextRequest) {
       correctionGuidance,
       targets,
       daysWithData: dailySummaries.length,
-      weekStart: weekStart.toISOString().split('T')[0],
-      weekEnd: weekEnd.toISOString().split('T')[0],
+      weekStart: weekStartStr,
+      weekEnd: weekEndStr,
       // New fields for cumulative tracking (Requirements: 6.1, 6.2, 6.3, 6.4, 6.5)
       daysElapsed,
       cumulativeData
@@ -186,18 +201,6 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
-}
-
-/**
- * Helper function to get Monday of the week for a given date
- */
-function getMondayOfWeek(date: Date): Date {
-  const monday = new Date(date)
-  const day = monday.getDay()
-  const diff = monday.getDate() - day + (day === 0 ? -6 : 1) // Adjust when day is Sunday
-  monday.setDate(diff)
-  monday.setHours(0, 0, 0, 0)
-  return monday
 }
 
 /**
@@ -217,14 +220,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get Monday of current week
+    // Get Monday of current week using timezone utilities
     const today = new Date()
-    const weekStart = getMondayOfWeek(today)
+    const weekStartDate = getWeekStart(today)
+    const weekStartStr = getLocalDate(weekStartDate)
+
+    // Get timezone offset from request body
+    const body = await request.json().catch(() => ({}))
+    const tzOffset = body.tzOffset || 0
 
     // Redirect to GET with calculated week start
     const url = new URL(request.url)
     url.pathname = '/api/adherence/weekly'
-    url.searchParams.set('weekStart', weekStart.toISOString().split('T')[0])
+    url.searchParams.set('weekStart', weekStartStr)
+    url.searchParams.set('tzOffset', tzOffset.toString())
 
     // Make internal request to GET endpoint
     const getRequest = new NextRequest(url.toString(), {

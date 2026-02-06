@@ -1,13 +1,14 @@
 /**
  * Daily Meals API Endpoint
  * Retrieves daily meal summary with totals and adherence status
- * Requirements: 5.1, 5.3, 10.4
+ * Requirements: 5.1, 5.3, 10.4, 2.2, 2.5, 2.7, 8.1, 8.2, 8.7
  */
 
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { MealEntry, DailyMealsResponse, DailyTargets } from '@/app/lib/types/food-tracking'
 import { calculateAdherenceStatus, calculateDailyTotals, isPhotoUrlValid } from '@/app/lib/adherence-calculator'
+import { localDateToUTCStart, localDateToUTCEnd, isValidTimezoneOffset } from '@/app/lib/timezone-utils'
 
 export async function GET(request: Request) {
   try {
@@ -24,9 +25,11 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url)
-    const date = searchParams.get('date')
+    const dateStr = searchParams.get('date')
+    const tzOffsetStr = searchParams.get('tzOffset')
 
-    if (!date) {
+    // Validate date parameter
+    if (!dateStr) {
       return NextResponse.json(
         { error: 'date parameter is required (YYYY-MM-DD format)' },
         { status: 400 }
@@ -35,36 +38,39 @@ export async function GET(request: Request) {
 
     // Validate date format
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/
-    if (!dateRegex.test(date)) {
+    if (!dateRegex.test(dateStr)) {
       return NextResponse.json(
         { error: 'Invalid date format. Use YYYY-MM-DD' },
         { status: 400 }
       )
     }
 
-    // Query meals for the specified date
-    // The date parameter is in user's local timezone (YYYY-MM-DD)
-    // The tzOffset parameter is the client's timezone offset in minutes (e.g., 360 for CST)
-    const tzOffset = searchParams.get('tzOffset')
-    const offsetMinutes = tzOffset ? parseInt(tzOffset, 10) : 0
+    // Parse and validate timezone offset
+    const tzOffset = tzOffsetStr ? parseInt(tzOffsetStr, 10) : 0
+    if (!tzOffsetStr) {
+      console.warn('No timezone offset provided, defaulting to UTC (offset = 0)')
+    }
     
-    // Calculate UTC boundaries for the local date
-    // If user is in CST (UTC-6), offset is 360 minutes
-    // Local midnight = UTC midnight + offset
-    // e.g., Jan 19 00:00 CST = Jan 19 06:00 UTC
-    const startLocal = new Date(`${date}T00:00:00`)
-    const endLocal = new Date(`${date}T23:59:59.999`)
-    
-    // Add offset to convert local time to UTC
-    const startUTC = new Date(startLocal.getTime() + offsetMinutes * 60000)
-    const endUTC = new Date(endLocal.getTime() + offsetMinutes * 60000)
+    if (!isValidTimezoneOffset(tzOffset)) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid timezone offset',
+          details: 'Offset must be between -720 and 840 minutes'
+        },
+        { status: 400 }
+      )
+    }
+
+    // Calculate UTC boundaries for the local date using timezone utilities
+    const startUTC = localDateToUTCStart(dateStr, tzOffset)
+    const endUTC = localDateToUTCEnd(dateStr, tzOffset)
     
     const { data: mealsData, error: mealsError } = await supabase
       .from('meals')
       .select('*')
       .eq('user_id', user.id)
-      .gte('meal_timestamp', startUTC.toISOString())
-      .lt('meal_timestamp', endUTC.toISOString())
+      .gte('meal_timestamp', startUTC)
+      .lt('meal_timestamp', endUTC)
       .order('meal_timestamp', { ascending: true })
 
     if (mealsError) {
