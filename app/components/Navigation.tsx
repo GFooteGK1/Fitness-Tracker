@@ -38,6 +38,12 @@ export default function Navigation() {
                 Log Workout
               </Link>
               <Link 
+                href="/food-log" 
+                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                Log Meal
+              </Link>
+              <Link 
                 href="/food-progress" 
                 className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
@@ -52,28 +58,13 @@ export default function Navigation() {
             </div>
           )}
 
-          {/* User Menu or Auth Links */}
+          {/* User Menu - Only show when logged in */}
           <div className="flex items-center space-x-4">
             {loading ? (
               <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
             ) : user ? (
               <UserMenu />
-            ) : (
-              <div className="flex space-x-2">
-                <Link 
-                  href="/auth/signin" 
-                  className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                >
-                  Sign In
-                </Link>
-                <Link 
-                  href="/auth/signup" 
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Sign Up
-                </Link>
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
