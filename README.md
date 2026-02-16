@@ -58,7 +58,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 # Anthropic
 ANTHROPIC_API_KEY=sk-ant-your-key
+
+# Google Sheets API (optional - for dynamic tab detection)
+# Required if using coach programming feature
+# See docs/guides/GOOGLE-SHEETS-API-SETUP.md for setup instructions
+GOOGLE_SHEETS_API_KEY=your-google-sheets-api-key
+
+# Google Sheets Cache TTL (optional - defaults to 4 hours)
+# GOOGLE_SHEETS_CACHE_TTL_HOURS=4
 ```
+
+**Note:** For the coach programming feature to work with dynamic tab detection, you'll need to set up a Google Sheets API key. See the [Google Sheets API Setup Guide](docs/guides/GOOGLE-SHEETS-API-SETUP.md) for detailed instructions.
 
 ### 5. Run Development Server
 
