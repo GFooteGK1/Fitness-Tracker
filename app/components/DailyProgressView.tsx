@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { MealEntry, DailyTargets, MacroTotals, AdherenceStatus, DailyMealsResponse } from '@/app/lib/types/food-tracking'
 import MealEntryCard from './MealEntryCard'
 import MealEditModal from './MealEditModal'
@@ -317,12 +318,12 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
                 </p>
               </div>
             </div>
-            <a
+            <Link
               href="/food-progress?view=targets"
               className="bg-yellow-600 dark:bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 dark:hover:bg-yellow-600 transition-colors font-medium text-sm whitespace-nowrap touch-target w-full sm:w-auto text-center"
             >
               Set Targets
-            </a>
+            </Link>
           </div>
         </div>
       )}

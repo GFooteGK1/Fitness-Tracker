@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import { compressImage, isSupportedImageFormat, formatFileSize, type ImageCompressionResult } from '../lib/imageUtils'
@@ -448,7 +449,7 @@ export default function FoodLog() {
               Choose how to log your meal:
             </h3>
             <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-6">
-              💡 For photos with portion refinement, use <a href="/food-progress?view=camera" className="text-blue-600 dark:text-blue-400 underline">Camera View</a>
+              💡 For photos with portion refinement, use <Link href="/food-progress?view=camera" className="text-blue-600 dark:text-blue-400 underline">Camera View</Link>
             </p>
             
             {/* Show full-width photo preview when image is captured, otherwise show grid */}

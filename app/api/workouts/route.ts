@@ -17,37 +17,42 @@ export async function GET(request: Request) {
     }
 
     // Detect the current month's tab dynamically
+    // Use the requested date so the correct month tab is selected
+    // (avoids UTC vs local timezone mismatch on serverless)
+    const requestedDate = new Date(date + 'T00:00:00')
     let tabResult
     try {
-      tabResult = await detectCurrentTab(SHEET_ID)
+      tabResult = await detectCurrentTab(SHEET_ID, requestedDate)
     } catch (error) {
-      if (error instanceof TabDetectionError) {
+      // Check by error name to avoid instanceof issues with bundled custom classes
+      if (error instanceof Error && error.name === 'TabDetectionError') {
+        const tabError = error as TabDetectionError
         console.error({
           timestamp: new Date().toISOString(),
           level: 'ERROR',
           component: 'WorkoutsAPI',
           action: 'tab_detection_failed',
           details: {
-            code: error.code,
-            message: error.message,
-            errorDetails: error.details
+            code: tabError.code,
+            message: tabError.message,
+            errorDetails: tabError.details
           }
         })
         
         // Provide troubleshooting guidance based on error type
         let troubleshooting = ''
-        if (error.code === 'CONFIG_ERROR') {
+        if (tabError.code === 'CONFIG_ERROR') {
           troubleshooting = 'Please ensure GOOGLE_SHEETS_API_KEY is set in environment variables.'
-        } else if (error.code === 'API_ERROR') {
+        } else if (tabError.code === 'API_ERROR') {
           troubleshooting = 'Unable to access Google Sheets API. Check API key permissions and spreadsheet accessibility.'
-        } else if (error.code === 'NO_TABS_FOUND') {
+        } else if (tabError.code === 'NO_TABS_FOUND') {
           troubleshooting = 'No tabs found in the spreadsheet. Verify the spreadsheet ID is correct.'
         }
         
         return NextResponse.json(
           { 
             error: 'Tab detection failed',
-            message: error.message,
+            message: tabError.message,
             troubleshooting
           },
           { status: 500 }
