@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
+import { detectCurrentTab } from '@/app/lib/sheets/tab-detector'
+import { TabDetectionError } from '@/app/lib/sheets/types'
 
 const SHEET_ID = '1Y0n4WgGu_MzJDDS-6-iAQlaMuZpULj1DIYioSbVW08g'
-const SHEET_GID = '30816788' // The specific tab with workout data
 
 export async function GET(request: Request) {
   try {
@@ -15,8 +16,81 @@ export async function GET(request: Request) {
       )
     }
 
-    // Fetch the specific sheet tab as CSV (publicly accessible)
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`
+    // Detect the current month's tab dynamically
+    let tabResult
+    try {
+      tabResult = await detectCurrentTab(SHEET_ID)
+    } catch (error) {
+      if (error instanceof TabDetectionError) {
+        console.error({
+          timestamp: new Date().toISOString(),
+          level: 'ERROR',
+          component: 'WorkoutsAPI',
+          action: 'tab_detection_failed',
+          details: {
+            code: error.code,
+            message: error.message,
+            errorDetails: error.details
+          }
+        })
+        
+        // Provide troubleshooting guidance based on error type
+        let troubleshooting = ''
+        if (error.code === 'CONFIG_ERROR') {
+          troubleshooting = 'Please ensure GOOGLE_SHEETS_API_KEY is set in environment variables.'
+        } else if (error.code === 'API_ERROR') {
+          troubleshooting = 'Unable to access Google Sheets API. Check API key permissions and spreadsheet accessibility.'
+        } else if (error.code === 'NO_TABS_FOUND') {
+          troubleshooting = 'No tabs found in the spreadsheet. Verify the spreadsheet ID is correct.'
+        }
+        
+        return NextResponse.json(
+          { 
+            error: 'Tab detection failed',
+            message: error.message,
+            troubleshooting
+          },
+          { status: 500 }
+        )
+      }
+      
+      // Generic error
+      console.error({
+        timestamp: new Date().toISOString(),
+        level: 'ERROR',
+        component: 'WorkoutsAPI',
+        action: 'unexpected_tab_detection_error',
+        details: {
+          error: error instanceof Error ? error.message : String(error)
+        }
+      })
+      return NextResponse.json(
+        { 
+          error: 'Tab detection failed',
+          message: error instanceof Error ? error.message : 'Unknown error',
+          troubleshooting: 'Check server logs for details.'
+        },
+        { status: 500 }
+      )
+    }
+    
+    // Log warning if fallback mode was used
+    if (tabResult.isFallback) {
+      console.warn({
+        timestamp: new Date().toISOString(),
+        level: 'WARN',
+        component: 'WorkoutsAPI',
+        action: 'fallback_tab_used',
+        details: {
+          tabName: tabResult.tabName,
+          sheetGid: tabResult.sheetGid,
+          warning: tabResult.warning
+        }
+      })
+    }
+
+    // Fetch the detected sheet tab as CSV (publicly accessible)
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${tabResult.sheetGid}`
     
     const response = await fetch(csvUrl, {
       cache: 'no-store' // Always fetch fresh data
@@ -59,11 +133,6 @@ export async function GET(request: Request) {
       }
     }
     
-    console.log('Looking for date:', requestDate)
-    console.log('Found dates:', allDates.sort())
-    console.log('Recent dates (2026):', allDates.filter(d => d.startsWith('2026')).sort())
-    console.log('Using header row:', headerRowIndex, 'column:', dateColumnIndex)
-    
     if (dateColumnIndex === -1 || headerRowIndex === -1) {
       const sortedDates = [...new Set(allDates)].sort()
       const firstDate = sortedDates[0]
@@ -77,7 +146,17 @@ export async function GET(request: Request) {
       })
     }
 
-    console.log('Found date at row:', headerRowIndex, 'column:', dateColumnIndex)
+    console.log({
+      timestamp: new Date().toISOString(),
+      level: 'INFO',
+      component: 'WorkoutsAPI',
+      action: 'date_found_in_sheet',
+      details: {
+        requestDate,
+        headerRowIndex,
+        dateColumnIndex
+      }
+    })
 
     // Build workout text from rows AFTER the header row until next header or end
     let workoutLines: string[] = []
@@ -86,15 +165,16 @@ export async function GET(request: Request) {
       const cells = parseCSVLine(lines[i])
       
       // Stop if we hit another header row (contains dates in columns C-J)
-      let isHeaderRow = false
+      // A header row must have at least 2 dates to be considered a header
+      let dateCount = 0
       for (let colIdx = 2; colIdx <= 9 && colIdx < cells.length; colIdx++) {
         if (normalizeDate(cells[colIdx])) {
-          isHeaderRow = true
-          break
+          dateCount++
         }
       }
       
-      if (isHeaderRow) break
+      // Only stop if we found multiple dates (indicating a new week header)
+      if (dateCount >= 2) break
       
       const cellValue = cells[dateColumnIndex]?.trim()
       
@@ -120,7 +200,15 @@ export async function GET(request: Request) {
     })
 
   } catch (error) {
-    console.error('Error fetching workout:', error)
+    console.error({
+      timestamp: new Date().toISOString(),
+      level: 'ERROR',
+      component: 'WorkoutsAPI',
+      action: 'fetch_workout_failed',
+      details: {
+        error: error instanceof Error ? error.message : String(error)
+      }
+    })
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
