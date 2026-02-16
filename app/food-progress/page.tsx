@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, lazy, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
@@ -25,23 +26,28 @@ const ComponentLoader = ({ children }: { children: string }) => (
 )
 
 export default function FoodProgressPage() {
+  return (
+    <Suspense fallback={<ComponentLoader>Food Progress</ComponentLoader>}>
+      <FoodProgressContent />
+    </Suspense>
+  )
+}
+
+function FoodProgressContent() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const viewParam = searchParams.get('view')
+
   const [currentView, setCurrentView] = useState<'daily' | 'weekly' | 'camera' | 'targets'>('daily')
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [targets, setTargets] = useState<DailyTargets | null>(null)
 
-  // Handle URL parameters for direct camera access
+  // Sync tab state from URL search params (works reliably in production)
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const view = params.get('view')
-      if (view === 'camera') {
-        setCurrentView('camera')
-      } else if (view === 'targets') {
-        setCurrentView('targets')
-      }
+    if (viewParam === 'camera' || viewParam === 'targets' || viewParam === 'weekly' || viewParam === 'daily') {
+      setCurrentView(viewParam)
     }
-  }, [])
+  }, [viewParam])
 
   // Keyboard shortcuts for navigation
   React.useEffect(() => {

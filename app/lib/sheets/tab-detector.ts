@@ -11,6 +11,7 @@ import type {
   ScoredTab,
   TabDetectionResult
 } from './types'
+import { TabDetectionError } from './types'
 
 /**
  * Score a tab based on whether it matches the current month/year
@@ -163,13 +164,19 @@ export function selectBestTab(
 
 /**
  * Detect the current month's tab from a Google Sheets spreadsheet
+ * 
+ * @param spreadsheetId - The spreadsheet ID
+ * @param referenceDate - Optional date to determine which month's tab to find.
+ *   Defaults to current UTC date. Pass the user's requested date to avoid
+ *   timezone mismatches between server (UTC) and user's local time.
  */
 export async function detectCurrentTab(
-  spreadsheetId: string
+  spreadsheetId: string,
+  referenceDate?: Date
 ): Promise<TabDetectionResult> {
-  const currentDate = new Date()
-  const currentMonth = currentDate.getMonth() + 1
-  const currentYear = currentDate.getFullYear()
+  const date = referenceDate ?? new Date()
+  const currentMonth = date.getMonth() + 1
+  const currentYear = date.getFullYear()
   
   const cached = tabCache.get(spreadsheetId, currentMonth, currentYear)
   if (cached) {
@@ -196,13 +203,21 @@ export async function detectCurrentTab(
   
   const apiKey = process.env.GOOGLE_SHEETS_API_KEY
   if (!apiKey) {
-    throw new Error('GOOGLE_SHEETS_API_KEY environment variable is not set')
+    throw new TabDetectionError(
+      'GOOGLE_SHEETS_API_KEY environment variable is not set',
+      'CONFIG_ERROR',
+      { spreadsheetId }
+    )
   }
   
   const tabs = await fetchSheetTabs(spreadsheetId, apiKey)
   
   if (tabs.length === 0) {
-    throw new Error('No tabs found in spreadsheet')
+    throw new TabDetectionError(
+      'No tabs found in spreadsheet',
+      'NO_TABS_FOUND',
+      { spreadsheetId }
+    )
   }
   
   const result = selectBestTab(tabs, currentMonth, currentYear)
