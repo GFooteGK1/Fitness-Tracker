@@ -338,11 +338,19 @@ export default function MealCameraCapture({
     // Handle offline scenario - queue for later processing
     if (!networkState.isOnline) {
       try {
+        const now = new Date()
         const queueId = queuePhotoUpload(
           photoState.file,
           userId,
           selectedDate 
-            ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 12, 0, 0).toISOString()
+            ? new Date(
+                selectedDate.getFullYear(), 
+                selectedDate.getMonth(), 
+                selectedDate.getDate(), 
+                now.getHours(), 
+                now.getMinutes(), 
+                now.getSeconds()
+              ).toISOString()
             : new Date().toISOString()
         )
 
@@ -398,9 +406,19 @@ export default function MealCameraCapture({
         formData.append('userId', userId)
         // Send full ISO timestamp with timezone - database will store in UTC
         // and the client will convert back to local time for display
-        // Use selectedDate if provided, otherwise use current time
+        // Use selectedDate if provided (with current time of day), otherwise use current time
         const timestamp = selectedDate 
-          ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 12, 0, 0).toISOString()
+          ? (() => {
+              const now = new Date()
+              return new Date(
+                selectedDate.getFullYear(), 
+                selectedDate.getMonth(), 
+                selectedDate.getDate(), 
+                now.getHours(), 
+                now.getMinutes(), 
+                now.getSeconds()
+              ).toISOString()
+            })()
           : new Date().toISOString()
         formData.append('timestamp', timestamp)
 
