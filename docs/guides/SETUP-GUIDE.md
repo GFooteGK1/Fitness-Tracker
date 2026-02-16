@@ -41,6 +41,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 
 # Anthropic (your existing API key)
 ANTHROPIC_API_KEY=sk-ant-your-key-here
+
+# Google Sheets API (optional - for dynamic tab detection)
+# See docs/guides/GOOGLE-SHEETS-API-SETUP.md for setup instructions
+# GOOGLE_SHEETS_API_KEY=your-google-sheets-api-key
 ```
 
 3. Save the file

@@ -11,9 +11,11 @@ inclusion: manual
 NEXT_PUBLIC_SUPABASE_URL=          # Supabase project URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=     # Supabase anon/public key
 ANTHROPIC_API_KEY=                 # Anthropic API key
+GOOGLE_SHEETS_API_KEY=             # Google Sheets API key (for dynamic tab detection)
 
 # Optional
-GOOGLE_SHEETS_CSV_URL=             # Coach programming Google Sheets CSV URL
+GOOGLE_SHEETS_CACHE_TTL_HOURS=4    # Cache duration for tab detection (default: 4 hours)
+GOOGLE_SHEETS_CSV_URL=             # Coach programming Google Sheets CSV URL (deprecated)
 ```
 
 ## Common Commands
