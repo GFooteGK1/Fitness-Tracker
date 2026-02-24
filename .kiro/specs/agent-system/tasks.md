@@ -1,0 +1,262 @@
+# Implementation Plan: Multi-Agent System
+
+## Overview
+
+Phased implementation of the multi-agent conversational system. Phase 1 establishes the foundation (types, database tables, classifier, chat persistence, routing). Phase 2 builds the full Trainer and Nutritionist agents with passive context. Phase 3 adds Socius cross-domain analysis and insights. Each phase delivers working functionality independently.
+
+## Tasks
+
+- [x] 1. Set up foundation: types, constants, database tables, and project structure
+  - [x] 1.1 Create agent type definitions in `app/lib/agents/types.ts`
+    - Define all types using the inheritance-based context system:
+    - Enums/literals: `InputMode`, `InputType`, `AgentDomain`, `ChatRole`, `InsightPriority`, `MealTiming`, `PatternId` (unified 10-pattern set: CAL_DEF, OVER_TRN, NUT_PERF, REC_VOL, PRO_REC, SLEEP_PERF, HRV_TREND, STRAIN_NUT, HYDRA, CON_PROG)
+    - Supporting data types: `MacroTargets`, `MacroTotals`, `UserDailyState`, `UserWeeklyState`, `MealItem`, `MealSummary`, `Movement`, `WorkoutBlock`, `RecentWorkout`, `BenchmarkPR`, `ThirtyDaySummary`, `DataAvailability`, `RecentInsight`
+    - Context hierarchy: `PassiveContext` (base with user_id, targets, today, week, recent_chat, pending_insights, current_time, day_of_week, has_whoop), `TrainerContext extends PassiveContext` (+ recent_workouts, benchmark_prs, todays_program, movement_aliases), `NutritionistContext extends PassiveContext` (+ todays_meals, portion_defaults, user_portion_history), `SociusContext extends PassiveContext` (+ thirty_day_summary, recent_insights, data_availability)
+    - Classifier types: `ExtractedContext`, `ClassificationResult` (confidence as numeric 0.0–1.0)
+    - Request/response: `AgentRequest`, `AgentResponse`, `AgentMessage`, `SmartDefault`
+    - Agent response types: `TrainerResponse`, `NutritionistResponse`, `SociusResponse`
+    - Chat types: `ChatMessage` (with both `input_mode` and `input_type` fields, `is_compacted`), `Insight` (confidence as numeric DECIMAL), `ChatCompactionSummary`
+    - _Requirements: 1.1, 1.7, 2.1, 2.7, 3.4, 4.6, 5.1, 6.1_
+  - [x] 1.2 Create constants file in `app/lib/agents/constants.ts`
+    - Define `MOVEMENT_ALIASES` record (PU→Pull-up, DL→Deadlift, BS→Back Squat, etc.)
+    - Define `PORTION_DEFAULTS` record (chicken breast→6 oz, rice→1 cup cooked, etc.)
+    - _Requirements: 2.6, 3.3_
+  - [x] 1.3 Create database migration SQL for `chat_messages` and `insights` tables
+    - Write migration in `docs/migrations/agent-system-tables.sql`
+    - `chat_messages`: include both `input_mode TEXT CHECK (...)` and `input_type TEXT CHECK (...)` columns, plus `is_compacted BOOLEAN NOT NULL DEFAULT false`
+    - `insights`: use `confidence DECIMAL NOT NULL` (numeric, not TEXT)
+    - Include RLS policies, indexes, and CHECK constraints as specified in the design
+    - Do NOT alter or drop any existing tables
+    - _Requirements: 6.1, 6.4, 4.6, 9.4_
+  - [x] 1.4 Create the `app/v2/` directory structure and placeholder page
+    - Create `app/v2/page.tsx` with a basic protected layout shell
+    - Create `app/v2/components/` directory
+    - Ensure `/v2` route does not affect existing `/dashboard` routing
+    - _Requirements: 8.1, 9.2, 9.5_
+
+- [x] 2. Implement the Classifier
+  - [x] 2.1 Create classifier system prompt in `app/lib/agents/prompts/classifier.ts`
+    - Write the system prompt instructing Haiku to return JSON matching `ClassificationResult`
+    - Include examples for each `InputType` and routing rules
+    - Include metadata extraction rules for dates, meal_timing, portions, scores, benchmarks
+    - _Requirements: 1.1, 1.7_
+  - [x] 2.2 Implement classifier logic in `app/lib/agents/classifier.ts`
+    - Call Claude Haiku (`claude-haiku-3-20241022`) with temperature 0, max_tokens 256
+    - Parse JSON response into `ClassificationResult` with numeric confidence
+    - Implement fallback to keyword-based classification on LLM failure
+    - _Requirements: 1.1, 1.5, 1.7_
+  - [x] 2.3 Write property test for classifier output structure (Property 1)
+    - **Property 1: Classifier output structure completeness**
+    - Generate random input strings, verify output contains valid `input_type`, non-empty `domains`, confidence in [0,1], and complete `extracted_context`
+    - **Validates: Requirements 1.1, 1.7**
+
+- [x] 3. Implement the Agent Router and unified endpoint
+  - [x] 3.1 Implement routing logic in `app/lib/agents/router.ts`
+    - Single domain (confidence > 0.7): call one agent
+    - Multi-domain: sequential pipeline, each agent sees previous responses
+    - Low confidence (< 0.5): return clarification message
+    - _Requirements: 1.2, 1.3, 1.4_
+  - [x] 3.2 Implement input preprocessing in `app/lib/agents/preprocessor.ts`
+    - Voice input: call existing `/api/transcribe-audio` endpoint for transcription, then pass text to classifier
+    - Photo input: accept base64 or storage URL, pass to classifier with input_mode='photo'
+    - _Requirements: 1.6, 7.4_
+  - [x] 3.3 Create the unified API endpoint at `app/api/agent/process/route.ts`
+    - Auth check via Supabase `getUser()`
+    - Parse `AgentRequest` body
+    - Full orchestration flow: preprocess → classify → check urgent insights → build context → route to agents → prepend urgent insights → execute actions → persist (with input_mode + input_type) → trigger Socius background → return `AgentResponse`
+    - Input validation: text max 5000 chars, photo max 5MB, audio max 10MB
+    - Error handling: structured error responses with appropriate HTTP status codes
+    - _Requirements: 7.1, 7.2, 7.3, 7.5_
+  - [x] 3.4 Write property tests for routing logic (Properties 2, 3)
+    - **Property 2: Router behavior matches classification**
+    - **Property 3: Multi-domain responses contain one message per domain**
+    - Generate random `ClassificationResult` objects, verify routing decisions and response message counts
+    - **Validates: Requirements 1.2, 1.3, 1.4, 7.6**
+  - [x] 3.5 Write property test for authentication enforcement (Property 22)
+    - **Property 22: Authentication enforcement**
+    - Verify unauthenticated requests return 401 and no agent is invoked
+    - **Validates: Requirements 7.2**
+  - [x] 3.6 Write property test for error response structure (Property 23)
+    - **Property 23: Error response structure**
+    - Generate random error scenarios, verify JSON response contains `error` field with non-empty message
+    - **Validates: Requirements 7.5**
+
+- [x] 4. Implement Chat Persistence Layer
+  - [x] 4.1 Implement chat persistence in `app/lib/agents/chat-persistence.ts`
+    - `persistMessages()`: insert user message + agent messages to `chat_messages`, storing both `input_mode` and `input_type` on user messages
+    - `fetchRecentChat()`: retrieve recent non-compacted messages in chronological order
+    - `fetchPendingUrgentInsights()`: retrieve unsurfaced urgent insights for prepending
+    - Store `related_entity_id` and `related_entity_type` when present
+    - _Requirements: 6.1, 6.2, 6.3, 6.5_
+  - [x] 4.2 Implement chat compaction in `app/lib/agents/chat-compaction.ts`
+    - `compactOldMessages()`: when non-compacted count exceeds threshold, summarize oldest messages
+    - `extractKeyFacts()`: preserve entity references, PR mentions, corrections
+    - Insert compacted summary as system message, mark originals as compacted
+    - _Requirements: 6.6, 6.7_
+  - [x] 4.3 Write property tests for chat persistence (Properties 19, 20)
+    - **Property 19: Chat message persistence round-trip**
+    - **Property 20: Chat retrieval ordering**
+    - Generate random messages, persist, fetch, verify fields match (including input_mode, input_type) and order is chronological
+    - **Validates: Requirements 6.1, 6.2, 6.3, 6.5**
+  - [x] 4.4 Write property test for chat compaction (Property 21)
+    - **Property 21: Chat compaction threshold**
+    - Generate message sets above threshold, verify compaction reduces count and preserves key facts
+    - **Validates: Requirements 6.6, 6.7**
+
+- [x] 5. Checkpoint - Phase 1 foundation
+  - Ensure all tests pass, ask the user if questions arise.
+  - Verify `/api/agent/process` endpoint works end-to-end with classifier + routing
+  - Verify `/v2` page renders without affecting `/dashboard`
+
+- [x] 6. Implement Context Builders
+  - [x] 6.1 Implement base passive context builder in `app/lib/agents/context-builder.ts`
+    - `buildPassiveContext(userId)`: parallel DB queries for targets, today's meals, today's workouts, WHOOP recovery/strain, recent chat, pending insights, week-to-date summaries
+    - Returns `PassiveContext` with user_id, targets (as `MacroTargets`), today (as `UserDailyState`), week (as `UserWeeklyState`), recent_chat, pending_insights, current_time, day_of_week, has_whoop
+    - Utility functions: `aggregateMacros()`, `calculateRemaining()`, `calculateWeekAdherence()`, `calculateRecoveryTrend()`, `getWeekStart()`
+    - _Requirements: 5.1, 5.6_
+  - [x] 6.2 Implement Trainer context builder
+    - `buildTrainerContext(userId)`: calls `buildPassiveContext()` then extends with `recent_workouts` (last 7 days as `RecentWorkout[]`), `benchmark_prs` (as `BenchmarkPR[]`), `todays_program` (from Google Sheets or null), `movement_aliases` (from `MOVEMENT_ALIASES` constant)
+    - _Requirements: 5.2_
+  - [x] 6.3 Implement Nutritionist context builder
+    - `buildNutritionistContext(userId)`: calls `buildPassiveContext()` then extends with `todays_meals` (as `MealSummary[]`), `portion_defaults` (from `PORTION_DEFAULTS` constant), `user_portion_history` (from recent meal items or null)
+    - _Requirements: 5.3, 3.4, 3.10_
+  - [x] 6.4 Implement Socius context builder
+    - `buildSociusContext(userId)`: calls `buildPassiveContext()` then extends with `thirty_day_summary` (as `ThirtyDaySummary` with workout_types breakdown), `recent_insights` (as `RecentInsight[]`), `data_availability` (as `DataAvailability`)
+    - _Requirements: 5.4, 4.8_
+  - [x] 6.5 Write property tests for context builders (Properties 16, 17, 18)
+    - **Property 16: Trainer context time window** — only last 7 days included
+    - **Property 17: Nutritionist context daily scope** — only today's meals included
+    - **Property 18: Socius context completeness** — all required fields present
+    - **Validates: Requirements 5.2, 5.3, 5.4**
+  - [x] 6.6 Write property tests for budget and adherence calculations (Properties 9, 12)
+    - **Property 9: Remaining macro budget calculation**
+    - **Property 12: Week-to-date adherence calculation**
+    - Generate random meals and targets, verify budget = target - sum and adherence percentages are correct
+    - **Validates: Requirements 3.4, 3.10**
+
+- [x] 7. Implement Trainer Agent
+  - [x] 7.1 Create Trainer prompt builder in `app/lib/agents/prompts/trainer.ts`
+    - Export `buildTrainerPrompt(ctx: TrainerContext): string` — function-based, receives full typed context, returns interpolated prompt string
+    - Expert CrossFit coach persona, encouraging but direct
+    - Embeds recent_workouts, benchmark_prs, todays_program, movement_aliases directly into prompt
+    - Instructions for parsing workouts into structured blocks, PR detection, smart defaults
+    - Output format: JSON action block + conversational text
+    - _Requirements: 2.1, 2.3, 2.5, 2.6, 2.7_
+  - [x] 7.2 Implement Trainer agent logic in `app/lib/agents/trainer-agent.ts`
+    - Call Claude Sonnet 4 with prompt from `buildTrainerPrompt()`
+    - Parse response into `TrainerResponse` (message, workout blocks, new_prs, smart_defaults, confidence)
+    - PR detection: compare against `benchmark_prs` from context, detect new PRs
+    - Smart defaults: fill missing RPE (estimate from intensity), fill missing weight (lookup from `recent_workouts`)
+    - Persist workout to `workouts` + `block_scores` tables (reuse existing insert patterns)
+    - Persist new PRs to `benchmark_prs`
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9_
+  - [x] 7.3 Write property tests for Trainer (Properties 4, 5, 6, 7)
+    - **Property 4: Trainer parse output structure**
+    - **Property 5: PR detection correctness**
+    - **Property 6: Smart default application**
+    - **Property 7: Workout persistence round-trip**
+    - **Validates: Requirements 2.1, 2.2, 2.3, 2.5, 2.6, 2.7, 2.9**
+
+- [x] 8. Implement Nutritionist Agent
+  - [x] 8.1 Create Nutritionist prompt builder in `app/lib/agents/prompts/nutritionist.ts`
+    - Export `buildNutritionistPrompt(ctx: NutritionistContext): string` — function-based, receives full typed context, returns interpolated prompt string
+    - Sports nutritionist persona, supportive and consistency-oriented
+    - Embeds todays_meals, targets, remaining budget, week-to-date adherence, portion_defaults directly into prompt
+    - Adherence messaging: reinforce consistency when on-track, constructive guidance when off-track
+    - End-of-week summary when full week data available
+    - Meal timing inference rules
+    - Output format: JSON action block + conversational text with macro summary
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.9, 3.10, 3.11, 3.12, 3.13_
+  - [x] 8.2 Implement Nutritionist agent logic in `app/lib/agents/nutritionist-agent.ts`
+    - Call Claude Sonnet 4 with prompt from `buildNutritionistPrompt()`
+    - Parse response into `NutritionistResponse` (message, meal items/totals/timing, remaining_budget, week_status, smart_defaults, confidence)
+    - Validate macros using existing `validateMealData` from `macro-validation.ts`
+    - Infer meal_timing from time of day and workout proximity
+    - Persist meal to `meals` table (reuse existing insert patterns)
+    - _Requirements: 3.1, 3.2, 3.5, 3.6, 3.8, 3.9_
+  - [x] 8.3 Write property tests for Nutritionist (Properties 8, 10, 11)
+    - **Property 8: Nutritionist parse output with portion defaults**
+    - **Property 10: Meal persistence round-trip**
+    - **Property 11: Meal timing inference**
+    - **Validates: Requirements 3.2, 3.3, 3.8, 3.9**
+
+- [x] 9. Checkpoint - Phase 2 agents
+  - Ensure all tests pass, ask the user if questions arise.
+  - Verify Trainer agent parses workouts, detects PRs, applies smart defaults, persists to DB
+  - Verify Nutritionist agent parses meals, calculates budget, includes WTD adherence, persists to DB
+
+- [x] 10. Implement Socius Agent and Background Analysis
+  - [x] 10.1 Create Socius prompt builder in `app/lib/agents/prompts/socius.ts`
+    - Export `buildSociusPrompt(ctx: SociusContext): string` — function-based, receives full typed context, returns interpolated prompt string
+    - Cross-domain analyst persona, data-driven but approachable
+    - Embeds thirty_day_summary (with workout_types breakdown), recent_insights, data_availability, week adherence directly into prompt
+    - Pattern library: all 10 unified patterns (CAL_DEF, OVER_TRN, NUT_PERF, REC_VOL, PRO_REC, SLEEP_PERF, HRV_TREND, STRAIN_NUT, HYDRA, CON_PROG)
+    - Instructions for synthesizing across domains, answering broad questions with high-level summaries
+    - _Requirements: 4.1, 4.7, 4.8, 4.9_
+  - [x] 10.2 Implement Socius agent logic in `app/lib/agents/socius-agent.ts`
+    - Call Claude Sonnet 4 with prompt from `buildSociusPrompt()`
+    - Parse response into `SociusResponse` (message, insights, data_points, confidence)
+    - Handle cross-domain questions conversationally
+    - _Requirements: 4.1, 4.7, 4.8, 4.9_
+  - [x] 10.3 Implement background pattern detection in `app/lib/agents/socius-background.ts`
+    - `triggerSociusBackground()`: fire-and-forget after workout/meal log
+    - Pattern checkers for all 10 patterns: `checkCaloricDeficit`, `checkOvertraining`, `checkNutritionPerformance`, `checkRecoveryVolume`, `checkProteinRecovery`, `checkSleepPerformance`, `checkHRVTrend`, `checkStrainNutrition`, `checkHydration`, `checkConsistentProgression`
+    - Create Insight records (with numeric confidence) for patterns with confidence > 0.6
+    - Classify CAL_DEF as urgent when strain ≥ 14 and calories < 1500
+    - _Requirements: 4.2, 4.3, 4.5, 4.6_
+  - [x] 10.4 Write property tests for Socius (Properties 13, 14, 15)
+    - **Property 13: Insight creation threshold**
+    - **Property 14: Caloric deficit urgency classification**
+    - **Property 15: Workout type aggregation**
+    - **Validates: Requirements 4.3, 4.5, 4.6, 4.8**
+
+- [x] 11. Implement V2 Chat UI
+  - [x] 11.1 Build the chat message area component in `app/v2/components/ChatArea.tsx`
+    - Scrollable message list with agent-attributed messages
+    - Distinct icons and color accents per agent (🏋️ Trainer, 🥗 Nutritionist, 🔮 Socius)
+    - Typing indicator when response is pending
+    - Urgent insight banner at top (dismissible)
+    - _Requirements: 8.1, 8.2, 8.6, 8.11_
+  - [x] 11.2 Build the input bar component in `app/v2/components/InputBar.tsx`
+    - Text input field (min 16px font)
+    - Voice button (Web Speech API activation)
+    - Camera button (environment-facing, compress with existing `imageUtils`)
+    - File upload button
+    - All touch targets minimum 44×44px
+    - _Requirements: 8.3, 8.4, 8.5, 8.10_
+  - [x] 11.3 Build the bottom navigation and tab views in `app/v2/components/BottomNav.tsx`
+    - Three tabs: Chat, Insights, PRs
+    - Insights tab: display insights sorted by priority then recency
+    - PRs tab: display benchmark PRs with historical progression
+    - _Requirements: 8.7, 8.8, 8.9_
+  - [x] 11.4 Wire up the V2 page in `app/v2/page.tsx`
+    - Protected route wrapper
+    - Connect ChatArea, InputBar, BottomNav
+    - Fetch initial chat history on load
+    - POST to `/api/agent/process` on input submission (sending `AgentRequest` with input_mode)
+    - Handle response: append messages to chat, trigger insight banner if urgent
+    - _Requirements: 8.1, 6.3_
+  - [x] 11.5 Write property test for insight sorting (Property 24)
+    - **Property 24: Insight sorting**
+    - Generate random insight sets, verify sort order: priority (urgent > notable > informational), then created_at descending
+    - **Validates: Requirements 8.8**
+
+- [x] 12. Final checkpoint - Full system integration
+  - Ensure all tests pass, ask the user if questions arise.
+  - Verify full flow: text/voice/photo input → classification → agent response → persistence → UI display
+  - Verify existing `/dashboard` and all existing API endpoints still work
+  - Verify Socius background analysis triggers after workout/meal logs
+
+## Notes
+
+- Tasks marked with `*` are optional and can be skipped for faster MVP
+- Each task references specific requirements for traceability
+- Checkpoints ensure incremental validation at each phase boundary
+- Property tests validate universal correctness properties using fast-check
+- Unit tests validate specific examples and edge cases
+- Existing library modules (macro-validation, adherence-calculator, imageUtils, auth) are reused — not reimplemented
+- All confidence values are numeric (0.0–1.0) throughout the system
+- Context builders use inheritance: `buildPassiveContext()` as base, domain builders extend it
+- Agent prompts are function-based builders that take typed context and return interpolated strings
+- The `chat_messages` table stores both `input_mode` (how submitted) and `input_type` (what classifier determined)
+- The unified `PatternId` type includes all 10 patterns: CAL_DEF, OVER_TRN, NUT_PERF, REC_VOL, PRO_REC, SLEEP_PERF, HRV_TREND, STRAIN_NUT, HYDRA, CON_PROG

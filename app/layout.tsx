@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "./lib/auth/AuthContext";
 import { ToastProvider } from "./components/Toast";
-import Navigation from "./components/Navigation";
+import ConditionalNavigation from "./components/ConditionalNavigation";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export const metadata: Metadata = {
@@ -28,14 +28,9 @@ export default function RootLayout({
         <ErrorBoundary>
           <AuthProvider>
             <ToastProvider>
-              <div className="min-h-screen flex flex-col">
-                <Navigation />
-                <main className="flex-1 p-4 pb-20 md:pb-4">
-                  <div className="max-w-4xl mx-auto">
-                    {children}
-                  </div>
-                </main>
-              </div>
+              <ConditionalNavigation>
+                {children}
+              </ConditionalNavigation>
             </ToastProvider>
           </AuthProvider>
         </ErrorBoundary>
