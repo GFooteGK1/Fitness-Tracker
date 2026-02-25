@@ -1,5 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
+import { apiError } from '@/app/lib/api-response'
+
+// ─── Rate Limiting ────────────────────────────────────────────────────────────
+// Per-user in-memory limit: 20 requests per 60-second window.
+// Note: serverless instances are not shared, so this is per-instance.
+// For strict global limiting, replace with Upstash Redis / Vercel KV.
+
+interface RateLimitEntry { count: number; windowStart: number }
+const rateLimitMap = new Map<string, RateLimitEntry>()
+const RATE_LIMIT_MAX = 20
+const RATE_LIMIT_WINDOW_MS = 60_000
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(userId)
+
+  if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(userId, { count: 1, windowStart: now })
+    return true
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) return false
+
+  entry.count++
+  return true
+}
 import type {
   AgentRequest,
   AgentResponse,
@@ -12,11 +38,10 @@ import { classifyInput } from '@/app/lib/agents/classifier'
 import { preprocessInput, validateRequest } from '@/app/lib/agents/preprocessor'
 import { determineRoute, executeRoute } from '@/app/lib/agents/router'
 import type { AgentCaller } from '@/app/lib/agents/router'
-import { buildTrainerContext, buildNutritionistContext } from '@/app/lib/agents/context-builder'
+import { buildTrainerContext, buildNutritionistContext, buildSociusContext, invalidatePassiveCache } from '@/app/lib/agents/context-builder'
 import { callTrainerAgent, persistWorkout, persistNewPRs } from '@/app/lib/agents/trainer-agent'
 import { callNutritionistAgent, persistMeal } from '@/app/lib/agents/nutritionist-agent'
 import { callSociusAgent, persistInsights } from '@/app/lib/agents/socius-agent'
-import { buildSociusContext } from '@/app/lib/agents/context-builder'
 import { triggerSociusBackground } from '@/app/lib/agents/socius-background'
 
 export async function POST(request: NextRequest) {
@@ -28,42 +53,47 @@ export async function POST(request: NextRequest) {
     // 1. Auth check
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return apiError('Unauthorized', 401)
     }
 
-    // 2. Parse & validate request
+    // 2. Parse & validate request (before rate limit — validation is free)
     let body: AgentRequest
     try {
       body = await request.json()
     } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+      return apiError('Invalid JSON body', 400)
     }
 
     const validationError = validateRequest(body)
     if (validationError) {
-      return NextResponse.json({ error: validationError }, { status: 400 })
+      return apiError(validationError, 400)
     }
 
-    // 3. Preprocess input (handle voice/photo/file)
+    // 3. Rate limit check (only count valid requests against the limit)
+    if (!checkRateLimit(user.id)) {
+      return apiError('Too many requests. Please wait before sending another message.', 429)
+    }
+
+    // 4. Preprocess input (handle voice/photo/file)
     const processedContent = await preprocessInput(body)
 
-    // 4. Classify
+    // 5. Classify
     const classification = await classifyInput(processedContent, body.input_mode)
 
-    // 5. Check for urgent pending insights
+    // 6. Check for urgent pending insights
     const urgentInsights = await fetchPendingUrgentInsights(supabase, user.id)
 
-    // 6. Route decision
+    // 7. Route decision
     const routeDecision = determineRoute(classification)
 
-    // 7. Build agent callers
+    // 8. Build agent callers
     const agentCallers: Record<AgentDomain, AgentCaller> = {
       trainer: createTrainerCaller(supabase),
       nutritionist: createNutritionistCaller(supabase),
       socius: createSociusCaller(supabase)
     }
 
-    // 8. Execute route
+    // 9. Execute route
     const agentMessages = await executeRoute(
       routeDecision,
       user.id,
@@ -72,7 +102,7 @@ export async function POST(request: NextRequest) {
       agentCallers
     )
 
-    // 9. Prepend urgent insight messages
+    // 10. Prepend urgent insight messages
     const messages: AgentMessage[] = []
     for (const insight of urgentInsights) {
       messages.push({
@@ -90,10 +120,10 @@ export async function POST(request: NextRequest) {
     }
     messages.push(...agentMessages)
 
-    // 10. Persist messages to chat_messages
+    // 11. Persist messages to chat_messages
     await persistChatMessages(supabase, user.id, body, messages, classification)
 
-    // 11. Trigger background pattern detection (fire-and-forget)
+    // 12. Trigger background pattern detection (fire-and-forget)
     // Only trigger after workout or meal logs
     if (classification.input_type === 'workout_log' || classification.input_type === 'meal_log') {
       triggerSociusBackground(user.id).catch(err => {
@@ -102,7 +132,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 12. Return response
+    // 13. Return response
     const elapsed = Date.now() - startTime
     const response: AgentResponse = {
       messages,
@@ -113,9 +143,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response)
   } catch (error) {
     console.error('Agent process error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+    return apiError(
+      'Internal server error',
+      500,
+      error instanceof Error ? error.message : 'Unknown error'
     )
   }
 }
@@ -140,6 +171,9 @@ function createTrainerCaller(
         if (workoutId && response.new_prs && response.new_prs.length > 0) {
           await persistNewPRs(response.new_prs, userId, workoutId, supabase)
         }
+
+        // Invalidate passive context cache so the next call sees the new workout
+        if (workoutId) invalidatePassiveCache(userId)
       }
 
       const message: AgentMessage = {
@@ -179,6 +213,9 @@ function createNutritionistCaller(
       let mealId: string | null = null
       if (response.meal && response.meal.items.length > 0) {
         mealId = await persistMeal(response, userId, supabase)
+
+        // Invalidate passive context cache so the next call sees the new meal
+        if (mealId) invalidatePassiveCache(userId)
       }
 
       const message: AgentMessage = {

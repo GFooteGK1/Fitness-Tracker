@@ -33,13 +33,16 @@ export async function callSociusAgent(
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
   const systemPrompt = buildSociusPrompt(ctx)
 
-  const message = await anthropic.messages.create({
-    model: SOCIUS_MODEL,
-    max_tokens: 4096,
-    temperature: 0,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userInput }]
-  })
+  const message = await anthropic.messages.create(
+    {
+      model: SOCIUS_MODEL,
+      max_tokens: 4096,
+      temperature: 0,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userInput }]
+    },
+    { signal: AbortSignal.timeout(30_000) }
+  )
 
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
   return parseSociusResponse(text)

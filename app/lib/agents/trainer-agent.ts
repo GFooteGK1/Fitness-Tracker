@@ -24,13 +24,16 @@ export async function callTrainerAgent(
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
   const systemPrompt = buildTrainerPrompt(ctx)
 
-  const message = await anthropic.messages.create({
-    model: TRAINER_MODEL,
-    max_tokens: 4096,
-    temperature: 0,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userInput }]
-  })
+  const message = await anthropic.messages.create(
+    {
+      model: TRAINER_MODEL,
+      max_tokens: 4096,
+      temperature: 0,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userInput }]
+    },
+    { signal: AbortSignal.timeout(30_000) }
+  )
 
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
   const parsed = parseTrainerResponse(text)
@@ -386,7 +389,7 @@ export function lookupLastWeight(
 
   for (const workout of recentWorkouts) {
     for (const block of workout.blocks) {
-      for (const movement of block.movements) {
+      for (const movement of (Array.isArray(block.movements) ? block.movements : [])) {
         if (movement.name.toLowerCase() === normalizedName && movement.weight) {
           return movement.weight
         }

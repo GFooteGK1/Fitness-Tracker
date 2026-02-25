@@ -9,6 +9,21 @@ import {
 import { MOVEMENT_ALIASES, PORTION_DEFAULTS } from './constants'
 import { fetchRecentChat, fetchPendingUrgentInsights } from './chat-persistence'
 
+// ─── Passive Context Cache ────────────────────────────────────────────
+// Short-lived per-user cache for the 8-query passive context fetch.
+// Back-to-back messages (common in conversation) reuse the cached context
+// rather than re-querying the database on every single agent call.
+// 30-second TTL keeps data fresh enough for interactive use.
+
+const PASSIVE_CACHE_TTL_MS = 30_000
+interface PassiveCacheEntry { context: PassiveContext; expiresAt: number }
+const passiveContextCache = new Map<string, PassiveCacheEntry>()
+
+/** Invalidate cache for a user — call after a workout or meal is persisted. */
+export function invalidatePassiveCache(userId: string): void {
+  passiveContextCache.delete(userId)
+}
+
 // ─── Default Targets ─────────────────────────────────────────────────
 
 const DEFAULT_TARGETS: MacroTargets = {
@@ -22,6 +37,10 @@ const DEFAULT_TARGETS: MacroTargets = {
 // ─── Base Context Builder ────────────────────────────────────────────
 
 export async function buildPassiveContext(userId: string): Promise<PassiveContext> {
+  const cacheNow = Date.now()
+  const cached = passiveContextCache.get(userId)
+  if (cached && cacheNow < cached.expiresAt) return cached.context
+
   const supabase = await createServerClient()
 
   const [targets, todaysMeals, todaysWorkouts, whoopRecovery, whoopStrain,
@@ -41,7 +60,7 @@ export async function buildPassiveContext(userId: string): Promise<PassiveContex
   const week = calculateWeekAdherence(weekSummaries, targets)
   const now = new Date()
 
-  return {
+  const context: PassiveContext = {
     user_id: userId,
     targets,
     today: {
@@ -59,6 +78,9 @@ export async function buildPassiveContext(userId: string): Promise<PassiveContex
     day_of_week: now.toLocaleDateString('en-US', { weekday: 'long' }),
     has_whoop: whoopRecovery !== null || whoopStrain !== null
   }
+
+  passiveContextCache.set(userId, { context, expiresAt: Date.now() + PASSIVE_CACHE_TTL_MS })
+  return context
 }
 
 // ─── Fetch Helpers (private) ─────────────────────────────────────────
@@ -505,6 +527,51 @@ async function fetchUserPortionHistory(
 
 // ─── Trainer Fetch Helpers (private) ─────────────────────────────────
 
+/**
+ * Normalize a raw JSONB block from the database into a valid WorkoutBlock.
+ * Blocks written by older routes (e.g. parse-workout) may have null/missing
+ * inner arrays. This prevents "is not iterable" errors in any downstream caller.
+ */
+export function normalizeBlockFromDB(block: unknown): WorkoutBlock {
+  const b = (block && typeof block === 'object' ? block : {}) as Record<string, unknown>
+
+  const validTypes = ['AMRAP', 'FOR_TIME', 'EMOM', 'STRENGTH', 'CARDIO'] as const
+  const blockType = validTypes.includes(b.block_type as typeof validTypes[number])
+    ? (b.block_type as WorkoutBlock['block_type'])
+    : 'FOR_TIME'
+
+  const movements = Array.isArray(b.movements)
+    ? b.movements.map((m: unknown) => {
+        const mv = (m && typeof m === 'object' ? m : {}) as Record<string, unknown>
+        return {
+          name: typeof mv.name === 'string' ? mv.name : 'Unknown',
+          reps: typeof mv.reps === 'number' ? mv.reps : undefined,
+          weight: typeof mv.weight === 'string' ? mv.weight : undefined,
+          distance: typeof mv.distance === 'string' ? mv.distance : undefined
+        }
+      })
+    : []
+
+  const rawScore = b.score && typeof b.score === 'object'
+    ? (b.score as Record<string, unknown>)
+    : undefined
+  const score = rawScore
+    ? {
+        rounds: typeof rawScore.rounds === 'number' ? rawScore.rounds : undefined,
+        extra_reps: typeof rawScore.extra_reps === 'number' ? rawScore.extra_reps : undefined,
+        time_s: typeof rawScore.time_s === 'number' ? rawScore.time_s : undefined
+      }
+    : undefined
+
+  return {
+    block_type: blockType,
+    duration_min: typeof b.duration_min === 'number' ? b.duration_min : undefined,
+    movements,
+    score,
+    rx_status: b.rx_status === 'RX' || b.rx_status === 'SCALED' ? b.rx_status : undefined
+  }
+}
+
 async function fetchRecentWorkouts(
   supabase: SupabaseClient,
   userId: string,
@@ -527,7 +594,7 @@ async function fetchRecentWorkouts(
     id: row.id,
     date: row.workout_date,
     input_text: row.input_text || '',
-    blocks: Array.isArray(row.blocks) ? row.blocks : [],
+    blocks: Array.isArray(row.blocks) ? row.blocks.map(normalizeBlockFromDB) : [],
     primary_score: row.primary_score ?? null,
     rpe: row.rpe != null ? parseFloat(row.rpe) : null,
     tags: Array.isArray(row.tags) ? row.tags : []

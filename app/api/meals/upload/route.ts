@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import Anthropic from '@anthropic-ai/sdk'
+import { apiError } from '@/app/lib/api-response'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MIN_FILE_SIZE = 1000
@@ -22,19 +23,13 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       console.error('[Upload] Authentication failed:', authError)
-      return NextResponse.json({ 
-        error: 'Unauthorized', 
-        details: authError?.message || 'No user session found'
-      }, { status: 401 })
+      return apiError('Unauthorized', 401, authError?.message || 'No user session found')
     }
 
     // Verify API key is configured
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('[Upload] ANTHROPIC_API_KEY not configured')
-      return NextResponse.json({ 
-        error: 'AI service not configured. Please contact support.',
-        analysisStatus: 'failed'
-      }, { status: 500 })
+      return apiError('AI service not configured. Please contact support.', 500)
     }
 
     // Debug: Log API key info (first/last few chars only for security)
@@ -51,7 +46,7 @@ export async function POST(request: NextRequest) {
     const timestamp = formData.get('timestamp') as string
 
     if (!file || !timestamp) {
-      return NextResponse.json({ error: 'Missing photo or timestamp' }, { status: 400 })
+      return apiError('Missing photo or timestamp', 400)
     }
 
     console.log('[Upload] File received:', {
@@ -61,11 +56,11 @@ export async function POST(request: NextRequest) {
     })
 
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 })
+      return apiError('File too large (max 10MB)', 400)
     }
 
     if (file.size < MIN_FILE_SIZE) {
-      return NextResponse.json({ error: 'File too small or corrupted' }, { status: 400 })
+      return apiError('File too small or corrupted', 400)
     }
 
     // Normalize media type
@@ -158,7 +153,7 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       console.error('[Upload] DB error:', dbError)
-      return NextResponse.json({ error: 'Database error' }, { status: 500 })
+      return apiError('Database error', 500, dbError.message)
     }
 
     // Check if analysis actually succeeded
@@ -180,6 +175,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('[Upload] Unexpected error:', error)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    return apiError('Server error', 500, error instanceof Error ? error.message : undefined)
   }
 }
