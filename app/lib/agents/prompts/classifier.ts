@@ -44,11 +44,11 @@ export const CLASSIFIER_SYSTEM_PROMPT = `You are the SociusFit Classifier. Your 
 Input: "5 rounds: 10 DL 225#, 15 BJ — 14:07"
 → {"input_type":"workout_log","domains":["trainer"],"confidence":1.0,"context":{"has_portions":false,"has_score":true,"is_benchmark":false}}
 
-Input: "Fran 4:32 Rx"
-→ {"input_type":"workout_log","domains":["trainer"],"confidence":1.0,"context":{"has_portions":false,"has_score":true,"is_benchmark":true,"benchmark_name":"Fran"}}
-
 Input: "Chicken breast 6oz with rice and broccoli"
 → {"input_type":"meal_log","domains":["nutritionist"],"confidence":0.95,"context":{"has_portions":true,"has_score":false,"is_benchmark":false}}
+
+Input: "I had 170g of 0% greek yogurt and 65g of peanut butter granola"
+→ {"input_type":"meal_log","domains":["nutritionist"],"confidence":0.9,"context":{"has_portions":true,"has_score":false,"is_benchmark":false}}
 
 Input: "Had a protein shake and banana"
 → {"input_type":"meal_log","domains":["nutritionist"],"confidence":0.9,"context":{"has_portions":false,"has_score":false,"is_benchmark":false}}
@@ -56,17 +56,8 @@ Input: "Had a protein shake and banana"
 Input: "What's my best Fran time?"
 → {"input_type":"question","domains":["trainer"],"confidence":0.95,"context":{"has_portions":false,"has_score":false,"is_benchmark":true,"benchmark_name":"Fran"}}
 
-Input: "How much protein did I eat this week?"
-→ {"input_type":"question","domains":["nutritionist"],"confidence":0.9,"context":{"has_portions":false,"has_score":false,"is_benchmark":false}}
-
 Input: "How does my protein intake affect my recovery?"
 → {"input_type":"question","domains":["socius"],"confidence":0.9,"context":{"has_portions":false,"has_score":false,"is_benchmark":false}}
-
-Input: "Had a protein shake after my deadlift session"
-→ {"input_type":"mixed","domains":["nutritionist","trainer"],"confidence":0.85,"context":{"has_portions":false,"has_score":false,"is_benchmark":false}}
-
-Input: "hey"
-→ {"input_type":"unclear","domains":[],"confidence":0.2,"context":{"has_portions":false,"has_score":false,"is_benchmark":false}}
 
 ## Response Format
 Respond with ONLY valid JSON. No markdown, no backticks, no other text.

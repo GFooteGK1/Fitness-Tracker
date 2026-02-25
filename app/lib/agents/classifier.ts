@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { ClassificationResult, InputMode, InputType, AgentDomain } from './types'
 import { CLASSIFIER_SYSTEM_PROMPT, buildClassifierInput } from './prompts/classifier'
 
-const CLASSIFIER_MODEL = 'claude-haiku-3-20241022'
+const CLASSIFIER_MODEL = 'claude-haiku-4-5-20251001'
 
 /**
  * Classify user input using Claude Haiku.
@@ -101,7 +101,26 @@ const WORKOUT_KEYWORDS = [
 const NUTRITION_KEYWORDS = [
   'protein', 'calories', 'carbs', 'fat', 'meal', 'food', 'ate', 'eating',
   'macros', 'diet', 'nutrition', 'breakfast', 'lunch', 'dinner', 'snack',
-  'chicken', 'rice', 'eggs', 'shake', 'oatmeal', 'salmon', 'steak'
+  'chicken', 'rice', 'eggs', 'shake', 'oatmeal', 'salmon', 'steak',
+  // Dairy products
+  'yogurt', 'milk', 'cheese', 'cottage cheese', 'greek yogurt',
+  // Grains/cereals
+  'granola', 'cereal', 'quinoa', 'pasta', 'bread', 'bagel', 'tortilla',
+  // Fruits
+  'banana', 'apple', 'berries', 'strawberries', 'blueberries', 'avocado', 
+  'orange', 'grapes', 'mango',
+  // Vegetables
+  'broccoli', 'spinach', 'kale', 'carrots', 'peppers', 'tomato', 'cucumber', 'lettuce',
+  // Proteins
+  'turkey', 'pork', 'tuna', 'shrimp', 'tofu', 'beef', 'fish',
+  // Fats
+  'peanut butter', 'almond butter', 'nuts', 'almonds', 'walnuts', 'olive oil', 'butter', 'oil',
+  // Common meal descriptors
+  'smoothie', 'salad', 'sandwich', 'wrap', 'bowl'
+]
+
+const MEAL_VERBS = [
+  'had', 'ate', 'consumed', 'drank', 'finished', 'eating', 'drinking'
 ]
 
 const CROSS_DOMAIN_TRIGGERS = [
@@ -121,6 +140,14 @@ function findMatches(text: string, keywords: string[]): string[] {
 }
 
 /**
+ * Detect if input contains past-tense food verbs that indicate meal logging.
+ */
+function hasMealVerbs(text: string): boolean {
+  const lower = text.toLowerCase()
+  return MEAL_VERBS.some(verb => lower.includes(verb))
+}
+
+/**
  * Keyword-based fallback classification when LLM is unavailable.
  */
 export function classifyWithKeywords(content: string, inputMode: InputMode): ClassificationResult {
@@ -136,9 +163,21 @@ export function classifyWithKeywords(content: string, inputMode: InputMode): Cla
   let domains: AgentDomain[] = []
   let confidence = 0.3
 
+  // Check for portions and meal verbs early
+  // Expanded portion detection: units OR simple numbers before food items
+  const hasPortions = /\d+\s*(oz|g|cup|tbsp|lb|kg|slice|scoop|banana|egg|avocado|apple|orange|almond)/i.test(content) ||
+    /\d+\s+(scoops?|pieces?|servings?)/i.test(content)
+  const hasMealVerbsPresent = hasMealVerbs(content)
+
   if (crossDomainMatches.length > 0) {
     inputType = 'question'
     domains = ['socius']
+    confidence = 0.7
+  } else if (hasMealVerbsPresent && hasPortions && !isQuestion) {
+    // Strong meal indicator: meal verbs + portions → prioritize meal_log
+    // This handles cases like "Had 2 scoops protein powder" even if "protein" might match workout keywords
+    inputType = 'meal_log'
+    domains = ['nutritionist']
     confidence = 0.7
   } else if (workoutMatches.length > 0 && nutritionMatches.length > 0) {
     inputType = 'mixed'
@@ -158,12 +197,25 @@ export function classifyWithKeywords(content: string, inputMode: InputMode): Cla
     confidence = 0.5
   }
 
+  // Confidence boosting for meal_log when portions + meal indicators are present
+  if (inputType === 'meal_log' && hasPortions) {
+    // If portions detected AND (nutrition keywords OR meal verbs) → boost confidence to 0.7
+    if (nutritionMatches.length > 0 || hasMealVerbsPresent) {
+      confidence = Math.max(confidence, 0.7)
+    }
+    
+    // If portions detected AND nutrition keywords AND meal verbs → boost confidence to 0.8
+    if (nutritionMatches.length > 0 && hasMealVerbsPresent) {
+      confidence = 0.8
+    }
+  }
+
   return {
     input_type: inputType,
     domains,
     confidence,
     context: {
-      has_portions: /\d+\s*(oz|g|cup|tbsp|lb|kg|slice|scoop)/i.test(content),
+      has_portions: hasPortions,
       has_score: /\d+[+:]\d+|\d+:\d{2}/.test(content),
       is_benchmark: benchmarkMatches.length > 0,
       benchmark_name: benchmarkMatches[0] || undefined
