@@ -31,13 +31,16 @@ export async function callNutritionistAgent(
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
   const systemPrompt = buildNutritionistPrompt(ctx)
 
-  const message = await anthropic.messages.create({
-    model: NUTRITIONIST_MODEL,
-    max_tokens: 4096,
-    temperature: 0,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userInput }]
-  })
+  const message = await anthropic.messages.create(
+    {
+      model: NUTRITIONIST_MODEL,
+      max_tokens: 4096,
+      temperature: 0,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userInput }]
+    },
+    { signal: AbortSignal.timeout(30_000) }
+  )
 
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
   const parsed = parseNutritionistResponse(text)

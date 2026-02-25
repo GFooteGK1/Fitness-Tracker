@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
+import { apiError } from '@/app/lib/api-response'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!
@@ -14,19 +15,13 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return apiError('Unauthorized', 401)
     }
 
     const { text, date } = await request.json()
 
     if (!text || !text.trim()) {
-      return NextResponse.json(
-        { error: 'Workout text is required' },
-        { status: 400 }
-      )
+      return apiError('Workout text is required', 400)
     }
 
     // Parse workout with Claude
@@ -78,10 +73,7 @@ export async function POST(request: Request) {
 
     if (workoutError) {
       console.error('Supabase error:', workoutError)
-      return NextResponse.json(
-        { error: 'Failed to save workout: ' + workoutError.message },
-        { status: 500 }
-      )
+      return apiError('Failed to save workout', 500, workoutError.message)
     }
 
     // Save block scores
@@ -116,10 +108,7 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Parse error:', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    )
+    return apiError('Failed to parse workout', 500, error instanceof Error ? error.message : 'Unknown error')
   }
 }
 

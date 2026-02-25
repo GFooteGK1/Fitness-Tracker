@@ -10,7 +10,7 @@ export function buildTrainerPrompt(ctx: TrainerContext): string {
   const workoutList = ctx.recent_workouts
     .map(w => {
       const blocks = w.blocks
-        .map(b => `${b.block_type}${b.duration_min ? ` ${b.duration_min}min` : ''}: ${b.movements.map(m => `${m.reps ?? ''}${m.reps ? ' ' : ''}${m.name}${m.weight ? ' ' + m.weight : ''}`).join(', ')}`)
+        .map(b => `${b.block_type}${b.duration_min ? ` ${b.duration_min}min` : ''}: ${(Array.isArray(b.movements) ? b.movements : []).map(m => `${m.reps ?? ''}${m.reps ? ' ' : ''}${m.name}${m.weight ? ' ' + m.weight : ''}`).join(', ')}`)
         .join(' | ')
       return `- ${w.date}: ${w.input_text} [${blocks}] (Score: ${w.primary_score ?? 'none'}, RPE: ${w.rpe ?? 'N/A'}, Tags: ${w.tags.length ? w.tags.join(', ') : 'none'})`
     })
