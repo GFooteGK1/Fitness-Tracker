@@ -8,6 +8,7 @@ import {
 } from './types'
 import { MOVEMENT_ALIASES, PORTION_DEFAULTS } from './constants'
 import { fetchRecentChat, fetchPendingUrgentInsights } from './chat-persistence'
+import { fetchWorkoutForDate } from '@/app/lib/sheets/workout-fetcher'
 
 // ─── Passive Context Cache ────────────────────────────────────────────
 // Short-lived per-user cache for the 8-query passive context fetch.
@@ -623,21 +624,9 @@ async function fetchBenchmarkPRs(
   }))
 }
 
-async function fetchTodaysProgram(userId: string): Promise<string | null> {
-  const csvUrl = process.env.GOOGLE_SHEETS_CSV_URL
-  if (!csvUrl) return null
-
-  try {
-    const response = await fetch(csvUrl, { signal: AbortSignal.timeout(5000) })
-    if (!response.ok) return null
-
-    const text = await response.text()
-    if (!text.trim()) return null
-
-    return text
-  } catch {
-    return null
-  }
+async function fetchTodaysProgram(_userId: string): Promise<string | null> {
+  const today = new Date().toISOString().split('T')[0]
+  return fetchWorkoutForDate(today)
 }
 
 // ─── Utility Functions (exported for testing) ────────────────────────
