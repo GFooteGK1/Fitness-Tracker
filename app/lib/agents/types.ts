@@ -208,8 +208,11 @@ export interface ClassificationResult {
 export interface AgentRequest {
   content: string            // Text content or transcription
   input_mode: InputMode
+  input_type?: InputType     // Optional hint: 'workout_log', 'meal_log', 'query', etc.
+  photo_url?: string         // Public URL of an already-uploaded photo
   photo_data?: string        // Base64 or storage URL
   audio_data?: string        // Base64 audio for transcription
+  tz_offset?: number         // User's local timezone offset in minutes (local − UTC, e.g. CST = -360)
 }
 
 /** Smart default that was applied */

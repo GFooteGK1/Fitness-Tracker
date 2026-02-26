@@ -37,7 +37,15 @@ const DEFAULT_TARGETS: MacroTargets = {
 
 // ─── Base Context Builder ────────────────────────────────────────────
 
-export async function buildPassiveContext(userId: string): Promise<PassiveContext> {
+/**
+ * Build the shared passive context for all agents.
+ *
+ * @param userId  - Supabase user ID
+ * @param tzOffset - User's local timezone offset in minutes (local − UTC).
+ *                   For CST (UTC-6) pass -360.  Defaults to 0 (UTC).
+ *                   Used to surface the correct local time and date to agents.
+ */
+export async function buildPassiveContext(userId: string, tzOffset = 0): Promise<PassiveContext> {
   const cacheNow = Date.now()
   const cached = passiveContextCache.get(userId)
   if (cached && cacheNow < cached.expiresAt) return cached.context
@@ -59,7 +67,17 @@ export async function buildPassiveContext(userId: string): Promise<PassiveContex
   const consumed = aggregateMacros(todaysMeals)
   const remaining = calculateRemaining(consumed, targets)
   const week = calculateWeekAdherence(weekSummaries, targets)
+
+  // Compute user's local time by shifting UTC server time by tzOffset.
+  // This ensures agents see the correct local time/day even on UTC servers (Vercel).
   const now = new Date()
+  const localNow = new Date(now.getTime() + tzOffset * 60_000)
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const dayOfWeek = days[localNow.getUTCDay()]
+  const h = localNow.getUTCHours()
+  const m = String(localNow.getUTCMinutes()).padStart(2, '0')
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const localTimeStr = `${h % 12 || 12}:${m} ${ampm}`
 
   const context: PassiveContext = {
     user_id: userId,
@@ -75,8 +93,8 @@ export async function buildPassiveContext(userId: string): Promise<PassiveContex
     week,
     recent_chat: recentChat,
     pending_insights: pendingInsights,
-    current_time: now.toISOString(),
-    day_of_week: now.toLocaleDateString('en-US', { weekday: 'long' }),
+    current_time: localTimeStr,                // e.g. "6:30 PM" (local time)
+    day_of_week: dayOfWeek,                    // e.g. "Wednesday" (local day)
     has_whoop: whoopRecovery !== null || whoopStrain !== null
   }
 
@@ -228,14 +246,18 @@ async function fetchWeekToDateSummaries(
 
 // ─── Domain-Specific Builders ────────────────────────────────────────
 
-export async function buildTrainerContext(userId: string): Promise<TrainerContext> {
+export async function buildTrainerContext(userId: string, tzOffset = 0): Promise<TrainerContext> {
   const supabase = await createServerClient()
 
+  // Derive local date from tzOffset for program lookup
+  const localNow = new Date(Date.now() + tzOffset * 60_000)
+  const localDate = localNow.toISOString().split('T')[0]
+
   const [passive, recentWorkouts, benchmarkPrs, todaysProgram] = await Promise.all([
-    buildPassiveContext(userId),
+    buildPassiveContext(userId, tzOffset),
     fetchRecentWorkouts(supabase, userId, 7),
     fetchBenchmarkPRs(supabase, userId),
-    fetchTodaysProgram(userId)
+    fetchTodaysProgram(userId, localDate)
   ])
 
   return {
@@ -249,11 +271,11 @@ export async function buildTrainerContext(userId: string): Promise<TrainerContex
 
 // ─── Nutritionist Context Builder ────────────────────────────────────
 
-export async function buildNutritionistContext(userId: string): Promise<NutritionistContext> {
+export async function buildNutritionistContext(userId: string, tzOffset = 0): Promise<NutritionistContext> {
   const supabase = await createServerClient()
 
   const [passive, todaysMeals, portionHistory] = await Promise.all([
-    buildPassiveContext(userId),
+    buildPassiveContext(userId, tzOffset),
     fetchTodaysMealDetails(supabase, userId),
     fetchUserPortionHistory(supabase, userId)
   ])
@@ -268,11 +290,11 @@ export async function buildNutritionistContext(userId: string): Promise<Nutritio
 
 // ─── Socius Context Builder ──────────────────────────────────────────
 
-export async function buildSociusContext(userId: string): Promise<SociusContext> {
+export async function buildSociusContext(userId: string, tzOffset = 0): Promise<SociusContext> {
   const supabase = await createServerClient()
 
   const [passive, thirtyDaySummary, recentInsights, dataAvailability] = await Promise.all([
-    buildPassiveContext(userId),
+    buildPassiveContext(userId, tzOffset),
     fetchThirtyDaySummary(supabase, userId),
     fetchRecentInsightsDetailed(supabase, userId),
     fetchDataAvailability(supabase, userId)
@@ -624,9 +646,8 @@ async function fetchBenchmarkPRs(
   }))
 }
 
-async function fetchTodaysProgram(_userId: string): Promise<string | null> {
-  const today = new Date().toISOString().split('T')[0]
-  return fetchWorkoutForDate(today)
+async function fetchTodaysProgram(_userId: string, localDate: string): Promise<string | null> {
+  return fetchWorkoutForDate(localDate)
 }
 
 // ─── Utility Functions (exported for testing) ────────────────────────
