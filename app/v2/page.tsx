@@ -5,6 +5,7 @@ import { useAuth } from '@/app/lib/auth/AuthContext'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/app/lib/auth/supabase-client'
 import type { AgentRequest, AgentResponse } from '@/app/lib/agents/types'
+import { getLocalDate } from '@/app/lib/timezone-utils'
 
 // ============================================================
 // TYPES
@@ -259,10 +260,12 @@ export default function V2Page() {
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([])
   const [recovery, setRecovery] = useState(0)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false)
+  const recognitionRef = useRef<any>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef  = useRef<HTMLInputElement>(null)
+  const photoModeRef    = useRef<'meal' | 'workout'>('meal')
   const [program, setProgram] = useState<ProgramBlock[] | null>(null)
   const [macros, setMacros] = useState<{ consumed: Macros; target: Macros }>({
     consumed: { protein: 0, carbs: 0, fat: 0, calories: 0 },
@@ -310,8 +313,8 @@ export default function V2Page() {
         }
       }
 
-      // Load today's nutrition
-      const today = new Date().toISOString().split('T')[0]
+      // Load today's nutrition using local date (not UTC, which can be tomorrow after 6 PM CST)
+      const today = getLocalDate()
       // Pass local timezone offset so the API queries the correct UTC window.
       // JS getTimezoneOffset() returns (UTC - local) in minutes, so negate it to get (local - UTC).
       const tzOffset = -new Date().getTimezoneOffset()
@@ -361,14 +364,21 @@ export default function V2Page() {
         .limit(50)
 
       if (data && data.length > 0) {
+        // Auto-reset: if the last message is > 4 hours old, start a fresh session.
+        // DB records are kept intact; we just don't display the stale history.
+        const lastCreated = new Date(data[data.length - 1].created_at).getTime()
+        if (lastCreated < Date.now() - 4 * 60 * 60 * 1000) {
+          return
+        }
+
         const loadedMessages: Message[] = data.map(row => ({
           id: row.id,
           role: row.domain || 'system',
           content: row.content,
-          time: new Date(row.created_at).toLocaleTimeString('en-US', { 
-            hour: 'numeric', 
-            minute: '2-digit', 
-            hour12: true 
+          time: new Date(row.created_at).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
           }).toLowerCase().replace(' ', '')
         }))
         setMessages(loadedMessages)
@@ -380,7 +390,7 @@ export default function V2Page() {
 
   const loadTodaysProgram = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0]
+      const today = getLocalDate()
       const res = await fetch(`/api/workouts?date=${today}`)
       if (res.ok) {
         const data = await res.json()
@@ -419,7 +429,7 @@ export default function V2Page() {
       const request: AgentRequest = {
         content: userMsg.content,
         input_mode: 'text',
-        input_type: 'query'
+        tz_offset: -new Date().getTimezoneOffset()
       }
 
       const response = await fetch('/api/agent/process', {
@@ -463,128 +473,140 @@ export default function V2Page() {
     router.push('/auth/signin')
   }
 
-  const handleVoiceStart = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
-      const chunks: Blob[] = []
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunks.push(e.data)
-        }
-      }
-
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' })
-        await handleVoiceTranscription(audioBlob)
-        stream.getTracks().forEach(track => track.stop())
-      }
-
-      setAudioChunks(chunks)
-      setMediaRecorder(recorder)
-      recorder.start()
-      setIsRecording(true)
-    } catch (error) {
-      console.error('Error starting recording:', error)
-      alert('Could not access microphone. Please check permissions.')
+  const handleVoiceStart = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert('Voice recognition is not supported in this browser. Try Chrome or Edge.')
+      return
     }
+
+    const recognition = new SpeechRecognition()
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'en-US'
+
+    recognition.onstart = () => setIsRecording(true)
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      setInputValue(prev => prev ? `${prev} ${transcript}` : transcript)
+    }
+    recognition.onerror = (event: any) => {
+      setIsRecording(false)
+      if (event.error === 'not-allowed') {
+        alert('Microphone access denied. Please enable it in your browser settings.')
+      }
+    }
+    recognition.onend = () => setIsRecording(false)
+
+    recognitionRef.current = recognition
+    recognition.start()
   }
 
   const handleVoiceStop = () => {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop()
-      setIsRecording(false)
-    }
+    recognitionRef.current?.stop()
+    setIsRecording(false)
   }
 
-  const handleVoiceTranscription = async (audioBlob: Blob) => {
-    try {
-      const formData = new FormData()
-      formData.append('audio', audioBlob, 'recording.webm')
-
-      const response = await fetch('/api/transcribe-audio', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (!response.ok) throw new Error('Transcription failed')
-
-      const data = await response.json()
-      if (data.text) {
-        setInputValue(data.text)
-      }
-    } catch (error) {
-      console.error('Error transcribing audio:', error)
-      alert('Failed to transcribe audio. Please try again.')
-    }
-  }
-
-  const handlePhotoCapture = () => {
-    fileInputRef.current?.click()
+  const handlePhotoCapture = (mode: 'meal' | 'workout', source: 'camera' | 'gallery') => {
+    photoModeRef.current = mode
+    setShowPhotoMenu(false)
+    if (source === 'camera') cameraInputRef.current?.click()
+    else galleryInputRef.current?.click()
   }
 
   const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Reset the input so the same file can be selected again later
+    e.target.value = ''
+
     setIsTyping(true)
-    const now = new Date().toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit', 
-      hour12: true 
+    const now = new Date().toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
     }).toLowerCase().replace(' ', '')
 
+    const mode = photoModeRef.current
+
+    setMessages(m => [...m, {
+      id: Date.now().toString(),
+      role: 'user',
+      content: mode === 'meal' ? '📷 Meal photo' : '📷 Workout photo',
+      time: now
+    }])
+
     try {
-      // Show user message with photo indicator
-      const userMsg: Message = {
-        id: Date.now().toString(),
-        role: 'user',
-        content: '📷 Uploaded photo',
-        time: now
+      if (mode === 'meal') {
+        // ── Meal path ──────────────────────────────────────────────────
+        // /api/meals/upload analyzes with Claude Vision and saves the meal to DB.
+        // Display the analysis inline and invite portion refinements via follow-up chat.
+        const formData = new FormData()
+        formData.append('photo', file)
+        const uploadResponse = await fetch('/api/meals/upload', { method: 'POST', body: formData })
+        if (!uploadResponse.ok) throw new Error('Photo upload failed')
+        const uploadData = await uploadResponse.json()
+
+        const a = uploadData.analysis ?? {}
+        const macroLine = a.total_protein !== undefined
+          ? `\n\nProtein: ${Math.round(a.total_protein)}g | Carbs: ${Math.round(a.total_carbs)}g | Fat: ${Math.round(a.total_fat)}g | Calories: ${Math.round(a.total_calories)} kcal`
+          : ''
+        const notes = a.notes
+          ? `${a.notes}${macroLine}`
+          : `Meal logged!${macroLine}`
+        const responseContent = `${notes}\n\nIf you'd like to adjust any portions, just reply and I'll update the totals.`
+
+        setMessages(m => [...m, {
+          id: String(Date.now() + 1),
+          role: 'nutritionist',
+          content: responseContent,
+          time: now
+        }])
+        setTimeout(loadDashboardData, 500)
+
+      } else {
+        // ── Workout path ───────────────────────────────────────────────
+        // Extract workout text from the photo via Claude Vision, then send
+        // the extracted text to the Trainer agent as a standard workout log.
+        const formData = new FormData()
+        formData.append('photo', file)
+        const extractRes = await fetch('/api/workouts/from-photo', { method: 'POST', body: formData })
+        if (!extractRes.ok) throw new Error('Workout extraction failed')
+        const { workoutText, isWorkout } = await extractRes.json()
+
+        if (!isWorkout || !workoutText) {
+          setMessages(m => [...m, {
+            id: String(Date.now() + 1),
+            role: 'system',
+            content: "I couldn't identify a workout in that photo. Try typing it out or take a clearer shot.",
+            time: now
+          }])
+          return
+        }
+
+        const agentRes = await fetch('/api/agent/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: workoutText,
+            input_mode: 'text',
+            input_type: 'workout_log',
+            tz_offset: -new Date().getTimezoneOffset()
+          } satisfies AgentRequest)
+        })
+        if (!agentRes.ok) throw new Error('Failed to process workout')
+        const agentData: AgentResponse = await agentRes.json()
+
+        const agentMessages: Message[] = agentData.messages.map(msg => ({
+          id: String(Date.now() + Math.random()),
+          role: msg.domain || 'trainer',
+          content: msg.content,
+          time: now
+        }))
+        setMessages(m => [...m, ...agentMessages])
+        setTimeout(loadDashboardData, 500)
       }
-      setMessages(m => [...m, userMsg])
-
-      // Upload photo
-      const formData = new FormData()
-      formData.append('photo', file)
-
-      const uploadResponse = await fetch('/api/meals/upload', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (!uploadResponse.ok) throw new Error('Photo upload failed')
-
-      const uploadData = await uploadResponse.json()
-
-      // Analyze with agent system
-      const request: AgentRequest = {
-        content: `Analyze this meal photo: ${uploadData.photo_url}`,
-        input_mode: 'photo',
-        input_type: 'meal_log',
-        photo_url: uploadData.photo_url
-      }
-
-      const response = await fetch('/api/agent/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request)
-      })
-
-      if (!response.ok) throw new Error('Failed to process photo')
-
-      const data: AgentResponse = await response.json()
-      
-      const agentMessages: Message[] = data.messages.map(msg => ({
-        id: String(Date.now() + Math.random()),
-        role: msg.domain || 'system',
-        content: msg.content,
-        time: now
-      }))
-
-      setMessages(m => [...m, ...agentMessages])
-      setTimeout(loadDashboardData, 500)
     } catch (error) {
       console.error('Error processing photo:', error)
       setMessages(m => [...m, {
@@ -595,9 +617,6 @@ export default function V2Page() {
       }])
     } finally {
       setIsTyping(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
     }
   }
 
@@ -631,6 +650,13 @@ export default function V2Page() {
       <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">SociusFit</h1>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMessages([])}
+            className="text-sm px-2 py-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors"
+            title="Start new conversation"
+          >
+            New Chat
+          </button>
           {recovery > 0 && <RecoveryBadge score={recovery} />}
           <ProfileMenu user={user} onSignOut={handleSignOut} />
         </div>
@@ -671,21 +697,17 @@ export default function V2Page() {
 
       {/* INPUT BAR */}
       <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={handlePhotoSelected}
-          className="hidden"
-        />
+        {/* Hidden file inputs — gallery (no capture) and camera (rear lens) */}
+        <input ref={galleryInputRef} type="file" accept="image/*" onChange={handlePhotoSelected} className="hidden" />
+        <input ref={cameraInputRef}  type="file" accept="image/*" capture="environment" onChange={handlePhotoSelected} className="hidden" />
+
         <div className="max-w-2xl mx-auto">
           {isRecording ? (
             <div className="flex items-center justify-between bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl px-4 py-3">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                  <span className="text-sm font-medium text-red-700 dark:text-red-300">Recording...</span>
+                  <span className="text-sm font-medium text-red-700 dark:text-red-300">Listening...</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -693,15 +715,10 @@ export default function V2Page() {
                   onClick={handleVoiceStop}
                   className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-full transition-colors"
                 >
-                  Stop
+                  Done
                 </button>
                 <button
-                  onClick={() => {
-                    if (mediaRecorder) {
-                      mediaRecorder.stop()
-                      setIsRecording(false)
-                    }
-                  }}
+                  onClick={() => { recognitionRef.current?.abort(); setIsRecording(false) }}
                   className="px-4 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                 >
                   Cancel
@@ -718,14 +735,49 @@ export default function V2Page() {
               >
                 <span className="text-lg">🎤</span>
               </button>
-              <button
-                onClick={handlePhotoCapture}
-                disabled={isTyping}
-                className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Photo input"
-              >
-                <span className="text-lg">📷</span>
-              </button>
+
+              {/* Photo menu button + popover */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowPhotoMenu(v => !v)}
+                  disabled={isTyping}
+                  className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Photo input"
+                >
+                  <span className="text-lg">📷</span>
+                </button>
+
+                {showPhotoMenu && (
+                  <>
+                    {/* Backdrop to close menu on outside click */}
+                    <div className="fixed inset-0 z-10" onClick={() => setShowPhotoMenu(false)} />
+                    <div className="absolute bottom-12 left-0 z-20 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden w-52">
+                      <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-700">
+                        Meal Photo
+                      </div>
+                      <button onClick={() => handlePhotoCapture('meal', 'camera')}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                        <span>📸</span> Take Photo
+                      </button>
+                      <button onClick={() => handlePhotoCapture('meal', 'gallery')}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                        <span>🖼️</span> Select Photo
+                      </button>
+                      <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 border-t border-b border-gray-100 dark:border-gray-700">
+                        Workout Photo
+                      </div>
+                      <button onClick={() => handlePhotoCapture('workout', 'camera')}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                        <span>📸</span> Take Photo
+                      </button>
+                      <button onClick={() => handlePhotoCapture('workout', 'gallery')}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+                        <span>🖼️</span> Select Photo
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
               <div className="flex-1 flex items-end bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 focus-within:border-blue-500 dark:focus-within:border-blue-400 transition-colors">
                 <textarea
                   value={inputValue}

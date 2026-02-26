@@ -157,9 +157,10 @@ export async function POST(request: NextRequest) {
 function createTrainerCaller(
   supabase: Awaited<ReturnType<typeof createServerClient>>
 ): AgentCaller {
-  return async (userId, content, _request, _previousMessages) => {
+  return async (userId, content, request, _previousMessages) => {
     try {
-      const ctx = await buildTrainerContext(userId)
+      const tzOffset = (request as AgentRequest).tz_offset ?? 0
+      const ctx = await buildTrainerContext(userId, tzOffset)
       const response = await callTrainerAgent(ctx, content)
 
       // Persist workout if one was parsed
@@ -204,9 +205,10 @@ function createTrainerCaller(
 function createNutritionistCaller(
   supabase: Awaited<ReturnType<typeof createServerClient>>
 ): AgentCaller {
-  return async (userId, content, _request, _previousMessages) => {
+  return async (userId, content, request, _previousMessages) => {
     try {
-      const ctx = await buildNutritionistContext(userId)
+      const tzOffset = (request as AgentRequest).tz_offset ?? 0
+      const ctx = await buildNutritionistContext(userId, tzOffset)
       const response = await callNutritionistAgent(ctx, content)
 
       // Persist meal if one was parsed
@@ -247,9 +249,10 @@ function createNutritionistCaller(
 function createSociusCaller(
   supabase: Awaited<ReturnType<typeof createServerClient>>
 ): AgentCaller {
-  return async (userId, content, _request, _previousMessages) => {
+  return async (userId, content, request, _previousMessages) => {
     try {
-      const ctx = await buildSociusContext(userId)
+      const tzOffset = (request as AgentRequest).tz_offset ?? 0
+      const ctx = await buildSociusContext(userId, tzOffset)
       const response = await callSociusAgent(ctx, content)
 
       // Persist any new insights above the confidence threshold
