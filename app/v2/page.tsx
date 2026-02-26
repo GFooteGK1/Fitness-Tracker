@@ -312,32 +312,35 @@ export default function V2Page() {
 
       // Load today's nutrition
       const today = new Date().toISOString().split('T')[0]
-      const mealsRes = await fetch(`/api/meals/daily?date=${today}`)
+      // Pass local timezone offset so the API queries the correct UTC window.
+      // JS getTimezoneOffset() returns (UTC - local) in minutes, so negate it to get (local - UTC).
+      const tzOffset = -new Date().getTimezoneOffset()
+      const mealsRes = await fetch(`/api/meals/daily?date=${today}&tzOffset=${tzOffset}`)
       if (mealsRes.ok) {
         const mealsData = await mealsRes.json()
         setMacros(prev => ({
           ...prev,
           consumed: {
-            protein: Math.round(mealsData.total_protein || 0),
-            carbs: Math.round(mealsData.total_carbs || 0),
-            fat: Math.round(mealsData.total_fat || 0),
-            calories: Math.round(mealsData.total_calories || 0)
+            protein:  Math.round(mealsData.dailyTotals?.protein  || 0),
+            carbs:    Math.round(mealsData.dailyTotals?.carbs    || 0),
+            fat:      Math.round(mealsData.dailyTotals?.fat      || 0),
+            calories: Math.round(mealsData.dailyTotals?.calories || 0)
           }
         }))
       }
 
-      // Load daily targets
+      // Load daily targets — API returns camelCase keys
       const targetsRes = await fetch(`/api/targets?date=${today}`)
       if (targetsRes.ok) {
         const targetsData = await targetsRes.json()
-        if (targetsData.target_protein) {
+        if (targetsData.targetProtein) {
           setMacros(prev => ({
             ...prev,
             target: {
-              protein: targetsData.target_protein,
-              carbs: targetsData.target_carbs,
-              fat: targetsData.target_fat,
-              calories: targetsData.target_calories
+              protein:  targetsData.targetProtein,
+              carbs:    targetsData.targetCarbs,
+              fat:      targetsData.targetFat,
+              calories: targetsData.targetCalories
             }
           }))
         }
@@ -377,18 +380,16 @@ export default function V2Page() {
 
   const loadTodaysProgram = async () => {
     try {
-      // TODO: Fetch from Google Sheets or database
-      // For now, mock data
-      setProgram([
-        {
-          title: 'A) Back Squat 5×5 @ 80%',
-          movements: ['Work up to 80% 1RM', 'Rest 2-3min between sets']
-        },
-        {
-          title: 'B) 12min AMRAP',
-          movements: ['5 Pull-ups', '10 Push-ups', '15 Air Squats']
+      const today = new Date().toISOString().split('T')[0]
+      const res = await fetch(`/api/workouts?date=${today}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.found && data.workout) {
+          // Split workout text into display lines; each non-empty line becomes one program block
+          const lines: string[] = data.workout.split('\n').filter((l: string) => l.trim())
+          setProgram(lines.map((line: string) => ({ title: line, movements: [] })))
         }
-      ])
+      }
     } catch (error) {
       console.error('Error loading program:', error)
     }
