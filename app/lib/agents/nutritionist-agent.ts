@@ -10,6 +10,9 @@ import type {
 } from './types'
 import { buildNutritionistPrompt } from './prompts/nutritionist'
 import { PORTION_DEFAULTS } from './constants'
+import { callAgentWithTools, type AgenticCallResult, type ToolCallRecord } from './tools/agentic-loop'
+import { NUTRITIONIST_TOOLS } from './tools/definitions'
+import { normalizeMealTiming } from './tools/executor'
 
 const NUTRITIONIST_MODEL = 'claude-sonnet-4-20250514'
 
@@ -18,19 +21,42 @@ const VALID_TIMINGS: MealTiming[] = [
   'PRE_WORKOUT', 'POST_WORKOUT', 'BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'
 ]
 
+/** Extended response that includes tool call metadata */
+export interface NutritionistResponseWithTools extends NutritionistResponse {
+  _toolCalls?: ToolCallRecord[]
+}
+
 /**
  * Call the Nutritionist agent with context and user input.
- * Returns a parsed NutritionistResponse — no DB writes happen here.
+ * Uses the agentic loop with tool_use for DB operations (log meal, query history).
+ * Falls back to JSON parsing when no tools are used (pure questions).
  *
  * Validates: Requirements 3.1, 3.2, 3.5, 3.6, 3.8, 3.9
  */
 export async function callNutritionistAgent(
   ctx: NutritionistContext,
-  userInput: string
-): Promise<NutritionistResponse> {
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+  userInput: string,
+  supabase?: SupabaseClient,
+  userId?: string
+): Promise<NutritionistResponseWithTools> {
   const systemPrompt = buildNutritionistPrompt(ctx)
 
+  // If supabase and userId are provided, use the agentic loop with tools
+  if (supabase && userId) {
+    const result = await callAgentWithTools({
+      systemPrompt,
+      userInput,
+      tools: NUTRITIONIST_TOOLS,
+      userId,
+      supabase,
+      maxRounds: 3
+    })
+
+    return buildNutritionistResponseFromToolResult(result, ctx)
+  }
+
+  // Fallback: single-shot call without tools (backward compatibility)
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
   const message = await anthropic.messages.create(
     {
       model: NUTRITIONIST_MODEL,
@@ -44,13 +70,70 @@ export async function callNutritionistAgent(
 
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
   const parsed = parseNutritionistResponse(text)
-
-  // Post-process: infer timing, apply portion defaults, validate macros
   const withTiming = applyTimingInference(parsed, ctx)
   const withDefaults = applyPortionDefaults(withTiming, ctx)
   const validated = validateAndFlag(withDefaults)
 
   return validated
+}
+
+/**
+ * Build a NutritionistResponse from the agentic loop result.
+ * If tools were used (log_meal), extract data from tool calls.
+ * If no tools were used, try JSON parsing on the text response.
+ */
+function buildNutritionistResponseFromToolResult(
+  result: AgenticCallResult,
+  ctx: NutritionistContext
+): NutritionistResponseWithTools {
+  const hasToolCalls = result.toolCalls.length > 0
+  const mealCall = result.toolCalls.find(tc => tc.name === 'log_meal' && tc.result.success)
+
+  // If tools were used, build response from tool data
+  if (hasToolCalls && mealCall) {
+    const items = (mealCall.input.items as MealItem[]) ?? []
+    const totals = (mealCall.result.data?.totals as MacroTotals) ?? {
+      protein: 0, carbs: 0, fat: 0, calories: 0
+    }
+
+    // Only adjust today's remaining budget if the meal was logged for today.
+    // Backdated meals (e.g. "I ate pizza yesterday") shouldn't affect today's budget.
+    const mealDate = mealCall.input.meal_date as string
+    const isToday = mealDate === ctx.current_date
+
+    return {
+      message: result.text || 'Meal logged.',
+      meal: {
+        items,
+        totals,
+        timing: (mealCall.input.timing as MealTiming) ?? 'LUNCH'
+      },
+      remaining_budget: isToday
+        ? {
+            protein: Math.max(0, ctx.targets.protein - (ctx.today.macros_consumed.protein + totals.protein)),
+            carbs: Math.max(0, ctx.targets.carbs - (ctx.today.macros_consumed.carbs + totals.carbs)),
+            fat: Math.max(0, ctx.targets.fat - (ctx.today.macros_consumed.fat + totals.fat)),
+            calories: Math.max(0, ctx.targets.calories - (ctx.today.macros_consumed.calories + totals.calories))
+          }
+        : {
+            protein: Math.max(0, ctx.targets.protein - ctx.today.macros_consumed.protein),
+            carbs: Math.max(0, ctx.targets.carbs - ctx.today.macros_consumed.carbs),
+            fat: Math.max(0, ctx.targets.fat - ctx.today.macros_consumed.fat),
+            calories: Math.max(0, ctx.targets.calories - ctx.today.macros_consumed.calories)
+          },
+      week_status: ctx.week,
+      smart_defaults: [],
+      confidence: 0.9,
+      _toolCalls: result.toolCalls
+    }
+  }
+
+  // No meal tools used — try JSON parsing (question response or fallback)
+  const parsed = parseNutritionistResponse(result.text)
+  const withTiming = applyTimingInference(parsed, ctx)
+  const withDefaults = applyPortionDefaults(withTiming, ctx)
+  const validated = validateAndFlag(withDefaults)
+  return { ...validated, _toolCalls: result.toolCalls }
 }
 
 /**
@@ -393,13 +476,17 @@ export async function persistMeal(
   const { items, totals, timing } = response.meal
   const mealTimestamp = new Date().toISOString()
 
+  // Normalize timing from agent format (BREAKFAST, LUNCH, etc.)
+  // to DB constraint format (pre_workout, post_workout, general, recovery)
+  const dbTiming = normalizeMealTiming(timing)
+
   const { data: meal, error: dbError } = await supabase
     .from('meals')
     .insert({
       user_id: userId,
       meal_timestamp: mealTimestamp,
       photo_url: null,
-      meal_timing: timing,
+      meal_timing: dbTiming,
       items,
       total_protein: totals.protein,
       total_carbs: totals.carbs,

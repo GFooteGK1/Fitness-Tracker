@@ -117,6 +117,7 @@ const arbContext: fc.Arbitrary<SociusContext> = fc.record({
   recent_chat: fc.constant([]),
   pending_insights: fc.constant([]),
   current_time: fc.constant(new Date().toISOString()),
+  current_date: fc.constant('2026-02-28'),
   day_of_week: fc.constantFrom('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'),
   has_whoop: fc.boolean(),
   thirty_day_summary: arbSummary,
@@ -302,6 +303,7 @@ describe('Property 14: Caloric deficit urgency classification', () => {
         recent_chat: [],
         pending_insights: [],
         current_time: new Date().toISOString(),
+        current_date: '2026-02-28',
         day_of_week: 'Monday',
         has_whoop: true,
         thirty_day_summary: {
@@ -356,6 +358,7 @@ describe('Property 14: Caloric deficit urgency classification', () => {
         recent_chat: [],
         pending_insights: [],
         current_time: new Date().toISOString(),
+        current_date: '2026-02-28',
         day_of_week: 'Monday',
         has_whoop: false,
         thirty_day_summary: {
@@ -412,6 +415,7 @@ describe('Property 14: Caloric deficit urgency classification', () => {
         recent_chat: [],
         pending_insights: [],
         current_time: new Date().toISOString(),
+        current_date: '2026-02-28',
         day_of_week: 'Monday',
         has_whoop: true,
         thirty_day_summary: {

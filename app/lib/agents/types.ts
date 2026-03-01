@@ -147,6 +147,14 @@ export interface RecentInsight {
 
 // ─── Context Types (Inheritance-Based) ───────────────────────────────
 
+/** User profile data for personalized agent responses */
+export interface UserProfile {
+  fitness_goals: string[]
+  activity_level: string
+  body_metrics: Record<string, unknown>
+  preferences: Record<string, unknown>
+}
+
 /** Shared base context assembled for every agent call */
 export interface PassiveContext {
   user_id: string
@@ -155,9 +163,11 @@ export interface PassiveContext {
   week: UserWeeklyState
   recent_chat: ChatMessage[]
   pending_insights: RecentInsight[]
-  current_time: string        // ISO timestamp
+  current_time: string        // e.g., "6:30 PM" (local time)
   day_of_week: string         // e.g., "Monday"
+  current_date: string        // e.g., "2026-02-28" (YYYY-MM-DD, user's local date)
   has_whoop: boolean
+  user_profile?: UserProfile  // User's goals, activity level, body metrics
 }
 
 /** Trainer gets workout history, PRs, program, and movement aliases */

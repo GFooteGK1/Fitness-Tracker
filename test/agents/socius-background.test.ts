@@ -93,6 +93,7 @@ function makeContext(overrides?: Partial<SociusContext>): SociusContext {
     recent_chat: [],
     pending_insights: [],
     current_time: new Date().toISOString(),
+    current_date: '2026-02-28',
     day_of_week: 'Monday',
     has_whoop: true,
     thirty_day_summary: makeDefaultSummary(),
