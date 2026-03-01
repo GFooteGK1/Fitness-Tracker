@@ -8,22 +8,47 @@ import type {
   SmartDefault
 } from './types'
 import { buildTrainerPrompt } from './prompts/trainer'
+import { callAgentWithTools, type AgenticCallResult, type ToolCallRecord } from './tools/agentic-loop'
+import { TRAINER_TOOLS } from './tools/definitions'
 
 const TRAINER_MODEL = 'claude-sonnet-4-20250514'
 
+/** Extended response that includes tool call metadata */
+export interface TrainerResponseWithTools extends TrainerResponse {
+  _toolCalls?: ToolCallRecord[]
+}
+
 /**
  * Call the Trainer agent with context and user input.
- * Returns a parsed TrainerResponse — no DB writes happen here.
+ * Uses the agentic loop with tool_use for DB operations (log workout, log PR, query history).
+ * Falls back to JSON parsing when no tools are used (pure questions).
  *
  * Validates: Requirements 2.1, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8
  */
 export async function callTrainerAgent(
   ctx: TrainerContext,
-  userInput: string
-): Promise<TrainerResponse> {
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+  userInput: string,
+  supabase?: SupabaseClient,
+  userId?: string
+): Promise<TrainerResponseWithTools> {
   const systemPrompt = buildTrainerPrompt(ctx)
 
+  // If supabase and userId are provided, use the agentic loop with tools
+  if (supabase && userId) {
+    const result = await callAgentWithTools({
+      systemPrompt,
+      userInput,
+      tools: TRAINER_TOOLS,
+      userId,
+      supabase,
+      maxRounds: 3
+    })
+
+    return buildResponseFromToolResult(result, ctx)
+  }
+
+  // Fallback: single-shot call without tools (backward compatibility)
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
   const message = await anthropic.messages.create(
     {
       model: TRAINER_MODEL,
@@ -37,12 +62,57 @@ export async function callTrainerAgent(
 
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
   const parsed = parseTrainerResponse(text)
-
-  // Post-process: detect PRs and apply smart defaults
   const withPRs = detectNewPRs(parsed, ctx.benchmark_prs)
   const withDefaults = applySmartDefaults(withPRs, ctx)
 
   return withDefaults
+}
+
+/**
+ * Build a TrainerResponse from the agentic loop result.
+ * If tools were used (log_workout, log_pr), extract data from tool calls.
+ * If no tools were used, try JSON parsing on the text response.
+ */
+function buildResponseFromToolResult(
+  result: AgenticCallResult,
+  ctx: TrainerContext
+): TrainerResponseWithTools {
+  const hasToolCalls = result.toolCalls.length > 0
+  const workoutCall = result.toolCalls.find(tc => tc.name === 'log_workout' && tc.result.success)
+  const prCalls = result.toolCalls.filter(tc => tc.name === 'log_pr' && tc.result.success)
+
+  // If tools were used, build response from tool data
+  if (hasToolCalls) {
+    const workout = workoutCall ? {
+      blocks: workoutCall.input.blocks as WorkoutBlock[],
+      primary_score: (workoutCall.input.primary_score as string) ?? null,
+      rpe: (workoutCall.input.rpe as number) ?? null,
+      tags: (workoutCall.input.tags as string[]) ?? []
+    } : undefined
+
+    const new_prs = prCalls.map(tc => ({
+      benchmark_name: tc.input.benchmark_name as string,
+      score_value: tc.input.score_value as number,
+      score_display: tc.input.score_display as string,
+      date: tc.input.date as string,
+      rx_status: (tc.input.rx_status as string) ?? 'RX'
+    }))
+
+    return {
+      message: result.text || 'Workout logged.',
+      workout,
+      new_prs,
+      smart_defaults: [],
+      confidence: 0.9,
+      _toolCalls: result.toolCalls
+    }
+  }
+
+  // No tools used — try JSON parsing (question response or fallback)
+  const parsed = parseTrainerResponse(result.text)
+  const withPRs = detectNewPRs(parsed, ctx.benchmark_prs)
+  const withDefaults = applySmartDefaults(withPRs, ctx)
+  return { ...withDefaults, _toolCalls: [] }
 }
 
 /**

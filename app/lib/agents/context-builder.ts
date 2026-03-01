@@ -2,7 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import {
   PassiveContext, TrainerContext, NutritionistContext, SociusContext,
-  MacroTotals, MacroTargets, WorkoutBlock,
+  MacroTotals, MacroTargets, WorkoutBlock, UserProfile,
   UserWeeklyState, MealSummary, MealItem, ChatMessage, RecentInsight,
   RecentWorkout, BenchmarkPR, ThirtyDaySummary, DataAvailability
 } from './types'
@@ -53,7 +53,7 @@ export async function buildPassiveContext(userId: string, tzOffset = 0): Promise
   const supabase = await createServerClient()
 
   const [targets, todaysMeals, todaysWorkouts, whoopRecovery, whoopStrain,
-         recentChat, pendingInsights, weekSummaries] = await Promise.all([
+         recentChat, pendingInsights, weekSummaries, userProfile] = await Promise.all([
     fetchDailyTargets(supabase, userId),
     fetchTodaysMeals(supabase, userId),
     fetchTodaysWorkouts(supabase, userId),
@@ -61,7 +61,8 @@ export async function buildPassiveContext(userId: string, tzOffset = 0): Promise
     fetchLatestWhoopStrain(supabase, userId),
     fetchRecentChat(supabase, userId, 20),
     fetchPendingInsightsForContext(supabase, userId),
-    fetchWeekToDateSummaries(supabase, userId)
+    fetchWeekToDateSummaries(supabase, userId),
+    fetchUserProfile(supabase, userId)
   ])
 
   const consumed = aggregateMacros(todaysMeals)
@@ -78,6 +79,7 @@ export async function buildPassiveContext(userId: string, tzOffset = 0): Promise
   const m = String(localNow.getUTCMinutes()).padStart(2, '0')
   const ampm = h >= 12 ? 'PM' : 'AM'
   const localTimeStr = `${h % 12 || 12}:${m} ${ampm}`
+  const localDateStr = `${localNow.getUTCFullYear()}-${String(localNow.getUTCMonth() + 1).padStart(2, '0')}-${String(localNow.getUTCDate()).padStart(2, '0')}`
 
   const context: PassiveContext = {
     user_id: userId,
@@ -95,7 +97,9 @@ export async function buildPassiveContext(userId: string, tzOffset = 0): Promise
     pending_insights: pendingInsights,
     current_time: localTimeStr,                // e.g. "6:30 PM" (local time)
     day_of_week: dayOfWeek,                    // e.g. "Wednesday" (local day)
-    has_whoop: whoopRecovery !== null || whoopStrain !== null
+    current_date: localDateStr,                // e.g. "2026-02-28" (local date)
+    has_whoop: whoopRecovery !== null || whoopStrain !== null,
+    user_profile: userProfile ?? undefined
   }
 
   passiveContextCache.set(userId, { context, expiresAt: Date.now() + PASSIVE_CACHE_TTL_MS })
@@ -103,6 +107,26 @@ export async function buildPassiveContext(userId: string, tzOffset = 0): Promise
 }
 
 // ─── Fetch Helpers (private) ─────────────────────────────────────────
+
+async function fetchUserProfile(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<UserProfile | null> {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('fitness_goals, activity_level, body_metrics, preferences')
+    .eq('user_id', userId)
+    .single()
+
+  if (error || !data) return null
+
+  return {
+    fitness_goals: Array.isArray(data.fitness_goals) ? data.fitness_goals : [],
+    activity_level: data.activity_level ?? 'moderately_active',
+    body_metrics: (data.body_metrics as Record<string, unknown>) ?? {},
+    preferences: (data.preferences as Record<string, unknown>) ?? {}
+  }
+}
 
 async function fetchDailyTargets(
   supabase: SupabaseClient,

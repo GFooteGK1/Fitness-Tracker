@@ -161,19 +161,22 @@ function createTrainerCaller(
     try {
       const tzOffset = (request as AgentRequest).tz_offset ?? 0
       const ctx = await buildTrainerContext(userId, tzOffset)
-      const response = await callTrainerAgent(ctx, content)
+      const response = await callTrainerAgent(ctx, content, supabase, userId)
 
-      // Persist workout if one was parsed
-      let workoutId: string | null = null
-      if (response.workout && response.workout.blocks.length > 0) {
+      // Check if tools already handled persistence
+      const toolPersistedWorkout = response._toolCalls?.find(
+        tc => tc.name === 'log_workout' && tc.result.success
+      )
+      let workoutId: string | null = (toolPersistedWorkout?.result.data?.workout_id as string) ?? null
+
+      // Fallback: if no tools were used but agent returned workout data, persist manually
+      if (!workoutId && response.workout && response.workout.blocks.length > 0) {
         workoutId = await persistWorkout(response, userId, content, supabase)
 
-        // Persist new PRs if workout was saved
         if (workoutId && response.new_prs && response.new_prs.length > 0) {
           await persistNewPRs(response.new_prs, userId, workoutId, supabase)
         }
 
-        // Invalidate passive context cache so the next call sees the new workout
         if (workoutId) invalidatePassiveCache(userId)
       }
 
@@ -209,14 +212,20 @@ function createNutritionistCaller(
     try {
       const tzOffset = (request as AgentRequest).tz_offset ?? 0
       const ctx = await buildNutritionistContext(userId, tzOffset)
-      const response = await callNutritionistAgent(ctx, content)
+      const response = await callNutritionistAgent(ctx, content, supabase, userId)
 
-      // Persist meal if one was parsed
-      let mealId: string | null = null
-      if (response.meal && response.meal.items.length > 0) {
+      // Check if tools already handled persistence
+      const toolPersistedMeal = response._toolCalls?.find(
+        tc => tc.name === 'log_meal' && tc.result.success
+      )
+      let mealId: string | null = (toolPersistedMeal?.result.data?.meal_id as string) ?? null
+
+      // Fallback: if no tools were used but agent returned meal data, persist manually
+      if (!mealId && response.meal && response.meal.items.length > 0) {
+        console.log('[nutritionist] fallback persist — meal parsed:',
+          'items:', response.meal.items.length,
+          'confidence:', response.confidence)
         mealId = await persistMeal(response, userId, supabase)
-
-        // Invalidate passive context cache so the next call sees the new meal
         if (mealId) invalidatePassiveCache(userId)
       }
 

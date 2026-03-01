@@ -56,6 +56,7 @@ function makeBaseContext(overrides?: Partial<TrainerContext>): TrainerContext {
     recent_chat: [],
     pending_insights: [],
     current_time: '2026-01-20T14:30:00Z',
+    current_date: '2026-02-28',
     day_of_week: 'Tuesday',
     has_whoop: false,
     recent_workouts: [],

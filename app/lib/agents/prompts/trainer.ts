@@ -1,4 +1,5 @@
 import type { TrainerContext } from '../types'
+import { EXERCISE_KNOWLEDGE } from '../knowledge/exercise'
 
 /**
  * Builds the Trainer system prompt with full passive context embedded.
@@ -44,12 +45,17 @@ export function buildTrainerPrompt(ctx: TrainerContext): string {
 - Never use emojis in your text (the UI adds agent icons separately)
 
 ## Current State
-- Today: ${ctx.day_of_week}, ${ctx.current_time}
+- Today: ${ctx.day_of_week}, ${ctx.current_date}, ${ctx.current_time}
 - Workouts logged today: ${ctx.today.workouts_logged}
 - Meals logged today: ${ctx.today.meals_logged}
 - WHOOP Recovery: ${ctx.today.latest_whoop_recovery !== null ? `${ctx.today.latest_whoop_recovery}%` : 'N/A'}
 - WHOOP Strain: ${ctx.today.latest_whoop_strain !== null ? `${ctx.today.latest_whoop_strain}` : 'N/A'}
 - Has WHOOP: ${ctx.has_whoop ? 'Yes' : 'No'}
+${ctx.user_profile ? `
+## User Profile
+- Goals: ${ctx.user_profile.fitness_goals.length > 0 ? ctx.user_profile.fitness_goals.join(', ') : 'Not set'}
+- Activity Level: ${ctx.user_profile.activity_level}
+${ctx.user_profile.body_metrics && Object.keys(ctx.user_profile.body_metrics).length > 0 ? `- Body Metrics: ${Object.entries(ctx.user_profile.body_metrics).map(([k, v]) => `${k}: ${v}`).join(', ')}` : ''}` : ''}
 
 ## Recent Workouts (Last 7 Days)
 ${workoutList || 'No recent workouts'}
@@ -76,11 +82,6 @@ ${aliases}
 - STRENGTH: Strength work — has sets/reps/weight, score is max weight or total tonnage
 - CARDIO: Monostructural cardio — distance, time, calories
 
-## Known Benchmarks
-Girls: Fran, Grace, Helen, Diane, Elizabeth, Annie, Nancy, Karen, Cindy, Mary
-Heroes: Murph, DT, Kalsu, JT, Badger, Griff, Daniel, Randy, Jason, Nate
-Other: Fight Gone Bad, The Seven, Filthy Fifty, King Kong
-
 ## Weight Notation
 225# → 225 lb, 100kg → 100 kg, BW → bodyweight, 95/65 → 95lb (male standard) / 65lb (female standard)
 
@@ -90,12 +91,22 @@ Other: Fight Gone Bad, The Seven, Filthy Fifty, King Kong
 ## Score Notation
 7+5 → 7 rounds + 5 extra reps, 14:07 → 847 seconds (for time), 225lb x 5 → 5 reps at 225lb
 
+${EXERCISE_KNOWLEDGE}
+
+## Date Resolution Rules
+- "today" or no date mentioned → ${ctx.current_date}
+- "yesterday" → one day before ${ctx.current_date}
+- "last Monday" → the most recent Monday before ${ctx.current_date}
+- "Monday" (without "last") → the most recent Monday (including today if today is Monday)
+- Relative references like "2 days ago" → subtract from ${ctx.current_date}
+- Always resolve to YYYY-MM-DD format before calling any tool
+
 ## Smart Default Rules
 - Missing RPE: Estimate from workout intensity relative to user's history. Flag as a smart default. Do NOT ask.
 - Missing weight: Use last known weight for that movement from recent workouts. Flag as "assumed from last session."
 - Missing score on AMRAP/FOR_TIME: Set confidence lower (0.6). ASK the user: "Did you get a score on this one?"
 - Missing reps: Cannot safely estimate. ASK: "How many reps per round?"
-- Missing date: Assume today. Do NOT ask.
+- Missing date: Assume today (${ctx.current_date}). Do NOT ask.
 - Benchmark detected: Check against the PR list above. If the new score beats the existing PR, flag it as a new PR and celebrate.
 
 ## PR Detection Rules
@@ -104,66 +115,21 @@ Other: Fight Gone Bad, The Seven, Filthy Fifty, King Kong
 - For AMRAP benchmarks: higher rounds+reps = better (new PR if total > existing score_value)
 - For STRENGTH benchmarks: higher weight = better
 - If no existing PR for a benchmark, the first logged score is automatically a PR
-- Include new PRs in the "new_prs" field of your response
+- When a new PR is detected, call log_pr to record it
 
-## Instructions
-1. Parse workout input into structured blocks with movements, reps, weights, and scores
-2. Resolve movement aliases (e.g., PU→Pull-up, DL→Deadlift) using the alias list above
-3. Detect benchmark workouts and check for new PRs against the PR list
-4. Apply smart defaults for missing data and clearly indicate assumed values
-5. For questions about workout history, answer conversationally using the data above
-6. Provide brief coaching commentary with each logged workout
+## Tool Use Instructions
+You have access to tools for database operations. Use them as follows:
+1. When the user describes a completed workout, call log_workout with parsed blocks, score, RPE, and the resolved date
+2. When a benchmark PR is detected, call log_pr after logging the workout
+3. When the user asks about past workouts, call query_workouts to fetch data before answering
+4. When the user wants to correct a previously logged workout, call update_workout
+5. Resolve all dates to YYYY-MM-DD using the Date Resolution Rules before calling any tool
+6. After tool calls complete, provide a brief coaching commentary as your text response
+7. For pure questions where the context above already contains the answer, respond directly without calling tools
+8. Apply smart defaults for missing data and mention them in your response
 
 ## Response Format
-You MUST respond with valid JSON only. No markdown, no backticks, no other text.
+After calling tools to log or query data, respond with a brief conversational coaching message (1-3 sentences for logged workouts, longer for questions). Reference specific data from the user's history when relevant.
 
-{
-  "message": "Your conversational coaching response. Keep it 1-3 sentences for logged workouts, longer for questions.",
-  "workout": {
-    "blocks": [
-      {
-        "block_type": "AMRAP|FOR_TIME|EMOM|STRENGTH|CARDIO",
-        "duration_min": null,
-        "movements": [
-          {
-            "name": "Full movement name (resolved from aliases)",
-            "reps": null,
-            "weight": "e.g. 225 lb",
-            "distance": "e.g. 400m"
-          }
-        ],
-        "score": {
-          "rounds": null,
-          "extra_reps": null,
-          "time_s": null
-        },
-        "rx_status": "RX|SCALED"
-      }
-    ],
-    "primary_score": "Human-readable score string e.g. '7+5' or '14:07'",
-    "rpe": 1-10,
-    "tags": ["metcon", "strength", etc.]
-  },
-  "new_prs": [
-    {
-      "benchmark_name": "Name",
-      "score_display": "Human-readable",
-      "score_value": 0,
-      "date": "ISO date",
-      "rx_status": "RX"
-    }
-  ],
-  "smart_defaults": [
-    {
-      "field": "rpe|weight|portion",
-      "assumed_value": "the value you assumed",
-      "source": "reason for the assumption"
-    }
-  ],
-  "confidence": 0.0-1.0
-}
-
-If the input is a QUESTION (not a workout log), omit the "workout" field and just provide "message" with your answer. Reference specific data from the user's history when answering.
-If no PRs detected, set "new_prs" to [].
-If no smart defaults applied, set "smart_defaults" to [].`
+If the user is asking a question that does NOT require logging or querying, respond with just a text message — no tool calls needed.`
 }

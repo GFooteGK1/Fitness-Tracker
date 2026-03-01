@@ -38,6 +38,7 @@ function makeBaseContext(overrides?: Partial<NutritionistContext>): Nutritionist
     recent_chat: [],
     pending_insights: [],
     current_time: '2026-01-20T12:30:00Z',
+    current_date: '2026-02-28',
     day_of_week: 'Tuesday',
     has_whoop: false,
     todays_meals: [],
