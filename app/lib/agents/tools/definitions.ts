@@ -96,7 +96,7 @@ export const TRAINER_TOOLS: Tool[] = [
   {
     name: 'query_workouts',
     description:
-      'Query past workouts by date range. Use when the user asks about their workout history, specific movements, or past performance.',
+      'Query past workouts by date range. Use when the user asks about their workout history, specific movements, or past performance. Always returns total_count (the true number of matching workouts in the DB) alongside the limited result set. Use count_only=true for quick counts without fetching full workout data.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -111,7 +111,8 @@ export const TRAINER_TOOLS: Tool[] = [
           enum: ['AMRAP', 'FOR_TIME', 'EMOM', 'STRENGTH', 'CARDIO'],
           description: 'Filter by block type'
         },
-        limit: { type: 'number', description: 'Max results to return (default 10, max 50)' }
+        limit: { type: 'number', description: 'Max workout details to return (default 10, max 200). The total_count field always reflects the true total regardless of this limit.' },
+        count_only: { type: 'boolean', description: 'If true, return only the total count without workout details. Use for "how many workouts" questions.' }
       },
       required: ['start_date', 'end_date']
     }
@@ -178,13 +179,14 @@ export const NUTRITIONIST_TOOLS: Tool[] = [
   {
     name: 'query_meals',
     description:
-      'Query past meals by date range. Use when the user asks about their nutrition history or what they ate on a specific day.',
+      'Query past meals by date range. Use when the user asks about their nutrition history or what they ate on a specific day. Always returns total_count (true number of matching meals) alongside the limited result set. Use count_only=true for quick counts.',
     input_schema: {
       type: 'object' as const,
       properties: {
         start_date: { type: 'string', description: 'Start date YYYY-MM-DD (inclusive)' },
         end_date: { type: 'string', description: 'End date YYYY-MM-DD (inclusive)' },
-        limit: { type: 'number', description: 'Max results to return (default 20, max 50)' }
+        limit: { type: 'number', description: 'Max meal details to return (default 20, max 200). The total_count field always reflects the true total regardless of this limit.' },
+        count_only: { type: 'boolean', description: 'If true, return only the total count without meal details. Use for "how many meals" questions.' }
       },
       required: ['start_date', 'end_date']
     }

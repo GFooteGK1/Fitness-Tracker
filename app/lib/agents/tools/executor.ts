@@ -150,7 +150,8 @@ async function executeQueryWorkouts(
 ): Promise<ToolResult> {
   const startDate = input.start_date as string
   const endDate = input.end_date as string
-  const limit = Math.min((input.limit as number) ?? 10, 50)
+  const limit = Math.min((input.limit as number) ?? 10, 200)
+  const countOnly = (input.count_only as boolean) ?? false
 
   if (!startDate || !endDate) {
     return { success: false, error: 'start_date and end_date are required' }
@@ -160,7 +161,27 @@ async function executeQueryWorkouts(
     return { success: false, error: `Invalid date format. Expected YYYY-MM-DD, got start="${startDate}", end="${endDate}"` }
   }
 
-  let query = supabase
+  // Always run a count query to get the true total matching workouts
+  const countQuery = supabase
+    .from('workouts')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('workout_date', startDate)
+    .lte('workout_date', endDate)
+
+  // For count_only mode, skip fetching full workout data
+  if (countOnly) {
+    const { count, error } = await countQuery
+
+    if (error) {
+      return { success: false, error: `Failed to count workouts: ${error.message}` }
+    }
+
+    return { success: true, data: { workouts: [], total_count: count ?? 0, returned_count: 0 } }
+  }
+
+  // Run count and data queries in parallel
+  const dataQuery = supabase
     .from('workouts')
     .select('id, workout_date, input_text, blocks, primary_score, rpe, tags')
     .eq('user_id', userId)
@@ -169,14 +190,16 @@ async function executeQueryWorkouts(
     .order('workout_date', { ascending: false })
     .limit(limit)
 
-  const { data, error } = await query
+  const [countResult, dataResult] = await Promise.all([countQuery, dataQuery])
 
-  if (error) {
-    return { success: false, error: `Failed to query workouts: ${error.message}` }
+  if (dataResult.error) {
+    return { success: false, error: `Failed to query workouts: ${dataResult.error.message}` }
   }
 
+  const totalCount = countResult.count ?? 0
+
   // Normalize blocks to prevent "is not iterable" errors
-  const workouts = (data ?? []).map(w => ({
+  const workouts = (dataResult.data ?? []).map(w => ({
     ...w,
     blocks: Array.isArray(w.blocks)
       ? (w.blocks as unknown[]).map(normalizeBlockFromDB)
@@ -203,7 +226,14 @@ async function executeQueryWorkouts(
     )
   }
 
-  return { success: true, data: { workouts: filtered, count: filtered.length } }
+  return {
+    success: true,
+    data: {
+      workouts: filtered,
+      returned_count: filtered.length,
+      total_count: totalCount
+    }
+  }
 }
 
 async function executeUpdateWorkout(
@@ -328,7 +358,8 @@ async function executeQueryMeals(
 ): Promise<ToolResult> {
   const startDate = input.start_date as string
   const endDate = input.end_date as string
-  const limit = Math.min((input.limit as number) ?? 20, 50)
+  const limit = Math.min((input.limit as number) ?? 20, 200)
+  const countOnly = (input.count_only as boolean) ?? false
 
   if (!startDate || !endDate) {
     return { success: false, error: 'start_date and end_date are required' }
@@ -339,11 +370,30 @@ async function executeQueryMeals(
   }
 
   // Query meals within the date range (end_date + 1 day to include the full end date)
-  const endDatePlusOne = new Date(endDate)
-  endDatePlusOne.setDate(endDatePlusOne.getDate() + 1)
+  const endDatePlusOne = new Date(endDate + 'T00:00:00Z')
+  endDatePlusOne.setUTCDate(endDatePlusOne.getUTCDate() + 1)
   const endStr = endDatePlusOne.toISOString().split('T')[0]
 
-  const { data, error } = await supabase
+  // Always run a count query to get the true total
+  const countQuery = supabase
+    .from('meals')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('meal_timestamp', `${startDate}T00:00:00`)
+    .lt('meal_timestamp', `${endStr}T00:00:00`)
+
+  if (countOnly) {
+    const { count, error } = await countQuery
+
+    if (error) {
+      return { success: false, error: `Failed to count meals: ${error.message}` }
+    }
+
+    return { success: true, data: { meals: [], total_count: count ?? 0, returned_count: 0 } }
+  }
+
+  // Run count and data queries in parallel
+  const dataQuery = supabase
     .from('meals')
     .select('id, meal_timestamp, meal_timing, items, total_protein, total_carbs, total_fat, total_calories')
     .eq('user_id', userId)
@@ -352,11 +402,20 @@ async function executeQueryMeals(
     .order('meal_timestamp', { ascending: false })
     .limit(limit)
 
-  if (error) {
-    return { success: false, error: `Failed to query meals: ${error.message}` }
+  const [countResult, dataResult] = await Promise.all([countQuery, dataQuery])
+
+  if (dataResult.error) {
+    return { success: false, error: `Failed to query meals: ${dataResult.error.message}` }
   }
 
-  return { success: true, data: { meals: data ?? [], count: (data ?? []).length } }
+  return {
+    success: true,
+    data: {
+      meals: dataResult.data ?? [],
+      returned_count: (dataResult.data ?? []).length,
+      total_count: countResult.count ?? 0
+    }
+  }
 }
 
 async function executeUpdateMeal(
