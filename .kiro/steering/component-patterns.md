@@ -74,6 +74,28 @@ fileMatchPattern: '**/components/**/*.tsx'
 </form>
 ```
 
+### Timezone & Date Handling
+
+**Always use `app/lib/timezone-utils` for dates in UI components:**
+
+```tsx
+import { getLocalDate, getTimezoneOffset } from '@/app/lib/timezone-utils'
+
+// Get today's local date as YYYY-MM-DD
+const today = getLocalDate()
+
+// For date picker values from a Date object, use manual formatting (NOT toLocaleDateString)
+const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+
+// Pass timezone offset to API calls
+const tzOffset = getTimezoneOffset()
+fetch(`/api/dashboard-stats?tzOffset=${tzOffset}`)
+```
+
+**Forbidden in components:**
+- `new Date().toLocaleDateString('en-CA')` - locale-dependent, fails in some environments
+- `new Date().toISOString().split('T')[0]` - returns UTC date, wrong near midnight
+
 ### Loading State
 ```tsx
 {isLoading ? (

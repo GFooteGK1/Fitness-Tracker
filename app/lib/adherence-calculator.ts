@@ -167,8 +167,8 @@ export function calculateWeeklyAdherence(
     const adherenceStatus = calculateAdherenceStatus(dailyTotals, targets)
 
     // Convert date to YYYY-MM-DD string format for consistent handling
-    const dateStr = summary.date instanceof Date 
-      ? summary.date.toISOString().split('T')[0]
+    const dateStr = summary.date instanceof Date
+      ? `${summary.date.getFullYear()}-${String(summary.date.getMonth() + 1).padStart(2, '0')}-${String(summary.date.getDate()).padStart(2, '0')}`
       : String(summary.date).split('T')[0]
 
     return {

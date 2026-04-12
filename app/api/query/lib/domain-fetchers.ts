@@ -32,8 +32,8 @@ export async function fetchWhoopData(
   userId: string,
   timeWindow: TimeWindow
 ): Promise<WhoopData> {
-  const startDate = timeWindow.start.toISOString().split('T')[0]
-  const endDate = timeWindow.end.toISOString().split('T')[0]
+  const startDate = `${timeWindow.start.getUTCFullYear()}-${String(timeWindow.start.getUTCMonth() + 1).padStart(2, '0')}-${String(timeWindow.start.getUTCDate()).padStart(2, '0')}`
+  const endDate = `${timeWindow.end.getUTCFullYear()}-${String(timeWindow.end.getUTCMonth() + 1).padStart(2, '0')}-${String(timeWindow.end.getUTCDate()).padStart(2, '0')}`
 
   // Fetch all WHOOP data in parallel
   const [recoveryResult, sleepResult, cyclesResult] = await Promise.all([
@@ -93,8 +93,8 @@ export async function fetchWorkoutData(
     .from('workouts')
     .select('workout_date, input_text, primary_score, blocks, rpe, tags')
     .eq('user_id', userId)
-    .gte('workout_date', timeWindow.start.toISOString().split('T')[0])
-    .lte('workout_date', timeWindow.end.toISOString().split('T')[0])
+    .gte('workout_date', `${timeWindow.start.getUTCFullYear()}-${String(timeWindow.start.getUTCMonth() + 1).padStart(2, '0')}-${String(timeWindow.start.getUTCDate()).padStart(2, '0')}`)
+    .lte('workout_date', `${timeWindow.end.getUTCFullYear()}-${String(timeWindow.end.getUTCMonth() + 1).padStart(2, '0')}-${String(timeWindow.end.getUTCDate()).padStart(2, '0')}`)
     .order('workout_date', { ascending: false })
 
   if (workoutsError) {

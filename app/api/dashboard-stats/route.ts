@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
+import { isValidTimezoneOffset } from '@/app/lib/timezone-utils'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createServerClient()
 
@@ -15,11 +16,30 @@ export async function GET() {
       )
     }
 
-    // Get current date info
+    // Parse timezone offset from query params
+    const { searchParams } = new URL(request.url)
+    const tzOffsetStr = searchParams.get('tzOffset')
+    const tzOffset = tzOffsetStr ? parseInt(tzOffsetStr, 10) : 0
+    if (tzOffsetStr && !isValidTimezoneOffset(tzOffset)) {
+      return NextResponse.json(
+        { error: 'Invalid timezone offset', details: 'Offset must be between -720 and 840 minutes' },
+        { status: 400 }
+      )
+    }
+
+    // Calculate current date in user's local timezone
+    // tzOffset uses getTimezoneOffset() convention: positive for west of UTC (e.g., 360 for CST)
+    // localTime = UTC - tzOffset (subtracting because getTimezoneOffset = UTC - local)
     const now = new Date()
-    const currentYear = now.getFullYear()
-    const currentMonth = now.getMonth() + 1
-    const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    const localNow = new Date(now.getTime() - tzOffset * 60000)
+    const currentYear = localNow.getUTCFullYear()
+    const currentMonth = localNow.getUTCMonth() + 1
+    const monthParts = [
+      ['January', 'February', 'March', 'April', 'May', 'June',
+       'July', 'August', 'September', 'October', 'November', 'December'][currentMonth - 1],
+      String(currentYear)
+    ]
+    const monthName = monthParts.join(' ')
     const monthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`
     
     // Single optimized query for all workout data including blocks for type categorization

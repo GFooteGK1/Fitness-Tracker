@@ -31,8 +31,9 @@ export default function Dashboard() {
     try {
       setLoading(true)
       setError('')
-      
-      const response = await fetch('/api/dashboard-stats')
+
+      const tzOffset = new Date().getTimezoneOffset()
+      const response = await fetch(`/api/dashboard-stats?tzOffset=${tzOffset}`)
       const data = await response.json()
       
       if (response.ok) {

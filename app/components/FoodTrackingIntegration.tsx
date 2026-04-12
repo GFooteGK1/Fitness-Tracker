@@ -206,7 +206,7 @@ export default function FoodTrackingIntegration({
           <h3 className="font-medium text-gray-900 mb-2">Integration Status</h3>
           <div className="text-sm text-gray-600 space-y-1">
             <div>Current View: {currentView}</div>
-            <div>Selected Date: {selectedDate.toLocaleDateString('en-CA')}</div>
+            <div>Selected Date: {`${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`}</div>
             <div>User ID: {user?.id || 'Not authenticated'}</div>
             <div>Targets Set: {targets ? 'Yes' : 'No'}</div>
             <div>Refresh Trigger: {refreshTrigger}</div>

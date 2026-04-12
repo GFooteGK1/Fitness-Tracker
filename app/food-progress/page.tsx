@@ -242,7 +242,7 @@ function FoodProgressContent() {
               <input
                 type="date"
                 id="nutrition-date"
-                value={selectedDate.toLocaleDateString('en-CA')}
+                value={`${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`}
                 onChange={(e) => {
                   const newDate = new Date(e.target.value + 'T00:00:00')
                   setSelectedDate(newDate)

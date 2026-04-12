@@ -9,6 +9,7 @@ import {
 import { MOVEMENT_ALIASES, PORTION_DEFAULTS } from './constants'
 import { fetchRecentChat, fetchPendingUrgentInsights } from './chat-persistence'
 import { fetchWorkoutForDate } from '@/app/lib/sheets/workout-fetcher'
+import { localDateToUTCStart, localDateToUTCEnd } from '@/app/lib/timezone-utils'
 
 // ─── Passive Context Cache ────────────────────────────────────────────
 // Short-lived per-user cache for the 8-query passive context fetch.
@@ -55,13 +56,13 @@ export async function buildPassiveContext(userId: string, tzOffset = 0): Promise
   const [targets, todaysMeals, todaysWorkouts, whoopRecovery, whoopStrain,
          recentChat, pendingInsights, weekSummaries, userProfile] = await Promise.all([
     fetchDailyTargets(supabase, userId),
-    fetchTodaysMeals(supabase, userId),
-    fetchTodaysWorkouts(supabase, userId),
+    fetchTodaysMeals(supabase, userId, tzOffset),
+    fetchTodaysWorkouts(supabase, userId, tzOffset),
     fetchLatestWhoopRecovery(supabase, userId),
     fetchLatestWhoopStrain(supabase, userId),
     fetchRecentChat(supabase, userId, 20),
     fetchPendingInsightsForContext(supabase, userId),
-    fetchWeekToDateSummaries(supabase, userId),
+    fetchWeekToDateSummaries(supabase, userId, tzOffset),
     fetchUserProfile(supabase, userId)
   ])
 
@@ -151,18 +152,27 @@ async function fetchDailyTargets(
 
 async function fetchTodaysMeals(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  tzOffset = 0
 ): Promise<MealSummary[]> {
-  const today = new Date()
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
-  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString()
+  // tzOffset here uses the agent convention: negative for west of UTC (e.g., -360 for CST).
+  // Calculate today's date in user's local timezone: localTime = UTC + tzOffset
+  const now = new Date()
+  const localNow = new Date(now.getTime() + tzOffset * 60_000)
+  const todayStr = `${localNow.getUTCFullYear()}-${String(localNow.getUTCMonth() + 1).padStart(2, '0')}-${String(localNow.getUTCDate()).padStart(2, '0')}`
+
+  // localDateToUTCStart expects raw getTimezoneOffset() convention (positive for west of UTC).
+  // Agent convention is negated, so negate back: apiOffset = -tzOffset
+  const apiOffset = -tzOffset
+  const startUTC = localDateToUTCStart(todayStr, apiOffset)
+  const endUTC = localDateToUTCEnd(todayStr, apiOffset)
 
   const { data, error } = await supabase
     .from('meals')
     .select('id, meal_timestamp, meal_timing, items, total_protein, total_carbs, total_fat, total_calories')
     .eq('user_id', userId)
-    .gte('meal_timestamp', startOfDay)
-    .lt('meal_timestamp', endOfDay)
+    .gte('meal_timestamp', startUTC)
+    .lt('meal_timestamp', endUTC)
     .order('meal_timestamp', { ascending: true })
 
   if (error || !data) return []
@@ -183,15 +193,19 @@ async function fetchTodaysMeals(
 
 async function fetchTodaysWorkouts(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  tzOffset = 0
 ): Promise<{ id: string }[]> {
-  const today = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD
+  // tzOffset uses agent convention: negative for west of UTC. localTime = UTC + tzOffset
+  const now = new Date()
+  const localNow = new Date(now.getTime() + tzOffset * 60_000)
+  const todayStr = `${localNow.getUTCFullYear()}-${String(localNow.getUTCMonth() + 1).padStart(2, '0')}-${String(localNow.getUTCDate()).padStart(2, '0')}`
 
   const { data, error } = await supabase
     .from('workouts')
     .select('id')
     .eq('user_id', userId)
-    .eq('workout_date', today)
+    .eq('workout_date', todayStr)
 
   if (error || !data) return []
   return data
@@ -247,15 +261,23 @@ async function fetchPendingInsightsForContext(
 
 async function fetchWeekToDateSummaries(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  tzOffset = 0
 ): Promise<MacroTotals[]> {
-  const weekStart = getWeekStart()
+  // Calculate week start in user's local timezone
+  // tzOffset uses agent convention: negative for west of UTC. localTime = UTC + tzOffset
+  const now = new Date()
+  const localNow = new Date(now.getTime() + tzOffset * 60_000)
+  // Construct a Date using local year/month/date so getDay()/getDate() reflect user's local day
+  const localDate = new Date(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate())
+  const weekStartDate = getWeekStart(localDate)
+  const weekStartStr = `${weekStartDate.getFullYear()}-${String(weekStartDate.getMonth() + 1).padStart(2, '0')}-${String(weekStartDate.getDate()).padStart(2, '0')}`
 
   const { data, error } = await supabase
     .from('daily_summaries')
     .select('total_protein, total_carbs, total_fat, total_calories')
     .eq('user_id', userId)
-    .gte('date', weekStart.toISOString().split('T')[0])
+    .gte('date', weekStartStr)
     .order('date', { ascending: true })
 
   if (error || !data) return []
@@ -274,8 +296,9 @@ export async function buildTrainerContext(userId: string, tzOffset = 0): Promise
   const supabase = await createServerClient()
 
   // Derive local date from tzOffset for program lookup
+  // Agent convention: localTime = UTC + tzOffset (e.g., tzOffset=-360 for CST)
   const localNow = new Date(Date.now() + tzOffset * 60_000)
-  const localDate = localNow.toISOString().split('T')[0]
+  const localDate = `${localNow.getUTCFullYear()}-${String(localNow.getUTCMonth() + 1).padStart(2, '0')}-${String(localNow.getUTCDate()).padStart(2, '0')}`
 
   const [passive, recentWorkouts, benchmarkPrs, todaysProgram] = await Promise.all([
     buildPassiveContext(userId, tzOffset),
@@ -300,7 +323,7 @@ export async function buildNutritionistContext(userId: string, tzOffset = 0): Pr
 
   const [passive, todaysMeals, portionHistory] = await Promise.all([
     buildPassiveContext(userId, tzOffset),
-    fetchTodaysMealDetails(supabase, userId),
+    fetchTodaysMealDetails(supabase, userId, tzOffset),
     fetchUserPortionHistory(supabase, userId)
   ])
 
@@ -340,7 +363,7 @@ async function fetchThirtyDaySummary(
 ): Promise<ThirtyDaySummary> {
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-  const cutoffDate = thirtyDaysAgo.toLocaleDateString('en-CA') // YYYY-MM-DD
+  const cutoffDate = `${thirtyDaysAgo.getFullYear()}-${String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(thirtyDaysAgo.getDate()).padStart(2, '0')}`
 
   const [workoutsResult, mealsResult, prsResult, recoveryResult, sleepResult] = await Promise.all([
     supabase
@@ -398,7 +421,10 @@ async function fetchThirtyDaySummary(
 
   // Calculate avg daily protein and calories
   const mealDays = new Set(
-    meals.map(m => new Date(m.meal_timestamp).toLocaleDateString('en-CA'))
+    meals.map(m => {
+      const d = new Date(m.meal_timestamp)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    })
   )
   const mealDayCount = mealDays.size || 1
   const totalProtein = meals.reduce((sum, m) => sum + (parseFloat(m.total_protein) || 0), 0)
@@ -483,7 +509,10 @@ async function fetchDataAvailability(
 
   const workoutDays = new Set(workouts.map(w => w.workout_date)).size
   const mealDays = new Set(
-    meals.map(m => new Date(m.meal_timestamp).toLocaleDateString('en-CA'))
+    meals.map(m => {
+      const d = new Date(m.meal_timestamp)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    })
   ).size
 
   return {
@@ -500,18 +529,25 @@ async function fetchDataAvailability(
 
 async function fetchTodaysMealDetails(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  tzOffset = 0
 ): Promise<MealSummary[]> {
-  const today = new Date()
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
-  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString()
+  // Agent convention: localTime = UTC + tzOffset
+  const now = new Date()
+  const localNow = new Date(now.getTime() + tzOffset * 60_000)
+  const todayStr = `${localNow.getUTCFullYear()}-${String(localNow.getUTCMonth() + 1).padStart(2, '0')}-${String(localNow.getUTCDate()).padStart(2, '0')}`
+
+  // localDateToUTCStart expects raw getTimezoneOffset() convention, so negate
+  const apiOffset = -tzOffset
+  const startUTC = localDateToUTCStart(todayStr, apiOffset)
+  const endUTC = localDateToUTCEnd(todayStr, apiOffset)
 
   const { data, error } = await supabase
     .from('meals')
     .select('id, meal_timestamp, meal_timing, items, total_protein, total_carbs, total_fat, total_calories')
     .eq('user_id', userId)
-    .gte('meal_timestamp', startOfDay)
-    .lt('meal_timestamp', endOfDay)
+    .gte('meal_timestamp', startUTC)
+    .lt('meal_timestamp', endUTC)
     .order('meal_timestamp', { ascending: true })
 
   if (error || !data) return []
@@ -626,7 +662,7 @@ async function fetchRecentWorkouts(
 ): Promise<RecentWorkout[]> {
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - days)
-  const cutoffDate = cutoff.toLocaleDateString('en-CA') // YYYY-MM-DD
+  const cutoffDate = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}-${String(cutoff.getDate()).padStart(2, '0')}`
 
   const { data, error } = await supabase
     .from('workouts')

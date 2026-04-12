@@ -228,7 +228,8 @@ export function detectNewPRs(
 
   // The LLM may already have detected PRs — we verify and augment
   const detectedPRs: BenchmarkPR[] = []
-  const today = new Date().toISOString().split('T')[0]
+  const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
   for (const block of response.workout.blocks) {
     if (!block.score) continue
@@ -486,7 +487,8 @@ export async function persistWorkout(
     return null
   }
 
-  const today = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD
+  const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
   // Insert workout
   const { data: workout, error: workoutError } = await supabase

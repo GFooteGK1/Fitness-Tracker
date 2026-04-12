@@ -372,7 +372,7 @@ async function executeQueryMeals(
   // Query meals within the date range (end_date + 1 day to include the full end date)
   const endDatePlusOne = new Date(endDate + 'T00:00:00Z')
   endDatePlusOne.setUTCDate(endDatePlusOne.getUTCDate() + 1)
-  const endStr = endDatePlusOne.toISOString().split('T')[0]
+  const endStr = `${endDatePlusOne.getUTCFullYear()}-${String(endDatePlusOne.getUTCMonth() + 1).padStart(2, '0')}-${String(endDatePlusOne.getUTCDate()).padStart(2, '0')}`
 
   // Always run a count query to get the true total
   const countQuery = supabase

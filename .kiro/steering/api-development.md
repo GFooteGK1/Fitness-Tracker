@@ -197,6 +197,41 @@ const supabase = createClient()
 - Call Claude API with context
 - Return natural language response
 
+## Timezone Handling
+
+**All API endpoints that query date-scoped data must accept a `tzOffset` parameter.**
+
+```typescript
+// GET endpoint: accept from query string
+const tzOffset = parseInt(searchParams.get('tzOffset') || '0', 10)
+
+// POST endpoint: accept from request body
+const { tzOffset = 0 } = await request.json()
+
+// Validate offset
+import { isValidTimezoneOffset } from '@/app/lib/timezone-utils'
+if (!isValidTimezoneOffset(tzOffset)) { /* use 0 as fallback */ }
+```
+
+**For timestamp columns** (e.g., `meal_timestamp`), convert local date to UTC boundaries:
+```typescript
+import { localDateToUTCStart, localDateToUTCEnd } from '@/app/lib/timezone-utils'
+const utcStart = localDateToUTCStart(dateStr, tzOffset)
+const utcEnd = localDateToUTCEnd(dateStr, tzOffset)
+// Query: .gte('meal_timestamp', utcStart.toISOString()).lt('meal_timestamp', utcEnd.toISOString())
+```
+
+**For DATE columns** (e.g., `workout_date`), compute local date string:
+```typescript
+const localNow = new Date(now.getTime() - tzOffset * 60000) // raw convention
+const dateStr = `${localNow.getUTCFullYear()}-${String(localNow.getUTCMonth() + 1).padStart(2, '0')}-${String(localNow.getUTCDate()).padStart(2, '0')}`
+```
+
+**Forbidden patterns:**
+- `toISOString().split('T')[0]` for local date extraction
+- `toLocaleDateString('en-CA')` on server (locale-dependent)
+- `new Date()` getters without timezone adjustment
+
 ## Performance Considerations
 
 - Keep API responses under 200ms average

@@ -726,13 +726,39 @@ await supabase.storage.from('meal-photos').upload(path, compressed)
 ```
 
 ### 6. Timezone Handling for Daily Queries
-```typescript
-// ❌ Wrong - using server timezone
-const today = new Date().toISOString().split('T')[0]
 
-// ✅ Correct - use user's local date
-const localDate = new Date().toLocaleDateString('en-CA')  // YYYY-MM-DD format
+**All date operations must use `app/lib/timezone-utils.ts`**. Two offset conventions exist:
+
+- **Raw convention** (`getTimezoneOffset()`): positive for west of UTC (e.g., 360 for CST). Used by `localDateToUTCStart/End`, meals/daily API, adherence/weekly API, query page.
+- **Agent convention** (negated): negative for west of UTC (e.g., -360 for CST). Used by V2 page's `tz_offset`, `buildPassiveContext`, agent/process route. Formula: `localTime = UTC + tzOffset`.
+
+```typescript
+// ❌ Wrong - server timezone, locale-dependent, or lossy UTC split
+const today = new Date().toISOString().split('T')[0]
+const localDate = new Date().toLocaleDateString('en-CA')
+
+// ✅ Correct - client-side: use timezone-utils
+import { getLocalDate, getTimezoneOffset } from '@/app/lib/timezone-utils'
+const today = getLocalDate()                    // YYYY-MM-DD in user's local tz
+const tzOffset = getTimezoneOffset()            // raw convention for API calls
+fetch(`/api/dashboard-stats?tzOffset=${tzOffset}`)
+
+// ✅ Correct - server-side: accept tzOffset, compute UTC boundaries
+import { localDateToUTCStart, localDateToUTCEnd, isValidTimezoneOffset } from '@/app/lib/timezone-utils'
+const tzOffset = parseInt(searchParams.get('tzOffset') || '0', 10)
+const utcStart = localDateToUTCStart(dateStr, tzOffset)  // raw convention
+const utcEnd = localDateToUTCEnd(dateStr, tzOffset)
+
+// ✅ Correct - manual YYYY-MM-DD formatting (no toISOString or toLocaleDateString)
+const d = new Date()
+const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 ```
+
+**Forbidden patterns** (will produce wrong dates near midnight or in non-en-CA locales):
+- `toISOString().split('T')[0]` for local dates
+- `toLocaleDateString('en-CA')` on server
+- `toDateString()` comparisons
+- `new Date().getDate()` without timezone offset adjustment on server
 
 ---
 
