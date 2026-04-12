@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { compressImage, isSupportedImageFormat, formatFileSize, type ImageCompressionResult } from '../lib/imageUtils'
 import { getLocalDate } from '../lib/timezone-utils'
 import PRNotification from '../components/PRNotification'
@@ -343,6 +344,20 @@ export default function LogWorkout() {
               appearance: 'none'
             }}
           />
+        </div>
+
+        {/* Use Template */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+          <Link
+            href="/templates"
+            className="flex items-center justify-center gap-2 w-full px-4 py-3 text-base font-semibold text-blue-600 dark:text-blue-400 border-2 border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+          >
+            <span>📋</span>
+            Use Template
+          </Link>
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">
+            Choose from benchmark WODs, hero WODs, or your saved templates
+          </p>
         </div>
 
         {/* Input Method Selection */}
