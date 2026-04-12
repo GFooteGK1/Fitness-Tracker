@@ -6,6 +6,7 @@ import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import PerformanceMonitor from '@/app/components/PerformanceMonitor'
 import { WhoopMetricsCard } from '@/app/components/whoop/WhoopMetricsCard'
 import ExportDialog from '@/app/components/ExportDialog'
+import LeaderboardWidget from '@/app/components/LeaderboardWidget'
 
 interface WorkoutStats {
   totalWorkouts: number
@@ -90,6 +91,9 @@ export default function Dashboard() {
 
         {stats && !loading && !error && (
           <div className="space-y-6">
+            {/* Leaderboard Widget */}
+            <LeaderboardWidget />
+
             {/* WHOOP Metrics Card */}
             <WhoopMetricsCard />
 
