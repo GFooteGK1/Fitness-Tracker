@@ -258,6 +258,7 @@ describe('Tab Detector - Unit Tests', () => {
       selectBestTab(tabs, 2, 2026)
 
       expect(consoleLogSpy).toHaveBeenCalledWith(
+        '[TabDetection] TabDetector: tab_detected',
         expect.objectContaining({
           level: 'INFO',
           component: 'TabDetector',
@@ -280,6 +281,7 @@ describe('Tab Detector - Unit Tests', () => {
       selectBestTab(tabs, 2, 2026)
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[TabDetection] TabDetector: fallback_activated',
         expect.objectContaining({
           level: 'WARN',
           component: 'TabDetector',
@@ -303,6 +305,7 @@ describe('Tab Detector - Unit Tests', () => {
       selectBestTab(tabs, 2, 2026)
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[TabDetection] TabDetector: fallback_activated',
         expect.objectContaining({
           level: 'WARN',
           component: 'TabDetector',
@@ -326,6 +329,7 @@ describe('Tab Detector - Unit Tests', () => {
       selectBestTab(tabs, 2, 2026)
 
       expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[TabDetection]'),
         expect.objectContaining({
           timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
         })

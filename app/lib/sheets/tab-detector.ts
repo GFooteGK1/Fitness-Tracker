@@ -60,7 +60,7 @@ function selectFallbackTab(
       fallback = datedTabs[0]
     }
     
-    console.warn({
+    console.warn('[TabDetection] TabDetector: fallback_activated', {
       timestamp: new Date().toISOString(),
       level: 'WARN',
       component: 'TabDetector',
@@ -88,7 +88,7 @@ function selectFallbackTab(
     st.tab.index > max.tab.index ? st : max
   )
   
-  console.warn({
+  console.warn('[TabDetection] TabDetector: fallback_activated', {
     timestamp: new Date().toISOString(),
     level: 'WARN',
     component: 'TabDetector',
@@ -137,7 +137,7 @@ export function selectBestTab(
     })
     
     const best = matchingTabs[0]
-    console.log({
+    console.log('[TabDetection] TabDetector: tab_detected', {
       timestamp: new Date().toISOString(),
       level: 'INFO',
       component: 'TabDetector',
@@ -180,7 +180,7 @@ export async function detectCurrentTab(
   
   const cached = tabCache.get(spreadsheetId, currentMonth, currentYear)
   if (cached) {
-    console.log({
+    console.log('[TabDetection] TabDetector: cache_hit', {
       timestamp: new Date().toISOString(),
       level: 'INFO',
       component: 'TabDetector',
@@ -203,6 +203,7 @@ export async function detectCurrentTab(
   
   const apiKey = process.env.GOOGLE_SHEETS_API_KEY
   if (!apiKey) {
+    console.error('[TabDetection] TabDetector: missing API key', { spreadsheetId })
     throw new TabDetectionError(
       'GOOGLE_SHEETS_API_KEY environment variable is not set',
       'CONFIG_ERROR',
