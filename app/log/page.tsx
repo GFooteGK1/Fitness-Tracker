@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { compressImage, isSupportedImageFormat, formatFileSize, type ImageCompressionResult } from '../lib/imageUtils'
 import { getLocalDate } from '../lib/timezone-utils'
+import PRNotification from '../components/PRNotification'
+import { type PRResult } from '../lib/pr-detection'
 
 export default function LogWorkout() {
   const [workoutText, setWorkoutText] = useState('')
@@ -18,6 +20,9 @@ export default function LogWorkout() {
   const [isCompressing, setIsCompressing] = useState(false)
   const [compressionResult, setCompressionResult] = useState<ImageCompressionResult | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+
+  // PR notification state
+  const [detectedPRs, setDetectedPRs] = useState<PRResult[]>([])
 
   // Pre-fill from URL parameters and setup speech recognition
   useState(() => {
@@ -119,11 +124,31 @@ export default function LogWorkout() {
         throw new Error(result.error || 'Failed to parse workout')
       }
 
-      setStatus({ 
-        message: `✓ Workout logged! Score: ${result.primaryScore}`, 
-        type: 'success' 
+      setStatus({
+        message: `✓ Workout logged! Score: ${result.primaryScore}`,
+        type: 'success'
       })
-      
+
+      // Check for PRs in the background
+      if (result.workoutId && result.parsed?.blocks) {
+        try {
+          const prResponse = await fetch('/api/check-prs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              workoutId: result.workoutId,
+              blocks: result.parsed.blocks,
+            }),
+          })
+          const prData = await prResponse.json()
+          if (prData.prs && prData.prs.length > 0) {
+            setDetectedPRs(prData.prs)
+          }
+        } catch (prErr) {
+          console.error('PR check failed:', prErr)
+        }
+      }
+
       // Clear form after success
       setTimeout(() => {
         setWorkoutText('')
@@ -282,6 +307,9 @@ export default function LogWorkout() {
 
   return (
     <div className="pb-4">
+      {detectedPRs.length > 0 && (
+        <PRNotification prs={detectedPRs} onDismiss={() => setDetectedPRs([])} />
+      )}
       <h1 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Log Workout</h1>
 
       {status && (
