@@ -65,25 +65,25 @@ This implementation plan addresses three critical authentication issues: browser
   - Test token retrieval failure
   - Test network errors during refresh
 
-- [ ] 4. Checkpoint - Ensure core services pass tests
+- [x] 4. Checkpoint - Ensure core services pass tests
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Create Session Synchronization Service
+- [x] 5. Create Session Synchronization Service
   - Implement `SessionSyncService` using BroadcastChannel API
   - Add fallback to localStorage events for older browsers
   - Implement event broadcasting for login, logout, token refresh
   - Add listener registration and cleanup methods
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 5.1 Write property test for session state propagation
+- [x] 5.1 Write property test for session state propagation
   - **Property 10: Session State Propagation**
   - **Validates: Requirements 5.1**
 
-- [ ] 5.2 Write property test for proactive session expiry handling
+- [x] 5.2 Write property test for proactive session expiry handling
   - **Property 11: Proactive Session Expiry Handling**
   - **Validates: Requirements 5.2**
 
-- [ ] 5.3 Write property test for token refresh side effects
+- [x] 5.3 Write property test for token refresh side effects
   - **Property 12: Token Refresh Side Effects**
   - **Validates: Requirements 5.3**
 
@@ -95,15 +95,15 @@ This implementation plan addresses three critical authentication issues: browser
   - Call token initialization on app startup
   - _Requirements: 1.1, 1.2, 1.5, 3.2, 5.1_
 
-- [ ] 6.1 Write property test for session initialization validation
+- [x] 6.1 Write property test for session initialization validation
   - **Property 1: Session Initialization Validates Storage Consistency**
   - **Validates: Requirements 1.1, 1.5**
 
-- [ ] 6.2 Write property test for session restoration
+- [x] 6.2 Write property test for session restoration
   - **Property 2: Session Restoration Without Re-authentication**
   - **Validates: Requirements 1.2**
 
-- [ ] 7. Update OAuth flow with proper state management
+- [x] 7. Update OAuth flow with proper state management
   - Update OAuth initiation to use `CookieManager` for state cookies
   - Implement cryptographically secure state generation (32+ bytes)
   - Add state validation in OAuth callback route
@@ -111,22 +111,22 @@ This implementation plan addresses three critical authentication issues: browser
   - Add error handling for state validation failures
   - _Requirements: 6.1, 6.3, 6.4, 6.5_
 
-- [ ] 7.1 Write property test for OAuth state security
+- [x] 7.1 Write property test for OAuth state security
   - **Property 13: OAuth State Parameter Security**
   - **Validates: Requirements 6.1**
 
-- [ ] 7.2 Write property test for OAuth state validation
+- [x] 7.2 Write property test for OAuth state validation
   - **Property 14: OAuth State Validation**
   - **Validates: Requirements 6.3**
 
-- [ ] 7.3 Write property test for OAuth state cleanup
+- [x] 7.3 Write property test for OAuth state cleanup
   - **Property 15: OAuth State Cleanup**
   - **Validates: Requirements 6.5**
 
-- [ ] 7.4 Write unit test for OAuth state validation failure
+- [x] 7.4 Write unit test for OAuth state validation failure
   - Test invalid state rejection (edge case 6.4)
 
-- [ ] 8. Implement comprehensive error logging
+- [x] 8. Implement comprehensive error logging
   - Add structured logging to all authentication operations
   - Log session validation failures with specific reasons
   - Log token operation failures with token state
@@ -134,42 +134,42 @@ This implementation plan addresses three critical authentication issues: browser
   - Log sign-out failures with step-by-step status
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 8.1 Write property test for comprehensive error logging
+- [x] 8.1 Write property test for comprehensive error logging
   - **Property 16: Comprehensive Error Logging**
   - **Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5**
 
-- [ ] 9. Update sign-out UI component
+- [x] 9. Update sign-out UI component
   - Ensure sign-out button calls enhanced `signOut()` from AuthContext
   - Add loading state during sign-out
   - Add error handling and user feedback
   - Test sign-out flow in Chrome browser
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 10. Update WHOOP connection UI components
+- [x] 10. Update WHOOP connection UI components
   - Display WHOOP connection status from AuthContext
   - Show token validity status
   - Add manual reconnect button when tokens are invalid
   - Add disconnect button that clears tokens
   - _Requirements: 3.2, 3.4_
 
-- [ ] 11. Checkpoint - Integration testing
+- [x] 11. Checkpoint - Integration testing
   - Ensure all tests pass, ask the user if questions arise.
   - Test complete authentication flow in Chrome
   - Verify WHOOP connection persists across sessions
   - Verify sign-out properly clears all session data
 
-- [ ] 12. Add session synchronization to AuthContext
+- [x] 12. Add session synchronization to AuthContext
   - Initialize `SessionSyncService` in AuthContext
   - Broadcast session changes (login, logout, token refresh)
   - Listen for session changes from other tabs
   - Update AuthContext state when receiving broadcasts
   - _Requirements: 5.1, 5.4, 5.5_
 
-- [ ] 12.1 Write integration tests for cross-tab synchronization
+- [x] 12.1 Write integration tests for cross-tab synchronization
   - Test BroadcastChannel API integration
   - Test localStorage event fallback
 
-- [ ] 13. Final checkpoint - End-to-end verification
+- [x] 13. Final checkpoint - End-to-end verification
   - Ensure all tests pass, ask the user if questions arise.
   - Verify consistent behavior between regular and incognito modes (manual)
   - Verify sign-out works correctly in Chrome

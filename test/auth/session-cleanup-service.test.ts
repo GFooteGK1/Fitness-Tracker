@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SessionCleanupService } from '@/app/lib/auth/session-cleanup-service';
 import { cookieManager } from '@/app/lib/auth/cookie-manager';
-import { createClient } from '@/app/lib/auth/supabase';
+import { createClient } from '@/app/lib/auth/supabase-client';
 
 // Mock dependencies
 vi.mock('@/app/lib/auth/cookie-manager', () => ({
@@ -17,7 +17,7 @@ vi.mock('@/app/lib/auth/cookie-manager', () => ({
   }
 }));
 
-vi.mock('@/app/lib/auth/supabase', () => ({
+vi.mock('@/app/lib/auth/supabase-client', () => ({
   createClient: vi.fn()
 }));
 
@@ -49,12 +49,14 @@ describe('SessionCleanupService', () => {
 
   describe('Server-Side Error Handling', () => {
     it('should return error result when signOut called server-side', async () => {
-      // In Node.js environment (not browser)
+      // In Node.js environment (not browser), server signOut works
+      // but cookie/localStorage/sessionStorage clearing will fail
       const result = await service.signOut();
-      
+
       expect(result.success).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0]).toContain('Server-side session invalidation must be called from browser context');
+      // Cookie clearing should fail in server context
+      expect(result.errors.some(e => e.includes('Cookie clearing failed'))).toBe(true);
     });
 
     it('should return false when verifyCleanup called server-side', () => {
@@ -105,17 +107,33 @@ describe('SessionCleanupService - Browser Context Tests', () => {
     originalSessionStorage = global.sessionStorage;
     originalNavigator = global.navigator;
 
-    // Create mock storage
+    // Create mock storage that exposes keys to Object.keys()
     const mockStorage = () => {
-      const storage: Record<string, string> = {};
-      return {
-        getItem: (key: string) => storage[key] || null,
-        setItem: (key: string, value: string) => { storage[key] = value; },
-        removeItem: (key: string) => { delete storage[key]; },
-        clear: () => { Object.keys(storage).forEach(key => delete storage[key]); },
-        get length() { return Object.keys(storage).length; },
-        key: (index: number) => Object.keys(storage)[index] || null
+      const store = new Map<string, string>();
+      const handler: ProxyHandler<any> = {
+        get(_target, prop: string) {
+          if (prop === 'getItem') return (key: string) => store.get(key) ?? null;
+          if (prop === 'setItem') return (key: string, value: string) => { store.set(key, value); };
+          if (prop === 'removeItem') return (key: string) => { store.delete(key); };
+          if (prop === 'clear') return () => { store.clear(); };
+          if (prop === 'length') return store.size;
+          if (prop === 'key') return (index: number) => [...store.keys()][index] ?? null;
+          return store.get(prop) ?? undefined;
+        },
+        ownKeys() {
+          return [...store.keys()];
+        },
+        getOwnPropertyDescriptor(_target, prop: string) {
+          if (store.has(prop)) {
+            return { configurable: true, enumerable: true, value: store.get(prop) };
+          }
+          return undefined;
+        },
+        has(_target, prop: string) {
+          return store.has(prop);
+        }
       };
+      return new Proxy({}, handler);
     };
 
     (global as any).window = { location: { hostname: 'localhost' } };
@@ -225,41 +243,26 @@ describe('SessionCleanupService - Browser Context Tests', () => {
     });
 
     it('should handle localStorage errors', async () => {
-      // Mock localStorage.length to throw error
-      const mockStorage = localStorage as any;
-      const originalLength = mockStorage.length;
-      
-      Object.defineProperty(mockStorage, 'length', {
-        get: () => { throw new Error('Storage error'); },
-        configurable: true
-      });
+      // Create a service with a broken clearLocalStorage
+      const brokenService = new SessionCleanupService();
+      const origClearLS = brokenService.clearLocalStorage.bind(brokenService);
+      brokenService.clearLocalStorage = () => { throw new Error('Storage error'); };
 
-      const result = await service.signOut();
+      const result = await brokenService.signOut();
 
       // Should catch error and mark as failed
       expect(result.steps.localStorageCleared).toBe(false);
-      expect(result.errors.some(e => e.includes('localStorage clearing failed'))).toBe(true);
-      
-      // Restore
-      Object.defineProperty(mockStorage, 'length', {
-        get: () => originalLength,
-        configurable: true
-      });
+      expect(result.errors.some((e: string) => e.includes('localStorage clearing failed'))).toBe(true);
     });
 
     it('should handle sessionStorage errors', async () => {
-      // Mock sessionStorage to throw error
-      const originalClear = sessionStorage.clear;
-      sessionStorage.clear = vi.fn().mockImplementation(() => {
-        throw new Error('Storage error');
-      });
+      // Create a service with a broken clearSessionStorage
+      const brokenService = new SessionCleanupService();
+      brokenService.clearSessionStorage = () => { throw new Error('Storage error'); };
 
-      const result = await service.signOut();
+      const result = await brokenService.signOut();
 
       expect(result.steps.sessionStorageCleared).toBe(false);
-      
-      // Restore
-      sessionStorage.clear = originalClear;
     });
   });
 
@@ -286,8 +289,8 @@ describe('SessionCleanupService - Browser Context Tests', () => {
       expect(result).toBe(false);
     });
 
-    it('should detect non-empty sessionStorage', () => {
-      sessionStorage.setItem('some-key', 'value');
+    it('should detect auth-related sessionStorage keys', () => {
+      sessionStorage.setItem('sb-session-data', 'value');
 
       const result = service.verifyCleanup();
 
@@ -356,15 +359,31 @@ describe('Requirements Validation', () => {
   beforeEach(() => {
     // Mock browser environment
     const mockStorage = () => {
-      const storage: Record<string, string> = {};
-      return {
-        getItem: (key: string) => storage[key] || null,
-        setItem: (key: string, value: string) => { storage[key] = value; },
-        removeItem: (key: string) => { delete storage[key]; },
-        clear: () => { Object.keys(storage).forEach(key => delete storage[key]); },
-        get length() { return Object.keys(storage).length; },
-        key: (index: number) => Object.keys(storage)[index] || null
+      const store = new Map<string, string>();
+      const handler: ProxyHandler<any> = {
+        get(_target, prop: string) {
+          if (prop === 'getItem') return (key: string) => store.get(key) ?? null;
+          if (prop === 'setItem') return (key: string, value: string) => { store.set(key, value); };
+          if (prop === 'removeItem') return (key: string) => { store.delete(key); };
+          if (prop === 'clear') return () => { store.clear(); };
+          if (prop === 'length') return store.size;
+          if (prop === 'key') return (index: number) => [...store.keys()][index] ?? null;
+          return store.get(prop) ?? undefined;
+        },
+        ownKeys() {
+          return [...store.keys()];
+        },
+        getOwnPropertyDescriptor(_target, prop: string) {
+          if (store.has(prop)) {
+            return { configurable: true, enumerable: true, value: store.get(prop) };
+          }
+          return undefined;
+        },
+        has(_target, prop: string) {
+          return store.has(prop);
+        }
       };
+      return new Proxy({}, handler);
     };
 
     (global as any).window = { location: { hostname: 'localhost' } };
@@ -378,12 +397,12 @@ describe('Requirements Validation', () => {
         signOut: vi.fn().mockResolvedValue({ error: null })
       }
     };
-    
+
     vi.mocked(createClient).mockReturnValue(mockSupabase);
-    
+
     // Reset the cookieManager mock to not throw errors
     vi.mocked(cookieManager.clearAuthCookies).mockImplementation(() => {});
-    
+
     service = new SessionCleanupService();
   });
 

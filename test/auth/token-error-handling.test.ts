@@ -42,16 +42,24 @@ describe('WHOOP Token Error Handling', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    const mockEq = vi.fn().mockResolvedValue({ data: null, error: null });
+
+    // Create a mock that supports the full Supabase chaining pattern:
+    // supabase.from(...).select(...).eq(...).single()
+    const mockSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const mockEq = vi.fn().mockReturnValue({ single: mockSingle });
+    const mockDeleteEq = vi.fn().mockResolvedValue({ data: null, error: null });
+
+    // For upsert chain: supabase.from(...).upsert(...)
+    const mockUpsert = vi.fn().mockResolvedValue({ data: null, error: null });
+
     mockSupabase = {
-      from: vi.fn().mockReturnThis(),
-      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockImplementation(() => mockSupabase),
+      select: vi.fn().mockImplementation(() => mockSupabase),
       eq: mockEq,
-      single: vi.fn(),
-      upsert: vi.fn(),
-      delete: vi.fn().mockReturnValue({ eq: mockEq }),
-      update: vi.fn().mockReturnThis()
+      single: mockSingle,
+      upsert: mockUpsert,
+      delete: vi.fn().mockReturnValue({ eq: mockDeleteEq }),
+      update: vi.fn().mockImplementation(() => mockSupabase)
     };
 
     (createServerClient as any).mockResolvedValue(mockSupabase);
@@ -62,6 +70,11 @@ describe('WHOOP Token Error Handling', () => {
   afterEach(() => {
     consoleErrorSpy.mockRestore();
     consoleWarnSpy.mockRestore();
+    // Restore decryptTokens to default mock (tests in section 2 override it)
+    (decryptTokens as any).mockImplementation((access: string, refresh: string) => ({
+      accessToken: access.replace('encrypted_', ''),
+      refreshToken: refresh.replace('encrypted_', '')
+    }));
   });
 
   describe('1. Invalid Refresh Token Handling (401/403 Response)', () => {

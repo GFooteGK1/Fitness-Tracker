@@ -10,13 +10,13 @@ import { describe, expect, beforeEach, afterEach, vi } from 'vitest';
 import { test, fc } from '@fast-check/vitest';
 import { SessionCleanupService } from '@/app/lib/auth/session-cleanup-service';
 import { cookieManager } from '@/app/lib/auth/cookie-manager';
-import { createClient } from '@/app/lib/auth/supabase';
+import { createClient } from '@/app/lib/auth/supabase-client';
 
 vi.mock('@/app/lib/auth/cookie-manager', () => ({
   cookieManager: { clearAuthCookies: vi.fn() }
 }));
 
-vi.mock('@/app/lib/auth/supabase', () => ({
+vi.mock('@/app/lib/auth/supabase-client', () => ({
   createClient: vi.fn()
 }));
 
@@ -35,16 +35,28 @@ describe('Session Cleanup Service - Property Tests', () => {
     originalSessionStorage = global.sessionStorage;
     originalNavigator = global.navigator;
 
+    vi.clearAllMocks();
+
     const mockStorage = () => {
-      const storage: Record<string, string> = {};
-      return {
-        getItem: (key: string) => storage[key] || null,
-        setItem: (key: string, value: string) => { storage[key] = value; },
-        removeItem: (key: string) => { delete storage[key]; },
-        clear: () => { Object.keys(storage).forEach(key => delete storage[key]); },
-        get length() { return Object.keys(storage).length; },
-        key: (index: number) => Object.keys(storage)[index] || null
+      const store = new Map<string, string>();
+      const handler: ProxyHandler<any> = {
+        get(_target, prop: string) {
+          if (prop === 'getItem') return (key: string) => store.get(key) ?? null;
+          if (prop === 'setItem') return (key: string, value: string) => { store.set(key, value); };
+          if (prop === 'removeItem') return (key: string) => { store.delete(key); };
+          if (prop === 'clear') return () => { store.clear(); };
+          if (prop === 'length') return store.size;
+          if (prop === 'key') return (index: number) => [...store.keys()][index] ?? null;
+          return store.get(prop) ?? undefined;
+        },
+        ownKeys() { return [...store.keys()]; },
+        getOwnPropertyDescriptor(_target, prop: string) {
+          if (store.has(prop)) return { configurable: true, enumerable: true, value: store.get(prop) };
+          return undefined;
+        },
+        has(_target, prop: string) { return store.has(prop); }
       };
+      return new Proxy({}, handler);
     };
 
     (global as any).window = { location: { hostname: 'localhost' } };
@@ -56,10 +68,9 @@ describe('Session Cleanup Service - Property Tests', () => {
     mockSupabase = {
       auth: { signOut: vi.fn().mockResolvedValue({ error: null }) }
     };
-    
+
     vi.mocked(createClient).mockReturnValue(mockSupabase);
     vi.mocked(cookieManager.clearAuthCookies).mockImplementation(() => {});
-    vi.clearAllMocks();
   });
 
   afterEach(() => {
