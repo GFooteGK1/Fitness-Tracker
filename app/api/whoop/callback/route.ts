@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@/app/lib/auth/supabase-server';
 import * as whoopClient from '@/app/lib/whoop/api-client';
 import * as tokenService from '@/app/lib/whoop/token-service';
+import { fullSync } from '@/app/lib/whoop/sync-service';
 
 /**
  * OAuth Callback Route
@@ -146,9 +147,14 @@ export async function GET(request: NextRequest) {
       // Non-fatal - continue with success
     }
 
-    // 11. TODO: Trigger initial sync (Task 7 - Sync Service)
-    // This will be implemented in the sync service
-    // For now, we'll let the user manually trigger sync or wait for scheduled sync
+    // 11. Trigger initial sync (non-blocking — don't fail OAuth if sync fails)
+    try {
+      await fullSync(user.id);
+      console.log('[WHOOP Callback] Initial sync completed for user:', user.id);
+    } catch (syncError) {
+      console.error('[WHOOP Callback] Initial sync failed (non-fatal):', syncError);
+      // Don't fail the OAuth flow — tokens are stored, user can retry sync later
+    }
 
     // 12. Redirect to settings with success message
     console.log('[WHOOP Callback] OAuth flow completed successfully for user:', user.id);
