@@ -44,12 +44,23 @@ describe('WHOOP Token Service - Task 3 Methods', () => {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       single: vi.fn(),
-      upsert: vi.fn(),
-      delete: vi.fn(),
-      update: vi.fn()
+      upsert: vi.fn().mockResolvedValue({ data: null, error: null }),
+      delete: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ data: null, error: null })
+      }),
+      update: vi.fn().mockReturnThis()
     };
 
     (createServerClient as any).mockResolvedValue(mockSupabase);
+  });
+
+  afterEach(async () => {
+    // Restore decryptTokens to default mock (decryption failure tests override it)
+    const { decryptTokens } = await import('@/app/lib/whoop/encryption');
+    (decryptTokens as any).mockImplementation((access: string, refresh: string) => ({
+      accessToken: access.replace('encrypted_', ''),
+      refreshToken: refresh.replace('encrypted_', '')
+    }));
   });
 
   describe('retrieveTokens()', () => {
@@ -386,8 +397,9 @@ describe('WHOOP Token Service - Task 3 Methods', () => {
         };
 
         mockSupabase.single.mockResolvedValue({ data: mockData, error: null });
-        mockSupabase.delete.mockResolvedValue({ error: null });
-        
+        const mockDeleteEq = vi.fn().mockResolvedValue({ data: null, error: null });
+        mockSupabase.delete.mockReturnValue({ eq: mockDeleteEq });
+
         const { decryptTokens } = await import('@/app/lib/whoop/encryption');
         (decryptTokens as any).mockImplementation(() => {
           throw new Error('Decryption failed');
@@ -408,38 +420,21 @@ describe('WHOOP Token Service - Task 3 Methods', () => {
       it('should handle database connection errors', async () => {
         const userId = 'test-user-123';
         const dbError = new Error('Connection timeout');
-        
+
         mockSupabase.single.mockRejectedValue(dbError);
 
-        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-        const result = await tokenService.retrieveTokens(userId);
-
-        expect(result).toBeNull();
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Error retrieving tokens'),
-          expect.any(Error)
-        );
-
-        consoleErrorSpy.mockRestore();
+        await expect(tokenService.retrieveTokens(userId)).rejects.toThrow('Connection timeout');
       });
 
       it('should handle database query errors', async () => {
         const userId = 'test-user-123';
-        
-        mockSupabase.single.mockResolvedValue({ 
-          data: null, 
-          error: { message: 'Query failed', code: 'PGRST500' } 
+
+        mockSupabase.single.mockResolvedValue({
+          data: null,
+          error: { message: 'Query failed', code: 'PGRST500' }
         });
 
-        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-        const result = await tokenService.retrieveTokens(userId);
-
-        expect(result).toBeNull();
-        expect(consoleErrorSpy).toHaveBeenCalled();
-
-        consoleErrorSpy.mockRestore();
+        await expect(tokenService.retrieveTokens(userId)).rejects.toThrow('Failed to retrieve WHOOP tokens: Query failed');
       });
 
       it('should return false from hasValidTokens on retrieval failure', async () => {

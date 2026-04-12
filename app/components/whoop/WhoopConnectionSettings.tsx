@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/app/lib/auth/AuthContext';
 
 interface ConnectionStatus {
   isConnected: boolean;
@@ -10,6 +11,7 @@ interface ConnectionStatus {
 }
 
 export function WhoopConnectionSettings() {
+  const { whoopConnected, whoopTokensValid, initializeWhoopConnection } = useAuth();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -220,6 +222,26 @@ export function WhoopConnectionSettings() {
             </div>
             {getStatusBadge(connectionStatus.status)}
           </div>
+
+          {/* Token Validity Status */}
+          {whoopConnected && !whoopTokensValid && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <svg className="h-5 w-5 text-orange-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <p className="text-sm text-orange-800">WHOOP tokens need renewal.</p>
+                </div>
+                <button
+                  onClick={handleConnect}
+                  className="ml-4 text-sm font-medium text-orange-700 hover:text-orange-900 underline"
+                >
+                  Reconnect
+                </button>
+              </div>
+            </div>
+          )}
 
           {connectionStatus.errorMessage && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">

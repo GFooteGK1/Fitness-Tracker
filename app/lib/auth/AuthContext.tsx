@@ -5,6 +5,8 @@ import { User, Session } from '@supabase/auth-helpers-nextjs'
 import { createClient } from './supabase'
 import { AuthContextType, UserProfile, DatabaseUserProfile } from './types'
 import { sessionCleanupService } from './session-cleanup-service'
+import { sessionSyncService } from './session-sync-service'
+import { authErrorLogger } from './auth-error-logger'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -112,7 +114,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setWhoopTokensValid(false)
       }
     } catch (whoopError) {
-      console.error('[AuthContext] Failed to initialize WHOOP connection:', whoopError)
+      authErrorLogger.logTokenOperationFailure({
+        operation: 'initializeConnection',
+        component: 'AuthContext',
+        error: whoopError,
+      })
       setWhoopConnected(false)
       setWhoopTokensValid(false)
     }
@@ -154,6 +160,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     initializeAuth()
 
+    // Initialize cross-tab session sync
+    sessionSyncService.initialize()
+    sessionSyncService.onSessionChange(async (event) => {
+      if (event === 'logout') {
+        setUser(null)
+        setProfile(null)
+        setSession(null)
+        setWhoopConnected(false)
+        setWhoopTokensValid(false)
+      } else if (event === 'login' || event === 'token_refresh') {
+        // Re-fetch session from Supabase
+        const { data: { session: refreshedSession } } = await supabase.auth.getSession()
+        if (refreshedSession?.user) {
+          setUser(refreshedSession.user)
+          setSession(refreshedSession)
+          await callWhoopInitialize()
+        }
+      }
+    })
+
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -182,7 +208,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      sessionSyncService.cleanup()
+    }
   }, [])
 
   // Sign up function
@@ -226,11 +255,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const result = await sessionCleanupService.signOut()
       
       if (!result.success) {
-        console.error('[AuthContext] Sign-out had errors:', result.errors)
-        // Still proceed with state reset and redirect
-      } else {
-        console.log('[AuthContext] Sign-out completed successfully')
+        authErrorLogger.logSignOutFailure({
+          userId: user?.id,
+          step: 'cleanup',
+          component: 'AuthContext',
+          error: result.errors.join('; '),
+          stepsCompleted: result.steps,
+        })
       }
+
+      // Broadcast logout to other tabs
+      sessionSyncService.broadcastSessionChange('logout')
       
       // Reset AuthContext state
       setUser(null)
@@ -242,8 +277,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Redirect to login
       window.location.href = '/auth/signin'
     } catch (error) {
-      console.error('[AuthContext] Sign-out error:', error)
-      
+      authErrorLogger.logSignOutFailure({
+        userId: user?.id,
+        step: 'signOut',
+        component: 'AuthContext',
+        error,
+        stepsCompleted: {},
+      })
+
       // Even if cleanup fails, reset state and redirect
       setUser(null)
       setProfile(null)

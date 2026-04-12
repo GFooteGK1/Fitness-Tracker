@@ -43,12 +43,11 @@ class MockTokenRefreshService implements TokenRefreshService {
   }
 
   async refreshAccessToken(userId: string): Promise<WhoopTokens> {
-    this.refreshCallCount++;
-    
     const currentTokens = await this.getTokens(userId);
     if (!currentTokens) {
       throw new Error('No tokens found for user');
     }
+    this.refreshCallCount++;
 
     // Simulate API call to refresh tokens
     const newTokens: WhoopTokens = {
@@ -111,7 +110,7 @@ class MockTokenRefreshService implements TokenRefreshService {
   async getValidAccessToken(userId: string): Promise<string> {
     const validation = await this.validateTokens(userId);
 
-    if (!validation.valid) {
+    if (!validation.valid && !validation.needsRefresh) {
       throw new Error('No valid WHOOP tokens found');
     }
 
@@ -278,6 +277,9 @@ describe('WHOOP Token Refresh - Property Tests', () => {
     }),
     fc.integer({ min: 2, max: 5 }) // Number of refresh attempts
   ])('Property 6: multiple refresh calls update tokens correctly', async (userId, expiredTokens, attempts) => {
+    // Reset state for this iteration
+    service.clear();
+
     // Setup: Store expired tokens
     service.setTokens(userId, expiredTokens);
 

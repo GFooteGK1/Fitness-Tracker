@@ -53,8 +53,13 @@ export class SessionCleanupService {
     // Step 1: Server-side session invalidation
     try {
       const supabase = createClient();
-      await supabase.auth.signOut();
-      result.steps.serverSignOut = true;
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        const errorMessage = signOutError instanceof Error ? signOutError.message : String(signOutError);
+        result.errors.push(`Server sign-out failed: ${errorMessage}`);
+      } else {
+        result.steps.serverSignOut = true;
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       result.errors.push(`Server sign-out failed: ${errorMessage}`);
@@ -110,6 +115,13 @@ export class SessionCleanupService {
   }
 
   /**
+   * Check if running in browser context
+   */
+  isBrowserContext(): boolean {
+    return this.isBrowser;
+  }
+
+  /**
    * Clear all localStorage entries related to authentication
    * Includes Supabase session data and application-specific user data
    */
@@ -117,6 +129,8 @@ export class SessionCleanupService {
     if (!this.isBrowser) {
       throw new Error('localStorage clearing must be called in browser context');
     }
+
+    const failures: string[] = [];
 
     // List of known auth-related localStorage keys
     const authKeys = [
@@ -130,22 +144,33 @@ export class SessionCleanupService {
       try {
         localStorage.removeItem(key);
       } catch (error) {
-        // Continue even if individual key removal fails
+        failures.push(key);
         console.error(`Failed to remove localStorage key: ${key}`, error);
       }
     });
 
-    // Also clear any keys that start with 'sb-' or 'supabase'
+    // Also clear any keys that match auth-related patterns
     const allKeys = Object.keys(localStorage);
     allKeys.forEach(key => {
-      if (key.startsWith('sb-') || key.startsWith('supabase')) {
+      if (
+        key.startsWith('sb-') ||
+        key.startsWith('supabase') ||
+        key.includes('auth') ||
+        key.includes('session') ||
+        key.includes('token')
+      ) {
         try {
           localStorage.removeItem(key);
         } catch (error) {
+          failures.push(key);
           console.error(`Failed to remove localStorage key: ${key}`, error);
         }
       }
     });
+
+    if (failures.length > 0) {
+      throw new Error(`Failed to clear localStorage keys: ${failures.join(', ')}`);
+    }
   }
 
   /**

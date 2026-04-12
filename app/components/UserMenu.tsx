@@ -23,13 +23,20 @@ export default function UserMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const [signingOut, setSigningOut] = useState(false)
+  const [signOutError, setSignOutError] = useState<string | null>(null)
+
   const handleSignOut = async () => {
     try {
+      setSigningOut(true)
+      setSignOutError(null)
       await signOut()
       setIsOpen(false)
       router.push('/')
     } catch (error) {
       console.error('Sign out error:', error)
+      setSignOutError('Failed to sign out. Please try again.')
+      setSigningOut(false)
     }
   }
 
@@ -156,13 +163,33 @@ export default function UserMenu() {
           {/* Divider */}
           <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
 
+          {/* Sign Out Error */}
+          {signOutError && (
+            <div className="px-4 py-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20">
+              {signOutError}
+            </div>
+          )}
+
           {/* Sign Out */}
           <button
             onClick={handleSignOut}
-            className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            disabled={signingOut}
+            className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className="mr-3">🚪</span>
-            Sign Out
+            {signingOut ? (
+              <>
+                <svg className="animate-spin mr-3 h-4 w-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Signing Out...
+              </>
+            ) : (
+              <>
+                <span className="mr-3">🚪</span>
+                Sign Out
+              </>
+            )}
           </button>
         </div>
       )}
