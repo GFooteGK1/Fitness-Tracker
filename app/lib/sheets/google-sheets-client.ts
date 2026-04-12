@@ -100,7 +100,7 @@ async function fetchWithRetry(url: string, maxRetries: number): Promise<Response
       if (response.status === 429) {
         if (attempt < maxRetries - 1) {
           const delay = Math.pow(2, attempt) * 1000 // 1s, 2s, 4s
-          console.warn({
+          console.warn('[TabDetection] GoogleSheetsClient: rate_limit_retry', {
             timestamp: new Date().toISOString(),
             level: 'WARN',
             component: 'GoogleSheetsClient',
@@ -120,7 +120,7 @@ async function fetchWithRetry(url: string, maxRetries: number): Promise<Response
       if (response.status >= 500) {
         if (attempt < maxRetries - 1) {
           const delay = Math.pow(2, attempt) * 1000 // 1s, 2s, 4s
-          console.warn({
+          console.warn('[TabDetection] GoogleSheetsClient: server_error_retry', {
             timestamp: new Date().toISOString(),
             level: 'WARN',
             component: 'GoogleSheetsClient',
@@ -146,7 +146,7 @@ async function fetchWithRetry(url: string, maxRetries: number): Promise<Response
       // Retry on network errors
       if (attempt < maxRetries - 1) {
         const delay = Math.pow(2, attempt) * 1000 // 1s, 2s, 4s
-        console.warn({
+        console.warn('[TabDetection] GoogleSheetsClient: network_error_retry', {
           timestamp: new Date().toISOString(),
           level: 'WARN',
           component: 'GoogleSheetsClient',
@@ -315,7 +315,7 @@ function extractTabsFromResponse(responseData: any, spreadsheetId: string): Shee
 
     // Validate required fields
     if (!properties || typeof properties !== 'object') {
-      console.warn({
+      console.warn('[TabDetection] GoogleSheetsClient: invalid_sheet_properties', {
         timestamp: new Date().toISOString(),
         level: 'WARN',
         component: 'GoogleSheetsClient',
@@ -333,7 +333,7 @@ function extractTabsFromResponse(responseData: any, spreadsheetId: string): Shee
       typeof properties.title !== 'string' ||
       typeof properties.index !== 'number'
     ) {
-      console.warn({
+      console.warn('[TabDetection] GoogleSheetsClient: missing_required_fields', {
         timestamp: new Date().toISOString(),
         level: 'WARN',
         component: 'GoogleSheetsClient',
@@ -362,7 +362,7 @@ function extractTabsFromResponse(responseData: any, spreadsheetId: string): Shee
     )
   }
 
-  console.log({
+  console.log('[TabDetection] GoogleSheetsClient: tabs_fetched', {
     timestamp: new Date().toISOString(),
     level: 'INFO',
     component: 'GoogleSheetsClient',

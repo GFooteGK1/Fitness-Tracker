@@ -304,10 +304,15 @@ describe('Tab Detector - Property Tests', () => {
         currentMonthTitle = `${FULL_MONTH_NAMES[currentMonth - 1]} ${currentYear}`
     }
     
+    // Use a future month that cannot collide with the current month.
+    // Pick a month+year that is guaranteed different from currentMonth/currentYear.
+    const futureMonth = (currentMonth % 12) + 1 // Next month (wraps 12→1)
+    const futureYear = futureMonth <= currentMonth ? currentYear + 1 : currentYear
+
     const tabs: SheetTab[] = [
       {
         sheetId: 1000,
-        title: 'January 2020', // Past month
+        title: 'January 2019', // Past month (guaranteed different)
         index: 0
       },
       {
@@ -317,13 +322,13 @@ describe('Tab Detector - Property Tests', () => {
       },
       {
         sheetId: 2000,
-        title: 'December 2030', // Future month
+        title: `${FULL_MONTH_NAMES[futureMonth - 1]} ${futureYear}`, // Future month (no collision)
         index: 2
       }
     ]
-    
+
     const result = selectBestTab(tabs, currentMonth, currentYear)
-    
+
     // Should select the current month tab regardless of format
     expect(result.isFallback).toBe(false)
     expect(result.detectedDate).toBeDefined()
@@ -523,11 +528,13 @@ describe('Tab Detector - Property Tests', () => {
 
   test.prop(
     [
-      fc.integer({ min: 1, max: 12 }), // currentMonth
+      // Exclude month 5 (May) because "May" is both full and abbreviated form,
+      // so it matches "Month YYYY" (confidence 1.0) instead of "Mon YYYY" (0.95).
+      fc.constantFrom(1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12), // currentMonth (not May)
       fc.integer({ min: 2020, max: 2030 }) // currentYear
     ],
     propertyConfig
-  )('Property 5.3: prefers higher confidence over higher index', 
+  )('Property 5.3: prefers higher confidence over higher index',
     (currentMonth, currentYear) => {
     const tabs: SheetTab[] = [
       {
@@ -546,9 +553,9 @@ describe('Tab Detector - Property Tests', () => {
         index: 2 // Highest index but lowest confidence
       }
     ]
-    
+
     const result = selectBestTab(tabs, currentMonth, currentYear)
-    
+
     // Should select highest confidence (0.95), not highest index
     expect(result.sheetGid).toBe('1000')
     expect(result.confidence).toBe(0.95)
@@ -608,11 +615,13 @@ describe('Tab Detector - Property Tests', () => {
 
   test.prop(
     [
-      fc.integer({ min: 1, max: 12 }), // currentMonth
+      // Exclude month 12 (December) because "December YYYY" would be the current
+      // month — a direct match, not a fallback.
+      fc.integer({ min: 1, max: 11 }), // currentMonth (not December)
       fc.integer({ min: 2020, max: 2029 }) // currentYear (not 2030 to allow future)
     ],
     propertyConfig
-  )('Property 6.2: selects most recent dated tab from mixed past and future dates', 
+  )('Property 6.2: selects most recent dated tab from mixed past and future dates',
     (currentMonth, currentYear) => {
     const tabs: SheetTab[] = [
       {
@@ -622,7 +631,7 @@ describe('Tab Detector - Property Tests', () => {
       },
       {
         sheetId: 2000,
-        title: `December ${currentYear}`, // Recent past month (if current is not December)
+        title: `December ${currentYear}`, // Future month (current is 1–11, so Dec is after)
         index: 1
       },
       {
@@ -631,17 +640,24 @@ describe('Tab Detector - Property Tests', () => {
         index: 2
       }
     ]
-    
+
     const result = selectBestTab(tabs, currentMonth, currentYear)
-    
-    // Should select December of current year (most recent)
+
+    // Should be fallback because none match current month
     expect(result.isFallback).toBe(true)
     expect(result.warning).toContain('most recent dated tab')
     expect(result.detectedDate).toBeDefined()
-    
-    // Most recent should be December current year
-    expect(result.detectedDate!.year).toBe(currentYear)
-    expect(result.detectedDate!.month).toBe(12)
+
+    // Most recent past tab is January of previous year if currentMonth <= 1,
+    // otherwise the detector picks the closest past month. With Jan(prev year)
+    // being the only past tab, it will be selected for months 1. For months 2-11,
+    // January(prev year) is still the only past tab available.
+    // Actually: the fallback prefers past dates. Jan(prev year) is past.
+    // Dec(currentYear) is future when currentMonth < 12.
+    // Mar(next year) is future.
+    // So fallback picks Jan(prev year) as most recent past.
+    expect(result.detectedDate!.year).toBe(currentYear - 1)
+    expect(result.detectedDate!.month).toBe(1)
   })
 
   test.prop(

@@ -152,6 +152,7 @@ export function parseTabName(tabName: string): ParsedTabDate | null {
   }
 
   // No recognizable date pattern found
+  console.log('[TabDetection] TabNameParser: no date pattern found', { tabName: trimmed })
   return null
 }
 

@@ -66,6 +66,7 @@ When working on this codebase:
 |holistic-query-system:{requirements.md,design.md,tasks.md}
 |whoop-integration:{requirements.md,design.md,tasks.md}
 |weekly-progress-tracking:{requirements.md,design.md,tasks.md}
+|dynamic-sheet-tab-detection:{requirements.md,design.md,tasks.md}
 
 [Steering]|root: ./.kiro/steering
 |always:{project-overview.md,development-principles.md}
@@ -513,6 +514,60 @@ PU → Pull-up, DL → Deadlift, BS → Back Squat, FS → Front Squat
 OHS → Overhead Squat, C&J → Clean and Jerk, S2OH → Shoulder to Overhead
 225# → 225 lb, 100kg → 100 kg, BW → bodyweight
 ```
+
+---
+
+## Dynamic Sheet Tab Detection
+
+Automatically identifies the correct Google Sheets tab for the current month's programming, replacing the need for manual SHEET_GID updates.
+
+### Architecture
+```
+app/lib/sheets/
+├── tab-detector.ts          # Main orchestrator — detectCurrentTab()
+├── tab-name-parser.ts       # Date extraction from tab names
+├── google-sheets-client.ts  # Google Sheets API v4 wrapper
+├── tab-cache.ts             # In-memory TTL cache
+├── workout-fetcher.ts       # CSV fetch + parse (used by API and agents)
+├── types.ts                 # TypeScript interfaces, TabDetectionError
+└── index.ts                 # Barrel exports
+```
+
+### How It Works
+1. `detectCurrentTab(spreadsheetId, referenceDate?)` checks the in-memory cache
+2. On cache miss, fetches tab metadata from Google Sheets API v4
+3. Parses each tab name to extract date info with confidence scoring
+4. Selects the tab matching the current month (highest confidence, rightmost as tiebreaker)
+5. Falls back to most recent dated tab, or rightmost tab if no dates found
+6. Caches successful (non-fallback) results for 4 hours
+
+### Supported Tab Name Formats
+| Format | Example | Confidence |
+|--------|---------|------------|
+| Month YYYY | January 2026 | 1.0 |
+| Mon YYYY | Jan 2026 | 0.95 |
+| YYYY-MM | 2026-01 | 0.9 |
+| MM/YYYY | 01/2026 | 0.85 |
+| Month only | January | 0.7 |
+
+### Environment Variables
+```bash
+GOOGLE_SHEETS_API_KEY=your-key        # Required — Google Sheets API v4 key
+GOOGLE_SHEETS_CACHE_TTL_HOURS=4       # Optional — cache TTL (default: 4)
+```
+
+### Logging
+All components log with `[TabDetection] Component: action` prefix:
+- **INFO**: cache hits, successful tab detection, tabs fetched
+- **WARN**: fallback activation, rate limit retries, invalid sheet properties
+- **ERROR**: missing API key, API failures
+
+### Troubleshooting
+- **CONFIG_ERROR**: Check `GOOGLE_SHEETS_API_KEY` env var is set
+- **API_ERROR (403)**: Ensure spreadsheet is publicly readable or API key has access
+- **API_ERROR (429)**: Rate limited — system retries automatically with exponential backoff (1s, 2s, 4s)
+- **NO_TABS_FOUND**: Verify `PROGRAMMING_SHEET_ID` in `workout-fetcher.ts` is correct
+- **Fallback warnings**: Add a tab named with current month (e.g., "April 2026")
 
 ---
 

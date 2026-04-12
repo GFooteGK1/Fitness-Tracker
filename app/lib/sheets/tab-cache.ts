@@ -39,6 +39,7 @@ export class TabCache {
     
     // Cache miss
     if (!cached) {
+      console.log('[TabDetection] TabCache: cache miss', { spreadsheetId })
       return null
     }
 
@@ -54,10 +55,23 @@ export class TabCache {
 
     // Invalidate if expired or month changed
     if (isExpired || monthChanged) {
+      console.log('[TabDetection] TabCache: cache invalidated', {
+        spreadsheetId,
+        reason: isExpired ? 'TTL expired' : 'month changed',
+        cachedMonth: cached.detectedMonth,
+        cachedYear: cached.detectedYear,
+        currentMonth,
+        currentYear
+      })
       this.cache.delete(spreadsheetId)
       return null
     }
 
+    console.log('[TabDetection] TabCache: cache hit', {
+      spreadsheetId,
+      tabName: cached.tabName,
+      sheetGid: cached.sheetGid
+    })
     return cached
   }
 
@@ -70,6 +84,11 @@ export class TabCache {
    * Validates: Requirements 5.1
    */
   set(spreadsheetId: string, result: CachedTabResult): void {
+    console.log('[TabDetection] TabCache: caching result', {
+      spreadsheetId,
+      tabName: result.tabName,
+      sheetGid: result.sheetGid
+    })
     this.cache.set(spreadsheetId, result)
   }
 
