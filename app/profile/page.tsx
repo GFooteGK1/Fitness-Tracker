@@ -113,7 +113,9 @@ export default function ProfilePage() {
             </div>
 
             {/* WHOOP Connection */}
-            <WhoopConnectionSettings />
+            <div id="whoop">
+              <WhoopConnectionSettings />
+            </div>
 
             {/* Preferences */}
             <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">

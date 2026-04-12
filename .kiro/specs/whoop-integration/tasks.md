@@ -217,7 +217,7 @@ This implementation plan breaks down the WHOOP integration feature into discrete
     - Enable queries about recovery, strain, sleep
     - _Requirements: 6.6_
 
-  - [ ] 14.4 Write property test for WHOOP context in queries
+  - [x] 14.4 Write property test for WHOOP context in queries
     - **Property 13: WHOOP Context in Query Responses**
     - **Validates: Requirements 6.6**
 
