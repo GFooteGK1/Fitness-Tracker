@@ -31,8 +31,14 @@ export default function Navigation() {
               >
                 Program
               </Link>
-              <Link 
-                href="/log" 
+              <Link
+                href="/templates"
+                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                Templates
+              </Link>
+              <Link
+                href="/log"
                 className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
                 Log Workout
@@ -87,8 +93,15 @@ export default function Navigation() {
               <span className="text-lg mb-1">💪</span>
               Program
             </Link>
-            <Link 
-              href="/log" 
+            <Link
+              href="/templates"
+              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              <span className="text-lg mb-1">📋</span>
+              WODs
+            </Link>
+            <Link
+              href="/log"
               className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
             >
               <span className="text-lg mb-1">📝</span>
