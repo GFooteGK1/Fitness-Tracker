@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
+import { isValidTimezoneOffset, getLocalDate } from '@/app/lib/timezone-utils'
 import type { CrossDomainAnalysisResponse, HolisticInsight, DailyFitnessSummary } from '@/app/lib/types/cross-domain'
 import type { WhoopRecovery, WhoopSleep, WhoopCycle } from '@/app/lib/types/whoop'
 
@@ -19,18 +20,32 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '7')
-    
-    const endDate = new Date()
-    const startDate = new Date()
-    startDate.setDate(endDate.getDate() - days)
+    const tzOffsetStr = searchParams.get('tzOffset')
+    const tzOffset = tzOffsetStr ? parseInt(tzOffsetStr, 10) : 0
+
+    // Calculate date range in user's local timezone
+    // tzOffset uses getTimezoneOffset() convention: positive for west of UTC
+    // localTime = UTC - tzOffset
+    const now = new Date()
+    const localNow = new Date(now.getTime() - tzOffset * 60000)
+    const localStart = new Date(localNow)
+    localStart.setUTCDate(localStart.getUTCDate() - days)
+
+    const endDateStr = `${localNow.getUTCFullYear()}-${String(localNow.getUTCMonth() + 1).padStart(2, '0')}-${String(localNow.getUTCDate()).padStart(2, '0')}`
+    const startDateStr = `${localStart.getUTCFullYear()}-${String(localStart.getUTCMonth() + 1).padStart(2, '0')}-${String(localStart.getUTCDate()).padStart(2, '0')}`
+
+    // For timestamp-based queries (meals), calculate UTC boundary using localDateToUTCStart
+    // which expects the same getTimezoneOffset() convention
+    const startUTC = new Date(`${startDateStr}T00:00:00`)
+    const startUTCBoundary = new Date(startUTC.getTime() + tzOffset * 60000)
 
     // Get daily fitness summaries
     const { data: dailySummaries, error: summaryError } = await supabase
       .from('daily_fitness_summary')
       .select('*')
       .eq('user_id', user.id)
-      .gte('date', startDate.toISOString().split('T')[0])
-      .lte('date', endDate.toISOString().split('T')[0])
+      .gte('date', startDateStr)
+      .lte('date', endDateStr)
       .order('date', { ascending: false })
 
     if (summaryError) {
@@ -51,14 +66,14 @@ export async function GET(request: Request) {
         tags
       `)
       .eq('user_id', user.id)
-      .gte('workout_date', startDate.toISOString().split('T')[0])
+      .gte('workout_date', startDateStr)
       .order('workout_date', { ascending: false })
 
     if (workoutError) {
       throw new Error(`Failed to fetch workouts: ${workoutError.message}`)
     }
 
-    // Get recent meals with workout context
+    // Get recent meals with workout context using UTC boundary
     const { data: meals, error: mealError } = await supabase
       .from('meals')
       .select(`
@@ -72,33 +87,33 @@ export async function GET(request: Request) {
         workout_id
       `)
       .eq('user_id', user.id)
-      .gte('meal_timestamp', startDate.toISOString())
+      .gte('meal_timestamp', startUTCBoundary.toISOString())
       .order('meal_timestamp', { ascending: false })
 
     if (mealError) {
       throw new Error(`Failed to fetch meals: ${mealError.message}`)
     }
 
-    // Get WHOOP data if available
+    // Get WHOOP data if available (DATE type columns, no timezone conversion needed)
     const { data: whoopRecovery } = await supabase
       .from('whoop_recovery')
       .select('*')
       .eq('user_id', user.id)
-      .gte('date', startDate.toISOString().split('T')[0])
+      .gte('date', startDateStr)
       .order('date', { ascending: false })
 
     const { data: whoopSleep } = await supabase
       .from('whoop_sleep')
       .select('*')
       .eq('user_id', user.id)
-      .gte('date', startDate.toISOString().split('T')[0])
+      .gte('date', startDateStr)
       .order('date', { ascending: false })
 
     const { data: whoopCycles } = await supabase
       .from('whoop_cycles')
       .select('*')
       .eq('user_id', user.id)
-      .gte('date', startDate.toISOString().split('T')[0])
+      .gte('date', startDateStr)
       .order('date', { ascending: false })
 
     // Generate holistic insights with WHOOP data
@@ -203,11 +218,8 @@ function generateHolisticInsights(
   // WHOOP Insight 3: Recovery-Based Training Recommendations
   if (whoopRecovery.length > 0) {
     const recentRecovery = whoopRecovery[0]?.recovery_score || 0
-    const todayWorkouts = workouts.filter(w => {
-      const workoutDate = new Date(w.workout_date)
-      const today = new Date()
-      return workoutDate.toDateString() === today.toDateString()
-    })
+    const todayStr = getLocalDate()
+    const todayWorkouts = workouts.filter(w => w.workout_date === todayStr)
 
     if (recentRecovery < 34 && todayWorkouts.length > 0 && todayWorkouts[0].rpe >= 7) {
       insights.push({

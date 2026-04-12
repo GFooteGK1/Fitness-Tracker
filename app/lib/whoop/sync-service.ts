@@ -12,12 +12,26 @@ import type {
 
 /**
  * WHOOP Sync Service
- * 
+ *
  * Handles fetching and storing WHOOP data from the API.
  * Supports both full sync (7 days history) and incremental sync (since last sync).
- * 
+ *
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 8.1
  */
+
+/**
+ * Extract a YYYY-MM-DD date string from a UTC timestamp.
+ * WHOOP API timestamps are in UTC; we store the UTC date as the record date
+ * since user timezone is not available during server-side sync.
+ */
+function extractDateFromTimestamp(timestamp: string | undefined | null): string {
+  const d = timestamp ? new Date(timestamp) : new Date();
+  if (isNaN(d.getTime())) {
+    const fallback = new Date();
+    return `${fallback.getUTCFullYear()}-${String(fallback.getUTCMonth() + 1).padStart(2, '0')}-${String(fallback.getUTCDate()).padStart(2, '0')}`;
+  }
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
 
 export interface SyncResult {
   success: boolean;
@@ -220,7 +234,7 @@ function transformRecoveryData(userId: string, apiData: any): Partial<WhoopRecov
     return {
       user_id: userId,
       cycle_id: apiData.cycle_id,
-      date: apiData.created_at ? new Date(apiData.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      date: extractDateFromTimestamp(apiData.created_at),
       recovery_score: apiData.score?.recovery_score ?? null,
       resting_heart_rate: apiData.score?.resting_heart_rate ?? null,
       hrv_rmssd_milli: apiData.score?.hrv_rmssd_milli ?? null,
@@ -273,7 +287,7 @@ function transformSleepData(userId: string, apiData: any): Partial<WhoopSleep> {
     return {
       user_id: userId,
       sleep_id: apiData.id,
-      date: apiData.created_at ? new Date(apiData.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      date: extractDateFromTimestamp(apiData.created_at),
       sleep_performance_percentage: apiData.score?.sleep_performance_percentage ?? null,
       sleep_consistency_percentage: apiData.score?.sleep_consistency_percentage ?? null,
       sleep_efficiency_percentage: apiData.score?.sleep_efficiency_percentage ?? null,
@@ -327,7 +341,7 @@ function transformCycleData(userId: string, apiData: any): Partial<WhoopCycle> {
     return {
       user_id: userId,
       cycle_id: apiData.id,
-      date: apiData.created_at ? new Date(apiData.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      date: extractDateFromTimestamp(apiData.created_at),
       strain: apiData.score?.strain ?? null,
       kilojoules: apiData.score?.kilojoule ?? null,
       average_heart_rate: apiData.score?.average_heart_rate ?? null,
@@ -379,7 +393,7 @@ function transformWorkoutData(userId: string, apiData: any): Partial<WhoopWorkou
     return {
       user_id: userId,
       whoop_workout_id: apiData.id,
-      date: apiData.created_at ? new Date(apiData.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      date: extractDateFromTimestamp(apiData.created_at),
       sport_name: apiData.sport_name ?? null,
       sport_id: apiData.sport_id ?? null,
       strain: apiData.score?.strain ?? null,

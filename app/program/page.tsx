@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth/AuthContext';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
+import { getLocalDate } from '../lib/timezone-utils';
 
 interface WorkoutData {
   workout: string | null;
@@ -17,14 +18,7 @@ interface WorkoutData {
 }
 
 export default function ProgramPage() {
-  const [selectedDate, setSelectedDate] = useState(() => {
-    // Get today's date in user's local timezone
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  });
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDate());
   
   const [workoutData, setWorkoutData] = useState<WorkoutData | null>(null);
   const [loading, setLoading] = useState(false);
