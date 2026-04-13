@@ -67,6 +67,12 @@ export default function Navigation() {
               >
                 Leaderboards
               </Link>
+              <Link
+                href="/pr-history"
+                className="text-gray-600 dark:text-gray-300 hover:text-amber-500 dark:hover:text-amber-400 transition-colors"
+              >
+                PRs
+              </Link>
             </div>
           )}
 
@@ -133,6 +139,13 @@ export default function Navigation() {
             >
               <span className="text-lg mb-1">🏆</span>
               Board
+            </Link>
+            <Link
+              href="/pr-history"
+              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-amber-500 dark:hover:text-amber-400"
+            >
+              <span className="text-lg mb-1">&#127942;</span>
+              PRs
             </Link>
           </div>
         </div>

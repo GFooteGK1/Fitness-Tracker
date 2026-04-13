@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import PerformanceMonitor from '@/app/components/PerformanceMonitor'
 import { WhoopMetricsCard } from '@/app/components/whoop/WhoopMetricsCard'
 import ExportDialog from '@/app/components/ExportDialog'
+import { formatPRValue } from '@/app/lib/pr-detection'
 import LeaderboardWidget from '@/app/components/LeaderboardWidget'
 
 interface WorkoutStats {
@@ -17,18 +19,43 @@ interface WorkoutStats {
   currentMonth: string
 }
 
+interface RecentPR {
+  id: string
+  exercise: string
+  pr_type: 'weight' | 'reps' | 'time' | 'volume'
+  value: number
+  previous_value: number | null
+  achieved_at: string
+}
+
 export default function Dashboard() {
   const { user } = useAuth()
   const [stats, setStats] = useState<WorkoutStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showExport, setShowExport] = useState(false)
+  const [recentPRs, setRecentPRs] = useState<RecentPR[]>([])
+  const [prCount, setPrCount] = useState(0)
 
   useEffect(() => {
     if (user) {
       fetchStats()
+      fetchRecentPRs()
     }
   }, [user])
+
+  async function fetchRecentPRs() {
+    try {
+      const response = await fetch('/api/pr-history?limit=5')
+      const data = await response.json()
+      if (response.ok) {
+        setRecentPRs(data.records || [])
+        setPrCount(data.summary?.thisMonth || 0)
+      }
+    } catch {
+      // Non-critical, silently fail
+    }
+  }
 
   async function fetchStats() {
     try {
@@ -96,6 +123,52 @@ export default function Dashboard() {
 
             {/* WHOOP Metrics Card */}
             <WhoopMetricsCard />
+
+            {/* Recent PRs Widget */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                  &#127942; Personal Records
+                </h2>
+                <Link
+                  href="/pr-history"
+                  className="text-sm text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 font-medium"
+                >
+                  View All &rarr;
+                </Link>
+              </div>
+              {prCount > 0 && (
+                <div className="mb-4 inline-flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-sm font-medium px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800">
+                  <span className="font-bold">{prCount}</span> PRs this month
+                </div>
+              )}
+              {recentPRs.length > 0 ? (
+                <div className="space-y-3">
+                  {recentPRs.map(pr => (
+                    <div key={pr.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{pr.exercise}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {pr.pr_type === 'weight' ? 'Max Weight' : pr.pr_type === 'reps' ? 'Rep Record' : pr.pr_type === 'time' ? 'Time Record' : 'Volume Record'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-green-600 dark:text-green-400">
+                          {formatPRValue(pr.pr_type, Number(pr.value))}
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          {new Date(pr.achieved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                  No PRs yet. Log workouts to track your records!
+                </p>
+              )}
+            </div>
 
             {/* Month to Date Summary */}
             <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
