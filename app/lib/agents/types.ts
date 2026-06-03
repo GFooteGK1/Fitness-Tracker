@@ -9,6 +9,15 @@ export type InputType = 'workout_log' | 'meal_log' | 'question' | 'mixed' | 'unc
 /** Domains for routing */
 export type AgentDomain = 'trainer' | 'nutritionist' | 'socius'
 
+/** Manager-level intent used for routing and context selection */
+export type ManagerIntent =
+  | 'log_workout'
+  | 'log_meal'
+  | 'ask_question'
+  | 'programming_request'
+  | 'mixed'
+  | 'unclear'
+
 /** Chat message roles */
 export type ChatRole = 'user' | 'trainer' | 'nutritionist' | 'socius' | 'system'
 
@@ -136,6 +145,67 @@ export interface DataAvailability {
   meal_days: number
 }
 
+/** Manager-selected retrieval request for downstream agents */
+export interface ManagerContextRequest {
+  user_goals: boolean
+  recent_training_days: number
+  recent_nutrition_days: number
+  recent_recovery_days: number
+  include_prs: boolean
+  include_today_program: boolean
+  include_daily_context: boolean
+}
+
+/** Manager output: routing plus explicit context budget */
+export interface ManagerDecision {
+  intent: ManagerIntent
+  agents: AgentDomain[]
+  context_request: ManagerContextRequest
+  follow_up_needed: boolean
+  follow_up_reason?: string
+  confidence: number
+}
+
+/** One compact daily row for programming decisions */
+export interface DailyProgrammingContext {
+  date: string
+  workout_count: number
+  workout_summary: string | null
+  strength_blocks: number
+  metcon_blocks: number
+  cardio_blocks: number
+  avg_rpe: number | null
+  total_protein: number
+  total_carbs: number
+  total_fat: number
+  total_calories: number
+  protein_pct_target: number | null
+  calorie_pct_target: number | null
+  recovery_score: number | null
+  hrv_rmssd_milli: number | null
+  resting_heart_rate: number | null
+  sleep_score: number | null
+  sleep_efficiency_pct: number | null
+  strain: number | null
+}
+
+/** Structured context used by Socius and future programming synthesis */
+export interface ProgrammingReadinessContext {
+  generated_at: string
+  days: DailyProgrammingContext[]
+  summary: {
+    day_count: number
+    workout_days: number
+    nutrition_days: number
+    recovery_days: number
+    avg_recovery: number | null
+    avg_sleep_score: number | null
+    avg_strain: number | null
+    avg_protein_pct_target: number | null
+    avg_calorie_pct_target: number | null
+  }
+}
+
 export interface RecentInsight {
   id: string
   pattern_id: PatternId
@@ -190,6 +260,7 @@ export interface SociusContext extends PassiveContext {
   thirty_day_summary: ThirtyDaySummary
   recent_insights: RecentInsight[]
   data_availability: DataAvailability
+  programming_context?: ProgrammingReadinessContext
 }
 
 // ─── Classifier Types ────────────────────────────────────────────────
@@ -223,6 +294,7 @@ export interface AgentRequest {
   photo_data?: string        // Base64 or storage URL
   audio_data?: string        // Base64 audio for transcription
   tz_offset?: number         // User's local timezone offset in minutes (local − UTC, e.g. CST = -360)
+  manager_decision?: ManagerDecision // Server-attached routing/context contract
 }
 
 /** Smart default that was applied */
@@ -247,6 +319,7 @@ export interface AgentMessage {
 export interface AgentResponse {
   messages: AgentMessage[]
   classification: ClassificationResult
+  manager_decision?: ManagerDecision
   processing_time_ms: number
 }
 

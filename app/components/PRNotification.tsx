@@ -39,6 +39,11 @@ export default function PRNotification({ prs, onDismiss }: PRNotificationProps) 
   const [visible, setVisible] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
 
+  const handleDismiss = useCallback(() => {
+    setVisible(false)
+    setTimeout(onDismiss, 300)
+  }, [onDismiss])
+
   useEffect(() => {
     if (prs.length > 0) {
       // Small delay for entrance animation
@@ -57,12 +62,7 @@ export default function PRNotification({ prs, onDismiss }: PRNotificationProps) 
     }, 5000)
 
     return () => clearTimeout(timer)
-  }, [currentIndex, prs.length])
-
-  const handleDismiss = useCallback(() => {
-    setVisible(false)
-    setTimeout(onDismiss, 300)
-  }, [onDismiss])
+  }, [currentIndex, handleDismiss, prs.length])
 
   if (prs.length === 0) return null
 

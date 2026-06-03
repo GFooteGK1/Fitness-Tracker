@@ -28,7 +28,7 @@ export function WhoopConnectionSettings() {
       setError(null);
 
       const response = await fetch('/api/whoop/sync');
-      
+
       if (!response.ok) {
         if (response.status === 404) {
           // Not connected
@@ -181,7 +181,7 @@ export function WhoopConnectionSettings() {
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">What you'll get:</h4>
+            <h4 className="text-sm font-medium text-blue-900 mb-2">What you&apos;ll get:</h4>
             <ul className="text-sm text-blue-800 space-y-1">
               <li>• Recovery score tracking</li>
               <li>• Sleep performance analysis</li>
@@ -199,7 +199,7 @@ export function WhoopConnectionSettings() {
           </button>
 
           <p className="text-xs text-gray-500 mt-4">
-            By connecting, you agree to share your WHOOP data with SociusFit. 
+            By connecting, you agree to share your WHOOP data with SociusFit.
             View our <a href="/privacy" className="text-blue-600 hover:text-blue-700">privacy policy</a>.
           </p>
         </div>

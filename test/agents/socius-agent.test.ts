@@ -341,7 +341,7 @@ describe('persistInsights', () => {
         pattern_id: 'CAL_DEF',
         priority: 'urgent',
         confidence: 0.8,
-        is_surfaced: false,
+        data_context: {},
       })
     ])
   })

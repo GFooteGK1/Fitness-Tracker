@@ -57,11 +57,11 @@ const RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff in milliseconds
  */
 export async function fullSync(userId: string): Promise<SyncResult> {
   console.log('[WHOOP Sync] Starting full sync for user:', userId);
-  
+
   const endDate = new Date();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - 7);
-  
+
   return await syncDateRange(userId, startDate, endDate);
 }
 
@@ -70,17 +70,17 @@ export async function fullSync(userId: string): Promise<SyncResult> {
  */
 export async function incrementalSync(userId: string): Promise<SyncResult> {
   console.log('[WHOOP Sync] Starting incremental sync for user:', userId);
-  
+
   const syncStatus = await getSyncStatus(userId);
-  
+
   if (!syncStatus.lastSyncAt) {
     console.log('[WHOOP Sync] No previous sync found, performing full sync');
     return await fullSync(userId);
   }
-  
+
   const startDate = new Date(syncStatus.lastSyncAt);
   const endDate = new Date();
-  
+
   return await syncDateRange(userId, startDate, endDate);
 }
 
@@ -94,21 +94,21 @@ async function syncDateRange(
   options: SyncOptions = {}
 ): Promise<SyncResult> {
   const retryCount = options.retryCount || 0;
-  
+
   try {
     // Update sync status to 'syncing'
     await updateSyncStatus(userId, {
       status: 'syncing',
       errorMessage: null,
     });
-    
+
     // Get valid access token (auto-refreshes if needed)
     const accessToken = await tokenService.getValidAccessToken(userId);
-    
+
     if (!accessToken) {
       throw new Error('No valid WHOOP access token found');
     }
-    
+
     // Fetch data from WHOOP API in parallel
     const [recoveryData, sleepData, cycleData, workoutData] = await Promise.all([
       whoopClient.getRecovery(accessToken, startDate, endDate),
@@ -116,7 +116,7 @@ async function syncDateRange(
       whoopClient.getCycles(accessToken, startDate, endDate),
       whoopClient.getWorkouts(accessToken, startDate, endDate),
     ]);
-    
+
     // Transform and store data
     const recordsSynced = {
       recovery: 0,
@@ -124,27 +124,27 @@ async function syncDateRange(
       cycles: 0,
       workouts: 0,
     };
-    
+
     // Store recovery data
     if (recoveryData.length > 0) {
       recordsSynced.recovery = await storeRecoveryData(userId, recoveryData);
     }
-    
+
     // Store sleep data
     if (sleepData.length > 0) {
       recordsSynced.sleep = await storeSleepData(userId, sleepData);
     }
-    
+
     // Store cycle data
     if (cycleData.length > 0) {
       recordsSynced.cycles = await storeCycleData(userId, cycleData);
     }
-    
+
     // Store workout data
     if (workoutData.length > 0) {
       recordsSynced.workouts = await storeWorkoutData(userId, workoutData);
     }
-    
+
     // Update sync status to 'idle' with success
     await updateSyncStatus(userId, {
       status: 'idle',
@@ -153,38 +153,38 @@ async function syncDateRange(
       errorMessage: null,
       recordsSynced,
     });
-    
+
     console.log('[WHOOP Sync] Sync completed successfully:', recordsSynced);
-    
+
     return {
       success: true,
       recordsSynced,
     };
-    
+
   } catch (error) {
     console.error('[WHOOP Sync] Sync failed:', error);
-    
+
     // Check if we should retry
     if (retryCount < MAX_RETRIES && isRetryableError(error)) {
       const delay = RETRY_DELAYS[retryCount];
       console.log(`[WHOOP Sync] Retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
-      
+
       await sleep(delay);
-      
+
       return await syncDateRange(userId, startDate, endDate, {
         ...options,
         retryCount: retryCount + 1,
       });
     }
-    
+
     // Max retries reached or non-retryable error
     const errorMessage = error instanceof Error ? error.message : 'Unknown sync error';
-    
+
     await updateSyncStatus(userId, {
       status: 'error',
       errorMessage,
     });
-    
+
     return {
       success: false,
       recordsSynced: {
@@ -206,20 +206,20 @@ async function storeRecoveryData(
   recoveryData: any[]
 ): Promise<number> {
   const supabase = await createServerClient();
-  
+
   const records = recoveryData.map(item => transformRecoveryData(userId, item));
-  
+
   const { error } = await supabase
     .from('whoop_recovery')
     .upsert(records, {
       onConflict: 'user_id,cycle_id',
     });
-  
+
   if (error) {
     console.error('[WHOOP Sync] Failed to store recovery data:', error);
     throw error;
   }
-  
+
   return records.length;
 }
 
@@ -230,7 +230,7 @@ function transformRecoveryData(userId: string, apiData: any): Partial<WhoopRecov
   try {
     // Validate cycle_id is a positive integer
     assertValidWhoopIdentifier(apiData.cycle_id, 'recovery');
-    
+
     return {
       user_id: userId,
       cycle_id: apiData.cycle_id,
@@ -259,20 +259,20 @@ async function storeSleepData(
   sleepData: any[]
 ): Promise<number> {
   const supabase = await createServerClient();
-  
+
   const records = sleepData.map(item => transformSleepData(userId, item));
-  
+
   const { error } = await supabase
     .from('whoop_sleep')
     .upsert(records, {
       onConflict: 'user_id,sleep_id',
     });
-  
+
   if (error) {
     console.error('[WHOOP Sync] Failed to store sleep data:', error);
     throw error;
   }
-  
+
   return records.length;
 }
 
@@ -283,7 +283,7 @@ function transformSleepData(userId: string, apiData: any): Partial<WhoopSleep> {
   try {
     // Validate sleep_id is a UUID string
     assertValidWhoopIdentifier(apiData.id, 'sleep');
-    
+
     return {
       user_id: userId,
       sleep_id: apiData.id,
@@ -313,20 +313,20 @@ async function storeCycleData(
   cycleData: any[]
 ): Promise<number> {
   const supabase = await createServerClient();
-  
+
   const records = cycleData.map(item => transformCycleData(userId, item));
-  
+
   const { error } = await supabase
     .from('whoop_cycles')
     .upsert(records, {
       onConflict: 'user_id,cycle_id',
     });
-  
+
   if (error) {
     console.error('[WHOOP Sync] Failed to store cycle data:', error);
     throw error;
   }
-  
+
   return records.length;
 }
 
@@ -337,7 +337,7 @@ function transformCycleData(userId: string, apiData: any): Partial<WhoopCycle> {
   try {
     // Validate cycle_id is a positive integer
     assertValidWhoopIdentifier(apiData.id, 'cycle');
-    
+
     return {
       user_id: userId,
       cycle_id: apiData.id,
@@ -365,20 +365,20 @@ async function storeWorkoutData(
   workoutData: any[]
 ): Promise<number> {
   const supabase = await createServerClient();
-  
+
   const records = workoutData.map(item => transformWorkoutData(userId, item));
-  
+
   const { error } = await supabase
     .from('whoop_workouts')
     .upsert(records, {
       onConflict: 'user_id,whoop_workout_id',
     });
-  
+
   if (error) {
     console.error('[WHOOP Sync] Failed to store workout data:', error);
     throw error;
   }
-  
+
   return records.length;
 }
 
@@ -389,7 +389,7 @@ function transformWorkoutData(userId: string, apiData: any): Partial<WhoopWorkou
   try {
     // Validate whoop_workout_id is a UUID string
     assertValidWhoopIdentifier(apiData.id, 'workout');
-    
+
     return {
       user_id: userId,
       whoop_workout_id: apiData.id,
@@ -418,38 +418,38 @@ function transformWorkoutData(userId: string, apiData: any): Partial<WhoopWorkou
  */
 export async function getSyncStatus(userId: string): Promise<WhoopSyncStatus> {
   const supabase = await createServerClient();
-  
+
   const { data, error } = await supabase
     .from('whoop_sync_status')
     .select('*')
     .eq('user_id', userId)
     .single();
-  
+
   if (error || !data) {
     // Return default status if not found
     return {
       id: '',
-      user_id: userId,
-      last_sync_at: null,
-      next_sync_at: null,
+      userId,
+      lastSyncAt: null,
+      nextSyncAt: null,
       status: 'idle',
-      error_message: null,
-      records_synced: {},
-      created_at: new Date(),
-      updated_at: new Date(),
+      errorMessage: null,
+      recordsSynced: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
   }
-  
+
   return {
     id: data.id,
-    user_id: data.user_id,
-    last_sync_at: data.last_sync_at ? new Date(data.last_sync_at) : null,
-    next_sync_at: data.next_sync_at ? new Date(data.next_sync_at) : null,
+    userId: data.user_id,
+    lastSyncAt: data.last_sync_at ? new Date(data.last_sync_at) : null,
+    nextSyncAt: data.next_sync_at ? new Date(data.next_sync_at) : null,
     status: data.status,
-    error_message: data.error_message,
-    records_synced: data.records_synced || {},
-    created_at: new Date(data.created_at),
-    updated_at: new Date(data.updated_at),
+    errorMessage: data.error_message,
+    recordsSynced: data.records_synced || {},
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at),
   };
 }
 
@@ -467,38 +467,38 @@ async function updateSyncStatus(
   }>
 ): Promise<void> {
   const supabase = await createServerClient();
-  
+
   const updateData: any = {
     user_id: userId,
     updated_at: new Date().toISOString(),
   };
-  
+
   if (updates.status !== undefined) {
     updateData.status = updates.status;
   }
-  
+
   if (updates.lastSyncAt !== undefined) {
     updateData.last_sync_at = updates.lastSyncAt.toISOString();
   }
-  
+
   if (updates.nextSyncAt !== undefined) {
     updateData.next_sync_at = updates.nextSyncAt.toISOString();
   }
-  
+
   if (updates.errorMessage !== undefined) {
     updateData.error_message = updates.errorMessage;
   }
-  
+
   if (updates.recordsSynced !== undefined) {
     updateData.records_synced = updates.recordsSynced;
   }
-  
+
   const { error } = await supabase
     .from('whoop_sync_status')
     .upsert(updateData, {
       onConflict: 'user_id',
     });
-  
+
   if (error) {
     console.error('[WHOOP Sync] Failed to update sync status:', error);
     throw error;

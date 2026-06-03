@@ -1,11 +1,19 @@
 /**
  * Unit Tests for Cookie Manager
- * 
+ *
  * Tests cookie operations, security attributes, and environment detection.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CookieManager, serverCookieHelpers } from '@/app/lib/auth/cookie-manager';
+
+function setNodeEnv(value: string | undefined) {
+  if (value === undefined) {
+    delete (process.env as Record<string, string | undefined>).NODE_ENV;
+  } else {
+    (process.env as Record<string, string | undefined>).NODE_ENV = value;
+  }
+}
 
 describe('CookieManager', () => {
   let cookieManager: CookieManager;
@@ -16,15 +24,19 @@ describe('CookieManager', () => {
     originalEnv = process.env.NODE_ENV;
   });
 
+  afterEach(() => {
+    setNodeEnv(originalEnv);
+  });
+
   describe('Environment Detection', () => {
     it('should detect production environment', () => {
-      process.env.NODE_ENV = 'production';
+      setNodeEnv('production');
       const manager = new CookieManager();
       expect(manager.isProductionEnvironment()).toBe(true);
     });
 
     it('should detect development environment', () => {
-      process.env.NODE_ENV = 'development';
+      setNodeEnv('development');
       const manager = new CookieManager();
       expect(manager.isProductionEnvironment()).toBe(false);
     });
@@ -37,7 +49,7 @@ describe('CookieManager', () => {
 
   describe('Cookie Configuration Validation', () => {
     it('should validate secure cookie in production', () => {
-      process.env.NODE_ENV = 'production';
+      setNodeEnv('production');
       const manager = new CookieManager();
 
       const result = manager.validateCookieConfig({
@@ -53,7 +65,7 @@ describe('CookieManager', () => {
     });
 
     it('should flag missing secure flag in production', () => {
-      process.env.NODE_ENV = 'production';
+      setNodeEnv('production');
       const manager = new CookieManager();
 
       const result = manager.validateCookieConfig({
@@ -69,7 +81,7 @@ describe('CookieManager', () => {
     });
 
     it('should allow non-secure cookies in development', () => {
-      process.env.NODE_ENV = 'development';
+      setNodeEnv('development');
       const manager = new CookieManager();
 
       const result = manager.validateCookieConfig({
@@ -135,7 +147,7 @@ describe('CookieManager', () => {
     });
 
     it('should accept valid OAuth state cookie config', () => {
-      process.env.NODE_ENV = 'production';
+      setNodeEnv('production');
       const manager = new CookieManager();
 
       const result = manager.validateCookieConfig({
@@ -154,7 +166,7 @@ describe('CookieManager', () => {
 
   describe('OAuth State Cookie Configuration', () => {
     it('should return correct OAuth state cookie config in production', () => {
-      process.env.NODE_ENV = 'production';
+      setNodeEnv('production');
       const manager = new CookieManager();
 
       const config = manager.getOAuthStateCookieConfig('test-state');
@@ -167,7 +179,7 @@ describe('CookieManager', () => {
     });
 
     it('should return correct OAuth state cookie config in development', () => {
-      process.env.NODE_ENV = 'development';
+      setNodeEnv('development');
       const manager = new CookieManager();
 
       const config = manager.getOAuthStateCookieConfig('test-state');
@@ -182,8 +194,8 @@ describe('CookieManager', () => {
 
   describe('Server Cookie Helpers', () => {
     it('should provide auth cookie options with defaults', () => {
-      process.env.NODE_ENV = 'production';
-      
+      setNodeEnv('production');
+
       const options = serverCookieHelpers.getAuthCookieOptions();
 
       expect(options.httpOnly).toBe(true);
@@ -200,8 +212,8 @@ describe('CookieManager', () => {
     });
 
     it('should provide OAuth state cookie options', () => {
-      process.env.NODE_ENV = 'production';
-      
+      setNodeEnv('production');
+
       const options = serverCookieHelpers.getOAuthStateCookieOptions();
 
       expect(options.httpOnly).toBe(true);
@@ -212,8 +224,8 @@ describe('CookieManager', () => {
     });
 
     it('should use non-secure cookies in development', () => {
-      process.env.NODE_ENV = 'development';
-      
+      setNodeEnv('development');
+
       const authOptions = serverCookieHelpers.getAuthCookieOptions();
       const oauthOptions = serverCookieHelpers.getOAuthStateCookieOptions();
 
@@ -308,7 +320,7 @@ describe('CookieManager', () => {
 describe('Cookie Security Requirements', () => {
   it('should enforce Requirement 4.1: proper cookie scope configuration', () => {
     const manager = new CookieManager();
-    
+
     const config = {
       name: 'auth-token',
       value: 'token123',
@@ -323,9 +335,9 @@ describe('Cookie Security Requirements', () => {
   });
 
   it('should enforce Requirement 4.2: Secure flag in production', () => {
-    process.env.NODE_ENV = 'production';
+    setNodeEnv('production');
     const manager = new CookieManager();
-    
+
     const config = {
       name: 'auth-token',
       value: 'token123',
@@ -341,7 +353,7 @@ describe('Cookie Security Requirements', () => {
 
   it('should enforce Requirement 4.3: SameSite=Lax for OAuth compatibility', () => {
     const manager = new CookieManager();
-    
+
     const config = {
       name: 'whoop_oauth_state',
       value: 'state123',
@@ -358,15 +370,15 @@ describe('Cookie Security Requirements', () => {
 
   it('should enforce Requirement 4.4: OAuth state cookie expiration', () => {
     const manager = new CookieManager();
-    
+
     const oauthConfig = manager.getOAuthStateCookieConfig('state123');
-    
+
     expect(oauthConfig.maxAge).toBe(600); // 10 minutes
   });
 
   it('should enforce Requirement 4.5: proper cookie clearing with domain/path', () => {
     const manager = new CookieManager();
-    
+
     // Validation ensures path is set for proper clearing
     const config = {
       name: 'auth-token',

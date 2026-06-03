@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy - SociusFit',
@@ -10,7 +11,7 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-sm p-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Privacy Policy</h1>
-        
+
         <div className="prose prose-blue max-w-none">
           <p className="text-sm text-gray-500 mb-6">
             Last updated: January 25, 2026
@@ -19,13 +20,13 @@ export default function PrivacyPage() {
           <section className="mb-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Introduction</h2>
             <p className="text-gray-700 mb-4">
-              SociusFit ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your personal information when you use our fitness tracking application.
+              SociusFit (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your personal information when you use our fitness tracking application.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Information We Collect</h2>
-            
+
             <h3 className="text-lg font-medium text-gray-900 mb-3">Account Information</h3>
             <ul className="list-disc pl-6 text-gray-700 mb-4 space-y-2">
               <li>Email address and password (encrypted)</li>
@@ -78,7 +79,7 @@ export default function PrivacyPage() {
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Third-Party Services</h2>
-            
+
             <h3 className="text-lg font-medium text-gray-900 mb-3">WHOOP</h3>
             <p className="text-gray-700 mb-4">
               When you connect your WHOOP account, we access your WHOOP data through their official API. Your WHOOP credentials are never stored by SociusFit. We only store encrypted OAuth tokens that allow us to fetch your data. You can disconnect your WHOOP account at any time from the settings page.
@@ -86,7 +87,7 @@ export default function PrivacyPage() {
 
             <h3 className="text-lg font-medium text-gray-900 mb-3">Anthropic (Claude AI)</h3>
             <p className="text-gray-700 mb-4">
-              We use Anthropic's Claude AI to parse workout descriptions, analyze meal photos, and generate fitness insights. Your data is sent to Anthropic's API for processing but is not used to train their models.
+              We use Anthropic&apos;s Claude AI to parse workout descriptions, analyze meal photos, and generate fitness insights. Your data is sent to Anthropic&apos;s API for processing but is not used to train their models.
             </p>
 
             <h3 className="text-lg font-medium text-gray-900 mb-3">Supabase</h3>
@@ -96,7 +97,7 @@ export default function PrivacyPage() {
 
             <h3 className="text-lg font-medium text-gray-900 mb-3">Vercel</h3>
             <p className="text-gray-700 mb-4">
-              Our application is hosted on Vercel's serverless platform. Vercel is SOC 2 compliant and follows industry best practices for security.
+              Our application is hosted on Vercel&apos;s serverless platform. Vercel is SOC 2 compliant and follows industry best practices for security.
             </p>
           </section>
 
@@ -128,7 +129,7 @@ export default function PrivacyPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Children's Privacy</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Children&apos;s Privacy</h2>
             <p className="text-gray-700 mb-4">
               SociusFit is not intended for users under 18 years of age. We do not knowingly collect personal information from children.
             </p>
@@ -137,14 +138,14 @@ export default function PrivacyPage() {
           <section className="mb-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Changes to This Policy</h2>
             <p className="text-gray-700 mb-4">
-              We may update this Privacy Policy from time to time. We will notify you of any changes by updating the "Last updated" date at the top of this policy.
+              We may update this Privacy Policy from time to time. We will notify you of any changes by updating the &quot;Last updated&quot; date at the top of this policy.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Contact Us</h2>
             <p className="text-gray-700 mb-4">
-              If you have any questions about this Privacy Policy or our data practices, please contact us through the app's support page.
+              If you have any questions about this Privacy Policy or our data practices, please contact us through the app&apos;s support page.
             </p>
           </section>
 
@@ -154,22 +155,22 @@ export default function PrivacyPage() {
               By connecting your WHOOP account to SociusFit:
             </p>
             <ul className="list-disc pl-6 text-gray-700 space-y-2">
-              <li>You authorize SociusFit to access your WHOOP data through WHOOP's official API</li>
+              <li>You authorize SociusFit to access your WHOOP data through WHOOP&apos;s official API</li>
               <li>You understand that SociusFit is not affiliated with or endorsed by WHOOP</li>
               <li>You can revoke access at any time by disconnecting your WHOOP account in settings</li>
               <li>Historical WHOOP data will be retained for insights even after disconnection</li>
-              <li>WHOOP's own privacy policy and terms of service continue to apply to your WHOOP account</li>
+              <li>WHOOP&apos;s own privacy policy and terms of service continue to apply to your WHOOP account</li>
             </ul>
           </section>
         </div>
 
         <div className="mt-8 pt-8 border-t border-gray-200">
-          <a
+          <Link
             href="/"
             className="text-blue-600 hover:text-blue-700 font-medium"
           >
             ← Back to SociusFit
-          </a>
+          </Link>
         </div>
       </div>
     </div>

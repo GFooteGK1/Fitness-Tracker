@@ -104,7 +104,7 @@ export default function MealEditModal({
     }
 
     const totalsChanged = Object.keys(originalTotals).some(
-      key => Math.abs(originalTotals[key as keyof typeof originalTotals] - currentTotals[key as keyof typeof currentTotals]) > 0.1
+      key => Math.abs(originalTotals[key as keyof typeof originalTotals] - toNumber(currentTotals[key as keyof typeof currentTotals])) > 0.1
     )
 
     const itemsChanged = editableItems.length !== meal.items.length ||
@@ -126,18 +126,22 @@ export default function MealEditModal({
 
   const validateForm = (): boolean => {
     const newErrors: string[] = []
+    const protein = toNumber(totalProtein)
+    const carbs = toNumber(totalCarbs)
+    const fat = toNumber(totalFat)
+    const calories = toNumber(totalCalories)
 
     // Validate totals
-    if (totalProtein < 0 || totalProtein > 500) {
+    if (protein < 0 || protein > 500) {
       newErrors.push('Protein must be between 0 and 500g')
     }
-    if (totalCarbs < 0 || totalCarbs > 1000) {
+    if (carbs < 0 || carbs > 1000) {
       newErrors.push('Carbs must be between 0 and 1000g')
     }
-    if (totalFat < 0 || totalFat > 300) {
+    if (fat < 0 || fat > 300) {
       newErrors.push('Fat must be between 0 and 300g')
     }
-    if (totalCalories < 0 || totalCalories > 5000) {
+    if (calories < 0 || calories > 5000) {
       newErrors.push('Calories must be between 0 and 5000')
     }
 
@@ -165,10 +169,10 @@ export default function MealEditModal({
     setErrors([])
 
     const updates: MealUpdates = {
-      totalProtein,
-      totalCarbs,
-      totalFat,
-      totalCalories,
+      totalProtein: toNumber(totalProtein),
+      totalCarbs: toNumber(totalCarbs),
+      totalFat: toNumber(totalFat),
+      totalCalories: toNumber(totalCalories),
       items: editableItems.map(({ id, ...item }) => item),
       manualOverride: true,
       reviewedAt: new Date()
@@ -198,7 +202,7 @@ export default function MealEditModal({
           onMealUpdated(result.meal)
         }
       }
-      
+
       onClose()
     } catch (error) {
       console.error('Failed to save meal updates:', error)
@@ -303,7 +307,7 @@ export default function MealEditModal({
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-blue-800">Original AI Analysis</h3>
                   <p className="mt-1 text-sm text-blue-700">
-                    AI Confidence: {Math.round(meal.aiConfidence * 100)}% • 
+                    AI Confidence: {Math.round(meal.aiConfidence * 100)}% •
                     Making changes will mark this meal as manually edited
                   </p>
                 </div>

@@ -11,12 +11,12 @@ interface MealEntryCardProps {
   compact?: boolean
 }
 
-export default function MealEntryCard({ 
-  meal, 
+export default function MealEntryCard({
+  meal,
   onEdit,
   onDelete,
-  showPhoto = true, 
-  compact = false 
+  showPhoto = true,
+  compact = false
 }: MealEntryCardProps) {
   const formatTime = (date: Date | string | undefined | null) => {
     if (!date) return 'Unknown time'
@@ -74,9 +74,9 @@ export default function MealEntryCard({
     return 'Low'
   }
 
-  const isPhotoExpired = meal.photoExpiresAt && 
-    meal.photoExpiresAt instanceof Date && 
-    !isNaN(meal.photoExpiresAt.getTime()) && 
+  const isPhotoExpired = meal.photoExpiresAt &&
+    meal.photoExpiresAt instanceof Date &&
+    !isNaN(meal.photoExpiresAt.getTime()) &&
     new Date() > meal.photoExpiresAt
 
   return (
@@ -89,7 +89,7 @@ export default function MealEntryCard({
           <span className={`font-medium ${compact ? 'text-sm' : 'text-base'} text-gray-900`}>
             {formatTime(meal.mealTimestamp)}
           </span>
-          
+
           {/* Review flag indicator */}
           {meal.needsReview && (
             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -99,7 +99,7 @@ export default function MealEntryCard({
               Review
             </span>
           )}
-          
+
           {/* Manual override indicator */}
           {meal.manualOverride && (
             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -146,6 +146,7 @@ export default function MealEntryCard({
         {/* Photo section */}
         {showPhoto && meal.photoUrl && !isPhotoExpired && (
           <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={meal.photoUrl}
               alt="Meal photo"
@@ -155,7 +156,7 @@ export default function MealEntryCard({
                 e.currentTarget.style.display = 'none'
               }}
             />
-            
+
             {/* AI confidence indicator overlay */}
             {meal.aiConfidence && !meal.manualOverride && (
               <div className="absolute top-2 right-2">
@@ -252,7 +253,7 @@ export default function MealEntryCard({
                 AI Confidence: {Math.round(meal.aiConfidence * 100)}%
               </span>
             )}
-            
+
             {/* Review timestamp */}
             {meal.reviewedAt && (
               <span>
@@ -260,7 +261,7 @@ export default function MealEntryCard({
               </span>
             )}
           </div>
-          
+
           {/* Created timestamp */}
           <span>
             Logged: {formatDateTime(meal.createdAt)}

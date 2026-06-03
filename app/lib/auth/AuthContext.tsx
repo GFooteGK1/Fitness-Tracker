@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { User, Session } from '@supabase/auth-helpers-nextjs'
 import { createClient } from './supabase'
 import { AuthContextType, UserProfile, DatabaseUserProfile } from './types'
@@ -29,10 +29,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true)
   const [whoopConnected, setWhoopConnected] = useState(false)
   const [whoopTokensValid, setWhoopTokensValid] = useState(false)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   // Convert database profile to client profile format
-  const convertDatabaseProfile = (dbProfile: DatabaseUserProfile): UserProfile => {
+  const convertDatabaseProfile = useCallback((dbProfile: DatabaseUserProfile): UserProfile => {
     return {
       userId: dbProfile.user_id,
       fitnessGoals: dbProfile.fitness_goals || [],
@@ -48,10 +48,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       createdAt: new Date(dbProfile.created_at),
       updatedAt: new Date(dbProfile.updated_at)
     }
-  }
+  }, [])
 
   // Fetch user profile from database
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
@@ -98,10 +98,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.error('Error in fetchProfile:', error)
       return null
     }
-  }
+  }, [convertDatabaseProfile, supabase])
 
   // Shared helper: call /api/whoop/initialize and update state
-  const callWhoopInitialize = async (): Promise<void> => {
+  const callWhoopInitialize = useCallback(async (): Promise<void> => {
     try {
       const response = await fetch('/api/whoop/initialize', { method: 'POST' })
       if (response.ok) {
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setWhoopConnected(false)
       setWhoopTokensValid(false)
     }
-  }
+  }, [])
 
   // Initialize auth state
   useEffect(() => {
@@ -130,14 +130,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         // Get initial session
         const { data: { session: initialSession } } = await supabase.auth.getSession()
-        
+
         if (initialSession?.user) {
           setUser(initialSession.user)
           setSession(initialSession)
-          
+
           // Initialize WHOOP connection on startup
           await callWhoopInitialize()
-          
+
           // Fetch user profile asynchronously but ensure loading state is handled
           fetchProfile(initialSession.user.id)
             .then(setProfile)
@@ -189,7 +189,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (session?.user) {
           // Initialize WHOOP connection when user signs in
           await callWhoopInitialize()
-          
+
           // Fetch profile asynchronously when user signs in
           fetchProfile(session.user.id)
             .then(setProfile)
@@ -212,7 +212,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       subscription.unsubscribe()
       sessionSyncService.cleanup()
     }
-  }, [])
+  }, [callWhoopInitialize, fetchProfile, supabase])
 
   // Sign up function
   const signUp = async (email: string, password: string) => {
@@ -250,10 +250,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signOut = async () => {
     try {
       console.log('[AuthContext] Starting sign-out process')
-      
+
       // Use comprehensive cleanup service
       const result = await sessionCleanupService.signOut()
-      
+
       if (!result.success) {
         authErrorLogger.logSignOutFailure({
           userId: user?.id,
@@ -266,14 +266,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Broadcast logout to other tabs
       sessionSyncService.broadcastSessionChange('logout')
-      
+
       // Reset AuthContext state
       setUser(null)
       setProfile(null)
       setSession(null)
       setWhoopConnected(false)
       setWhoopTokensValid(false)
-      
+
       // Redirect to login
       window.location.href = '/auth/signin'
     } catch (error) {
@@ -291,7 +291,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setSession(null)
       setWhoopConnected(false)
       setWhoopTokensValid(false)
-      
+
       window.location.href = '/auth/signin'
     }
   }
@@ -304,7 +304,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Convert client format to database format
     const dbUpdates: any = {}
-    
+
     if (updates.fitnessGoals !== undefined) {
       dbUpdates.fitness_goals = updates.fitnessGoals
     }
@@ -340,7 +340,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Update local profile state with the response data
     const convertedProfile = convertDatabaseProfile(updatedProfile)
     setProfile(convertedProfile)
-    
+
     return convertedProfile
   }
 
@@ -368,13 +368,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.warn('[AuthContext] Cannot refresh WHOOP tokens: no user')
       return
     }
-    
+
     try {
       console.log('[AuthContext] Refreshing WHOOP tokens')
       const response = await fetch('/api/whoop/refresh', {
         method: 'POST'
       })
-      
+
       if (response.ok) {
         setWhoopTokensValid(true)
         setWhoopConnected(true)
@@ -397,13 +397,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.warn('[AuthContext] Cannot disconnect WHOOP: no user')
       return
     }
-    
+
     try {
       console.log('[AuthContext] Disconnecting WHOOP')
       const response = await fetch('/api/whoop/disconnect', {
         method: 'POST'
       })
-      
+
       if (response.ok) {
         setWhoopConnected(false)
         setWhoopTokensValid(false)

@@ -36,18 +36,18 @@ export default function GoalsSelection({
     if (JSON.stringify(goals) !== JSON.stringify(selectedGoals)) {
       onGoalsChange(goals)
     }
-  }, [goals]) // Remove onGoalsChange from dependencies to prevent infinite loop
+  }, [goals, onGoalsChange, selectedGoals])
 
   useEffect(() => {
     // Only call if activity level has actually changed from the initial value
     if (activityLevel !== selectedActivityLevel) {
       onActivityLevelChange(activityLevel)
     }
-  }, [activityLevel]) // Remove onActivityLevelChange from dependencies to prevent infinite loop
+  }, [activityLevel, onActivityLevelChange, selectedActivityLevel])
 
   const toggleGoal = (goalId: string) => {
-    setGoals(prev => 
-      prev.includes(goalId) 
+    setGoals(prev =>
+      prev.includes(goalId)
         ? prev.filter(id => id !== goalId)
         : [...prev, goalId]
     )
@@ -65,7 +65,7 @@ export default function GoalsSelection({
             <p className="text-sm text-red-600 dark:text-red-400 mb-2">{errors.goals}</p>
           )}
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {FITNESS_GOALS.map((goal) => (
             <button
@@ -105,7 +105,7 @@ export default function GoalsSelection({
             <p className="text-sm text-red-600 dark:text-red-400 mb-2">{errors.activityLevel}</p>
           )}
         </div>
-        
+
         <div className="space-y-2">
           {ACTIVITY_LEVELS.map((level) => (
             <button

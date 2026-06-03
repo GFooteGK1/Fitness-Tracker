@@ -10,6 +10,12 @@ import type {
 import { buildTrainerPrompt } from './prompts/trainer'
 import { callAgentWithTools, type AgenticCallResult, type ToolCallRecord } from './tools/agentic-loop'
 import { TRAINER_TOOLS } from './tools/definitions'
+import {
+  buildUserFriendlyError,
+  cleanResponseForParsing,
+  hashUserInput,
+  logParsingError
+} from './error-handling'
 
 const TRAINER_MODEL = 'claude-sonnet-4-20250514'
 
@@ -119,16 +125,8 @@ function buildResponseFromToolResult(
  * Parse the raw LLM text into a TrainerResponse.
  * Handles markdown code fences and malformed JSON gracefully.
  */
-export function parseTrainerResponse(raw: string): TrainerResponse {
-  let cleaned = raw.trim()
-
-  // Strip markdown code fences if present
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '')
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '')
-  }
-
+export function parseTrainerResponse(raw: string, userInput = ''): TrainerResponse {
+  const cleaned = cleanResponseForParsing(raw)
   try {
     const parsed = JSON.parse(cleaned)
     return {
@@ -140,10 +138,11 @@ export function parseTrainerResponse(raw: string): TrainerResponse {
         ? Math.max(0, Math.min(1, parsed.confidence))
         : 0.5
     }
-  } catch {
-    // If JSON parsing fails, treat the whole response as a conversational message
+  } catch (error) {
+    logParsingError('trainer', raw, hashUserInput(userInput), error)
+
     return {
-      message: raw.trim() || 'I had trouble processing that. Could you try again?',
+      message: buildUserFriendlyError('trainer', error, raw),
       new_prs: [],
       smart_defaults: [],
       confidence: 0.3

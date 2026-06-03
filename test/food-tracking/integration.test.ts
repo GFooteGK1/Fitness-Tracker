@@ -354,13 +354,22 @@ function createWeeklyRequest(weekStart: string) {
 // ---------------------------------------------------------------------------
 
 describe('Food Tracking Integration Tests', () => {
+  let originalAnthropicKey: string | undefined
+
   beforeEach(() => {
+    originalAnthropicKey = process.env.ANTHROPIC_API_KEY
+    process.env.ANTHROPIC_API_KEY = 'test-anthropic-key'
     vi.clearAllMocks()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2025-06-12T12:00:00Z'))
   })
 
   afterEach(() => {
+    if (originalAnthropicKey === undefined) {
+      delete process.env.ANTHROPIC_API_KEY
+    } else {
+      process.env.ANTHROPIC_API_KEY = originalAnthropicKey
+    }
     vi.restoreAllMocks()
     vi.useRealTimers()
   })
@@ -749,7 +758,7 @@ describe('Food Tracking Integration Tests', () => {
       // Verify the upsert was called with default tolerance
       const fromCalls = mockSb.from.mock.calls
       const dailyTargetsCall = fromCalls.find(
-        (call: [string]) => call[0] === 'daily_targets'
+        (call: unknown[]) => call[0] === 'daily_targets'
       )
       expect(dailyTargetsCall).toBeDefined()
     })

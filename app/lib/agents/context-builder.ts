@@ -10,6 +10,7 @@ import { MOVEMENT_ALIASES, PORTION_DEFAULTS } from './constants'
 import { fetchRecentChat, fetchPendingUrgentInsights } from './chat-persistence'
 import { fetchWorkoutForDate } from '@/app/lib/sheets/workout-fetcher'
 import { localDateToUTCStart, localDateToUTCEnd } from '@/app/lib/timezone-utils'
+import { fetchProgrammingReadinessContext } from './programming-context'
 
 // ─── Passive Context Cache ────────────────────────────────────────────
 // Short-lived per-user cache for the 8-query passive context fetch.
@@ -233,14 +234,14 @@ async function fetchLatestWhoopStrain(
 ): Promise<{ score: number } | null> {
   const { data, error } = await supabase
     .from('whoop_cycles')
-    .select('strain_score')
+    .select('strain')
     .eq('user_id', userId)
     .order('date', { ascending: false })
     .limit(1)
     .single()
 
   if (error || !data) return null
-  return { score: data.strain_score }
+  return { score: data.strain }
 }
 
 async function fetchPendingInsightsForContext(
@@ -337,21 +338,23 @@ export async function buildNutritionistContext(userId: string, tzOffset = 0): Pr
 
 // ─── Socius Context Builder ──────────────────────────────────────────
 
-export async function buildSociusContext(userId: string, tzOffset = 0): Promise<SociusContext> {
+export async function buildSociusContext(userId: string, tzOffset = 0, programmingDays = 30): Promise<SociusContext> {
   const supabase = await createServerClient()
 
-  const [passive, thirtyDaySummary, recentInsights, dataAvailability] = await Promise.all([
+  const [passive, thirtyDaySummary, recentInsights, dataAvailability, programmingContext] = await Promise.all([
     buildPassiveContext(userId, tzOffset),
     fetchThirtyDaySummary(supabase, userId),
     fetchRecentInsightsDetailed(supabase, userId),
-    fetchDataAvailability(supabase, userId)
+    fetchDataAvailability(supabase, userId),
+    fetchProgrammingReadinessContext(supabase, userId, programmingDays)
   ])
 
   return {
     ...passive,
     thirty_day_summary: thirtyDaySummary,
     recent_insights: recentInsights,
-    data_availability: dataAvailability
+    data_availability: dataAvailability,
+    programming_context: programmingContext
   }
 }
 
@@ -801,8 +804,8 @@ export function calculateRecoveryTrend(recoveryScores: number[]): 'improving' | 
   return 'stable'
 }
 
-export function getWeekStart(): Date {
-  const now = new Date()
+export function getWeekStart(date = new Date()): Date {
+  const now = new Date(date)
   const day = now.getDay()
   const diff = now.getDate() - day + (day === 0 ? -6 : 1) // Monday start
   const weekStart = new Date(now)

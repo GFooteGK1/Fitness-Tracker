@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { MealEntry, DailyTargets, MacroTotals, AdherenceStatus, DailyMealsResponse } from '@/app/lib/types/food-tracking'
 import MealEntryCard from './MealEntryCard'
@@ -30,18 +30,26 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null)
-  
+
   const { showToast } = useToast()
 
-  useEffect(() => {
-    if (user) {
-      fetchDailyData()
-    }
-  }, [date, user])
-
-  const fetchDailyData = async () => {
+  const fetchTargets = useCallback(async () => {
     if (!user) return
-    
+
+    try {
+      const response = await fetch('/api/targets')
+      if (response.ok) {
+        const targetsData = await response.json()
+        setTargets(targetsData)
+      }
+    } catch (err) {
+      console.warn('Failed to fetch targets:', err)
+    }
+  }, [user])
+
+  const fetchDailyData = useCallback(async () => {
+    if (!user) return
+
     try {
       setLoading(true)
       setError('')
@@ -50,7 +58,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
       // Send timezone offset so server can query correct UTC range
       const tzOffset = getTimezoneOffset()
       const response = await fetch(`/api/meals/daily?date=${dateStr}&tzOffset=${tzOffset}`)
-      
+
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to fetch daily data')
@@ -68,21 +76,13 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
     } finally {
       setLoading(false)
     }
-  }
+  }, [date, fetchTargets, user])
 
-  const fetchTargets = async () => {
-    if (!user) return
-    
-    try {
-      const response = await fetch('/api/targets')
-      if (response.ok) {
-        const targetsData = await response.json()
-        setTargets(targetsData)
-      }
-    } catch (err) {
-      console.warn('Failed to fetch targets:', err)
+  useEffect(() => {
+    if (user) {
+      fetchDailyData()
     }
-  }
+  }, [fetchDailyData, user])
 
   const handleEditMeal = (mealId: string) => {
     const meal = meals.find(m => m.id === mealId)
@@ -110,7 +110,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
       // Refresh data after successful update
       await fetchDailyData()
       setEditingMeal(null)
-      
+
       // Show success message (you could use a toast here)
       console.log('Meal updated successfully')
     } catch (err) {
@@ -188,7 +188,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
         <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
           {meals.length} meal{meals.length !== 1 ? 's' : ''} logged
         </p>
-        
+
         {onAddMeal && (
           <button
             onClick={onAddMeal}
@@ -206,7 +206,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
       {targets && (
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Daily Progress</h2>
-          
+
           {/* Overall Adherence Score */}
           <div className={`rounded-lg p-3 sm:p-4 mb-4 border ${getAdherenceColor(adherence.overallScore)}`}>
             <div className="flex items-center justify-between">
@@ -331,7 +331,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
       {/* Meals List - Mobile Optimized */}
       <div className="space-y-3 sm:space-y-4">
         <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Today&apos;s Meals</h2>
-        
+
         {meals.length === 0 ? (
           <div className="text-center py-6 sm:py-8">
             {onAddMeal && (

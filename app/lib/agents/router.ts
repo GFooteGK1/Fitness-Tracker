@@ -2,7 +2,8 @@ import type {
   ClassificationResult,
   AgentMessage,
   AgentDomain,
-  AgentRequest
+  AgentRequest,
+  ManagerDecision
 } from './types'
 
 /**
@@ -31,6 +32,18 @@ export function determineRoute(classification: ClassificationResult): RouteDecis
 
   // Multi-domain — sequential pipeline
   return { type: 'multi', domains }
+}
+
+export function determineRouteFromManager(decision: ManagerDecision): RouteDecision {
+  if (decision.intent === 'unclear' || decision.agents.length === 0) {
+    return { type: 'clarify' }
+  }
+
+  if (decision.agents.length === 1) {
+    return { type: 'single', domain: decision.agents[0] }
+  }
+
+  return { type: 'multi', domains: decision.agents }
 }
 
 /**

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { DailyTargets } from '@/app/lib/types/food-tracking'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 
@@ -16,7 +16,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  
+
   // Form state
   const [formData, setFormData] = useState({
     targetProtein: 0,
@@ -26,15 +26,9 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
     tolerancePct: 5.0
   })
 
-  useEffect(() => {
-    if (user) {
-      fetchTargets()
-    }
-  }, [user])
-
-  const fetchTargets = async () => {
+  const fetchTargets = useCallback(async () => {
     if (!user) return
-    
+
     try {
       setLoading(true)
       setError('')
@@ -58,11 +52,17 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user) {
+      fetchTargets()
+    }
+  }, [fetchTargets, user])
 
   const handleSave = async () => {
     if (!user) return
-    
+
     try {
       setSaving(true)
       setError('')
@@ -83,7 +83,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
       const savedTargets: DailyTargets = await response.json()
       setTargets(savedTargets)
       setIsEditing(false)
-      
+
       // Notify parent component
       onTargetsUpdated?.(savedTargets)
     } catch (err) {
@@ -209,7 +209,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
                 placeholder="150"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Carbohydrates (g)
@@ -224,7 +224,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
                 placeholder="200"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Fat (g)
@@ -239,7 +239,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
                 placeholder="80"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Calories

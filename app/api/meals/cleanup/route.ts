@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cleanupExpiredPhotos } from '@/app/lib/storage'
+import { createServerClient } from '@/app/lib/auth/supabase-server'
 
 export async function POST(request: NextRequest) {
   try {
     // Optional: Add authentication/authorization for cleanup endpoint
     const authHeader = request.headers.get('authorization')
     const expectedToken = process.env.CLEANUP_TOKEN
-    
+
     if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -15,7 +16,8 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Starting photo cleanup process...')
-    const result = await cleanupExpiredPhotos()
+    const supabase = await createServerClient()
+    const result = await cleanupExpiredPhotos(supabase)
 
     if (!result.success) {
       console.error('Cleanup failed:', result.error)
@@ -26,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Cleanup completed. Deleted ${result.deletedCount} expired photos.`)
-    
+
     return NextResponse.json({
       success: true,
       deletedCount: result.deletedCount,

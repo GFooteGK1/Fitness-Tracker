@@ -5,6 +5,25 @@
  */
 import type { Tool } from '@anthropic-ai/sdk/resources/messages'
 
+// Socius Tools
+
+export const SOCIUS_TOOLS: Tool[] = [
+  {
+    name: 'get_programming_readiness',
+    description:
+      'Read compact cross-domain daily context for programming and readiness decisions. Use this for questions about what to train, how hard to train, deloading, recovery-aware programming, or training choices that depend on workouts, nutrition, sleep, strain, HRV, and recovery.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        days: {
+          type: 'number',
+          description: 'Number of recent days to retrieve. Defaults to 30. Minimum 1, maximum 90.'
+        }
+      }
+    }
+  }
+]
+
 // ─── Trainer Tools ─────────────────────────────────────────────────────
 
 export const TRAINER_TOOLS: Tool[] = [

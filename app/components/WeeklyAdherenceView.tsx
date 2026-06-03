@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { DailyTargets, DailySummary, CumulativeAdherenceData } from '@/app/lib/types/food-tracking'
 import { WeeklyAdherenceScore, CorrectionGuidance } from '@/app/lib/adherence-calculator'
 import { useAuth } from '@/app/lib/auth/AuthContext'
@@ -25,7 +25,7 @@ interface WeeklyAdherenceResponse {
   daysWithData: number
   weekStart: string
   weekEnd: string
-  
+
   // New fields for cumulative tracking
   daysElapsed: number
   cumulativeData: CumulativeAdherenceData
@@ -37,15 +37,9 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    if (user) {
-      fetchWeeklyData()
-    }
-  }, [weekStart, user])
-
-  const fetchWeeklyData = async () => {
+  const fetchWeeklyData = useCallback(async () => {
     if (!user) return
-    
+
     try {
       setLoading(true)
       setError('')
@@ -54,7 +48,7 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
       // Send timezone offset so server can query correct UTC range
       const tzOffset = getTimezoneOffset()
       const response = await fetch(`/api/adherence/weekly?weekStart=${weekStartStr}&tzOffset=${tzOffset}`)
-      
+
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to fetch weekly data')
@@ -67,20 +61,26 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, weekStart])
+
+  useEffect(() => {
+    if (user) {
+      fetchWeeklyData()
+    }
+  }, [fetchWeeklyData, user])
 
   const formatWeekRange = (start: Date, end: Date) => {
     const startStr = new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric'
     }).format(start)
-    
+
     const endStr = new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
     }).format(end)
-    
+
     return `${startStr} - ${endStr}`
   }
 
@@ -158,7 +158,7 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
           dailyScores={weeklyData.weeklyAdherence.dailyScores}
           onDateSelect={onDateSelect}
         />
-        
+
         {/* Legend */}
         <div className="mt-4 flex items-center justify-center flex-wrap gap-3 text-xs">
           <div className="flex items-center space-x-1">
@@ -189,33 +189,33 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
             </svg>
             Improvement Suggestions
           </h2>
-          
+
           <div className="space-y-3">
             <p className="text-yellow-800 font-medium">
               {weeklyData.correctionGuidance.overallGuidance}
             </p>
-            
+
             {weeklyData.correctionGuidance.proteinGuidance && (
               <div className="bg-white rounded-lg p-3 border border-yellow-300">
                 <h4 className="font-semibold text-yellow-800 mb-1">🥩 Protein</h4>
                 <p className="text-yellow-700 text-sm">{weeklyData.correctionGuidance.proteinGuidance}</p>
               </div>
             )}
-            
+
             {weeklyData.correctionGuidance.carbsGuidance && (
               <div className="bg-white rounded-lg p-3 border border-yellow-300">
                 <h4 className="font-semibold text-yellow-800 mb-1">🍞 Carbohydrates</h4>
                 <p className="text-yellow-700 text-sm">{weeklyData.correctionGuidance.carbsGuidance}</p>
               </div>
             )}
-            
+
             {weeklyData.correctionGuidance.fatGuidance && (
               <div className="bg-white rounded-lg p-3 border border-yellow-300">
                 <h4 className="font-semibold text-yellow-800 mb-1">🥑 Fat</h4>
                 <p className="text-yellow-700 text-sm">{weeklyData.correctionGuidance.fatGuidance}</p>
               </div>
             )}
-            
+
             {weeklyData.correctionGuidance.caloriesGuidance && (
               <div className="bg-white rounded-lg p-3 border border-yellow-300">
                 <h4 className="font-semibold text-yellow-800 mb-1">🔥 Calories</h4>

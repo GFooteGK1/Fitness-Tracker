@@ -17,7 +17,7 @@ export default function FoodLog() {
   const [isRecording, setIsRecording] = useState(false)
   const [recognition, setRecognition] = useState<any>(null)
   const [finalTranscript, setFinalTranscript] = useState('')
-  
+
   // Image processing states
   const [isCompressing, setIsCompressing] = useState(false)
   const [compressionResult, setCompressionResult] = useState<ImageCompressionResult | null>(null)
@@ -28,7 +28,7 @@ export default function FoodLog() {
     // Just check if speech recognition is available
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-      
+
       if (SpeechRecognition) {
         console.log('Speech recognition is available')
         // Don't create the instance yet - wait for user interaction
@@ -42,27 +42,27 @@ export default function FoodLog() {
 
   function initializeSpeechRecognition() {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    
+
     if (!SpeechRecognition) {
       return null
     }
-    
+
     const recognitionInstance = new SpeechRecognition()
-    
+
     recognitionInstance.continuous = true
     recognitionInstance.interimResults = true
     recognitionInstance.lang = 'en-US'
-    
+
     recognitionInstance.onstart = () => {
       console.log('Speech recognition started')
       setIsRecording(true)
       setStatus({ message: '🎤 Listening... Speak what you ate', type: 'info' })
     }
-    
+
     recognitionInstance.onresult = (event: any) => {
       let interimTranscript = ''
       let newFinalTranscript = finalTranscript
-      
+
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript
         if (event.results[i].isFinal) {
@@ -71,15 +71,15 @@ export default function FoodLog() {
           interimTranscript += transcript
         }
       }
-      
+
       setFinalTranscript(newFinalTranscript)
       setMealText(newFinalTranscript + interimTranscript)
     }
-    
+
     recognitionInstance.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error)
       setIsRecording(false)
-      
+
       if (event.error === 'not-allowed') {
         setStatus({ message: 'Microphone access denied. Please enable it in your browser settings.', type: 'error' })
       } else if (event.error === 'no-speech') {
@@ -88,11 +88,11 @@ export default function FoodLog() {
         setStatus({ message: 'Voice recognition error: ' + event.error, type: 'error' })
       }
     }
-    
+
     recognitionInstance.onend = () => {
       console.log('Speech recognition ended')
       setIsRecording(false)
-      
+
       if (finalTranscript.trim()) {
         setMealText(finalTranscript.trim())
         setStatus({ message: '✓ Voice input captured', type: 'success' })
@@ -101,13 +101,13 @@ export default function FoodLog() {
         }, 2000)
       }
     }
-    
+
     return recognitionInstance
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    
+
     if (!mealText.trim()) {
       setStatus({ message: 'Please enter meal details', type: 'error' })
       return
@@ -120,7 +120,7 @@ export default function FoodLog() {
       const response = await fetch('/api/meals/parse-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           text: mealText,
           timestamp: new Date(mealDate + 'T12:00:00').toISOString()
         })
@@ -132,11 +132,11 @@ export default function FoodLog() {
         throw new Error(result.error || 'Failed to parse meal')
       }
 
-      setStatus({ 
-        message: `✓ Meal logged! ${result.totals.protein}g protein, ${result.totals.carbs}g carbs, ${result.totals.fat}g fat`, 
-        type: 'success' 
+      setStatus({
+        message: `✓ Meal logged! ${result.totals.protein}g protein, ${result.totals.carbs}g carbs, ${result.totals.fat}g fat`,
+        type: 'success'
       })
-      
+
       // Clear form after success
       setTimeout(() => {
         setMealText('')
@@ -144,9 +144,9 @@ export default function FoodLog() {
       }, 3000)
 
     } catch (error) {
-      setStatus({ 
-        message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`, 
-        type: 'error' 
+      setStatus({
+        message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        type: 'error'
       })
     } finally {
       setLoading(false)
@@ -160,60 +160,60 @@ export default function FoodLog() {
     input.type = 'file'
     input.accept = 'image/*'
     input.capture = 'environment' // Force camera on mobile
-    
+
     console.log('File input created, triggering click')
-    
+
     input.onchange = async (e) => {
       console.log('File selected')
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
-      
+
       // Validate file format
       if (!isSupportedImageFormat(file)) {
-        setStatus({ 
-          message: 'Unsupported image format. Please use JPEG, PNG, WebP, or GIF.', 
-          type: 'error' 
+        setStatus({
+          message: 'Unsupported image format. Please use JPEG, PNG, WebP, or GIF.',
+          type: 'error'
         })
         return
       }
-      
+
       // Show file size validation
       const fileSizeMB = file.size / (1024 * 1024)
       if (fileSizeMB > 50) {
-        setStatus({ 
-          message: 'Image too large. Please use a smaller image.', 
-          type: 'error' 
+        setStatus({
+          message: 'Image too large. Please use a smaller image.',
+          type: 'error'
         })
         return
       }
-      
+
       setIsCompressing(true)
-      setStatus({ 
-        message: `🔄 Compressing image (${formatFileSize(file.size)})...`, 
-        type: 'info' 
+      setStatus({
+        message: `🔄 Compressing image (${formatFileSize(file.size)})...`,
+        type: 'info'
       })
-      
+
       try {
         // Compress the image
         const result = await compressImage(file)
         setCompressionResult(result)
         setCapturedImage(result.compressedDataUrl)
-        
-        setStatus({ 
-          message: `📸 Image ready! Compressed from ${formatFileSize(file.size)} to ${result.compressedSizeMB.toFixed(1)}MB`, 
-          type: 'success' 
+
+        setStatus({
+          message: `📸 Image ready! Compressed from ${formatFileSize(file.size)} to ${result.compressedSizeMB.toFixed(1)}MB`,
+          type: 'success'
         })
       } catch (error) {
         console.error('Compression error:', error)
-        setStatus({ 
-          message: 'Failed to process image. Please try again.', 
-          type: 'error' 
+        setStatus({
+          message: 'Failed to process image. Please try again.',
+          type: 'error'
         })
       } finally {
         setIsCompressing(false)
       }
     }
-    
+
     input.click()
   }
 
@@ -224,60 +224,60 @@ export default function FoodLog() {
     input.type = 'file'
     input.accept = 'image/*'
     // No capture attribute = shows picker with camera + gallery options
-    
+
     console.log('File input created, triggering click')
-    
+
     input.onchange = async (e) => {
       console.log('File selected')
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
-      
+
       // Validate file format
       if (!isSupportedImageFormat(file)) {
-        setStatus({ 
-          message: 'Unsupported image format. Please use JPEG, PNG, WebP, or GIF.', 
-          type: 'error' 
+        setStatus({
+          message: 'Unsupported image format. Please use JPEG, PNG, WebP, or GIF.',
+          type: 'error'
         })
         return
       }
-      
+
       // Show file size validation
       const fileSizeMB = file.size / (1024 * 1024)
       if (fileSizeMB > 50) {
-        setStatus({ 
-          message: 'Image too large. Please use a smaller image.', 
-          type: 'error' 
+        setStatus({
+          message: 'Image too large. Please use a smaller image.',
+          type: 'error'
         })
         return
       }
-      
+
       setIsCompressing(true)
-      setStatus({ 
-        message: `🔄 Compressing image (${formatFileSize(file.size)})...`, 
-        type: 'info' 
+      setStatus({
+        message: `🔄 Compressing image (${formatFileSize(file.size)})...`,
+        type: 'info'
       })
-      
+
       try {
         // Compress the image
         const result = await compressImage(file)
         setCompressionResult(result)
         setCapturedImage(result.compressedDataUrl)
-        
-        setStatus({ 
-          message: `📸 Image ready! Compressed from ${formatFileSize(file.size)} to ${result.compressedSizeMB.toFixed(1)}MB`, 
-          type: 'success' 
+
+        setStatus({
+          message: `📸 Image ready! Compressed from ${formatFileSize(file.size)} to ${result.compressedSizeMB.toFixed(1)}MB`,
+          type: 'success'
         })
       } catch (error) {
         console.error('Compression error:', error)
-        setStatus({ 
-          message: 'Failed to process image. Please try again.', 
-          type: 'error' 
+        setStatus({
+          message: 'Failed to process image. Please try again.',
+          type: 'error'
         })
       } finally {
         setIsCompressing(false)
       }
     }
-    
+
     input.click()
   }
 
@@ -289,61 +289,61 @@ export default function FoodLog() {
 
   async function analyzeImage() {
     if (!capturedImage) {
-      setStatus({ 
-        message: 'No image to analyze', 
-        type: 'error' 
+      setStatus({
+        message: 'No image to analyze',
+        type: 'error'
       })
       return
     }
-    
+
     setIsAnalyzing(true)
-    setStatus({ 
-      message: '🔍 For full photo analysis with portion refinement, use the camera view in Food Progress. This quick photo option saves directly.', 
-      type: 'info' 
+    setStatus({
+      message: '🔍 For full photo analysis with portion refinement, use the camera view in Food Progress. This quick photo option saves directly.',
+      type: 'info'
     })
-    
+
     try {
       // Use existing meal upload endpoint
       const formData = new FormData()
-      
+
       // Convert base64 to blob
       const response = await fetch(capturedImage)
       const blob = await response.blob()
       const file = new File([blob], 'meal.jpg', { type: 'image/jpeg' })
-      
+
       formData.append('photo', file)
       formData.append('timestamp', new Date(mealDate + 'T12:00:00').toISOString())
-      
+
       const uploadResponse = await fetch('/api/meals/upload', {
         method: 'POST',
         body: formData
       })
-      
+
       const data = await uploadResponse.json()
-      
+
       if (data.analysisStatus === 'complete' && data.analysis) {
         // Photo analysis complete - meal already saved by upload API
-        setStatus({ 
-          message: `✅ Meal logged! ${data.analysis.total_protein}g protein, ${data.analysis.total_carbs}g carbs, ${data.analysis.total_fat}g fat. Redirecting...`, 
-          type: 'success' 
+        setStatus({
+          message: `✅ Meal logged! ${data.analysis.total_protein}g protein, ${data.analysis.total_carbs}g carbs, ${data.analysis.total_fat}g fat. Redirecting...`,
+          type: 'success'
         })
-        
+
         // Clear form and redirect after success
         setTimeout(() => {
           window.location.href = '/food-progress'
         }, 2000)
       } else {
         const errorMsg = data.error || 'Could not analyze meal photo'
-        setStatus({ 
-          message: `⚠️ ${errorMsg}. Try a different angle or type manually.`, 
-          type: 'error' 
+        setStatus({
+          message: `⚠️ ${errorMsg}. Try a different angle or type manually.`,
+          type: 'error'
         })
       }
     } catch (error) {
       console.error('Analysis error:', error)
-      setStatus({ 
-        message: 'Failed to analyze meal photo. Please try again.', 
-        type: 'error' 
+      setStatus({
+        message: 'Failed to analyze meal photo. Please try again.',
+        type: 'error'
       })
     } finally {
       setIsAnalyzing(false)
@@ -361,39 +361,39 @@ export default function FoodLog() {
     if (!recognition || typeof recognition.start !== 'function') {
       const newRecognition = initializeSpeechRecognition()
       if (!newRecognition) {
-        setStatus({ 
-          message: 'Voice input not supported in this browser. Try Chrome or Safari.', 
-          type: 'error' 
+        setStatus({
+          message: 'Voice input not supported in this browser. Try Chrome or Safari.',
+          type: 'error'
         })
         return
       }
       setRecognition(newRecognition)
-      
+
       // Clear previous transcript and start
       setFinalTranscript('')
       setMealText('')
-      
+
       try {
         newRecognition.start()
       } catch (error) {
         console.error('Failed to start recognition:', error)
-        setStatus({ 
-          message: 'Failed to start voice input. Please try again.', 
-          type: 'error' 
+        setStatus({
+          message: 'Failed to start voice input. Please try again.',
+          type: 'error'
         })
       }
     } else {
       // Clear previous transcript and start fresh
       setFinalTranscript('')
       setMealText('')
-      
+
       try {
         recognition.start()
       } catch (error) {
         console.error('Failed to start recognition:', error)
-        setStatus({ 
-          message: 'Failed to start voice input. Please try again.', 
-          type: 'error' 
+        setStatus({
+          message: 'Failed to start voice input. Please try again.',
+          type: 'error'
         })
       }
     }
@@ -451,7 +451,7 @@ export default function FoodLog() {
             <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-6">
               💡 For photos with portion refinement, use <Link href="/food-progress?view=camera" className="text-blue-600 dark:text-blue-400 underline">Camera View</Link>
             </p>
-            
+
             {/* Show full-width photo preview when image is captured, otherwise show grid */}
             {capturedImage ? (
               <div className="relative">
@@ -462,15 +462,16 @@ export default function FoodLog() {
                   ×
                 </button>
                 <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-blue-400 dark:border-blue-500 overflow-hidden">
-                  <img 
-                    src={capturedImage} 
-                    alt="Captured meal" 
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={capturedImage}
+                    alt="Captured meal"
                     className="w-full h-48 object-cover"
                   />
                   <div className="p-4 border-t border-gray-200 dark:border-gray-700">
                     {compressionResult && (
                       <div className="text-sm text-gray-500 dark:text-gray-400 mb-3 text-center">
-                        📸 Compressed to {compressionResult.compressedSizeMB.toFixed(1)}MB 
+                        📸 Compressed to {compressionResult.compressedSizeMB.toFixed(1)}MB
                         ({compressionResult.compressionRatio.toFixed(1)}x smaller)
                       </div>
                     )}
@@ -562,8 +563,8 @@ export default function FoodLog() {
                     className={`w-full h-full p-6 rounded-xl border-2 transition-colors group ${
                       !recognition
                         ? 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 opacity-50 cursor-not-allowed'
-                        : isRecording 
-                        ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-500' 
+                        : isRecording
+                        ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-500'
                         : finalTranscript
                         ? 'bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-500'
                         : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-green-400 dark:hover:border-green-500'
@@ -579,8 +580,8 @@ export default function FoodLog() {
                         <div className={`font-semibold mb-1 ${
                           !recognition
                             ? 'text-gray-500 dark:text-gray-400'
-                            : isRecording 
-                            ? 'text-red-700 dark:text-red-300' 
+                            : isRecording
+                            ? 'text-red-700 dark:text-red-300'
                             : finalTranscript
                             ? 'text-green-700 dark:text-green-300'
                             : 'text-gray-900 dark:text-gray-100'

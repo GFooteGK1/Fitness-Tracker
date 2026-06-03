@@ -13,6 +13,12 @@ import { PORTION_DEFAULTS } from './constants'
 import { callAgentWithTools, type AgenticCallResult, type ToolCallRecord } from './tools/agentic-loop'
 import { NUTRITIONIST_TOOLS } from './tools/definitions'
 import { normalizeMealTiming } from './tools/executor'
+import {
+  buildUserFriendlyError,
+  cleanResponseForParsing,
+  hashUserInput,
+  logParsingError
+} from './error-handling'
 
 const NUTRITIONIST_MODEL = 'claude-sonnet-4-20250514'
 
@@ -140,16 +146,8 @@ function buildNutritionistResponseFromToolResult(
  * Parse the raw LLM text into a NutritionistResponse.
  * Handles markdown code fences and malformed JSON gracefully.
  */
-export function parseNutritionistResponse(raw: string): NutritionistResponse {
-  let cleaned = raw.trim()
-
-  // Strip markdown code fences if present
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '')
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '')
-  }
-
+export function parseNutritionistResponse(raw: string, userInput = ''): NutritionistResponse {
+  const cleaned = cleanResponseForParsing(raw)
   try {
     const parsed = JSON.parse(cleaned)
     return {
@@ -162,10 +160,11 @@ export function parseNutritionistResponse(raw: string): NutritionistResponse {
         ? Math.max(0, Math.min(1, parsed.confidence))
         : 0.5
     }
-  } catch {
-    // If JSON parsing fails, treat the whole response as a conversational message
+  } catch (error) {
+    logParsingError('nutritionist', raw, hashUserInput(userInput), error)
+
     return {
-      message: raw.trim() || 'I had trouble processing that. Could you try again?',
+      message: buildUserFriendlyError('nutritionist', error, raw),
       remaining_budget: { protein: 0, carbs: 0, fat: 0, calories: 0 },
       week_status: {
         days_elapsed: 0,
