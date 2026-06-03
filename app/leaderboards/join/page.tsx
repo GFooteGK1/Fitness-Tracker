@@ -1,11 +1,34 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 
 export default function JoinLeaderboardPage() {
+  return (
+    <Suspense fallback={<JoinLeaderboardLoading />}>
+      <JoinLeaderboardContent />
+    </Suspense>
+  )
+}
+
+function JoinLeaderboardLoading() {
+  return (
+    <ProtectedRoute>
+      <div className="max-w-md mx-auto">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 text-center">
+          Join a Leaderboard
+        </h1>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 text-center text-gray-600 dark:text-gray-400">
+          Loading...
+        </div>
+      </div>
+    </ProtectedRoute>
+  )
+}
+
+function JoinLeaderboardContent() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -64,10 +87,10 @@ export default function JoinLeaderboardPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 text-center">
             <div className="text-4xl mb-3">🎉</div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
-              You're in!
+              You&apos;re in!
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              You've joined <span className="font-semibold">{success.groupName}</span>. Time to compete!
+              You&apos;ve joined <span className="font-semibold">{success.groupName}</span>. Time to compete!
             </p>
             <button
               onClick={() => router.push(`/leaderboards/${success.groupId}`)}

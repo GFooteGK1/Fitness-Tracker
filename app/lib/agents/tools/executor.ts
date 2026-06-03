@@ -4,6 +4,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { invalidatePassiveCache, normalizeBlockFromDB } from '../context-builder'
+import { fetchProgrammingReadinessContext } from '../programming-context'
 import type { WorkoutBlock } from '../types'
 
 // ─── Types ─────────────────────────────────────────────────────────────
@@ -24,6 +25,8 @@ export async function executeToolCall(
 ): Promise<ToolResult> {
   try {
     switch (toolName) {
+      case 'get_programming_readiness':
+        return await executeGetProgrammingReadiness(toolInput, userId, supabase)
       case 'log_workout':
         return await executeLogWorkout(toolInput, userId, supabase)
       case 'log_pr':
@@ -44,6 +47,23 @@ export async function executeToolCall(
   } catch (err) {
     console.error(`[tool-executor] ${toolName} failed:`, err)
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
+// Socius Tools
+
+async function executeGetProgrammingReadiness(
+  input: Record<string, unknown>,
+  userId: string,
+  supabase: SupabaseClient
+): Promise<ToolResult> {
+  const rawDays = typeof input.days === 'number' ? input.days : 30
+  const days = Math.min(Math.max(Math.floor(rawDays), 1), 90)
+  const context = await fetchProgrammingReadinessContext(supabase, userId, days)
+
+  return {
+    success: true,
+    data: { context }
   }
 }
 

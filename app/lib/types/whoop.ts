@@ -35,74 +35,119 @@ export interface TokenValidationResult {
 
 export interface WhoopRecovery {
   id: string;
-  userId: string;
-  cycleId: number;
-  date: Date;
+  userId?: string;
+  user_id?: string;
+  cycleId?: number;
+  cycle_id?: number;
+  date: Date | string;
   recoveryScore: number | null;
+  recovery_score?: number | null;
   restingHeartRate: number | null;
+  resting_heart_rate?: number | null;
   hrvRmssdMilli: number | null;
+  hrv_rmssd_milli?: number | null;
   spo2Percentage: number | null;
+  spo2_percentage?: number | null;
   skinTempCelsius: number | null;
-  createdAt: Date;
+  skin_temp_celsius?: number | null;
+  createdAt?: Date;
+  created_at?: Date | string;
 }
 
 export interface WhoopSleep {
   id: string;
-  userId: string;
-  sleepId: string;  // UUID string from v2 API
-  date: Date;
+  userId?: string;
+  user_id?: string;
+  sleepId?: string;  // UUID string from v2 API
+  sleep_id?: string;
+  date: Date | string;
   sleepPerformancePercentage: number | null;
+  sleep_performance_percentage?: number | null;
   sleepConsistencyPercentage: number | null;
+  sleep_consistency_percentage?: number | null;
   sleepEfficiencyPercentage: number | null;
+  sleep_efficiency_percentage?: number | null;
   respiratoryRate: number | null;
+  respiratory_rate?: number | null;
   totalSleepDurationMs: number | null;
+  total_sleep_duration_ms?: number | null;
   isNap: boolean;
-  createdAt: Date;
+  is_nap?: boolean;
+  createdAt?: Date;
+  created_at?: Date | string;
 }
 
 export interface WhoopCycle {
   id: string;
-  userId: string;
-  cycleId: number;
-  date: Date;
+  userId?: string;
+  user_id?: string;
+  cycleId?: number;
+  cycle_id?: number;
+  date: Date | string;
   strain: number | null;
   kilojoules: number | null;
+  kilojoule?: number | null;
   averageHeartRate: number | null;
+  average_heart_rate?: number | null;
   maxHeartRate: number | null;
-  createdAt: Date;
+  max_heart_rate?: number | null;
+  createdAt?: Date;
+  created_at?: Date | string;
 }
 
 export interface WhoopWorkout {
   id: string;
-  userId: string;
-  whoopWorkoutId: string;  // UUID string from v2 API
-  date: Date;
-  sportName: string | null;
-  sportId: number | null;
+  userId?: string;
+  user_id?: string;
+  whoopWorkoutId?: string;  // UUID string from v2 API
+  whoop_workout_id?: string;
+  date: Date | string;
+  sportName?: string | null;
+  sport_name?: string | null;
+  sportId?: number | null;
+  sport_id?: number | null;
   strain: number | null;
-  averageHeartRate: number | null;
-  maxHeartRate: number | null;
-  distanceMeter: number | null;
-  altitudeGainMeter: number | null;
-  durationMs: number | null;
-  createdAt: Date;
+  averageHeartRate?: number | null;
+  average_heart_rate?: number | null;
+  maxHeartRate?: number | null;
+  max_heart_rate?: number | null;
+  distanceMeter?: number | null;
+  distance_meter?: number | null;
+  altitudeGainMeter?: number | null;
+  altitude_gain_meter?: number | null;
+  durationMs?: number | null;
+  duration_ms?: number | null;
+  createdAt?: Date;
+  created_at?: Date | string;
 }
 
 export interface WhoopSyncStatus {
   id: string;
-  userId: string;
+  userId?: string;
+  user_id?: string;
   lastSyncAt: Date | null;
+  last_sync_at?: Date | null;
   nextSyncAt: Date | null;
+  next_sync_at?: Date | null;
   status: 'idle' | 'syncing' | 'error';
   errorMessage: string | null;
+  error_message?: string | null;
   recordsSynced: {
     recovery?: number;
     sleep?: number;
     cycles?: number;
     workouts?: number;
   };
+  records_synced?: {
+    recovery?: number;
+    sleep?: number;
+    cycles?: number;
+    workouts?: number;
+  };
   createdAt: Date;
+  created_at?: Date | string;
   updatedAt: Date;
+  updated_at?: Date | string;
 }
 
 // ============================================================================
@@ -255,7 +300,7 @@ export interface WhoopErrorLog {
   };
 }
 
-export type WhoopOAuthError = 
+export type WhoopOAuthError =
   | 'invalid_grant'
   | 'access_denied'
   | 'invalid_scope'

@@ -6,11 +6,11 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get('code')
 
   if (code) {
-    const supabase = createServerClient()
-    
+    const supabase = await createServerClient()
+
     // Exchange the code for a session
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-    
+
     if (error) {
       console.error('Auth callback error:', error)
       return NextResponse.redirect(`${requestUrl.origin}/auth/signin?error=callback_error`)

@@ -1,7 +1,7 @@
 // Feature: food-tracking, Property 3: Macro Calculation Consistency
 import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
-import { FoodItem } from '@/lib/types/food-tracking'
+import { FoodItem } from '@/app/lib/types/food-tracking'
 
 // Mock the macro calculation function
 function calculateTotalMacros(items: FoodItem[]) {
@@ -30,12 +30,12 @@ describe('Macro Calculation Properties', () => {
         ),
         (foodItems: FoodItem[]) => {
           const totals = calculateTotalMacros(foodItems)
-          
+
           const expectedProtein = foodItems.reduce((sum, item) => sum + item.protein, 0)
           const expectedCarbs = foodItems.reduce((sum, item) => sum + item.carbs, 0)
           const expectedFat = foodItems.reduce((sum, item) => sum + item.fat, 0)
           const expectedCalories = foodItems.reduce((sum, item) => sum + item.calories, 0)
-          
+
           expect(Math.abs(totals.protein - expectedProtein)).toBeLessThan(0.01)
           expect(Math.abs(totals.carbs - expectedCarbs)).toBeLessThan(0.01)
           expect(Math.abs(totals.fat - expectedFat)).toBeLessThan(0.01)

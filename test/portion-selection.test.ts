@@ -6,7 +6,7 @@ import {
   RelativePortionSize,
   MeasurementUnit,
   FractionalAmount
-} from '@/lib/types/food-tracking'
+} from '@/app/lib/types/food-tracking'
 
 // Helper to create a mock food item
 function createMockFoodItem(overrides: Partial<FoodItem> = {}): FoodItem {
@@ -24,12 +24,12 @@ function createMockFoodItem(overrides: Partial<FoodItem> = {}): FoodItem {
 // Helper to create portion spec
 function createPortionSpec(
   type: 'relative' | 'exact',
-  value: RelativePortionSize | { amount: FractionalAmount; unit: MeasurementUnit }
+  value: RelativePortionSize | { amount: number | FractionalAmount; unit: MeasurementUnit }
 ): PortionSpec {
   if (type === 'relative') {
     return { type: 'relative', relative: value as RelativePortionSize }
   }
-  return { type: 'exact', exact: value as { amount: FractionalAmount; unit: MeasurementUnit } }
+  return { type: 'exact', exact: value as { amount: number | FractionalAmount; unit: MeasurementUnit } }
 }
 
 // Portion to description converter (mirrors API logic)
@@ -45,7 +45,7 @@ function portionToDescription(spec: PortionSpec): string {
     }
     return descriptions[spec.relative] || spec.relative
   }
-  
+
   if (spec.type === 'exact' && spec.exact) {
     const { amount, unit } = spec.exact
     const unitNames: Record<string, string> = {
@@ -57,7 +57,7 @@ function portionToDescription(spec: PortionSpec): string {
     }
     return `${amount} ${unitNames[unit] || unit}`
   }
-  
+
   return 'unspecified portion'
 }
 
@@ -110,9 +110,9 @@ describe('Portion Selection Types', () => {
     })
 
     it('should convert exact portions to descriptions', () => {
-      const gramSpec = createPortionSpec('exact', { amount: '100', unit: 'g' })
+      const gramSpec = createPortionSpec('exact', { amount: 100, unit: 'g' })
       // Note: '100' is not in FractionalAmount, but testing the conversion logic
-      
+
       const cupSpec = createPortionSpec('exact', { amount: '1/2', unit: 'cup' })
       expect(portionToDescription(cupSpec)).toBe('1/2 cups')
 
@@ -151,9 +151,9 @@ describe('Portion Selection Flow', () => {
   it('should identify items with portion specs', () => {
     const items: FoodItem[] = [
       createMockFoodItem({ food: 'Chicken' }),
-      createMockFoodItem({ 
-        food: 'Rice', 
-        portionSpec: createPortionSpec('relative', 'fist') 
+      createMockFoodItem({
+        food: 'Rice',
+        portionSpec: createPortionSpec('relative', 'fist')
       }),
       createMockFoodItem({ food: 'Broccoli' })
     ]
@@ -175,7 +175,7 @@ describe('Portion Selection Flow', () => {
 
   it('should detect when portions are set', () => {
     const items: FoodItem[] = [
-      createMockFoodItem({ 
+      createMockFoodItem({
         food: 'Chicken',
         portionSpec: createPortionSpec('relative', 'palm')
       }),
@@ -222,8 +222,8 @@ describe('Refine API Request Validation', () => {
     const request: RefineRequest = {
       mealId: 'test-meal-123',
       items: [
-        createMockFoodItem({ 
-          portionSpec: createPortionSpec('relative', 'palm') 
+        createMockFoodItem({
+          portionSpec: createPortionSpec('relative', 'palm')
         })
       ]
     }
@@ -266,7 +266,7 @@ describe('Macro Refinement Logic', () => {
   }
 
   function estimateRefinedMacros(
-    item: FoodItem, 
+    item: FoodItem,
     baseMultiplier: number = 1.0
   ): { protein: number; carbs: number; fat: number; calories: number } {
     let multiplier = baseMultiplier
@@ -286,29 +286,29 @@ describe('Macro Refinement Logic', () => {
   it('should not change macros without portion spec', () => {
     const item = createMockFoodItem({ protein: 30, carbs: 0, fat: 3, calories: 165 })
     const refined = estimateRefinedMacros(item)
-    
+
     expect(refined.protein).toBe(30)
     expect(refined.calories).toBe(165)
   })
 
   it('should reduce macros for thumb-sized portion', () => {
-    const item = createMockFoodItem({ 
-      protein: 30, 
+    const item = createMockFoodItem({
+      protein: 30,
       portionSpec: createPortionSpec('relative', 'thumb')
     })
     const refined = estimateRefinedMacros(item)
-    
+
     expect(refined.protein).toBeLessThan(30)
     expect(refined.protein).toBe(7.5) // 30 * 0.25
   })
 
   it('should increase macros for half-plate portion', () => {
-    const item = createMockFoodItem({ 
-      protein: 30, 
+    const item = createMockFoodItem({
+      protein: 30,
       portionSpec: createPortionSpec('relative', 'half-plate')
     })
     const refined = estimateRefinedMacros(item)
-    
+
     expect(refined.protein).toBeGreaterThan(30)
     expect(refined.protein).toBe(45) // 30 * 1.5
   })
@@ -318,7 +318,7 @@ describe('Macro Refinement Logic', () => {
 describe('Upload and Refine API Integration', () => {
   // Mock fetch for API calls
   const mockFetch = vi.fn()
-  
+
   beforeEach(() => {
     vi.stubGlobal('fetch', mockFetch)
     mockFetch.mockReset()
@@ -375,7 +375,7 @@ describe('Upload and Refine API Integration', () => {
 
     expect(uploadResult.ok).toBe(true)
     const data = await uploadResult.json()
-    
+
     expect(data.mealId).toBe('meal-123')
     expect(data.analysis.items).toHaveLength(3)
     expect(data.analysis.total_protein).toBe(43)
@@ -410,9 +410,9 @@ describe('Upload and Refine API Integration', () => {
     // Step 2: User adds portion specs
     const itemsWithPortions: FoodItem[] = uploadData.analysis.items.map((item: FoodItem, i: number) => ({
       ...item,
-      portionSpec: i === 0 
+      portionSpec: i === 0
         ? createPortionSpec('relative', 'palm')
-        : i === 2 
+        : i === 2
           ? createPortionSpec('relative', 'half-plate')
           : undefined
     }))
@@ -493,15 +493,15 @@ describe('Upload and Refine API Integration', () => {
     })
 
     const itemsWithMixedPortions: FoodItem[] = [
-      createMockFoodItem({ 
+      createMockFoodItem({
         food: 'Grilled Chicken',
         portionSpec: createPortionSpec('exact', { amount: '4', unit: 'oz' })
       }),
-      createMockFoodItem({ 
+      createMockFoodItem({
         food: 'Brown Rice',
         portionSpec: createPortionSpec('relative', 'fist')
       }),
-      createMockFoodItem({ 
+      createMockFoodItem({
         food: 'Steamed Broccoli',
         portionSpec: createPortionSpec('exact', { amount: '2', unit: 'cup' })
       })

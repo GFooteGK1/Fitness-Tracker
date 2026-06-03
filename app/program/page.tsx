@@ -19,7 +19,7 @@ interface WorkoutData {
 
 export default function ProgramPage() {
   const [selectedDate, setSelectedDate] = useState(() => getLocalDate());
-  
+
   const [workoutData, setWorkoutData] = useState<WorkoutData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,15 +27,15 @@ export default function ProgramPage() {
   const fetchWorkout = async (date: string) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`/api/workouts?date=${date}`);
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch workout');
       }
-      
+
       setWorkoutData(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -68,7 +68,7 @@ export default function ProgramPage() {
             💪 Daily Program
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            View your coach's daily workout programming from Google Sheets
+            View your coach&apos;s daily workout programming from Google Sheets
           </p>
         </div>
 
@@ -128,7 +128,7 @@ export default function ProgramPage() {
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap">
                 {workoutData.workout}
               </div>
-              
+
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 mt-6">
                 <a
@@ -161,7 +161,7 @@ export default function ProgramPage() {
               <p className="text-gray-600 dark:text-gray-400 mb-4">
                 {workoutData?.message || `No workout scheduled for ${formatDate(selectedDate)}`}
               </p>
-              
+
               {workoutData?.availableDates && (
                 <div className="text-sm text-gray-500 dark:text-gray-400">
                   <p>Available dates: {workoutData.availableDates.first} to {workoutData.availableDates.last}</p>

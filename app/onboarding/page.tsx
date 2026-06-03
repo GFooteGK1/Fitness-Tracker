@@ -13,7 +13,7 @@ type OnboardingStep = 'welcome' | 'body-metrics' | 'goals' | 'complete'
 export default function OnboardingPage() {
   const { user, profile, loading, updateProfile, hasCompletedOnboarding } = useAuth()
   const router = useRouter()
-  
+
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome')
   const [bodyMetrics, setBodyMetrics] = useState<BodyMetrics>({})
   const [preferences, setPreferences] = useState<UserPreferences>({
@@ -44,7 +44,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (profile) {
       setBodyMetrics(profile.bodyMetrics || {})
-      setPreferences(profile.preferences || preferences)
+      setPreferences(prev => profile.preferences || prev)
       setFitnessGoals(profile.fitnessGoals || [])
       setActivityLevel(profile.activityLevel || 'moderately_active')
     }
@@ -99,7 +99,7 @@ export default function OnboardingPage() {
 
   const handleNext = () => {
     setErrors({})
-    
+
     if (currentStep === 'welcome') {
       setCurrentStep('body-metrics')
     } else if (currentStep === 'body-metrics') {
@@ -115,7 +115,7 @@ export default function OnboardingPage() {
 
   const handleBack = () => {
     setErrors({})
-    
+
     if (currentStep === 'goals') {
       setCurrentStep('body-metrics')
     } else if (currentStep === 'body-metrics') {
@@ -153,7 +153,7 @@ export default function OnboardingPage() {
       }
 
       setCurrentStep('complete')
-      
+
       // Redirect to dashboard after a short delay
       setTimeout(() => {
         router.push('/dashboard')
@@ -179,7 +179,7 @@ export default function OnboardingPage() {
             <p className="text-gray-600 dark:text-gray-400">
               Let&apos;s set up your profile to provide personalized fitness and nutrition recommendations.
             </p>
-            
+
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-left">
               <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
                 What makes SociusFit different:
@@ -217,7 +217,7 @@ export default function OnboardingPage() {
                 This helps us calculate personalized targets and recommendations
               </p>
             </div>
-            
+
             <BodyMetricsForm
               initialData={bodyMetrics}
               preferences={preferences}
@@ -239,7 +239,7 @@ export default function OnboardingPage() {
                 Help us tailor your experience to your fitness objectives
               </p>
             </div>
-            
+
             <GoalsSelection
               selectedGoals={fitnessGoals}
               selectedActivityLevel={activityLevel}
@@ -289,7 +289,7 @@ export default function OnboardingPage() {
         {/* Progress Bar */}
         {currentStep !== 'complete' && (
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-            <div 
+            <div
               className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${getProgressPercentage()}%` }}
             />
@@ -318,7 +318,7 @@ export default function OnboardingPage() {
                 Back
               </button>
             )}
-            
+
             <button
               onClick={handleNext}
               disabled={saving}

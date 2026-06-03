@@ -215,8 +215,8 @@ describe('InputBar', () => {
         constructor() {
           // Wire up so tests can trigger callbacks
           Object.assign(mockRecognition, {
-            get onresult() { return this._onresult },
-            set onresult(fn: ((event: unknown) => void) | null) { this._onresult = fn },
+            get onresult() { return (this as typeof mockRecognition & { _onresult?: ((event: unknown) => void) | null })._onresult ?? null },
+            set onresult(fn: ((event: unknown) => void) | null) { (this as typeof mockRecognition & { _onresult?: ((event: unknown) => void) | null })._onresult = fn },
           })
           // Proxy property access back to this instance
           const self = this

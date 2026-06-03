@@ -8,8 +8,21 @@ import type {
   PatternId
 } from './types'
 import { buildSociusPrompt } from './prompts/socius'
+import { callAgentWithTools, type ToolCallRecord } from './tools/agentic-loop'
+import { SOCIUS_TOOLS } from './tools/definitions'
+import {
+  buildUserFriendlyError,
+  cleanResponseForParsing,
+  hashUserInput,
+  logParsingError
+} from './error-handling'
 
 const SOCIUS_MODEL = 'claude-sonnet-4-20250514'
+
+/** Extended response that includes tool call metadata */
+export interface SociusResponseWithTools extends SociusResponse {
+  _toolCalls?: ToolCallRecord[]
+}
 
 /** All valid pattern IDs */
 const VALID_PATTERN_IDS: PatternId[] = [
@@ -28,10 +41,29 @@ const VALID_PRIORITIES: InsightPriority[] = ['urgent', 'notable', 'informational
  */
 export async function callSociusAgent(
   ctx: SociusContext,
-  userInput: string
-): Promise<SociusResponse> {
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+  userInput: string,
+  supabase?: SupabaseClient,
+  userId?: string
+): Promise<SociusResponseWithTools> {
   const systemPrompt = buildSociusPrompt(ctx)
+
+  if (supabase && userId) {
+    const result = await callAgentWithTools({
+      systemPrompt,
+      userInput,
+      tools: SOCIUS_TOOLS,
+      userId,
+      supabase,
+      maxRounds: 3
+    })
+
+    return {
+      ...parseSociusResponse(result.text),
+      _toolCalls: result.toolCalls
+    }
+  }
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
   const message = await anthropic.messages.create(
     {
@@ -52,16 +84,8 @@ export async function callSociusAgent(
  * Parse the raw LLM text into a SociusResponse.
  * Handles markdown code fences and malformed JSON gracefully.
  */
-export function parseSociusResponse(raw: string): SociusResponse {
-  let cleaned = raw.trim()
-
-  // Strip markdown code fences if present
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '')
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '')
-  }
-
+export function parseSociusResponse(raw: string, userInput = ''): SociusResponse {
+  const cleaned = cleanResponseForParsing(raw)
   try {
     const parsed = JSON.parse(cleaned)
     return {
@@ -74,10 +98,11 @@ export function parseSociusResponse(raw: string): SociusResponse {
         ? Math.max(0, Math.min(1, parsed.confidence))
         : 0.5
     }
-  } catch {
-    // If JSON parsing fails, treat the whole response as a conversational message
+  } catch (error) {
+    logParsingError('socius', raw, hashUserInput(userInput), error)
+
     return {
-      message: raw.trim() || 'I had trouble analyzing that. Could you try again?',
+      message: buildUserFriendlyError('socius', error, raw),
       insights: [],
       data_points: {},
       confidence: 0.3
@@ -153,7 +178,7 @@ export async function persistInsights(
     priority: insight.priority,
     confidence: insight.confidence,
     content: insight.content,
-    is_surfaced: false
+    data_context: {}
   }))
 
   const { error } = await supabase.from('insights').insert(rows)

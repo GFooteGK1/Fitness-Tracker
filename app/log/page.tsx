@@ -16,7 +16,7 @@ export default function LogWorkout() {
   const [isRecording, setIsRecording] = useState(false)
   const [recognition, setRecognition] = useState<any>(null)
   const [finalTranscript, setFinalTranscript] = useState('')
-  
+
   // Image processing states
   const [isCompressing, setIsCompressing] = useState(false)
   const [compressionResult, setCompressionResult] = useState<ImageCompressionResult | null>(null)
@@ -31,7 +31,7 @@ export default function LogWorkout() {
       const params = new URLSearchParams(window.location.search)
       const workoutParam = params.get('workout')
       const dateParam = params.get('date')
-      
+
       if (workoutParam) setWorkoutText(decodeURIComponent(workoutParam))
       if (dateParam) setWorkoutDate(dateParam)
 
@@ -39,21 +39,21 @@ export default function LogWorkout() {
       if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
         const recognitionInstance = new SpeechRecognition()
-        
+
         recognitionInstance.continuous = true
         recognitionInstance.interimResults = true
         recognitionInstance.lang = 'en-US'
-        
+
         recognitionInstance.onstart = () => {
           console.log('Speech recognition started')
           setIsRecording(true)
           setStatus({ message: '🎤 Listening... Speak your workout', type: 'info' })
         }
-        
+
         recognitionInstance.onresult = (event: any) => {
           let interimTranscript = ''
           let newFinalTranscript = finalTranscript
-          
+
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript
             if (event.results[i].isFinal) {
@@ -62,15 +62,15 @@ export default function LogWorkout() {
               interimTranscript += transcript
             }
           }
-          
+
           setFinalTranscript(newFinalTranscript)
           setWorkoutText(newFinalTranscript + interimTranscript)
         }
-        
+
         recognitionInstance.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error)
           setIsRecording(false)
-          
+
           if (event.error === 'not-allowed') {
             setStatus({ message: 'Microphone access denied. Please enable it in your browser settings.', type: 'error' })
           } else if (event.error === 'no-speech') {
@@ -79,11 +79,11 @@ export default function LogWorkout() {
             setStatus({ message: 'Voice recognition error: ' + event.error, type: 'error' })
           }
         }
-        
+
         recognitionInstance.onend = () => {
           console.log('Speech recognition ended')
           setIsRecording(false)
-          
+
           if (finalTranscript.trim()) {
             setWorkoutText(finalTranscript.trim())
             setStatus({ message: '✓ Voice input captured', type: 'success' })
@@ -92,7 +92,7 @@ export default function LogWorkout() {
             }, 2000)
           }
         }
-        
+
         setRecognition(recognitionInstance)
       }
     }
@@ -100,7 +100,7 @@ export default function LogWorkout() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    
+
     if (!workoutText.trim()) {
       setStatus({ message: 'Please enter workout details', type: 'error' })
       return
@@ -113,7 +113,7 @@ export default function LogWorkout() {
       const response = await fetch('/api/parse-workout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           text: workoutText,
           date: workoutDate
         })
@@ -157,9 +157,9 @@ export default function LogWorkout() {
       }, 3000)
 
     } catch (error) {
-      setStatus({ 
-        message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`, 
-        type: 'error' 
+      setStatus({
+        message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        type: 'error'
       })
     } finally {
       setLoading(false)
@@ -172,57 +172,57 @@ export default function LogWorkout() {
     input.type = 'file'
     input.accept = 'image/*'
     input.capture = 'environment' // Prefer rear camera on mobile
-    
+
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
-      
+
       // Validate file format
       if (!isSupportedImageFormat(file)) {
-        setStatus({ 
-          message: 'Unsupported image format. Please use JPEG, PNG, WebP, or GIF.', 
-          type: 'error' 
+        setStatus({
+          message: 'Unsupported image format. Please use JPEG, PNG, WebP, or GIF.',
+          type: 'error'
         })
         return
       }
-      
+
       // Show file size validation
       const fileSizeMB = file.size / (1024 * 1024)
       if (fileSizeMB > 50) { // Reasonable upper limit before compression
-        setStatus({ 
-          message: 'Image too large. Please use a smaller image.', 
-          type: 'error' 
+        setStatus({
+          message: 'Image too large. Please use a smaller image.',
+          type: 'error'
         })
         return
       }
-      
+
       setIsCompressing(true)
-      setStatus({ 
-        message: `🔄 Compressing image (${formatFileSize(file.size)})...`, 
-        type: 'info' 
+      setStatus({
+        message: `🔄 Compressing image (${formatFileSize(file.size)})...`,
+        type: 'info'
       })
-      
+
       try {
         // Compress the image
         const result = await compressImage(file)
         setCompressionResult(result)
         setCapturedImage(result.compressedDataUrl)
-        
-        setStatus({ 
-          message: `📸 Image ready! Compressed from ${formatFileSize(file.size)} to ${result.compressedSizeMB.toFixed(1)}MB`, 
-          type: 'success' 
+
+        setStatus({
+          message: `📸 Image ready! Compressed from ${formatFileSize(file.size)} to ${result.compressedSizeMB.toFixed(1)}MB`,
+          type: 'success'
         })
       } catch (error) {
         console.error('Compression error:', error)
-        setStatus({ 
-          message: 'Failed to process image. Please try again.', 
-          type: 'error' 
+        setStatus({
+          message: 'Failed to process image. Please try again.',
+          type: 'error'
         })
       } finally {
         setIsCompressing(false)
       }
     }
-    
+
     input.click()
   }
 
@@ -234,47 +234,47 @@ export default function LogWorkout() {
 
   async function analyzeImage() {
     if (!capturedImage) {
-      setStatus({ 
-        message: 'No image to analyze', 
-        type: 'error' 
+      setStatus({
+        message: 'No image to analyze',
+        type: 'error'
       })
       return
     }
-    
+
     setIsAnalyzing(true)
-    setStatus({ 
-      message: '🔍 Analyzing image with AI (15-20 seconds)...', 
-      type: 'info' 
+    setStatus({
+      message: '🔍 Analyzing image with AI (15-20 seconds)...',
+      type: 'info'
     })
-    
+
     try {
       const response = await fetch('/api/ocr-workout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: capturedImage })
       })
-      
+
       const data = await response.json()
-      
+
       if (data.success && data.extractedText && data.extractedText.trim().length > 0) {
         setWorkoutText(data.extractedText)
-        setStatus({ 
-          message: `✅ Workout text extracted in ${(data.duration_ms / 1000).toFixed(1)}s! Review and edit if needed.`, 
-          type: 'success' 
+        setStatus({
+          message: `✅ Workout text extracted in ${(data.duration_ms / 1000).toFixed(1)}s! Review and edit if needed.`,
+          type: 'success'
         })
       } else {
         const errorMsg = data.error || 'Could not extract text from image'
-        setStatus({ 
-          message: `⚠️ ${errorMsg}. Try a different angle or type manually.`, 
-          type: 'error' 
+        setStatus({
+          message: `⚠️ ${errorMsg}. Try a different angle or type manually.`,
+          type: 'error'
         })
         console.log('OCR failed:', data)
       }
     } catch (error) {
       console.error('OCR error:', error)
-      setStatus({ 
-        message: 'Failed to extract text from image. Please try again.', 
-        type: 'error' 
+      setStatus({
+        message: 'Failed to extract text from image. Please try again.',
+        type: 'error'
       })
     } finally {
       setIsAnalyzing(false)
@@ -283,9 +283,9 @@ export default function LogWorkout() {
 
   function toggleVoiceRecording() {
     if (!recognition) {
-      setStatus({ 
-        message: 'Voice input not supported in this browser. Try Chrome or Safari.', 
-        type: 'error' 
+      setStatus({
+        message: 'Voice input not supported in this browser. Try Chrome or Safari.',
+        type: 'error'
       })
       return
     }
@@ -365,7 +365,7 @@ export default function LogWorkout() {
           <h3 className="text-center text-lg font-semibold text-gray-700 dark:text-gray-300 mb-6">
             Choose how to log your workout:
           </h3>
-          
+
           {/* Show full-width photo preview when image is captured, otherwise show grid */}
           {capturedImage ? (
             <div className="relative">
@@ -376,15 +376,16 @@ export default function LogWorkout() {
                 ×
               </button>
               <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-blue-400 dark:border-blue-500 overflow-hidden">
-                <img 
-                  src={capturedImage} 
-                  alt="Captured workout" 
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={capturedImage}
+                  alt="Captured workout"
                   className="w-full h-48 object-cover"
                 />
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700">
                   {compressionResult && (
                     <div className="text-sm text-gray-500 dark:text-gray-400 mb-3 text-center">
-                      📸 Compressed to {compressionResult.compressedSizeMB.toFixed(1)}MB 
+                      📸 Compressed to {compressionResult.compressedSizeMB.toFixed(1)}MB
                       ({compressionResult.compressionRatio.toFixed(1)}x smaller)
                     </div>
                   )}
@@ -449,8 +450,8 @@ export default function LogWorkout() {
                   type="button"
                   onClick={toggleVoiceRecording}
                   className={`w-full h-full p-6 rounded-xl border-2 transition-colors group ${
-                    isRecording 
-                      ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-500' 
+                    isRecording
+                      ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-500'
                       : finalTranscript
                       ? 'bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-500'
                       : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-green-400 dark:hover:border-green-500'
@@ -464,8 +465,8 @@ export default function LogWorkout() {
                     </div>
                     <div className="text-center">
                       <div className={`font-semibold mb-1 ${
-                        isRecording 
-                          ? 'text-red-700 dark:text-red-300' 
+                        isRecording
+                          ? 'text-red-700 dark:text-red-300'
                           : finalTranscript
                           ? 'text-green-700 dark:text-green-300'
                           : 'text-gray-900 dark:text-gray-100'
@@ -505,7 +506,7 @@ export default function LogWorkout() {
             onChange={(e) => setWorkoutText(e.target.value)}
             placeholder="12min AMRAP:
 5 Pull-ups
-10 Push-ups  
+10 Push-ups
 15 Air Squats
 
 Got 7 rounds + 5

@@ -36,8 +36,9 @@ import type {
 } from '@/app/lib/agents/types'
 import { classifyInput } from '@/app/lib/agents/classifier'
 import { preprocessInput, validateRequest } from '@/app/lib/agents/preprocessor'
-import { determineRoute, executeRoute } from '@/app/lib/agents/router'
+import { determineRouteFromManager, executeRoute } from '@/app/lib/agents/router'
 import type { AgentCaller } from '@/app/lib/agents/router'
+import { buildManagerDecision } from '@/app/lib/agents/manager'
 import { buildTrainerContext, buildNutritionistContext, buildSociusContext, invalidatePassiveCache } from '@/app/lib/agents/context-builder'
 import { callTrainerAgent, persistWorkout, persistNewPRs } from '@/app/lib/agents/trainer-agent'
 import { callNutritionistAgent, persistMeal } from '@/app/lib/agents/nutritionist-agent'
@@ -83,8 +84,13 @@ export async function POST(request: NextRequest) {
     // 6. Check for urgent pending insights
     const urgentInsights = await fetchPendingUrgentInsights(supabase, user.id)
 
-    // 7. Route decision
-    const routeDecision = determineRoute(classification)
+    // 7. Manager decision: route plus explicit context request
+    const managerDecision = buildManagerDecision(classification, processedContent)
+    const routeDecision = determineRouteFromManager(managerDecision)
+    const requestWithManager: AgentRequest = {
+      ...body,
+      manager_decision: managerDecision
+    }
 
     // 8. Build agent callers
     const agentCallers: Record<AgentDomain, AgentCaller> = {
@@ -98,7 +104,7 @@ export async function POST(request: NextRequest) {
       routeDecision,
       user.id,
       processedContent,
-      body,
+      requestWithManager,
       agentCallers
     )
 
@@ -137,6 +143,7 @@ export async function POST(request: NextRequest) {
     const response: AgentResponse = {
       messages,
       classification,
+      manager_decision: managerDecision,
       processing_time_ms: elapsed
     }
 
@@ -261,8 +268,9 @@ function createSociusCaller(
   return async (userId, content, request, _previousMessages) => {
     try {
       const tzOffset = (request as AgentRequest).tz_offset ?? 0
-      const ctx = await buildSociusContext(userId, tzOffset)
-      const response = await callSociusAgent(ctx, content)
+      const contextDays = (request as AgentRequest).manager_decision?.context_request.recent_recovery_days ?? 30
+      const ctx = await buildSociusContext(userId, tzOffset, contextDays)
+      const response = await callSociusAgent(ctx, content, supabase, userId)
 
       // Persist any new insights above the confidence threshold
       if (response.insights && response.insights.length > 0) {

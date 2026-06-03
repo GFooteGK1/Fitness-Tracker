@@ -120,9 +120,9 @@ export default function MealCameraCapture({
     // Get connection type if available
     if ('connection' in navigator) {
       const connection = (navigator as any).connection
-      setNetworkState(prev => ({ 
-        ...prev, 
-        connectionType: connection?.effectiveType || null 
+      setNetworkState(prev => ({
+        ...prev,
+        connectionType: connection?.effectiveType || null
       }))
     }
 
@@ -136,7 +136,7 @@ export default function MealCameraCapture({
   const startCamera = useCallback(async () => {
     try {
       setCameraState(prev => ({ ...prev, error: null, isInitializing: true }))
-      
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'environment', // Use back camera on mobile
@@ -160,7 +160,7 @@ export default function MealCameraCapture({
     } catch (error) {
       console.error('Camera access error:', error)
       let errorMessage = 'Failed to access camera'
-      
+
       if (error instanceof Error) {
         if (error.name === 'NotAllowedError') {
           errorMessage = 'Camera permission denied. Please allow camera access and try again.'
@@ -188,7 +188,7 @@ export default function MealCameraCapture({
     if (cameraState.stream) {
       cameraState.stream.getTracks().forEach(track => track.stop())
     }
-    
+
     setCameraState({
       isActive: false,
       hasPermission: cameraState.hasPermission,
@@ -325,8 +325,21 @@ export default function MealCameraCapture({
     // Check session validity
     if (!isSessionValid) {
       const errorMessage = 'Your session has expired. Please sign in again.'
-      setPhotoState(prev => ({ 
-        ...prev, 
+      setPhotoState(prev => ({
+        ...prev,
+        uploadError: errorMessage,
+        shouldRetry: false,
+        fallbackAction: 'redirect_to_login'
+      }))
+      onError?.(errorMessage)
+      return
+    }
+
+    const effectiveUserId = userId ?? user?.id
+    if (!effectiveUserId) {
+      const errorMessage = 'Unable to determine the signed-in user. Please sign in again.'
+      setPhotoState(prev => ({
+        ...prev,
         uploadError: errorMessage,
         shouldRetry: false,
         fallbackAction: 'redirect_to_login'
@@ -341,21 +354,20 @@ export default function MealCameraCapture({
         const now = new Date()
         const queueId = queuePhotoUpload(
           photoState.file,
-          userId,
-          selectedDate 
+          selectedDate
             ? new Date(
-                selectedDate.getFullYear(), 
-                selectedDate.getMonth(), 
-                selectedDate.getDate(), 
-                now.getHours(), 
-                now.getMinutes(), 
+                selectedDate.getFullYear(),
+                selectedDate.getMonth(),
+                selectedDate.getDate(),
+                now.getHours(),
+                now.getMinutes(),
                 now.getSeconds()
               ).toISOString()
             : new Date().toISOString()
         )
 
-        setPhotoState(prev => ({ 
-          ...prev, 
+        setPhotoState(prev => ({
+          ...prev,
           analysisStatus: 'complete',
           analysisProgress: 100,
           estimatedTimeRemaining: 0,
@@ -374,8 +386,8 @@ export default function MealCameraCapture({
         return
       } catch (error) {
         const errorMessage = 'Failed to queue photo for offline processing'
-        setPhotoState(prev => ({ 
-          ...prev, 
+        setPhotoState(prev => ({
+          ...prev,
           uploadError: errorMessage,
           shouldRetry: false
         }))
@@ -385,10 +397,10 @@ export default function MealCameraCapture({
     }
 
     const startTime = Date.now()
-    
-    setPhotoState(prev => ({ 
-      ...prev, 
-      isUploading: true, 
+
+    setPhotoState(prev => ({
+      ...prev,
+      isUploading: true,
       uploadError: null,
       uploadProgress: 0,
       analysisStatus: 'uploading',
@@ -403,19 +415,19 @@ export default function MealCameraCapture({
       try {
         const formData = new FormData()
         formData.append('photo', photoState.file!)
-        formData.append('userId', userId)
+        formData.append('userId', effectiveUserId)
         // Send full ISO timestamp with timezone - database will store in UTC
         // and the client will convert back to local time for display
         // Use selectedDate if provided (with current time of day), otherwise use current time
-        const timestamp = selectedDate 
+        const timestamp = selectedDate
           ? (() => {
               const now = new Date()
               return new Date(
-                selectedDate.getFullYear(), 
-                selectedDate.getMonth(), 
-                selectedDate.getDate(), 
-                now.getHours(), 
-                now.getMinutes(), 
+                selectedDate.getFullYear(),
+                selectedDate.getMonth(),
+                selectedDate.getDate(),
+                now.getHours(),
+                now.getMinutes(),
                 now.getSeconds()
               ).toISOString()
             })()
@@ -428,21 +440,21 @@ export default function MealCameraCapture({
             const elapsed = (Date.now() - startTime) / 1000
             let newProgress = prev.uploadProgress
             let timeRemaining = prev.estimatedTimeRemaining
-            
+
             if (prev.analysisStatus === 'uploading' && prev.uploadProgress < 90) {
               // Upload phase: progress more quickly initially, then slow down
               const progressIncrement = prev.uploadProgress < 50 ? 15 : 8
               newProgress = Math.min(90, prev.uploadProgress + progressIncrement)
-              
+
               // Estimate time remaining based on current progress
               if (newProgress > 10) {
                 const estimatedTotal = (elapsed / newProgress) * 100
                 timeRemaining = Math.max(0, estimatedTotal - elapsed)
               }
             }
-            
-            return { 
-              ...prev, 
+
+            return {
+              ...prev,
               uploadProgress: newProgress,
               estimatedTimeRemaining: timeRemaining
             }
@@ -459,44 +471,44 @@ export default function MealCameraCapture({
 
         if (!response.ok) {
           const errorData = await response.json()
-          
+
           // Handle specific error responses with retry logic
           if (errorData.shouldRetry && attemptNumber < 3) {
             console.warn(`Upload attempt ${attemptNumber} failed, retrying:`, errorData.error)
-            
-            setPhotoState(prev => ({ 
-              ...prev, 
+
+            setPhotoState(prev => ({
+              ...prev,
               uploadProgress: 0,
               retryCount: attemptNumber,
               shouldRetry: true,
               retryAfter: errorData.retryAfter || 5
             }))
-            
+
             // Wait before retry
             await new Promise(resolve => setTimeout(resolve, (errorData.retryAfter || 5) * 1000))
-            
+
             // Reset progress for retry
-            setPhotoState(prev => ({ 
-              ...prev, 
+            setPhotoState(prev => ({
+              ...prev,
               uploadProgress: 0,
               analysisStatus: 'uploading',
               estimatedTimeRemaining: 30
             }))
-            
+
             return attemptUpload(attemptNumber + 1)
           }
-          
+
           throw new Error(errorData.error || 'Upload failed')
         }
 
         const result: MealUploadResponse = await response.json()
-        
+
         // Handle analysis failure
         if (result.analysisStatus === 'failed' || result.error) {
           console.error('Analysis failed:', result.error)
-          
-          setPhotoState(prev => ({ 
-            ...prev, 
+
+          setPhotoState(prev => ({
+            ...prev,
             isUploading: false,
             uploadError: result.error || 'AI could not analyze the photo. Please try again with a clearer image.',
             analysisStatus: 'failed',
@@ -505,32 +517,32 @@ export default function MealCameraCapture({
             estimatedTimeRemaining: null,
             shouldRetry: true
           }))
-          
+
           onError?.(result.error || 'Analysis failed')
           return
         }
-        
+
         // Handle storage warnings gracefully
         if (result.storageWarning) {
           console.warn('Storage warning:', result.storageWarning)
-          
-          setPhotoState(prev => ({ 
-            ...prev, 
+
+          setPhotoState(prev => ({
+            ...prev,
             uploadProgress: 100,
             analysisStatus: 'complete',
             analysisProgress: 100,
             estimatedTimeRemaining: 0,
             fallbackAction: 'save_without_photo'
           }))
-          
+
           // Show warning but continue
           onUploadComplete?.(result)
           return
         }
-        
+
         // Update to analyzing status with progress tracking
-        setPhotoState(prev => ({ 
-          ...prev, 
+        setPhotoState(prev => ({
+          ...prev,
           uploadProgress: 100,
           analysisStatus: 'analyzing',
           analysisProgress: 0,
@@ -544,14 +556,14 @@ export default function MealCameraCapture({
               const elapsed = (Date.now() - startTime) / 1000
               const progressIncrement = prev.analysisProgress < 30 ? 20 : 10
               const newProgress = Math.min(90, prev.analysisProgress + progressIncrement)
-              
+
               // Update time remaining for analysis phase
               const analysisTimeElapsed = elapsed - 5 // Subtract upload time
               const estimatedAnalysisTotal = 15
               const timeRemaining = Math.max(0, estimatedAnalysisTotal - analysisTimeElapsed)
-              
-              return { 
-                ...prev, 
+
+              return {
+                ...prev,
                 analysisProgress: newProgress,
                 estimatedTimeRemaining: timeRemaining
               }
@@ -563,10 +575,10 @@ export default function MealCameraCapture({
         // Complete analysis after realistic time - show portion selection
         setTimeout(() => {
           clearInterval(analysisInterval)
-          
+
           // Extract items from analysis result for portion selection
           const analysisItems: FoodItem[] = result.analysis?.items || []
-          
+
           if (analysisItems.length > 0) {
             // Show portion selection UI
             setAnalysisResult({
@@ -579,8 +591,8 @@ export default function MealCameraCapture({
                 calories: result.analysis?.total_calories || 0
               }
             })
-            setPhotoState(prev => ({ 
-              ...prev, 
+            setPhotoState(prev => ({
+              ...prev,
               isUploading: false,
               analysisStatus: 'portion-select',
               analysisProgress: 100,
@@ -588,8 +600,8 @@ export default function MealCameraCapture({
             }))
           } else {
             // No items detected, complete without portion selection
-            setPhotoState(prev => ({ 
-              ...prev, 
+            setPhotoState(prev => ({
+              ...prev,
               isUploading: false,
               analysisStatus: 'complete',
               analysisProgress: 100,
@@ -601,18 +613,18 @@ export default function MealCameraCapture({
 
       } catch (error) {
         console.error('Upload error:', error)
-        
+
         const errorContext: ErrorContext = {
           operation: 'photo_upload',
           userId,
           networkStatus: networkState.isOnline ? 'online' : 'offline'
         }
-        
+
         const errorMessage = createUserErrorMessage(error, errorContext)
-        
-        setPhotoState(prev => ({ 
-          ...prev, 
-          isUploading: false, 
+
+        setPhotoState(prev => ({
+          ...prev,
+          isUploading: false,
           uploadError: errorMessage.message,
           analysisStatus: 'failed',
           uploadProgress: 0,
@@ -621,20 +633,20 @@ export default function MealCameraCapture({
           shouldRetry: errorMessage.actionType === 'retry',
           fallbackAction: errorMessage.actionType === 'fallback' ? 'save_without_photo' : undefined
         }))
-        
+
         onError?.(errorMessage.message)
       }
     }
 
     await attemptUpload()
-  }, [photoState.file, userId, networkState.isOnline, isSessionValid, onUploadComplete, onError])
+  }, [photoState.file, userId, user?.id, networkState.isOnline, isSessionValid, selectedDate, onUploadComplete, onError])
 
   // Retake photo
   const retakePhoto = useCallback(() => {
     if (photoState.preview) {
       URL.revokeObjectURL(photoState.preview)
     }
-    
+
     setPhotoState({
       file: null,
       preview: null,
@@ -657,7 +669,7 @@ export default function MealCameraCapture({
     if (!analysisResult) return
 
     const hasPortionSpecs = items.some(item => item.portionSpec)
-    
+
     if (!hasPortionSpecs) {
       // No portions specified, complete with original estimates
       setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
@@ -687,7 +699,7 @@ export default function MealCameraCapture({
       }
 
       const result = await response.json()
-      
+
       setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
       onUploadComplete?.({
         mealId: analysisResult.mealId,
@@ -709,7 +721,7 @@ export default function MealCameraCapture({
   // Handle skip portion selection
   const handlePortionSkip = useCallback(() => {
     if (!analysisResult) return
-    
+
     setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
     onUploadComplete?.({
       mealId: analysisResult.mealId,
@@ -731,7 +743,7 @@ export default function MealCameraCapture({
     <div className="meal-camera-capture">
       {/* Hidden canvas for photo capture */}
       <canvas ref={canvasRef} style={{ display: 'none' }} />
-      
+
       {/* Hidden file input for gallery selection */}
       <input
         ref={fileInputRef}
@@ -740,7 +752,7 @@ export default function MealCameraCapture({
         onChange={handleFileSelect}
         style={{ display: 'none' }}
       />
-      
+
       {/* Hidden file input for native camera capture (mobile) */}
       <input
         ref={cameraInputRef}
@@ -770,7 +782,7 @@ export default function MealCameraCapture({
               className="w-full h-48 sm:h-64 object-cover rounded-lg bg-gray-100 dark:bg-gray-700"
             />
           )}
-          
+
           <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-4">
             <button
               onClick={capturePhoto}
@@ -779,7 +791,7 @@ export default function MealCameraCapture({
             >
               {isLoading || cameraState.isInitializing ? 'Initializing...' : 'Capture Photo'}
             </button>
-            
+
             <button
               onClick={stopCamera}
               disabled={cameraState.isInitializing}
@@ -794,18 +806,19 @@ export default function MealCameraCapture({
       {/* Photo preview - Mobile Optimized */}
       {photoState.preview && (
         <div className="photo-preview">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={photoState.preview}
             alt="Captured meal"
             className="w-full h-48 sm:h-64 object-cover rounded-lg"
           />
-          
+
           {/* Upload Progress Indicator - Mobile Optimized */}
           {photoState.isUploading && (
             <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  {photoState.analysisStatus === 'uploading' ? 'Uploading photo...' : 
+                  {photoState.analysisStatus === 'uploading' ? 'Uploading photo...' :
                    photoState.analysisStatus === 'analyzing' ? 'Analyzing meal...' : 'Processing...'}
                 </span>
                 {photoState.estimatedTimeRemaining !== null && photoState.estimatedTimeRemaining > 0 && (
@@ -814,7 +827,7 @@ export default function MealCameraCapture({
                   </span>
                 )}
               </div>
-              
+
               {/* Upload Progress Bar */}
               {photoState.analysisStatus === 'uploading' && (
                 <div className="mb-3">
@@ -823,14 +836,14 @@ export default function MealCameraCapture({
                     <span>{Math.round(photoState.uploadProgress)}%</span>
                   </div>
                   <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
-                    <div 
+                    <div
                       className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300 ease-out"
                       style={{ width: `${photoState.uploadProgress}%` }}
                     />
                   </div>
                 </div>
               )}
-              
+
               {/* Analysis Progress Bar */}
               {photoState.analysisStatus === 'analyzing' && (
                 <div className="mb-3">
@@ -839,14 +852,14 @@ export default function MealCameraCapture({
                     <span>{Math.round(photoState.analysisProgress)}%</span>
                   </div>
                   <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
-                    <div 
+                    <div
                       className="bg-green-600 dark:bg-green-400 h-2 rounded-full transition-all duration-300 ease-out"
                       style={{ width: `${photoState.analysisProgress}%` }}
                     />
                   </div>
                 </div>
               )}
-              
+
               {/* Status Messages */}
               <div className="text-xs text-blue-700 dark:text-blue-300">
                 {photoState.analysisStatus === 'uploading' && (
@@ -864,7 +877,7 @@ export default function MealCameraCapture({
               </div>
             </div>
           )}
-          
+
           {/* Network Status Warning with Queue Info - Mobile Optimized */}
           {!networkState.isOnline && (
             <div className="mt-2 p-3 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-800 rounded-lg">
@@ -885,7 +898,7 @@ export default function MealCameraCapture({
               </div>
             </div>
           )}
-          
+
           {/* Connection Quality Indicator - Mobile Optimized */}
           {networkState.isOnline && networkState.connectionType && (
             <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
@@ -897,7 +910,7 @@ export default function MealCameraCapture({
               Connection: {networkState.connectionType?.toUpperCase() || 'Unknown'}
             </div>
           )}
-          
+
           <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-4">
             <button
               onClick={uploadPhoto}
@@ -913,7 +926,7 @@ export default function MealCameraCapture({
                 'Upload Photo'
               )}
             </button>
-            
+
             <button
               onClick={retakePhoto}
               disabled={photoState.isUploading}
@@ -922,7 +935,7 @@ export default function MealCameraCapture({
               Retake
             </button>
           </div>
-          
+
           {/* Portion Selection UI - shown after initial analysis */}
           {photoState.analysisStatus === 'portion-select' && analysisResult && (
             <div className="mt-4">
@@ -946,7 +959,7 @@ export default function MealCameraCapture({
               </div>
             </div>
           )}
-          
+
           {/* Success Message - Mobile Optimized */}
           {photoState.analysisStatus === 'complete' && (
             <div className="mt-2 p-3 bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-800 rounded-lg">
@@ -960,7 +973,7 @@ export default function MealCameraCapture({
               </div>
             </div>
           )}
-          
+
           {/* Error Message with Retry Options - Mobile Optimized */}
           {photoState.uploadError && (
             <div className="mt-2 p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-lg">
@@ -971,7 +984,7 @@ export default function MealCameraCapture({
                 <div className="flex-1">
                   <div className="text-sm font-medium text-red-800 dark:text-red-200">Upload Failed</div>
                   <div className="text-sm text-red-700 dark:text-red-300 mt-1">{photoState.uploadError}</div>
-                  
+
                   {/* Retry Information */}
                   {photoState.shouldRetry && photoState.retryAfter && (
                     <div className="text-xs text-red-600 dark:text-red-400 mt-1">
@@ -979,21 +992,21 @@ export default function MealCameraCapture({
                       Retrying in {photoState.retryAfter} seconds...
                     </div>
                   )}
-                  
+
                   {/* Network Status */}
                   {!networkState.isOnline && (
                     <div className="text-xs text-red-600 dark:text-red-400 mt-1">
                       Check your internet connection and try again.
                     </div>
                   )}
-                  
+
                   {/* Fallback Action Info */}
                   {photoState.fallbackAction === 'save_without_photo' && (
                     <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                       You can continue logging your meal without the photo.
                     </div>
                   )}
-                  
+
                   {/* Queued Status */}
                   {photoState.fallbackAction === 'queued_for_sync' && (
                     <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
@@ -1002,7 +1015,7 @@ export default function MealCameraCapture({
                   )}
                 </div>
               </div>
-              
+
               {/* Action Buttons - Mobile Optimized */}
               <div className="mt-3 flex flex-col sm:flex-row gap-2">
                 {photoState.shouldRetry && !photoState.isUploading && (
@@ -1014,7 +1027,7 @@ export default function MealCameraCapture({
                     Try Again
                   </button>
                 )}
-                
+
                 {photoState.fallbackAction === 'save_without_photo' && (
                   <button
                     onClick={() => {
@@ -1047,15 +1060,15 @@ export default function MealCameraCapture({
                 <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            
+
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
               Capture Your Meal
             </h3>
-            
+
             <p className="text-gray-500 dark:text-gray-400 mb-4 text-sm sm:text-base">
               Take a photo or select an image to log your meal
             </p>
-            
+
             {/* Network Status Indicator with Queue Info - Mobile Optimized */}
             {!networkState.isOnline && (
               <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-800 rounded-lg">
@@ -1076,7 +1089,7 @@ export default function MealCameraCapture({
                 </div>
               </div>
             )}
-            
+
             <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
               <button
                 onClick={() => cameraInputRef.current?.click()}
@@ -1085,7 +1098,7 @@ export default function MealCameraCapture({
               >
                 {isLoading ? 'Loading...' : 'Open Camera'}
               </button>
-              
+
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading || cameraState.isInitializing}

@@ -27,14 +27,14 @@ export default function BodyMetricsForm({
   // Initialize form with existing data (only on mount, not when units change)
   useEffect(() => {
     if (initialData.height_cm && !height) {
-      setHeight(units === 'metric' ? 
-        initialData.height_cm.toString() : 
+      setHeight(units === 'metric' ?
+        initialData.height_cm.toString() :
         Math.round(initialData.height_cm / 2.54).toString()
       )
     }
     if (initialData.weight_kg && !weight) {
-      setWeight(units === 'metric' ? 
-        initialData.weight_kg.toString() : 
+      setWeight(units === 'metric' ?
+        initialData.weight_kg.toString() :
         Math.round(initialData.weight_kg * 2.205).toString()
       )
     }
@@ -44,18 +44,18 @@ export default function BodyMetricsForm({
     if (initialData.gender && !gender) {
       setGender(initialData.gender)
     }
-  }, [initialData]) // Remove units dependency to prevent resets
+  }, [age, gender, height, initialData, units, weight])
 
   // Convert and update data when form changes (debounced to prevent excessive calls)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      const heightCm = height ? (units === 'metric' ? 
-        parseFloat(height) : 
+      const heightCm = height ? (units === 'metric' ?
+        parseFloat(height) :
         parseFloat(height) * 2.54
       ) : undefined
 
-      const weightKg = weight ? (units === 'metric' ? 
-        parseFloat(weight) : 
+      const weightKg = weight ? (units === 'metric' ?
+        parseFloat(weight) :
         parseFloat(weight) / 2.205
       ) : undefined
 
@@ -70,7 +70,7 @@ export default function BodyMetricsForm({
     }, 300) // Debounce for 300ms
 
     return () => clearTimeout(timeoutId)
-  }, [height, weight, age, gender, units]) // Remove onDataChange from dependencies
+  }, [height, weight, age, gender, units, onDataChange])
 
   // Update preferences when units change
   const handleUnitsChange = (newUnits: 'metric' | 'imperial') => {
@@ -143,8 +143,8 @@ export default function BodyMetricsForm({
             value={height}
             onChange={(e) => setHeight(e.target.value)}
             className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target transition-colors ${
-              errors.height 
-                ? 'border-red-300 dark:border-red-600' 
+              errors.height
+                ? 'border-red-300 dark:border-red-600'
                 : 'border-gray-300 dark:border-gray-600'
             }`}
             placeholder={units === 'metric' ? '175' : '69'}
@@ -166,8 +166,8 @@ export default function BodyMetricsForm({
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target transition-colors ${
-              errors.weight 
-                ? 'border-red-300 dark:border-red-600' 
+              errors.weight
+                ? 'border-red-300 dark:border-red-600'
                 : 'border-gray-300 dark:border-gray-600'
             }`}
             placeholder={units === 'metric' ? '70' : '154'}
@@ -191,8 +191,8 @@ export default function BodyMetricsForm({
             value={age}
             onChange={(e) => setAge(e.target.value)}
             className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target transition-colors ${
-              errors.age 
-                ? 'border-red-300 dark:border-red-600' 
+              errors.age
+                ? 'border-red-300 dark:border-red-600'
                 : 'border-gray-300 dark:border-gray-600'
             }`}
             placeholder="25"
@@ -213,8 +213,8 @@ export default function BodyMetricsForm({
             value={gender}
             onChange={(e) => setGender(e.target.value as any)}
             className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target transition-colors ${
-              errors.gender 
-                ? 'border-red-300 dark:border-red-600' 
+              errors.gender
+                ? 'border-red-300 dark:border-red-600'
                 : 'border-gray-300 dark:border-gray-600'
             }`}
           >

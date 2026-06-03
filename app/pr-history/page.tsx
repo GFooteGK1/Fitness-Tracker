@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import { formatPRValue } from '@/app/lib/pr-detection'
@@ -57,13 +57,7 @@ export default function PRHistory() {
   const [filterExercise, setFilterExercise] = useState('')
   const [filterType, setFilterType] = useState('')
 
-  useEffect(() => {
-    if (user) {
-      fetchPRHistory()
-    }
-  }, [user, filterExercise, filterType])
-
-  async function fetchPRHistory() {
+  const fetchPRHistory = useCallback(async () => {
     try {
       setLoading(true)
       setError('')
@@ -87,7 +81,13 @@ export default function PRHistory() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterExercise, filterType])
+
+  useEffect(() => {
+    if (user) {
+      fetchPRHistory()
+    }
+  }, [fetchPRHistory, user])
 
   // Get unique exercises for filter dropdown
   const uniqueExercises = [...new Set(records.map(r => r.exercise))].sort()

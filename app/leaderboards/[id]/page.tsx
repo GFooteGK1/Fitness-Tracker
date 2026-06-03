@@ -56,13 +56,6 @@ export default function LeaderboardDetailPage() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
 
-  useEffect(() => {
-    if (user && groupId) {
-      fetchGroup()
-      fetchExercises()
-    }
-  }, [user, groupId])
-
   const fetchRankings = useCallback(async (ex: string, p: RankingPeriod, m: RankingMetric) => {
     if (!ex) return
     setRankingsLoading(true)
@@ -89,7 +82,7 @@ export default function LeaderboardDetailPage() {
     }
   }, [exercise, period, metric, fetchRankings])
 
-  async function fetchGroup() {
+  const fetchGroup = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch(`/api/leaderboard/groups/${groupId}`)
@@ -109,9 +102,9 @@ export default function LeaderboardDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [groupId, user?.id])
 
-  async function fetchExercises() {
+  const fetchExercises = useCallback(async () => {
     try {
       const res = await fetch(`/api/leaderboard/groups/${groupId}/exercises`)
       const data = await res.json()
@@ -123,7 +116,14 @@ export default function LeaderboardDetailPage() {
     } catch {
       // Non-critical, ignore
     }
-  }
+  }, [groupId])
+
+  useEffect(() => {
+    if (user && groupId) {
+      fetchGroup()
+      fetchExercises()
+    }
+  }, [fetchExercises, fetchGroup, groupId, user])
 
   async function copyInviteCode() {
     if (!group) return

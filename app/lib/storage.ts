@@ -11,7 +11,7 @@ export const PHOTO_EXPIRY_DAYS = 30
 export async function initializeStorage(supabase: SupabaseClient) {
   try {
     console.log('[Storage] Checking if bucket exists:', STORAGE_BUCKET)
-    
+
     // Check if bucket exists by attempting to list files
     // This is a lightweight check that doesn't require admin permissions
     const { data, error } = await supabase.storage
@@ -24,16 +24,16 @@ export async function initializeStorage(supabase: SupabaseClient) {
         status: (error as any).status,
         statusCode: (error as any).statusCode
       })
-      
+
       // If bucket doesn't exist, return a helpful error
       if (error.message.includes('not found') || error.message.includes('Bucket not found')) {
         console.warn('[Storage] Bucket not found. Please create "meal-photos" bucket in Supabase Dashboard.')
-        return { 
-          success: false, 
-          error: 'Storage bucket not configured. Photos will be saved without images.' 
+        return {
+          success: false,
+          error: 'Storage bucket not configured. Photos will be saved without images.'
         }
       }
-      
+
       // Other errors (like RLS issues) should also be handled gracefully
       console.error('[Storage] Storage check error:', error)
       return { success: false, error: error.message }
@@ -43,9 +43,9 @@ export async function initializeStorage(supabase: SupabaseClient) {
     return { success: true }
   } catch (error) {
     console.error('[Storage] Storage initialization error:', error)
-    return { 
-      success: false, 
-      error: 'Storage service unavailable. Photos will be saved without images.' 
+    return {
+      success: false,
+      error: 'Storage service unavailable. Photos will be saved without images.'
     }
   }
 }
@@ -63,7 +63,7 @@ export async function uploadMealPhoto(
   try {
     const filePath = `meals/${userId}/${fileName}`
     console.log('[Storage] Attempting upload:', { filePath, contentType, fileSize: file.length })
-    console.log('[Storage] Supabase client check:', { 
+    console.log('[Storage] Supabase client check:', {
       hasStorage: !!supabase.storage,
       hasFrom: !!(supabase.storage?.from),
       clientType: supabase.constructor.name
@@ -132,10 +132,12 @@ export async function generateSignedUrl(
 /**
  * Delete expired meal photos from storage
  */
-export async function cleanupExpiredPhotos(): Promise<{ 
-  success: boolean; 
-  deletedCount?: number; 
-  error?: string 
+export async function cleanupExpiredPhotos(
+  supabase: SupabaseClient
+): Promise<{
+  success: boolean;
+  deletedCount?: number;
+  error?: string
 }> {
   try {
     // Get all meals with expired photos
@@ -183,9 +185,9 @@ export async function cleanupExpiredPhotos(): Promise<{
     // Update meal records to remove photo URLs
     const { error: updateError } = await supabase
       .from('meals')
-      .update({ 
-        photo_url: null, 
-        photo_expires_at: null 
+      .update({
+        photo_url: null,
+        photo_expires_at: null
       })
       .in('id', mealIdsToUpdate)
 
@@ -214,43 +216,43 @@ export function isPhotoExpired(expiresAt: string | null): boolean {
 /**
  * Handle storage failures gracefully
  */
-export function handleStorageFailure(error: any): { 
-  userMessage: string; 
-  shouldRetry: boolean 
+export function handleStorageFailure(error: any): {
+  userMessage: string;
+  shouldRetry: boolean
 } {
   const errorMessage = error?.message || 'Unknown storage error'
-  
+
   // Network or temporary errors - suggest retry
-  if (errorMessage.includes('network') || 
-      errorMessage.includes('timeout') || 
-      errorMessage.includes('503') || 
+  if (errorMessage.includes('network') ||
+      errorMessage.includes('timeout') ||
+      errorMessage.includes('503') ||
       errorMessage.includes('502')) {
     return {
       userMessage: 'Upload temporarily unavailable. Please try again.',
       shouldRetry: true
     }
   }
-  
+
   // Storage quota or permission errors - don't retry
-  if (errorMessage.includes('quota') || 
-      errorMessage.includes('permission') || 
+  if (errorMessage.includes('quota') ||
+      errorMessage.includes('permission') ||
       errorMessage.includes('unauthorized')) {
     return {
       userMessage: 'Storage service unavailable. Your meal data will be saved without the photo.',
       shouldRetry: false
     }
   }
-  
+
   // File size or format errors - don't retry
-  if (errorMessage.includes('size') || 
-      errorMessage.includes('format') || 
+  if (errorMessage.includes('size') ||
+      errorMessage.includes('format') ||
       errorMessage.includes('type')) {
     return {
       userMessage: 'Invalid file. Please use a JPEG or PNG image under 30MB.',
       shouldRetry: false
     }
   }
-  
+
   // Default case
   return {
     userMessage: 'Photo upload failed. Your meal data will be saved without the photo.',

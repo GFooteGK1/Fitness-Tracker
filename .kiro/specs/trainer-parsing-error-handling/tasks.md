@@ -1,0 +1,319 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Fault Condition** - Agent Error Handling Failures
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bug exists across all three agents
+  - **Scoped PBT Approach**: Scope the property to concrete failing cases (conversational responses, malformed JSON, formatting artifacts)
+  - Test implementation details from Fault Condition in design:
+    - Simulate LLM returning conversational text (e.g., "Could you tell me more about the workout?")
+    - Verify generic error is returned without preserving conversational content
+    - Verify no diagnostic logging occurs (no console.error with raw response)
+    - Simulate LLM returning malformed JSON (trailing commas, syntax errors)
+    - Verify parsing fails and raw response is not logged
+    - Simulate LLM returning valid JSON wrapped in markdown code fences
+    - Verify parsing behavior and error handling
+  - The test assertions should match the Expected Behavior Properties from design:
+    - ASSERT diagnosticInfoLogged(llmResponse) === false (on unfixed code)
+    - ASSERT genericErrorReturned() === true (on unfixed code)
+    - ASSERT conversationalResponsePreserved() === false (on unfixed code)
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples found:
+    - Which agents fail with conversational responses
+    - What error messages are returned
+    - Whether any diagnostic information is logged
+    - Whether formatting cleanup works correctly
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Successful Parsing Behavior
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for successful JSON parsing:
+    - Test valid JSON responses from all three agents
+    - Verify workouts are persisted correctly (Trainer)
+    - Verify meals are analyzed correctly (Nutritionist)
+    - Verify insights are generated correctly (Socius)
+    - Verify smart defaults are applied (Trainer)
+    - Verify PR detection works (Trainer)
+    - Verify macro validation works (Nutritionist)
+  - Write property-based tests capturing observed behavior patterns from Preservation Requirements:
+    - Property: For all valid JSON responses, parsing succeeds identically to original
+    - Property: For all successful Trainer requests, workouts are persisted with correct blocks/movements/scores
+    - Property: For all successful Nutritionist requests, meals are analyzed with correct macros
+    - Property: For all successful Socius requests, insights are generated correctly
+  - Property-based testing generates many test cases for stronger guarantees
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [x] 3. Fix for agent error handling across all three agents
+
+  - [x] 3.1 Create shared error handling utilities
+    - Create new file `app/lib/agents/error-handling.ts`
+    - Implement `logParsingError(agentType, rawResponse, userInputHash, error)`:
+      - Log timestamp, agent type, error message
+      - Log raw response (truncated if >1000 chars)
+      - Log user input hash for correlation
+      - Use console.error for visibility
+    - Implement `detectConversationalResponse(rawResponse)`:
+      - Check for question marks
+      - Check for clarifying phrases ("could you", "can you", "please tell me", "what", "which")
+      - Return boolean indicating if response is conversational
+    - Implement `cleanResponseForParsing(rawResponse)`:
+      - Strip markdown code fences (```json, ```)
+      - Strip leading/trailing whitespace
+      - Strip BOM characters (\uFEFF)
+      - Log cleaned response before returning
+      - Return cleaned string
+    - Implement `extractConversationalContent(rawResponse)`:
+      - Extract useful conversational text from failed parse
+      - Clean up formatting artifacts
+      - Return cleaned text or null if not conversational
+    - Implement `buildUserFriendlyError(agentType, error, rawResponse)`:
+      - Build actionable error messages based on agent type
+      - Include specific guidance for users
+      - Preserve conversational content if detected
+      - Return user-friendly error message
+    - Add TypeScript types for all functions
+    - Add JSDoc comments explaining each function's purpose
+    - _Bug_Condition: isBugCondition(input) where (isConversationalText(input.llmResponse) OR hasParsingError(input.llmResponse)) AND NOT diagnosticInfoLogged(input.llmResponse)_
+    - _Expected_Behavior: diagnosticInfoLogged(input.llmResponse) AND (isConversational IMPLIES conversationalTextReturned) from design_
+    - _Preservation: Successful parsing behavior unchanged from design_
+    - _Requirements: 2.1, 2.2, 2.4, 2.5_
+
+  - [x] 3.2 Update Trainer agent with enhanced error handling
+    - Open `app/lib/agents/trainer-agent.ts`
+    - Import error handling utilities from `./error-handling`
+    - Update `parseTrainerResponse` function:
+      - Replace manual code fence stripping with `cleanResponseForParsing(rawResponse)`
+      - Log cleaned response before JSON.parse attempt
+      - In catch block, call `logParsingError('trainer', rawResponse, hashUserInput(userInput), error)`
+      - Check if response is conversational using `detectConversationalResponse(rawResponse)`
+      - If conversational, extract content with `extractConversationalContent(rawResponse)`
+      - If conversational, return it as the message with confidence: 0.3
+      - If not conversational, return error with `buildUserFriendlyError('trainer', error, rawResponse)`
+    - Preserve all existing normalization logic (smart defaults, PR detection)
+    - Preserve all existing type safety and validation
+    - Test with sample conversational responses and malformed JSON
+    - _Bug_Condition: isBugCondition(input) where input.agentType === 'trainer'_
+    - _Expected_Behavior: Enhanced error logging and conversational response detection from design_
+    - _Preservation: Successful workout parsing and persistence unchanged from design_
+    - _Requirements: 2.1, 2.2, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4_
+
+  - [x] 3.3 Update Nutritionist agent with enhanced error handling
+    - Open `app/lib/agents/nutritionist-agent.ts`
+    - Import error handling utilities from `./error-handling`
+    - Update `parseNutritionistResponse` function:
+      - Replace manual code fence stripping with `cleanResponseForParsing(rawResponse)`
+      - Log cleaned response before JSON.parse attempt
+      - In catch block, call `logParsingError('nutritionist', rawResponse, hashUserInput(userInput), error)`
+      - Check if response is conversational using `detectConversationalResponse(rawResponse)`
+      - If conversational, extract content with `extractConversationalContent(rawResponse)`
+      - If conversational, return it as the message with confidence: 0.3
+      - If not conversational, return error with `buildUserFriendlyError('nutritionist', error, rawResponse)`
+    - Preserve all existing macro validation logic
+    - Preserve all existing type safety and validation
+    - Test with sample conversational responses and malformed JSON
+    - _Bug_Condition: isBugCondition(input) where input.agentType === 'nutritionist'_
+    - _Expected_Behavior: Enhanced error logging and conversational response detection from design_
+    - _Preservation: Successful meal analysis and macro validation unchanged from design_
+    - _Requirements: 2.1, 2.2, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4_
+
+  - [x] 3.4 Update Socius agent with enhanced error handling
+    - Open `app/lib/agents/socius-agent.ts`
+    - Import error handling utilities from `./error-handling`
+    - Update `parseSociusResponse` function:
+      - Replace manual code fence stripping with `cleanResponseForParsing(rawResponse)`
+      - Log cleaned response before JSON.parse attempt
+      - In catch block, call `logParsingError('socius', rawResponse, hashUserInput(userInput), error)`
+      - Check if response is conversational using `detectConversationalResponse(rawResponse)`
+      - If conversational, extract content with `extractConversationalContent(rawResponse)`
+      - If conversational, return it as the message with confidence: 0.3
+      - If not conversational, return error with `buildUserFriendlyError('socius', error, rawResponse)`
+    - Preserve all existing insight generation logic
+    - Preserve all existing type safety and validation
+    - Test with sample conversational responses and malformed JSON
+    - _Bug_Condition: isBugCondition(input) where input.agentType === 'socius'_
+    - _Expected_Behavior: Enhanced error logging and conversational response detection from design_
+    - _Preservation: Successful insight generation unchanged from design_
+    - _Requirements: 2.1, 2.2, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4_
+
+  - [x] 3.5 Update API route caller functions
+    - Open `app/api/agent/process/route.ts`
+    - Import error handling utilities
+    - Update `createTrainerCaller` function:
+      - In catch block, log full error stack trace
+      - Log user input (hashed for privacy)
+      - Log any partial response data
+      - Check if error contains conversational response from parse function
+      - If conversational response exists, return it to user
+      - Otherwise, use `buildUserFriendlyError('trainer', error, null)` for user-facing message
+      - Differentiate between parsing errors and other errors
+    - Update `createNutritionistCaller` function:
+      - Apply same error handling pattern as Trainer
+      - Preserve conversational responses from parse function
+      - Log full diagnostic information
+    - Update `createSociusCaller` function:
+      - Apply same error handling pattern as Trainer
+      - Preserve conversational responses from parse function
+      - Log full diagnostic information
+    - Test error handling with various error scenarios
+    - _Bug_Condition: isBugCondition(input) where error occurs in caller function_
+    - _Expected_Behavior: Enhanced error logging and actionable error messages from design_
+    - _Preservation: Successful request handling unchanged from design_
+    - _Requirements: 2.3, 2.5, 3.1_
+
+  - [x] 3.6 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Enhanced Error Logging and Response Detection
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - Verify all assertions now pass:
+      - ASSERT diagnosticInfoLogged(llmResponse) === true (on fixed code)
+      - ASSERT conversationalResponsePreserved() === true (on fixed code)
+      - ASSERT actionableErrorReturned() === true (on fixed code)
+    - Verify counterexamples from step 1 are now handled correctly:
+      - Conversational responses are preserved and returned to users
+      - Diagnostic information is logged to console
+      - Formatting artifacts are cleaned before parsing
+    - _Requirements: 2.1, 2.2, 2.4, 2.5_
+
+  - [x] 3.7 Verify preservation tests still pass
+    - **Property 2: Preservation** - Successful Parsing Behavior
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Verify all preservation properties still hold:
+      - Valid JSON responses parse identically to original
+      - Workouts are persisted correctly (Trainer)
+      - Meals are analyzed correctly (Nutritionist)
+      - Insights are generated correctly (Socius)
+      - Smart defaults are applied (Trainer)
+      - PR detection works (Trainer)
+      - Macro validation works (Nutritionist)
+    - Confirm all tests still pass after fix (no regressions)
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [x] 4. Write unit tests for error handling utilities
+  - Create test file `test/agents/error-handling.test.ts`
+  - Test `logParsingError`:
+    - Verify console.error is called with correct format
+    - Verify all diagnostic information is included
+    - Verify response truncation works for long responses
+    - Test with different agent types
+  - Test `detectConversationalResponse`:
+    - Test with conversational text (questions, clarifications)
+    - Test with non-conversational text (JSON, errors)
+    - Test with edge cases (empty strings, special characters)
+  - Test `cleanResponseForParsing`:
+    - Test with markdown code fences (```json, ```)
+    - Test with extra whitespace
+    - Test with BOM characters
+    - Test with mixed formatting artifacts
+    - Verify cleaned output is valid for JSON.parse
+  - Test `extractConversationalContent`:
+    - Test with pure conversational text
+    - Test with mixed content (conversational + JSON fragments)
+    - Test with non-conversational content
+    - Verify null is returned for non-conversational content
+  - Test `buildUserFriendlyError`:
+    - Test with different agent types (trainer, nutritionist, socius)
+    - Test with different error types (parsing, network, unknown)
+    - Test with conversational responses
+    - Verify actionable guidance is included
+  - Run tests with `npm run test`
+  - _Requirements: 2.1, 2.2, 2.4, 2.5_
+
+- [x] 5. Write unit tests for parse functions
+  - Create test file `test/agents/parse-functions.test.ts`
+  - Test `parseTrainerResponse`:
+    - Test with conversational responses → Verify preserved and returned
+    - Test with malformed JSON → Verify error logged and actionable message returned
+    - Test with valid JSON → Verify successful parsing (preservation)
+    - Test with markdown code fences → Verify cleaned and parsed
+    - Test with empty response → Verify error handling
+  - Test `parseNutritionistResponse`:
+    - Test with conversational responses → Verify preserved and returned
+    - Test with malformed JSON → Verify error logged and actionable message returned
+    - Test with valid JSON → Verify successful parsing (preservation)
+    - Test with markdown code fences → Verify cleaned and parsed
+    - Test with empty response → Verify error handling
+  - Test `parseSociusResponse`:
+    - Test with conversational responses → Verify preserved and returned
+    - Test with malformed JSON → Verify error logged and actionable message returned
+    - Test with valid JSON → Verify successful parsing (preservation)
+    - Test with markdown code fences → Verify cleaned and parsed
+    - Test with empty response → Verify error handling
+  - Run tests with `npm run test`
+  - _Requirements: 2.1, 2.2, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4_
+
+- [x] 6. Write property-based tests for preservation
+  - Create test file `test/agents/preservation.test.ts`
+  - Use fast-check for property-based testing
+  - Generate random valid JSON responses:
+    - Trainer: workouts with blocks, movements, scores
+    - Nutritionist: meals with items, macros
+    - Socius: insights with patterns, recommendations
+  - Property: For all valid JSON responses, parsing succeeds identically to original
+  - Property: For all successful Trainer requests, workouts are persisted with correct structure
+  - Property: For all successful Nutritionist requests, meals are analyzed with correct macros
+  - Property: For all successful Socius requests, insights are generated correctly
+  - Run tests with `npm run test`
+  - Verify tests pass on both unfixed and fixed code (preservation)
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [x] 7. Write integration tests for full agent flow
+  - Create test file `test/agents/integration.test.ts`
+  - Test full Trainer agent flow:
+    - Mock LLM returning conversational response → Verify preserved and returned to user
+    - Mock LLM returning malformed JSON → Verify error logged and actionable message returned
+    - Mock LLM returning valid JSON → Verify workout persisted correctly (preservation)
+  - Test full Nutritionist agent flow:
+    - Mock LLM returning conversational response → Verify preserved and returned to user
+    - Mock LLM returning malformed JSON → Verify error logged and actionable message returned
+    - Mock LLM returning valid JSON → Verify meal analyzed correctly (preservation)
+  - Test full Socius agent flow:
+    - Mock LLM returning conversational response → Verify preserved and returned to user
+    - Mock LLM returning malformed JSON → Verify error logged and actionable message returned
+    - Mock LLM returning valid JSON → Verify insights generated correctly (preservation)
+  - Test API route error handling:
+    - Verify caller functions preserve conversational responses
+    - Verify caller functions log full diagnostic information
+    - Verify caller functions return actionable error messages
+  - Run tests with `npm run test`
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [x] 8. Manual testing and validation
+  - Test Trainer agent with real LLM:
+    - Submit ambiguous workout input → Verify conversational response is preserved
+    - Submit clear workout input → Verify successful parsing and persistence (preservation)
+    - Check console logs for diagnostic information on errors
+  - Test Nutritionist agent with real LLM:
+    - Submit ambiguous meal input → Verify conversational response is preserved
+    - Submit clear meal input → Verify successful analysis and macro validation (preservation)
+    - Check console logs for diagnostic information on errors
+  - Test Socius agent with real LLM:
+    - Submit ambiguous query → Verify conversational response is preserved
+    - Submit clear query → Verify successful insight generation (preservation)
+    - Check console logs for diagnostic information on errors
+  - Verify error messages are user-friendly and actionable
+  - Verify no regressions in successful parsing scenarios
+  - Document any issues found
+  - _Requirements: All requirements_
+
+- [x] 9. Checkpoint - Ensure all tests pass
+  - Run full test suite: `npm run test`
+  - Verify all unit tests pass
+  - Verify all property-based tests pass
+  - Verify all integration tests pass
+  - Verify no regressions in existing functionality
+  - Review console logs for any unexpected errors
+  - Ensure all requirements are validated
+  - Ask the user if questions arise

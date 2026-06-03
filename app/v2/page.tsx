@@ -33,42 +33,42 @@ interface ProgramBlock {
 // AGENT CONFIG
 // ============================================================
 const AGENTS = {
-  trainer: { 
-    label: 'Trainer', 
-    icon: '🏋️', 
-    colorLight: 'rgb(37, 99, 235)', 
+  trainer: {
+    label: 'Trainer',
+    icon: '🏋️',
+    colorLight: 'rgb(37, 99, 235)',
     colorDark: 'rgb(96, 165, 250)',
-    bgLight: 'rgba(37, 99, 235, 0.08)', 
+    bgLight: 'rgba(37, 99, 235, 0.08)',
     bgDark: 'rgba(96, 165, 250, 0.15)',
     borderLight: 'rgba(37, 99, 235, 0.2)',
     borderDark: 'rgba(96, 165, 250, 0.3)'
   },
-  nutritionist: { 
-    label: 'Nutritionist', 
-    icon: '🍽️', 
-    colorLight: 'rgb(22, 163, 74)', 
+  nutritionist: {
+    label: 'Nutritionist',
+    icon: '🍽️',
+    colorLight: 'rgb(22, 163, 74)',
     colorDark: 'rgb(74, 222, 128)',
-    bgLight: 'rgba(22, 163, 74, 0.08)', 
+    bgLight: 'rgba(22, 163, 74, 0.08)',
     bgDark: 'rgba(74, 222, 128, 0.15)',
     borderLight: 'rgba(22, 163, 74, 0.2)',
     borderDark: 'rgba(74, 222, 128, 0.3)'
   },
-  socius: { 
-    label: 'Socius', 
-    icon: '📊', 
-    colorLight: 'rgb(124, 58, 237)', 
+  socius: {
+    label: 'Socius',
+    icon: '📊',
+    colorLight: 'rgb(124, 58, 237)',
     colorDark: 'rgb(168, 85, 247)',
-    bgLight: 'rgba(124, 58, 237, 0.08)', 
+    bgLight: 'rgba(124, 58, 237, 0.08)',
     bgDark: 'rgba(168, 85, 247, 0.15)',
     borderLight: 'rgba(124, 58, 237, 0.2)',
     borderDark: 'rgba(168, 85, 247, 0.3)'
   },
-  system: { 
-    label: 'SociusFit', 
-    icon: '⚡', 
-    colorLight: 'rgb(107, 114, 128)', 
+  system: {
+    label: 'SociusFit',
+    icon: '⚡',
+    colorLight: 'rgb(107, 114, 128)',
     colorDark: 'rgb(156, 163, 175)',
-    bgLight: 'rgba(107, 114, 128, 0.08)', 
+    bgLight: 'rgba(107, 114, 128, 0.08)',
     bgDark: 'rgba(156, 163, 175, 0.15)',
     borderLight: 'rgba(107, 114, 128, 0.2)',
     borderDark: 'rgba(156, 163, 175, 0.3)'
@@ -93,8 +93,8 @@ function ProfileMenu({ user, onSignOut }: { user: any; onSignOut: () => void }) 
 
       {isOpen && (
         <>
-          <div 
-            className="fixed inset-0 z-10" 
+          <div
+            className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
           <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20 overflow-hidden">
@@ -157,7 +157,7 @@ function TodaysProgram({ program }: { program: ProgramBlock[] | null }) {
   return (
     <div className="bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-black rounded-xl p-4 text-white">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Today's Program</span>
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Today&apos;s Program</span>
       </div>
       <div className="space-y-3">
         {program.map((block, i) => (
@@ -198,7 +198,7 @@ function MacroSummary({ consumed, target }: { consumed: Macros; target: Macros }
                 </span>
               </div>
               <div className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full rounded-full transition-all duration-700 ease-out"
                   style={{ width: `${pct}%`, backgroundColor: macro.color }}
                 />
@@ -236,9 +236,9 @@ function ChatMessage({ msg, isDark }: { msg: Message; isDark: boolean }) {
           {agent.label}
         </span>
       </div>
-      <div 
+      <div
         className="max-w-[90%] px-4 py-2.5 rounded-2xl rounded-tl-sm border"
-        style={{ 
+        style={{
           backgroundColor: agentBg,
           borderColor: agentBorder
         }}
@@ -278,7 +278,7 @@ export default function V2Page() {
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     setIsDark(mediaQuery.matches)
-    
+
     const handler = (e: MediaQueryListEvent) => setIsDark(e.matches)
     mediaQuery.addEventListener('change', handler)
     return () => mediaQuery.removeEventListener('change', handler)
@@ -408,19 +408,19 @@ export default function V2Page() {
   const handleSend = async () => {
     if (!inputValue.trim() || isTyping) return
 
-    const now = new Date().toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit', 
-      hour12: true 
+    const now = new Date().toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
     }).toLowerCase().replace(' ', '')
-    
-    const userMsg: Message = { 
-      id: Date.now().toString(), 
-      role: 'user', 
-      content: inputValue.trim(), 
-      time: now 
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: inputValue.trim(),
+      time: now
     }
-    
+
     setMessages(m => [...m, userMsg])
     setInputValue('')
     setIsTyping(true)
@@ -441,7 +441,7 @@ export default function V2Page() {
       if (!response.ok) throw new Error('Failed to process message')
 
       const data: AgentResponse = await response.json()
-      
+
       const agentMessages: Message[] = data.messages.map(msg => ({
         id: String(Date.now() + Math.random()),
         role: msg.domain || 'system',

@@ -2,6 +2,7 @@
  * Cross-Domain TypeScript Interfaces for SociusFit
  * Supports holistic fitness insights across workout and nutrition data
  */
+import type { FoodItem } from './food-tracking'
 
 // User Profile for personalization and context
 export interface UserProfile {
@@ -122,7 +123,15 @@ export interface MealWorkoutTiming {
 
 // Cross-domain insights for AI recommendations
 export interface HolisticInsight {
-  type: 'nutrition_performance' | 'meal_timing' | 'recovery_nutrition' | 'energy_optimization';
+  type:
+    | 'nutrition_performance'
+    | 'meal_timing'
+    | 'recovery_nutrition'
+    | 'energy_optimization'
+    | 'recovery_optimization'
+    | 'sleep_performance'
+    | 'recovery_training'
+    | 'nutrition_strain';
   title: string;
   description: string;
   recommendations: string[];
@@ -142,6 +151,7 @@ export interface CrossDomainAnalysisResponse {
     nutrition: string[];
     workout: string[];
     timing: string[];
+    recovery: string[];
   };
 }
 

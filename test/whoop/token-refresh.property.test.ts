@@ -1,11 +1,11 @@
 /**
  * Property-Based Test: Token Refresh Flow
- * 
+ *
  * Feature: whoop-integration
  * Property 5: Token Refresh Flow
- * 
+ *
  * Validates: Requirements 2.2, 2.4, 2.5
- * 
+ *
  * Property: For any user with expired access token but valid refresh token,
  * calling the token refresh function SHALL return new valid tokens with a
  * future expiration timestamp, AND the new tokens SHALL be stored in the database.
@@ -49,14 +49,14 @@ function mockRefreshToken(
 // Generators
 const userIdArbitrary = fc.uuid();
 
-const expiredTokenArbitrary = fc.record({
+const expiredTokenArbitrary: fc.Arbitrary<WhoopTokens> = fc.record({
   accessToken: fc.string({ minLength: 20, maxLength: 100 }),
   refreshToken: fc.string({ minLength: 20, maxLength: 100 }),
   expiresAt: fc.date({ max: new Date(Date.now() - 1000) }), // Expired (in the past)
   scope: fc.constantFrom('read:recovery read:sleep offline', 'read:all offline'),
 });
 
-const validTokenArbitrary = fc.record({
+const validTokenArbitrary: fc.Arbitrary<WhoopTokens> = fc.record({
   accessToken: fc.string({ minLength: 20, maxLength: 100 }),
   refreshToken: fc.string({ minLength: 20, maxLength: 100 }),
   expiresAt: fc.date({ min: new Date(Date.now() + 60000) }), // Valid (future)
@@ -114,7 +114,7 @@ describe('Property 5: Token Refresh Flow', () => {
 
           // Property: New tokens should be stored
           const storedTokens = store.tokens.get(userId);
-          
+
           return (
             storedTokens !== undefined &&
             storedTokens.accessToken === newTokens.accessToken &&

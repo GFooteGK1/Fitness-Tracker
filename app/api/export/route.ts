@@ -122,9 +122,11 @@ export async function GET(request: Request) {
     // PDF format
     const summary = computeSummary(workouts, meals, { start: startDate, end: endDate }, userName)
     const pdfBytes = await generatePdf(workoutRows, mealRows, summary, type)
+    const pdfArrayBuffer = new ArrayBuffer(pdfBytes.byteLength)
+    new Uint8Array(pdfArrayBuffer).set(pdfBytes)
     const filename = `sociusfit-${type}-${startDate}-to-${endDate}.pdf`
 
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(pdfArrayBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

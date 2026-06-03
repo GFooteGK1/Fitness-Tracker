@@ -19,8 +19,8 @@ When working on this codebase:
 
 ## Project Overview
 
-**Project:** SociusFit - Holistic AI-Powered Fitness Companion  
-**Version:** 0.2.0 (Production Ready)  
+**Project:** SociusFit - Holistic AI-Powered Fitness Companion
+**Version:** 0.2.0 (Production Ready)
 **Status:** Active Development
 
 **What it does:**
@@ -60,7 +60,9 @@ When working on this codebase:
 |errors:{2026-01-*.md}
 |security:{SECURITY-CHECKLIST.md}
 
-[Specs]|root: ./.kiro/specs
+[Historical Specs]|root: ./.kiro/specs
+|status:{archive-only; use current code, docs, migrations, HANDOFF.md, and maintained tests as source of truth}
+|audit:{docs/maintenance/kiro-plan-audit-2026-05-31.md}
 |authentication:{requirements.md,design.md,tasks.md}
 |food-tracking:{requirements.md,design.md,tasks.md}
 |holistic-query-system:{requirements.md,design.md,tasks.md}
@@ -191,16 +193,16 @@ import { createServerClient } from '@/app/lib/auth/supabase-server'
 
 export async function POST(request: NextRequest) {
   const supabase = await createServerClient()
-  
+
   // 1. Auth check
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  
+
   // 2. Parse request
   const body = await request.json()
-  
+
   // 3. Validate input
   // 4. Business logic
   // 5. Database operation (RLS filters automatically)
@@ -281,14 +283,14 @@ export async function fetchWhoopData(
       'Content-Type': 'application/json'
     }
   })
-  
+
   if (!response.ok) {
     if (response.status === 401) {
       throw new Error('TOKEN_EXPIRED')
     }
     throw new Error(`WHOOP API error: ${response.status}`)
   }
-  
+
   return response.json()
 }
 ```
@@ -298,14 +300,14 @@ export async function fetchWhoopData(
 // app/lib/whoop/token-service.ts
 export async function refreshTokenIfNeeded(userId: string): Promise<string> {
   const tokenRecord = await getTokenRecord(userId)
-  
+
   if (isTokenExpired(tokenRecord.token_expires_at)) {
     const refreshToken = decrypt(tokenRecord.refresh_token_encrypted)
     const newTokens = await exchangeRefreshToken(refreshToken)
     await updateTokenRecord(userId, newTokens)
     return newTokens.access_token
   }
-  
+
   return decrypt(tokenRecord.access_token_encrypted)
 }
 ```
@@ -315,7 +317,7 @@ export async function refreshTokenIfNeeded(userId: string): Promise<string> {
 // app/lib/whoop/sync-service.ts
 export async function syncWhoopData(userId: string): Promise<SyncResult> {
   const accessToken = await refreshTokenIfNeeded(userId)
-  
+
   // Parallel fetch for efficiency
   const [recovery, sleep, cycles, workouts] = await Promise.all([
     fetchRecoveryData(accessToken, startDate, endDate),
@@ -323,7 +325,7 @@ export async function syncWhoopData(userId: string): Promise<SyncResult> {
     fetchCycleData(accessToken, startDate, endDate),
     fetchWorkoutData(accessToken, startDate, endDate)
   ])
-  
+
   // Upsert data (handle duplicates gracefully)
   await Promise.all([
     upsertRecoveryRecords(userId, recovery),
@@ -331,10 +333,10 @@ export async function syncWhoopData(userId: string): Promise<SyncResult> {
     upsertCycleRecords(userId, cycles),
     upsertWorkoutRecords(userId, workouts)
   ])
-  
+
   // Update sync status
   await updateSyncStatus(userId, 'success')
-  
+
   return { success: true, recordsUpdated: ... }
 }
 ```
@@ -403,19 +405,19 @@ const { data: strain } = await supabase
 // app/lib/macro-validation.ts
 export function validateMacros(macros: Macros): ValidationResult {
   const errors: string[] = []
-  
+
   // Range checks per meal
   if (macros.protein < 0 || macros.protein > 200) errors.push('Protein out of range')
   if (macros.carbs < 0 || macros.carbs > 300) errors.push('Carbs out of range')
   if (macros.fat < 0 || macros.fat > 150) errors.push('Fat out of range')
   if (macros.calories < 0 || macros.calories > 2000) errors.push('Calories out of range')
-  
+
   // Calorie consistency check (within 10%)
   const calculatedCals = (macros.protein * 4) + (macros.carbs * 4) + (macros.fat * 9)
   if (Math.abs(calculatedCals - macros.calories) / calculatedCals > 0.1) {
     errors.push('Calorie calculation inconsistent')
   }
-  
+
   return { isValid: errors.length === 0, errors }
 }
 ```
@@ -427,7 +429,7 @@ export function calculateAdherence(actual: Macros, target: Macros): number {
   const proteinAdh = Math.min(actual.protein / target.protein, 1)
   const carbsAdh = Math.min(actual.carbs / target.carbs, 1)
   const fatAdh = Math.min(actual.fat / target.fat, 1)
-  
+
   // Weighted average (protein weighted higher for fitness)
   return (proteinAdh * 0.4) + (carbsAdh * 0.3) + (fatAdh * 0.3)
 }
@@ -444,14 +446,14 @@ export function calculateCumulativeAdherence(
     fat: dailyTarget.fat * daysElapsed,
     calories: dailyTarget.calories * daysElapsed
   }
-  
+
   const cumulative = dailyTotals.reduce((acc, day) => ({
     protein: acc.protein + day.protein,
     carbs: acc.carbs + day.carbs,
     fat: acc.fat + day.fat,
     calories: acc.calories + day.calories
   }), { protein: 0, carbs: 0, fat: 0, calories: 0 })
-  
+
   return {
     actual: cumulative,
     target: proratedTarget,
@@ -583,10 +585,10 @@ export async function classifyIntent(question: string): Promise<QueryIntent> {
   const workoutKeywords = ['workout', 'exercise', 'lift', 'pr', 'fran', 'murph']
   const nutritionKeywords = ['protein', 'carbs', 'calories', 'meal', 'food', 'eat']
   const whoopKeywords = ['recovery', 'strain', 'sleep', 'hrv', 'whoop']
-  
+
   // Check for cross-domain indicators
   const hasCrossDomain = question.includes('affect') || question.includes('correlation')
-  
+
   // Return appropriate intent
 }
 ```
@@ -843,6 +845,6 @@ const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}
 
 ---
 
-*Last updated: February 1, 2026*  
-*Version: 0.2.0*  
+*Last updated: February 1, 2026*
+*Version: 0.2.0*
 *Maintained by: Greg (with Claude)*
