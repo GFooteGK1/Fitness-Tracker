@@ -53,18 +53,19 @@ Known boundary: `test/upgrade-haiku-4-5` remains excluded from the root TypeScri
 
 ## Next Best Step
 
-Current active branch is `fix/workout-gallery-photo-upload`. Next step is to review, commit, push, and open a PR for the workout gallery upload alignment.
+Current active branch is `main`. Next step is to review, commit, and push the single-CTA capture consolidation if accepted.
 
 Do not reopen `test/upgrade-haiku-4-5` unless model migration is intentionally restarted with a fresh plan.
 
-## Workout Gallery Upload Pass
+## Capture CTA Consolidation
 
 Completed on 2026-06-04:
 
-- `app/log/page.tsx` now exposes separate Camera and Gallery tiles for workout photo OCR, matching the food logging convention.
-- Camera keeps `capture="environment"` for rear-camera capture on mobile.
-- Gallery uses an image file picker without the `capture` attribute so an already-taken photo can be selected.
-- Both paths feed the existing image compression, preview, and `/api/ocr-workout` analysis flow.
+- `app/log/page.tsx` and `app/food-log/page.tsx` now expose one `Capture` tile instead of separate Camera and Gallery tiles.
+- `Capture` uses the existing gallery/file-picker path without the `capture` attribute, allowing the browser or mobile OS to offer camera, photo library, or files as available.
+- The old camera-specific handlers were removed from both pages.
+- The workout path still feeds the existing image compression, preview, and `/api/ocr-workout` analysis flow.
+- The food path still feeds the existing image compression, preview, and meal upload analysis flow.
 
 Latest verification:
 
