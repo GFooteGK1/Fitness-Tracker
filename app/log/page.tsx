@@ -167,7 +167,7 @@ export default function LogWorkout() {
   }
 
   function handlePhotoCapture() {
-    // Create file input for camera/photo library
+    // Create file input for camera
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
@@ -210,6 +210,65 @@ export default function LogWorkout() {
 
         setStatus({
           message: `📸 Image ready! Compressed from ${formatFileSize(file.size)} to ${result.compressedSizeMB.toFixed(1)}MB`,
+          type: 'success'
+        })
+      } catch (error) {
+        console.error('Compression error:', error)
+        setStatus({
+          message: 'Failed to process image. Please try again.',
+          type: 'error'
+        })
+      } finally {
+        setIsCompressing(false)
+      }
+    }
+
+    input.click()
+  }
+
+  function handleGalleryPicker() {
+    // Create file input for gallery/photo library
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+
+      // Validate file format
+      if (!isSupportedImageFormat(file)) {
+        setStatus({
+          message: 'Unsupported image format. Please use JPEG, PNG, WebP, or GIF.',
+          type: 'error'
+        })
+        return
+      }
+
+      // Show file size validation
+      const fileSizeMB = file.size / (1024 * 1024)
+      if (fileSizeMB > 50) { // Reasonable upper limit before compression
+        setStatus({
+          message: 'Image too large. Please use a smaller image.',
+          type: 'error'
+        })
+        return
+      }
+
+      setIsCompressing(true)
+      setStatus({
+        message: `Compressing image (${formatFileSize(file.size)})...`,
+        type: 'info'
+      })
+
+      try {
+        // Compress the image
+        const result = await compressImage(file)
+        setCompressionResult(result)
+        setCapturedImage(result.compressedDataUrl)
+
+        setStatus({
+          message: `Image ready! Compressed from ${formatFileSize(file.size)} to ${result.compressedSizeMB.toFixed(1)}MB`,
           type: 'success'
         })
       } catch (error) {
@@ -412,7 +471,7 @@ export default function LogWorkout() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
-              {/* Photo Capture - First */}
+              {/* Photo Capture (Camera) - First */}
               <div className="relative">
                 <button
                   type="button"
@@ -426,17 +485,41 @@ export default function LogWorkout() {
                     </div>
                     <div className="text-center">
                       <div className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                        {isCompressing ? 'Processing...' : 'Photo'}
+                        {isCompressing ? 'Processing...' : 'Camera'}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {isCompressing ? 'Compressing image' : 'Auto-extract text'}
+                        {isCompressing ? 'Compressing image' : 'Take photo'}
                       </div>
                     </div>
                   </div>
                 </button>
               </div>
 
-              {/* Voice Recording - Second */}
+              {/* Gallery Picker - Second */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={handleGalleryPicker}
+                  disabled={isCompressing || isAnalyzing}
+                  className="w-full p-6 bg-gray-50 dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="flex flex-col items-center gap-3">
+                    <div className={`text-4xl transition-transform ${isCompressing ? 'animate-pulse' : 'group-hover:scale-110'}`}>
+                      🖼️
+                    </div>
+                    <div className="text-center">
+                      <div className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        Gallery
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Choose photo
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Voice Recording - Third */}
               <div className="relative">
                 {finalTranscript && !isRecording && (
                   <button

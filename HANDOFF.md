@@ -53,7 +53,29 @@ Known boundary: `test/upgrade-haiku-4-5` remains excluded from the root TypeScri
 
 ## Next Best Step
 
-Next stabilization step is checkpointing the timezone-hardening pass on the current feature branch after review. Do not reopen `test/upgrade-haiku-4-5` unless model migration is intentionally restarted with a fresh plan.
+Current active branch is `fix/workout-gallery-photo-upload`. Next step is to review, commit, push, and open a PR for the workout gallery upload alignment.
+
+Do not reopen `test/upgrade-haiku-4-5` unless model migration is intentionally restarted with a fresh plan.
+
+## Workout Gallery Upload Pass
+
+Completed on 2026-06-04:
+
+- `app/log/page.tsx` now exposes separate Camera and Gallery tiles for workout photo OCR, matching the food logging convention.
+- Camera keeps `capture="environment"` for rear-camera capture on mobile.
+- Gallery uses an image file picker without the `capture` attribute so an already-taken photo can be selected.
+- Both paths feed the existing image compression, preview, and `/api/ocr-workout` analysis flow.
+
+Latest verification:
+
+```bash
+node node_modules\typescript\bin\tsc --noEmit --pretty false
+npm.cmd run lint
+git diff --check
+npm.cmd run build
+```
+
+Result: all passed. Production build completed successfully and generated all 66 pages/routes.
 
 ## Kiro Plan Audit
 
