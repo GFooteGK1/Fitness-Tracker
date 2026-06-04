@@ -33,19 +33,25 @@ export function getLocalDate(date: Date = new Date()): DateString {
 }
 
 /**
- * Gets the timezone offset in minutes for the current locale
- * Negative values indicate west of UTC (e.g., -360 for CST)
- * Positive values indicate east of UTC (e.g., 60 for CET)
+ * Gets the timezone offset in minutes for the current locale using
+ * Date#getTimezoneOffset() semantics.
+ * Positive values indicate west of UTC (e.g., 360 for CST)
+ * Negative values indicate east of UTC (e.g., -60 for CET)
  * 
  * @param date - Date object (defaults to current date)
  * @returns Timezone offset in minutes
  * 
  * @example
- * getTimezoneOffset() // -360 (for CST)
- * getTimezoneOffset() // 60 (for CET)
+ * getTimezoneOffset() // 360 (for CST)
+ * getTimezoneOffset() // -60 (for CET)
  */
 export function getTimezoneOffset(date: Date = new Date()): TimezoneOffset {
   return date.getTimezoneOffset()
+}
+
+function parseDateParts(dateStr: DateString): { year: number; monthIndex: number; day: number } {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return { year, monthIndex: month - 1, day }
 }
 
 /**
@@ -56,14 +62,14 @@ export function getTimezoneOffset(date: Date = new Date()): TimezoneOffset {
  * @returns ISO 8601 UTC timestamp for start of day
  * 
  * @example
- * // For CST (UTC-6, offset = -360)
- * localDateToUTCStart("2026-02-05", -360)
+ * // For CST (UTC-6, offset = 360)
+ * localDateToUTCStart("2026-02-05", 360)
  * // Returns: "2026-02-05T06:00:00.000Z"
  * // (Feb 5 00:00 CST = Feb 5 06:00 UTC)
  */
 export function localDateToUTCStart(dateStr: DateString, tzOffset: TimezoneOffset): UTCTimestamp {
-  const localMidnight = new Date(`${dateStr}T00:00:00`)
-  const utcTime = new Date(localMidnight.getTime() + tzOffset * 60000)
+  const { year, monthIndex, day } = parseDateParts(dateStr)
+  const utcTime = new Date(Date.UTC(year, monthIndex, day, 0, 0, 0, 0) + tzOffset * 60000)
   return utcTime.toISOString()
 }
 
@@ -75,14 +81,14 @@ export function localDateToUTCStart(dateStr: DateString, tzOffset: TimezoneOffse
  * @returns ISO 8601 UTC timestamp for end of day (23:59:59.999)
  * 
  * @example
- * // For CST (UTC-6, offset = -360)
- * localDateToUTCEnd("2026-02-05", -360)
+ * // For CST (UTC-6, offset = 360)
+ * localDateToUTCEnd("2026-02-05", 360)
  * // Returns: "2026-02-06T05:59:59.999Z"
  * // (Feb 5 23:59:59.999 CST = Feb 6 05:59:59.999 UTC)
  */
 export function localDateToUTCEnd(dateStr: DateString, tzOffset: TimezoneOffset): UTCTimestamp {
-  const localEndOfDay = new Date(`${dateStr}T23:59:59.999`)
-  const utcTime = new Date(localEndOfDay.getTime() + tzOffset * 60000)
+  const { year, monthIndex, day } = parseDateParts(dateStr)
+  const utcTime = new Date(Date.UTC(year, monthIndex, day, 23, 59, 59, 999) + tzOffset * 60000)
   return utcTime.toISOString()
 }
 
@@ -99,6 +105,31 @@ export function localDateToUTCEnd(dateStr: DateString, tzOffset: TimezoneOffset)
 export function formatUTCAsLocalDate(timestamp: UTCTimestamp): DateString {
   const date = new Date(timestamp)
   return getLocalDate(date)
+}
+
+/**
+ * Formats a UTC timestamp as a local date string using an explicit timezone offset.
+ * Use this in server-side code where the runtime timezone is not the user's timezone.
+ *
+ * @param timestamp - ISO 8601 UTC timestamp
+ * @param tzOffset - Timezone offset in minutes from Date#getTimezoneOffset()
+ * @returns Date string in YYYY-MM-DD format for the user's local calendar date
+ *
+ * @example
+ * // CST (UTC-6): getTimezoneOffset() returns 360
+ * formatUTCAsLocalDateWithOffset("2026-04-02T01:00:00Z", 360)
+ * // Returns: "2026-04-01"
+ */
+export function formatUTCAsLocalDateWithOffset(
+  timestamp: UTCTimestamp,
+  tzOffset: TimezoneOffset
+): DateString {
+  const utcTimestamp = new Date(timestamp)
+  const localTimestamp = new Date(utcTimestamp.getTime() - tzOffset * 60000)
+  const year = localTimestamp.getUTCFullYear()
+  const month = String(localTimestamp.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(localTimestamp.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 /**
@@ -272,8 +303,8 @@ export function isValidTimezoneOffset(tzOffset: TimezoneOffset): boolean {
  * // Returns: Date object for Feb 5, 2026 at 00:00:00 local time
  */
 export function parseDateString(dateStr: DateString): Date {
-  const [year, month, day] = dateStr.split('-').map(Number)
-  return new Date(year, month - 1, day, 0, 0, 0, 0)
+  const { year, monthIndex, day } = parseDateParts(dateStr)
+  return new Date(year, monthIndex, day, 0, 0, 0, 0)
 }
 
 /**

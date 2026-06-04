@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { getLocalDate, getTimezoneOffset } from '@/app/lib/timezone-utils'
 
 type ExportFormat = 'csv' | 'pdf'
 type ExportDataType = 'workouts' | 'meals' | 'all'
@@ -18,9 +19,9 @@ export default function ExportDialog({ isOpen, onClose, defaultDataType = 'all' 
   const [startDate, setStartDate] = useState(() => {
     const d = new Date()
     d.setDate(d.getDate() - 30)
-    return d.toISOString().split('T')[0]
+    return getLocalDate(d)
   })
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [endDate, setEndDate] = useState(() => getLocalDate())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -36,6 +37,7 @@ export default function ExportDialog({ isOpen, onClose, defaultDataType = 'all' 
         type: dataType,
         start: startDate,
         end: endDate,
+        tzOffset: String(getTimezoneOffset()),
       })
 
       const response = await fetch(`/api/export?${params}`)

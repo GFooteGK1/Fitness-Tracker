@@ -22,6 +22,7 @@ import {
   parseDateString,
   getWeekDays,
   formatUTCAsLocalDate,
+  formatUTCAsLocalDateWithOffset,
 } from '@/app/lib/timezone-utils'
 
 describe('getLocalDate', () => {
@@ -132,6 +133,20 @@ describe('isValidTimezoneOffset', () => {
     expect(isValidTimezoneOffset(841)).toBe(false)
     expect(isValidTimezoneOffset(1000)).toBe(false)
     expect(isValidTimezoneOffset(-1000)).toBe(false)
+  })
+})
+
+describe('formatUTCAsLocalDateWithOffset', () => {
+  it('formats late-night UTC timestamps as the prior local day for CST', () => {
+    expect(formatUTCAsLocalDateWithOffset('2026-04-02T01:00:00.000Z', 360)).toBe('2026-04-01')
+  })
+
+  it('formats UTC timestamps as the next local day for UTC+14', () => {
+    expect(formatUTCAsLocalDateWithOffset('2026-04-01T10:30:00.000Z', -840)).toBe('2026-04-02')
+  })
+
+  it('keeps UTC date when offset is zero', () => {
+    expect(formatUTCAsLocalDateWithOffset('2026-04-01T23:59:59.999Z', 0)).toBe('2026-04-01')
   })
 })
 

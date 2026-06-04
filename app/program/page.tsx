@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth/AuthContext';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
-import { getLocalDate } from '../lib/timezone-utils';
+import { getLocalDate, parseDateString } from '../lib/timezone-utils';
 
 interface WorkoutData {
   workout: string | null;
@@ -50,7 +50,7 @@ export default function ProgramPage() {
   }, [selectedDate]);
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr + 'T00:00:00');
+    const date = parseDateString(dateStr);
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
