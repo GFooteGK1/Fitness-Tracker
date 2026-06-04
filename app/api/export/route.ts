@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
 import {
+  formatUTCAsLocalDateWithOffset,
+  isValidTimezoneOffset,
+  localDateToUTCStart,
+  localDateToUTCEnd,
+} from '@/app/lib/timezone-utils'
+import {
   generateWorkoutsCsv,
   generateMealsCsv,
   generateCombinedCsv,
@@ -31,6 +37,7 @@ export async function GET(request: Request) {
     const type = searchParams.get('type') as ExportType | null
     const startDate = searchParams.get('start')
     const endDate = searchParams.get('end')
+    const tzOffsetStr = searchParams.get('tzOffset')
 
     if (!format || !VALID_FORMATS.includes(format)) {
       return apiError('Invalid format parameter. Must be "csv" or "pdf".', 400)
@@ -46,6 +53,11 @@ export async function GET(request: Request) {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/
     if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
       return apiError('Dates must be in YYYY-MM-DD format.', 400)
+    }
+
+    const tzOffset = tzOffsetStr ? parseInt(tzOffsetStr, 10) : 0
+    if (tzOffsetStr && !isValidTimezoneOffset(tzOffset)) {
+      return apiError('Invalid timezone offset. Offset must be between -720 and 840 minutes.', 400)
     }
 
     // Fetch data from Supabase
@@ -68,9 +80,9 @@ export async function GET(request: Request) {
     }
 
     if (type === 'meals' || type === 'all') {
-      // Convert dates to timestamp boundaries for meal_timestamp comparison
-      const startTimestamp = `${startDate}T00:00:00.000Z`
-      const endTimestamp = `${endDate}T23:59:59.999Z`
+      // Convert the user's local date range to UTC timestamp boundaries.
+      const startTimestamp = localDateToUTCStart(startDate, tzOffset)
+      const endTimestamp = localDateToUTCEnd(endDate, tzOffset)
 
       const { data, error } = await supabase
         .from('meals')
@@ -97,7 +109,7 @@ export async function GET(request: Request) {
 
     // Transform data
     const workoutRows = transformWorkoutRows(workouts)
-    const mealRows = transformMealRows(meals)
+    const mealRows = transformMealRows(meals, tzOffset)
 
     if (format === 'csv') {
       let csv: string
@@ -120,8 +132,9 @@ export async function GET(request: Request) {
     }
 
     // PDF format
-    const summary = computeSummary(workouts, meals, { start: startDate, end: endDate }, userName)
-    const pdfBytes = await generatePdf(workoutRows, mealRows, summary, type)
+    const summary = computeSummary(workouts, meals, { start: startDate, end: endDate }, userName, tzOffset)
+    const generatedDate = formatUTCAsLocalDateWithOffset(new Date().toISOString(), tzOffset)
+    const pdfBytes = await generatePdf(workoutRows, mealRows, summary, type, generatedDate)
     const pdfArrayBuffer = new ArrayBuffer(pdfBytes.byteLength)
     new Uint8Array(pdfArrayBuffer).set(pdfBytes)
     const filename = `sociusfit-${type}-${startDate}-to-${endDate}.pdf`

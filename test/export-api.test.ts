@@ -16,12 +16,25 @@ const mockLte = vi.fn()
 const mockOrder = vi.fn()
 const mockSingle = vi.fn()
 
-function chainMock(terminal: () => any) {
+let queryCalls: Record<string, { gte: unknown[][]; lte: unknown[][] }> = {}
+
+function tableCalls(table: string) {
+  queryCalls[table] ??= { gte: [], lte: [] }
+  return queryCalls[table]
+}
+
+function chainMock(table: string, terminal: () => any) {
   const chain: any = {
     select: vi.fn(() => chain),
     eq: vi.fn(() => chain),
-    gte: vi.fn(() => chain),
-    lte: vi.fn(() => chain),
+    gte: vi.fn((...args: unknown[]) => {
+      tableCalls(table).gte.push(args)
+      return chain
+    }),
+    lte: vi.fn((...args: unknown[]) => {
+      tableCalls(table).lte.push(args)
+      return chain
+    }),
     order: vi.fn(() => terminal()),
     single: vi.fn(() => terminal()),
   }
@@ -36,9 +49,9 @@ let mockProfileData: any = { display_name: 'Test User', email: 'test@example.com
 
 vi.mock('@/app/lib/auth/supabase-server', () => ({
   createServerClient: vi.fn(async () => {
-    const workoutsChain = chainMock(() => Promise.resolve({ data: mockWorkoutsData, error: null }))
-    const mealsChain = chainMock(() => Promise.resolve({ data: mockMealsData, error: null }))
-    const profileChain = chainMock(() => Promise.resolve({ data: mockProfileData, error: null }))
+    const workoutsChain = chainMock('workouts', () => Promise.resolve({ data: mockWorkoutsData, error: null }))
+    const mealsChain = chainMock('meals', () => Promise.resolve({ data: mockMealsData, error: null }))
+    const profileChain = chainMock('user_profiles', () => Promise.resolve({ data: mockProfileData, error: null }))
 
     return {
       auth: {
@@ -100,6 +113,7 @@ describe('GET /api/export', () => {
     mockWorkoutsData = []
     mockMealsData = []
     mockProfileData = { display_name: 'Test User', email: 'test@example.com' }
+    queryCalls = {}
   })
 
   // --- Auth Tests ---
@@ -148,6 +162,13 @@ describe('GET /api/export', () => {
     expect(body.error).toContain('YYYY-MM-DD')
   })
 
+  it('should return 400 for invalid timezone offset', async () => {
+    const res = await GET(makeRequest({ format: 'csv', type: 'meals', start: '2026-04-01', end: '2026-04-10', tzOffset: '900' }))
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toContain('timezone offset')
+  })
+
   // --- CSV Response Tests ---
 
   it('should return CSV with correct content type for workouts', async () => {
@@ -191,6 +212,14 @@ describe('GET /api/export', () => {
     const text = await res.text()
     expect(text).toContain('Meal Name')
     expect(text).toContain('Chicken')
+  })
+
+  it('should query meals using local date UTC boundaries from tzOffset', async () => {
+    const res = await GET(makeRequest({ format: 'csv', type: 'meals', start: '2026-04-01', end: '2026-04-01', tzOffset: '360' }))
+    expect(res.status).toBe(200)
+
+    expect(queryCalls.meals.gte).toContainEqual(['meal_timestamp', '2026-04-01T06:00:00.000Z'])
+    expect(queryCalls.meals.lte).toContainEqual(['meal_timestamp', '2026-04-02T05:59:59.999Z'])
   })
 
   it('should return combined CSV for type "all"', async () => {

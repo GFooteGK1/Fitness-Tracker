@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { getTimezoneOffset } from '@/app/lib/timezone-utils'
 
 interface QuickQuestionCategory {
   title: string;
@@ -63,7 +64,7 @@ export default function QueryWorkouts() {
 
     try {
       // Send timezone offset so server can properly interpret dates
-      const tzOffset = new Date().getTimezoneOffset()
+      const tzOffset = getTimezoneOffset()
       
       const response = await fetch('/api/query', {
         method: 'POST',

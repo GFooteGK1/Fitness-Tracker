@@ -192,6 +192,23 @@ describe('transformMealRows', () => {
     expect(rows[0].meal_name).toBe('Meal')
     expect(rows[0].calories).toBe(370)
   })
+
+  it('should use the provided timezone offset when deriving meal dates', () => {
+    const meals = [
+      {
+        meal_timestamp: '2026-04-02T01:00:00Z',
+        items: [{ food: 'Late Snack', calories: 250, protein: 15, carbs: 30, fat: 8 }],
+        total_protein: 15,
+        total_carbs: 30,
+        total_fat: 8,
+        total_calories: 250,
+        photo_url: '',
+      },
+    ]
+
+    const rows = transformMealRows(meals, 360)
+    expect(rows[0].date).toBe('2026-04-01')
+  })
 })
 
 // --- Summary Tests ---
@@ -225,6 +242,18 @@ describe('computeSummary', () => {
     expect(summary.totalMeals).toBe(0)
     expect(summary.avgDailyCalories).toBe(0)
   })
+
+  it('should group meal days using the provided timezone offset', () => {
+    const meals = [
+      { meal_timestamp: '2026-04-02T01:00:00Z', total_calories: 500, total_protein: 40, total_carbs: 50, total_fat: 15 },
+      { meal_timestamp: '2026-04-02T05:00:00Z', total_calories: 700, total_protein: 50, total_carbs: 60, total_fat: 20 },
+    ]
+
+    const summary = computeSummary([], meals, { start: '2026-04-01', end: '2026-04-01' }, '', 360)
+
+    expect(summary.totalMeals).toBe(2)
+    expect(summary.avgDailyCalories).toBe(1200)
+  })
 })
 
 // --- Date Filtering Tests ---
@@ -236,6 +265,16 @@ describe('date filtering via transformations', () => {
       { meal_timestamp: '2026-04-02T00:00:01Z', items: [{ food: 'Early Breakfast', calories: 300, protein: 20, carbs: 30, fat: 10 }], photo_url: '' },
     ]
     const rows = transformMealRows(meals)
+    expect(rows[0].date).toBe('2026-04-01')
+    expect(rows[1].date).toBe('2026-04-02')
+  })
+
+  it('should correctly extract local dates from meal timestamps when offset is provided', () => {
+    const meals = [
+      { meal_timestamp: '2026-04-02T01:00:00Z', items: [{ food: 'Late Snack', calories: 100, protein: 5, carbs: 10, fat: 3 }], photo_url: '' },
+      { meal_timestamp: '2026-04-02T06:00:01Z', items: [{ food: 'Breakfast', calories: 300, protein: 20, carbs: 30, fat: 10 }], photo_url: '' },
+    ]
+    const rows = transformMealRows(meals, 360)
     expect(rows[0].date).toBe('2026-04-01')
     expect(rows[1].date).toBe('2026-04-02')
   })

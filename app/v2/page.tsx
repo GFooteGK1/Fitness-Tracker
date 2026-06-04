@@ -5,7 +5,7 @@ import { useAuth } from '@/app/lib/auth/AuthContext'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/app/lib/auth/supabase-client'
 import type { AgentRequest, AgentResponse } from '@/app/lib/agents/types'
-import { getLocalDate } from '@/app/lib/timezone-utils'
+import { getLocalDate, getTimezoneOffset } from '@/app/lib/timezone-utils'
 
 // ============================================================
 // TYPES
@@ -315,9 +315,8 @@ export default function V2Page() {
 
       // Load today's nutrition using local date (not UTC, which can be tomorrow after 6 PM CST)
       const today = getLocalDate()
-      // Pass local timezone offset so the API queries the correct UTC window.
-      // JS getTimezoneOffset() returns (UTC - local) in minutes, so negate it to get (local - UTC).
-      const tzOffset = -new Date().getTimezoneOffset()
+      // /api/meals/daily expects the raw Date#getTimezoneOffset() convention.
+      const tzOffset = getTimezoneOffset()
       const mealsRes = await fetch(`/api/meals/daily?date=${today}&tzOffset=${tzOffset}`)
       if (mealsRes.ok) {
         const mealsData = await mealsRes.json()
@@ -429,7 +428,8 @@ export default function V2Page() {
       const request: AgentRequest = {
         content: userMsg.content,
         input_mode: 'text',
-        tz_offset: -new Date().getTimezoneOffset()
+        // Agent requests use the negated convention: local time = UTC + tz_offset.
+        tz_offset: -getTimezoneOffset()
       }
 
       const response = await fetch('/api/agent/process', {
@@ -592,7 +592,8 @@ export default function V2Page() {
             content: workoutText,
             input_mode: 'text',
             input_type: 'workout_log',
-            tz_offset: -new Date().getTimezoneOffset()
+            // Agent requests use the negated convention: local time = UTC + tz_offset.
+            tz_offset: -getTimezoneOffset()
           } satisfies AgentRequest)
         })
         if (!agentRes.ok) throw new Error('Failed to process workout')

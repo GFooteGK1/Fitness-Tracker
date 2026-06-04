@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import { compressImage, isSupportedImageFormat, formatFileSize, type ImageCompressionResult } from '../lib/imageUtils'
-import { getLocalDate, getTimezoneOffset } from '@/app/lib/timezone-utils'
+import { getLocalDate } from '@/app/lib/timezone-utils'
 
 export default function FoodLog() {
   const { user } = useAuth()

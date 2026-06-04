@@ -53,7 +53,7 @@ Known boundary: `test/upgrade-haiku-4-5` remains excluded from the root TypeScri
 
 ## Next Best Step
 
-Next stabilization step is cleanup/checkpointing: commit or otherwise preserve the current verified feature, lint-policy, warning-cleanup, and promoted-test work. Do not reopen `test/upgrade-haiku-4-5` unless model migration is intentionally restarted with a fresh plan.
+Next stabilization step is checkpointing the timezone-hardening pass on the current feature branch after review. Do not reopen `test/upgrade-haiku-4-5` unless model migration is intentionally restarted with a fresh plan.
 
 ## Kiro Plan Audit
 
@@ -100,3 +100,26 @@ npm.cmd run build
 ```
 
 Result: all passed. `npm.cmd run lint` reports no ESLint warnings or errors.
+
+## Timezone Hardening Pass
+
+In progress on 2026-06-03:
+
+- `app/v2/page.tsx` now sends raw `getTimezoneOffset()` values to `/api/meals/daily` and keeps the negated convention only for agent `tz_offset` requests.
+- `app/components/ExportDialog.tsx` now initializes date inputs with `getLocalDate()` instead of UTC string splitting and passes `tzOffset` to `/api/export`.
+- `app/api/export/route.ts` now converts exported meal date ranges with `localDateToUTCStart/End`, validates optional `tzOffset`, and passes the offset into CSV/PDF row grouping.
+- `app/lib/export-utils.ts` now derives meal export dates and daily summary grouping through an explicit offset-aware formatter instead of server/runtime UTC dates.
+- `app/lib/timezone-utils.ts` now documents the raw `Date#getTimezoneOffset()` sign convention correctly and calculates UTC boundaries using `Date.UTC` so results do not depend on the server runtime timezone.
+- `app/query/page.tsx` uses the shared `getTimezoneOffset()` helper.
+- `app/program/page.tsx` uses `parseDateString()` for display parsing.
+
+Latest timezone-hardening verification:
+
+```bash
+npm.cmd test -- test/timezone-utils.test.ts test/export-utils.test.ts test/export-api.test.ts
+node node_modules\typescript\bin\tsc --noEmit --pretty false
+npm.cmd run lint
+npm.cmd run build
+```
+
+Result: all passed. Focused test slice: 3 files, 69 tests passed. Production build completed successfully and generated all 66 pages/routes.
