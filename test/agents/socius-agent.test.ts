@@ -97,7 +97,7 @@ describe('parseSociusResponse', () => {
   it('handles malformed JSON gracefully', () => {
     const raw = 'This is not JSON, just a conversational response about fitness trends.'
     const result = parseSociusResponse(raw)
-    expect(result.message).toBe(raw)
+    expect(result.message).toContain('trouble analyzing that')
     expect(result.insights).toEqual([])
     expect(result.data_points).toEqual({})
     expect(result.confidence).toBe(0.3)

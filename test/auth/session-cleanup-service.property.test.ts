@@ -20,20 +20,36 @@ vi.mock('@/app/lib/auth/supabase-client', () => ({
   createClient: vi.fn()
 }));
 
+function mockNavigator(value: Partial<Navigator>): void {
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    writable: true,
+    value
+  });
+}
+
+function restoreNavigator(descriptor: PropertyDescriptor | undefined): void {
+  if (descriptor) {
+    Object.defineProperty(globalThis, 'navigator', descriptor);
+  } else {
+    delete (globalThis as any).navigator;
+  }
+}
+
 describe('Session Cleanup Service - Property Tests', () => {
   let mockSupabase: any;
   let originalWindow: any;
   let originalDocument: any;
   let originalLocalStorage: any;
   let originalSessionStorage: any;
-  let originalNavigator: any;
+  let originalNavigatorDescriptor: PropertyDescriptor | undefined;
 
   beforeEach(() => {
     originalWindow = global.window;
     originalDocument = global.document;
     originalLocalStorage = global.localStorage;
     originalSessionStorage = global.sessionStorage;
-    originalNavigator = global.navigator;
+    originalNavigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
 
     vi.clearAllMocks();
 
@@ -63,7 +79,7 @@ describe('Session Cleanup Service - Property Tests', () => {
     (global as any).document = { cookie: '' };
     (global as any).localStorage = mockStorage();
     (global as any).sessionStorage = mockStorage();
-    (global as any).navigator = { userAgent: 'test-agent', cookieEnabled: true };
+    mockNavigator({ userAgent: 'test-agent', cookieEnabled: true });
 
     mockSupabase = {
       auth: { signOut: vi.fn().mockResolvedValue({ error: null }) }
@@ -78,7 +94,7 @@ describe('Session Cleanup Service - Property Tests', () => {
     global.document = originalDocument;
     global.localStorage = originalLocalStorage;
     global.sessionStorage = originalSessionStorage;
-    global.navigator = originalNavigator;
+    restoreNavigator(originalNavigatorDescriptor);
   });
 
   test.prop([

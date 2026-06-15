@@ -266,15 +266,16 @@ describe('buildTrainerPrompt - instructions', () => {
     expect(prompt).toContain('Fight Gone Bad')
   })
 
-  it('includes JSON response format', () => {
+  it('includes tool-use response format', () => {
     const prompt = buildTrainerPrompt(makeBaseContext())
-    expect(prompt).toContain('"message"')
-    expect(prompt).toContain('"workout"')
-    expect(prompt).toContain('"new_prs"')
-    expect(prompt).toContain('"smart_defaults"')
-    expect(prompt).toContain('"confidence"')
-    expect(prompt).toContain('"block_type"')
-    expect(prompt).toContain('"movements"')
+    expect(prompt).toContain('Tool Use Instructions')
+    expect(prompt).toContain('log_workout')
+    expect(prompt).toContain('log_pr')
+    expect(prompt).toContain('query_workouts')
+    expect(prompt).toContain('update_workout')
+    expect(prompt).toContain('brief conversational coaching message')
+    expect(prompt).toContain('respond directly without calling tools')
+    expect(prompt).toContain('respond with just a text message')
   })
 
   it('includes weight and time notation guides', () => {

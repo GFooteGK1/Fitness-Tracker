@@ -137,7 +137,7 @@ ${NUTRITION_KNOWLEDGE}
 
 ## Tool Use Instructions
 You have access to tools for database operations. Use them as follows:
-1. When the user describes food they ate, call log_meal with parsed items, macros, timing, and the resolved date
+1. Parse meals and estimate macros. When the user describes food they ate, call log_meal with parsed items, macros, timing, and the resolved date
 2. When the user asks about past meals or nutrition history, call query_meals to fetch data before answering
 3. When the user wants to correct a previously logged meal (portions, items, timing), call update_meal
 4. Resolve all dates to YYYY-MM-DD using the Date Resolution Rules before calling any tool
@@ -146,7 +146,7 @@ You have access to tools for database operations. Use them as follows:
 7. After tool calls complete, provide a brief nutritional commentary including:
    - Macro summary of the logged meal
    - Remaining daily budget
-   - Weekly adherence context
+   - week-to-date adherence context
 8. For pure questions where the context above already contains the answer, respond directly without calling tools
 9. Validate macros (range checks, calorie consistency P*4 + C*4 + F*9 within 10% of stated calories)
 

@@ -53,19 +53,18 @@ export function validateWhoopIdentifier(
   type: WhoopDataType
 ): ValidationResult {
   const errors: string[] = []
+  const displayType = formatIdentifierType(type)
 
   // Sleep and workout IDs must be UUID strings
   if (type === 'sleep' || type === 'workout') {
     if (typeof value !== 'string') {
-      const typeName = type
-      errors.push(`${typeName} ID must be a string (UUID), received ${typeof value}`)
-      return validationResult(false, errors)
+      errors.push(`${displayType} ID must be a string (UUID), received ${typeof value}`)
+      return validationResult(false, errors, `${type} ID must be a string (UUID), received ${typeof value}`)
     }
 
     if (!isValidUUID(value)) {
-      const typeName = type
-      errors.push(`${typeName} ID must be a valid UUID format`)
-      return validationResult(false, errors)
+      errors.push(`${displayType} ID must be a valid UUID string`)
+      return validationResult(false, errors, `${type} ID must be a valid UUID format`)
     }
 
     return validationResult(true, [])
@@ -74,21 +73,18 @@ export function validateWhoopIdentifier(
   // Cycle and recovery IDs must be positive integers
   if (type === 'cycle' || type === 'recovery') {
     if (typeof value !== 'number') {
-      const typeName = type
-      errors.push(`${typeName} ID must be a number, received ${typeof value}`)
-      return validationResult(false, errors)
+      errors.push(`${displayType} ID must be a number, received ${typeof value}`)
+      return validationResult(false, errors, `${type} ID must be a number, received ${typeof value}`)
     }
 
     if (!Number.isInteger(value)) {
-      const typeName = type
-      errors.push(`${typeName} ID must be an integer, received: ${value}`)
-      return validationResult(false, errors)
+      errors.push(`${displayType} ID must be an integer, received: ${value}`)
+      return validationResult(false, errors, `${type} ID must be an integer, received: ${value}`)
     }
 
     if (value <= 0) {
-      const typeName = type
-      errors.push(`${typeName} ID must be a positive integer`)
-      return validationResult(false, errors)
+      errors.push(`${displayType} ID must be a positive integer`)
+      return validationResult(false, errors, `${type} ID must be a positive integer`)
     }
 
     return validationResult(true, [])
@@ -98,12 +94,20 @@ export function validateWhoopIdentifier(
   return validationResult(false, errors)
 }
 
-function validationResult(isValid: boolean, errors: string[]): ValidationResult {
+function formatIdentifierType(type: WhoopDataType): string {
+  return type.charAt(0).toUpperCase() + type.slice(1)
+}
+
+function validationResult(
+  isValid: boolean,
+  errors: string[],
+  legacyError?: string
+): ValidationResult {
   return {
     isValid,
     errors,
     valid: isValid,
-    error: errors[0]
+    error: legacyError ?? errors[0]
   }
 }
 

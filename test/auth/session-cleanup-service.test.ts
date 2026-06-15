@@ -21,6 +21,22 @@ vi.mock('@/app/lib/auth/supabase-client', () => ({
   createClient: vi.fn()
 }));
 
+function mockNavigator(value: Partial<Navigator>): void {
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    writable: true,
+    value
+  });
+}
+
+function restoreNavigator(descriptor: PropertyDescriptor | undefined): void {
+  if (descriptor) {
+    Object.defineProperty(globalThis, 'navigator', descriptor);
+  } else {
+    delete (globalThis as any).navigator;
+  }
+}
+
 describe('SessionCleanupService', () => {
   let service: SessionCleanupService;
   let mockSupabase: any;
@@ -97,7 +113,7 @@ describe('SessionCleanupService - Browser Context Tests', () => {
   let originalDocument: any;
   let originalLocalStorage: any;
   let originalSessionStorage: any;
-  let originalNavigator: any;
+  let originalNavigatorDescriptor: PropertyDescriptor | undefined;
 
   beforeEach(() => {
     // Mock browser environment
@@ -105,7 +121,7 @@ describe('SessionCleanupService - Browser Context Tests', () => {
     originalDocument = global.document;
     originalLocalStorage = global.localStorage;
     originalSessionStorage = global.sessionStorage;
-    originalNavigator = global.navigator;
+    originalNavigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
 
     // Create mock storage that exposes keys to Object.keys()
     const mockStorage = () => {
@@ -140,10 +156,10 @@ describe('SessionCleanupService - Browser Context Tests', () => {
     (global as any).document = { cookie: '' };
     (global as any).localStorage = mockStorage();
     (global as any).sessionStorage = mockStorage();
-    (global as any).navigator = { 
+    mockNavigator({
       userAgent: 'test-agent',
       cookieEnabled: true
-    };
+    });
 
     // Setup Supabase mock
     mockSupabase = {
@@ -165,7 +181,7 @@ describe('SessionCleanupService - Browser Context Tests', () => {
     global.document = originalDocument;
     global.localStorage = originalLocalStorage;
     global.sessionStorage = originalSessionStorage;
-    global.navigator = originalNavigator;
+    restoreNavigator(originalNavigatorDescriptor);
   });
 
   describe('Complete Sign-Out Flow', () => {
@@ -355,8 +371,19 @@ describe('SessionCleanupService - Browser Context Tests', () => {
 describe('Requirements Validation', () => {
   let service: SessionCleanupService;
   let mockSupabase: any;
+  let originalWindow: any;
+  let originalDocument: any;
+  let originalLocalStorage: any;
+  let originalSessionStorage: any;
+  let originalNavigatorDescriptor: PropertyDescriptor | undefined;
 
   beforeEach(() => {
+    originalWindow = global.window;
+    originalDocument = global.document;
+    originalLocalStorage = global.localStorage;
+    originalSessionStorage = global.sessionStorage;
+    originalNavigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+
     // Mock browser environment
     const mockStorage = () => {
       const store = new Map<string, string>();
@@ -390,7 +417,7 @@ describe('Requirements Validation', () => {
     (global as any).document = { cookie: '' };
     (global as any).localStorage = mockStorage();
     (global as any).sessionStorage = mockStorage();
-    (global as any).navigator = { userAgent: 'test', cookieEnabled: true };
+    mockNavigator({ userAgent: 'test', cookieEnabled: true });
 
     mockSupabase = {
       auth: {
@@ -404,6 +431,14 @@ describe('Requirements Validation', () => {
     vi.mocked(cookieManager.clearAuthCookies).mockImplementation(() => {});
 
     service = new SessionCleanupService();
+  });
+
+  afterEach(() => {
+    global.window = originalWindow;
+    global.document = originalDocument;
+    global.localStorage = originalLocalStorage;
+    global.sessionStorage = originalSessionStorage;
+    restoreNavigator(originalNavigatorDescriptor);
   });
 
   it('should enforce Requirement 2.1: Clear all authentication cookies', async () => {

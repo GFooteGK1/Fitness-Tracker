@@ -15,6 +15,7 @@ import { TabDetectionError } from '@/app/lib/sheets/types'
 
 // Configure minimum 100 iterations for all property tests
 const propertyConfig = { numRuns: 100 }
+const realSetTimeout = global.setTimeout
 
 describe('Google Sheets Client - Property Tests', () => {
 
@@ -26,6 +27,7 @@ describe('Google Sheets Client - Property Tests', () => {
   })
 
   afterEach(() => {
+    global.setTimeout = realSetTimeout
     vi.restoreAllMocks()
   })
 
@@ -52,12 +54,12 @@ describe('Google Sheets Client - Property Tests', () => {
     propertyConfig
   )('Property 14.1: 429 status triggers exactly 3 attempts with exponential backoff', async (spreadsheetId, apiKey) => {
     const delays: number[] = []
-    const originalSetTimeout = global.setTimeout
-    
+
     // Mock setTimeout to capture delay values
     global.setTimeout = vi.fn((callback: any, delay: number) => {
       delays.push(delay)
-      return originalSetTimeout(callback, 0) // Execute immediately for test speed
+      callback()
+      return 0 as any
     }) as any
 
     // Mock fetch to always return 429
@@ -80,8 +82,6 @@ describe('Google Sheets Client - Property Tests', () => {
     expect(delays[1]).toBe(2000) // 2^1 * 1000 = 2s
     // Note: Third delay (4s) would happen but we don't retry after 3rd attempt
 
-    // Restore setTimeout
-    global.setTimeout = originalSetTimeout
   })
 
   /**
@@ -99,12 +99,12 @@ describe('Google Sheets Client - Property Tests', () => {
     propertyConfig
   )('Property 14.2: succeeds after N rate limit retries', async (spreadsheetId, apiKey, failureCount) => {
     const delays: number[] = []
-    const originalSetTimeout = global.setTimeout
-    
+
     // Mock setTimeout to capture delay values
     global.setTimeout = vi.fn((callback: any, delay: number) => {
       delays.push(delay)
-      return originalSetTimeout(callback, 0) // Execute immediately for test speed
+      callback()
+      return 0 as any
     }) as any
 
     let callCount = 0
@@ -149,8 +149,6 @@ describe('Google Sheets Client - Property Tests', () => {
       expect(delays[i]).toBe(Math.pow(2, i) * 1000)
     }
 
-    // Restore setTimeout
-    global.setTimeout = originalSetTimeout
   })
 
   /**
@@ -168,12 +166,12 @@ describe('Google Sheets Client - Property Tests', () => {
     propertyConfig
   )('Property 14.3: server errors (5xx) trigger exponential backoff', async (spreadsheetId, apiKey, errorStatus) => {
     const delays: number[] = []
-    const originalSetTimeout = global.setTimeout
-    
+
     // Mock setTimeout to capture delay values
     global.setTimeout = vi.fn((callback: any, delay: number) => {
       delays.push(delay)
-      return originalSetTimeout(callback, 0) // Execute immediately for test speed
+      callback()
+      return 0 as any
     }) as any
 
     // Mock fetch to always return server error
@@ -195,8 +193,6 @@ describe('Google Sheets Client - Property Tests', () => {
     expect(delays[0]).toBe(1000) // 2^0 * 1000 = 1s
     expect(delays[1]).toBe(2000) // 2^1 * 1000 = 2s
 
-    // Restore setTimeout
-    global.setTimeout = originalSetTimeout
   })
 
   /**
@@ -213,12 +209,12 @@ describe('Google Sheets Client - Property Tests', () => {
     propertyConfig
   )('Property 14.4: network errors trigger exponential backoff', async (spreadsheetId, apiKey, errorMessage) => {
     const delays: number[] = []
-    const originalSetTimeout = global.setTimeout
-    
+
     // Mock setTimeout to capture delay values
     global.setTimeout = vi.fn((callback: any, delay: number) => {
       delays.push(delay)
-      return originalSetTimeout(callback, 0) // Execute immediately for test speed
+      callback()
+      return 0 as any
     }) as any
 
     // Mock fetch to throw network error
@@ -236,8 +232,6 @@ describe('Google Sheets Client - Property Tests', () => {
     expect(delays[0]).toBe(1000) // 2^0 * 1000 = 1s
     expect(delays[1]).toBe(2000) // 2^1 * 1000 = 2s
 
-    // Restore setTimeout
-    global.setTimeout = originalSetTimeout
   })
 
   /**
@@ -332,12 +326,12 @@ describe('Google Sheets Client - Property Tests', () => {
     propertyConfig
   )('Property 14.7: exponential backoff formula is 2^attempt * 1000ms', async (spreadsheetId, apiKey) => {
     const delays: number[] = []
-    const originalSetTimeout = global.setTimeout
-    
+
     // Mock setTimeout to capture delay values
     global.setTimeout = vi.fn((callback: any, delay: number) => {
       delays.push(delay)
-      return originalSetTimeout(callback, 0) // Execute immediately for test speed
+      callback()
+      return 0 as any
     }) as any
 
     // Mock fetch to always return 429
@@ -358,8 +352,6 @@ describe('Google Sheets Client - Property Tests', () => {
     expect(delays[1]).toBe(Math.pow(2, 1) * 1000) // 2000ms
     // Note: Attempt 2 would have delay 4000ms (2^2 * 1000) but we don't retry after 3rd attempt
 
-    // Restore setTimeout
-    global.setTimeout = originalSetTimeout
   })
 
   /**
@@ -375,12 +367,12 @@ describe('Google Sheets Client - Property Tests', () => {
     propertyConfig
   )('Property 14.8: handles mixed retry scenarios correctly', async (spreadsheetId, apiKey) => {
     const delays: number[] = []
-    const originalSetTimeout = global.setTimeout
-    
+
     // Mock setTimeout to capture delay values
     global.setTimeout = vi.fn((callback: any, delay: number) => {
       delays.push(delay)
-      return originalSetTimeout(callback, 0) // Execute immediately for test speed
+      callback()
+      return 0 as any
     }) as any
 
     let callCount = 0
@@ -430,8 +422,6 @@ describe('Google Sheets Client - Property Tests', () => {
     expect(delays[0]).toBe(1000) // After first failure
     expect(delays[1]).toBe(2000) // After second failure
 
-    // Restore setTimeout
-    global.setTimeout = originalSetTimeout
   })
 
   /**

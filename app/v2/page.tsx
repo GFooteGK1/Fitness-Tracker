@@ -276,12 +276,17 @@ export default function V2Page() {
 
   // Detect system dark mode
   useEffect(() => {
+    if (typeof window.matchMedia !== 'function') {
+      setIsDark(false)
+      return
+    }
+
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     setIsDark(mediaQuery.matches)
 
     const handler = (e: MediaQueryListEvent) => setIsDark(e.matches)
-    mediaQuery.addEventListener('change', handler)
-    return () => mediaQuery.removeEventListener('change', handler)
+    mediaQuery.addEventListener?.('change', handler)
+    return () => mediaQuery.removeEventListener?.('change', handler)
   }, [])
 
   useEffect(() => {
@@ -438,7 +443,18 @@ export default function V2Page() {
         body: JSON.stringify(request)
       })
 
-      if (!response.ok) throw new Error('Failed to process message')
+      if (!response.ok) {
+        let errorMessage = 'Failed to process message'
+        try {
+          const errorData = await response.json()
+          if (typeof errorData?.error === 'string') {
+            errorMessage = errorData.error
+          }
+        } catch {
+          // Keep the default message when the server response has no JSON body.
+        }
+        throw new Error(errorMessage)
+      }
 
       const data: AgentResponse = await response.json()
 
@@ -460,7 +476,9 @@ export default function V2Page() {
       setMessages(m => [...m, {
         id: String(Date.now() + 1),
         role: 'system',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: error instanceof Error
+          ? error.message
+          : 'Sorry, I encountered an error. Please try again.',
         time: now
       }])
     } finally {
@@ -681,7 +699,18 @@ export default function V2Page() {
           <MacroSummary consumed={macros.consumed} target={macros.target} />
 
           {/* Chat Feed */}
-          <div className="space-y-2">
+          <div
+            role="log"
+            aria-label="Conversation"
+            aria-live="polite"
+            className="space-y-2"
+          >
+            {messages.length === 0 && !isTyping && (
+              <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                Start a conversation by logging a workout, meal, or asking anything.
+              </div>
+            )}
+
             {messages.map(msg => (
               <ChatMessage key={msg.id} msg={msg} isDark={isDark} />
             ))}
@@ -736,12 +765,13 @@ export default function V2Page() {
             </div>
           ) : (
             <div className="flex items-end gap-2">
-              <button
-                onClick={handleVoiceStart}
-                disabled={isTyping}
-                className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Voice input"
-              >
+                <button
+                  onClick={handleVoiceStart}
+                  disabled={isTyping}
+                  aria-label="Voice input"
+                  className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Voice input"
+                >
                 <span className="text-lg">🎤</span>
               </button>
 
@@ -750,6 +780,7 @@ export default function V2Page() {
                 <button
                   onClick={() => setShowPhotoMenu(v => !v)}
                   disabled={isTyping}
+                  aria-label="Photo input"
                   className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Photo input"
                 >
@@ -789,6 +820,7 @@ export default function V2Page() {
               </div>
               <div className="flex-1 flex items-end bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 focus-within:border-blue-500 dark:focus-within:border-blue-400 transition-colors">
                 <textarea
+                  aria-label="Message input"
                   value={inputValue}
                   onChange={e => setInputValue(e.target.value)}
                   onKeyDown={e => {
@@ -805,6 +837,7 @@ export default function V2Page() {
               </div>
               {inputValue.trim() && (
                 <button
+                  aria-label="Send message"
                   onClick={handleSend}
                   disabled={isTyping}
                   className="w-10 h-10 rounded-full bg-blue-600 dark:bg-blue-500 text-white flex items-center justify-center hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all animate-fadeUp"

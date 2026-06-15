@@ -1,5 +1,52 @@
 # Handoff
 
+## Full Test-Suite Restoration / Beads Plan
+
+Completed on 2026-06-15 after the follow-up Beads plan for `Fitness-Tracker-fnk`.
+
+Goal: restore the full repository verification suite after the nutrition/profile cleanup left unrelated failures in WHOOP schema/identifier tests, agent prompt contract tests, and auth session cleanup service tests.
+
+Beads state:
+
+- `Fitness-Tracker-fnk` - Restore full npm test suite: closed.
+- `Fitness-Tracker-fnk.1` - Reproduce and classify full-suite failures: closed.
+- `Fitness-Tracker-fnk.2` - Repair WHOOP schema and identifier test failures: closed.
+- `Fitness-Tracker-fnk.3` - Align agent prompt contract tests: closed.
+- `Fitness-Tracker-fnk.4` - Repair auth session cleanup service tests: closed.
+- `Fitness-Tracker-fnk.5` - Verify full test suite restoration: closed.
+
+Root causes addressed:
+
+- WHOOP V2 schema and identifier contract drift: UUID-backed sleep/workout identifiers and numeric cycle identifiers needed explicit migration coverage plus display/error wording alignment.
+- Agent prompt contract drift: prompt tests were still enforcing stale JSON-only response wording, while the current agents use tool instructions and conversational responses.
+- Auth session cleanup test harness incompatibility: tests assigned directly to `global.navigator`, which is read-only in the current runtime.
+- V2 page test drift: tests still expected the old tabbed page model and missed current chat-first accessibility and error-handling behavior.
+- Sheets retry timer leakage: a property test mocked `setTimeout` in a way that could leak async callbacks into the broader suite.
+
+Implemented cleanup:
+
+- Added `docs/migrations/whoop-v2-schema-fix.sql` with guarded WHOOP V2 identifier checks and conversion guidance.
+- Updated WHOOP validation to preserve legacy machine-readable error strings where needed while producing the display wording required by current tests.
+- Aligned Socius, Trainer, and Nutritionist prompt tests and prompt text with the current tool-use contract.
+- Hardened auth cleanup tests by mocking and restoring `navigator` through `Object.defineProperty`.
+- Rebuilt the V2 page tests around the current chat-first UI and added missing accessibility labels, empty state, and server/network error surfacing.
+- Fixed agent parser/persistence expectations for current fallback copy and meal timing normalization.
+- Stabilized the Google Sheets retry property test by restoring the real timer and using synchronous retry callback execution inside the test mock.
+
+Verification completed:
+
+```bash
+npm.cmd test
+npm.cmd run lint
+node node_modules\typescript\bin\tsc --noEmit --pretty false
+npm.cmd run build
+git diff --check
+```
+
+Results: full `npm.cmd test` exits 0 with 127 files and 1881 tests passed. Lint, TypeScript noEmit, production build, and diff whitespace check all pass. Production build completed successfully and generated all 66 pages/routes. `npm.cmd test` still prints existing property-test diagnostic log noise, but the command exits 0 and the final Vitest summary is green.
+
+Current branch is `main`. Changes are intentionally left uncommitted for review unless Greg asks to commit/push this Beads restoration pass.
+
 ## Nutrition Logging / Repeated Onboarding Review
 
 Completed on 2026-06-15 after a team-style review of the nutrition, onboarding, and cross-flow state paths.
@@ -38,7 +85,7 @@ npm.cmd test -- test/agents/trainer-agent.test.ts
 
 Results: focused nutrition/date/API suite passed 4 files and 87 tests; trainer-agent file passed 43 tests; TypeScript, lint, diff check, and production build passed. Production build completed successfully and generated all 66 pages/routes.
 
-Full `npm.cmd test` is still not green, but the remaining failures are outside this nutrition/profile cleanup: WHOOP schema migration/identifier tests, agent prompt contract tests, and auth session cleanup service tests. These appear unrelated to the changed nutrition/profile files and should be handled as separate test-suite maintenance.
+Follow-up test-suite maintenance is now complete in the `Fitness-Tracker-fnk` Beads epic above; full `npm.cmd test` is green.
 
 ## Current Feature State
 

@@ -125,7 +125,7 @@ describe('parseNutritionistResponse', () => {
   it('handles malformed JSON gracefully', () => {
     const raw = 'This is not JSON, just a conversational response about nutrition.'
     const result = parseNutritionistResponse(raw)
-    expect(result.message).toBe(raw)
+    expect(result.message).toContain('trouble processing that meal')
     expect(result.meal).toBeUndefined()
     expect(result.confidence).toBe(0.3)
     expect(result.remaining_budget).toEqual({ protein: 0, carbs: 0, fat: 0, calories: 0 })
@@ -488,7 +488,7 @@ describe('persistMeal', () => {
     expect(insertFn).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: 'user-1',
-        meal_timing: 'LUNCH',
+        meal_timing: 'general',
         total_protein: 42,
         total_carbs: 0,
         total_fat: 3,

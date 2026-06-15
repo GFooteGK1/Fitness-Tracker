@@ -17,6 +17,7 @@ import {
   persistMeal,
 } from '@/app/lib/agents/nutritionist-agent'
 import { PORTION_DEFAULTS } from '@/app/lib/agents/constants'
+import { normalizeMealTiming } from '@/app/lib/agents/tools/executor'
 import type {
   NutritionistContext,
   NutritionistResponse,
@@ -492,7 +493,7 @@ describe('Property 10: Meal persistence round-trip', () => {
       expect(id).toBe('meal-prop10')
       expect(capturedInsert).not.toBeNull()
       expect(capturedInsert!.user_id).toBe(userId)
-      expect(capturedInsert!.meal_timing).toBe(timing)
+      expect(capturedInsert!.meal_timing).toBe(normalizeMealTiming(timing))
       expect(capturedInsert!.total_protein).toBe(totals.protein)
       expect(capturedInsert!.total_carbs).toBe(totals.carbs)
       expect(capturedInsert!.total_fat).toBe(totals.fat)

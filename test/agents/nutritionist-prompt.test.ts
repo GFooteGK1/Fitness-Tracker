@@ -351,17 +351,15 @@ describe('buildNutritionistPrompt - instructions', () => {
     expect(prompt).toContain('Ahead')
   })
 
-  it('includes JSON response format', () => {
+  it('includes tool-use response format', () => {
     const prompt = buildNutritionistPrompt(makeBaseContext())
-    expect(prompt).toContain('"message"')
-    expect(prompt).toContain('"meal"')
-    expect(prompt).toContain('"items"')
-    expect(prompt).toContain('"totals"')
-    expect(prompt).toContain('"remaining_budget"')
-    expect(prompt).toContain('"week_status"')
-    expect(prompt).toContain('"smart_defaults"')
-    expect(prompt).toContain('"confidence"')
-    expect(prompt).toContain('"timing"')
+    expect(prompt).toContain('Tool Use Instructions')
+    expect(prompt).toContain('log_meal')
+    expect(prompt).toContain('query_meals')
+    expect(prompt).toContain('update_meal')
+    expect(prompt).toContain('conversational message')
+    expect(prompt).toContain('respond directly without calling tools')
+    expect(prompt).toContain('respond with just a text message')
   })
 
   it('includes portion and timing instructions', () => {
