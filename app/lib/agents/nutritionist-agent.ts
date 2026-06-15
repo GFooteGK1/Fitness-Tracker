@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   NutritionistContext,
@@ -10,6 +9,7 @@ import type {
 } from './types'
 import { buildNutritionistPrompt } from './prompts/nutritionist'
 import { PORTION_DEFAULTS } from './constants'
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 import { callAgentWithTools, type AgenticCallResult, type ToolCallRecord } from './tools/agentic-loop'
 import { NUTRITIONIST_TOOLS } from './tools/definitions'
 import { normalizeMealTiming } from './tools/executor'
@@ -19,8 +19,6 @@ import {
   hashUserInput,
   logParsingError
 } from './error-handling'
-
-const NUTRITIONIST_MODEL = 'claude-sonnet-4-20250514'
 
 /** Valid meal timing values */
 const VALID_TIMINGS: MealTiming[] = [
@@ -62,10 +60,9 @@ export async function callNutritionistAgent(
   }
 
   // Fallback: single-shot call without tools (backward compatibility)
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-  const message = await anthropic.messages.create(
+  const message = await getAnthropicClient().messages.create(
     {
-      model: NUTRITIONIST_MODEL,
+      model: getAnthropicModel('agent'),
       max_tokens: 4096,
       temperature: 0,
       system: systemPrompt,

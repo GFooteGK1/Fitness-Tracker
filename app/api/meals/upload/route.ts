@@ -1,6 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { getAnthropicClient } from '@/app/lib/anthropic-client'
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 import { apiError } from '@/app/lib/api-response'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const response = await getAnthropicClient().messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: getAnthropicModel('vision'),
         max_tokens: 1024,
         messages: [{
           role: 'user',

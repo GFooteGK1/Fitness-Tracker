@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   SociusContext,
@@ -8,6 +7,7 @@ import type {
   PatternId
 } from './types'
 import { buildSociusPrompt } from './prompts/socius'
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 import { callAgentWithTools, type ToolCallRecord } from './tools/agentic-loop'
 import { SOCIUS_TOOLS } from './tools/definitions'
 import {
@@ -16,8 +16,6 @@ import {
   hashUserInput,
   logParsingError
 } from './error-handling'
-
-const SOCIUS_MODEL = 'claude-sonnet-4-20250514'
 
 /** Extended response that includes tool call metadata */
 export interface SociusResponseWithTools extends SociusResponse {
@@ -63,11 +61,9 @@ export async function callSociusAgent(
     }
   }
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-
-  const message = await anthropic.messages.create(
+  const message = await getAnthropicClient().messages.create(
     {
-      model: SOCIUS_MODEL,
+      model: getAnthropicModel('agent'),
       max_tokens: 4096,
       temperature: 0,
       system: systemPrompt,

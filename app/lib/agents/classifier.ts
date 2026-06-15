@@ -1,8 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 import type { ClassificationResult, InputMode, InputType, AgentDomain } from './types'
 import { CLASSIFIER_SYSTEM_PROMPT, buildClassifierInput } from './prompts/classifier'
-
-const CLASSIFIER_MODEL = 'claude-haiku-4-5-20251001'
 
 /**
  * Classify user input using Claude Haiku.
@@ -27,10 +25,8 @@ async function classifyWithLLM(
   content: string,
   inputMode: InputMode
 ): Promise<ClassificationResult> {
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-
-  const message = await anthropic.messages.create({
-    model: CLASSIFIER_MODEL,
+  const message = await getAnthropicClient().messages.create({
+    model: getAnthropicModel('fast'),
     max_tokens: 256,
     temperature: 0,
     system: CLASSIFIER_SYSTEM_PROMPT,

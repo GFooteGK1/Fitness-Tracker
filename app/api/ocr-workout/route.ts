@@ -1,9 +1,5 @@
 import { NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-})
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 
 export async function POST(request: Request) {
   try {
@@ -36,8 +32,8 @@ export async function POST(request: Request) {
     
     const startTime = Date.now()
     
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const message = await getAnthropicClient().messages.create({
+      model: getAnthropicModel('vision'),
       max_tokens: 2000,
       messages: [
         {

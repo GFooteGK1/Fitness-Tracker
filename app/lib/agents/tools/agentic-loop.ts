@@ -6,13 +6,12 @@
  * 2. Sends tool results back to Claude
  * 3. Repeats until Claude returns end_turn or max rounds is reached
  */
-import Anthropic from '@anthropic-ai/sdk'
 import type { Tool, MessageParam, ContentBlock } from '@anthropic-ai/sdk/resources/messages'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 import { executeToolCall, type ToolResult } from './executor'
 
 const MAX_TOOL_ROUNDS = 3
-const MODEL = 'claude-sonnet-4-20250514'
 const TIMEOUT_MS = 30_000
 
 // ─── Types ─────────────────────────────────────────────────────────────
@@ -55,7 +54,7 @@ export async function callAgentWithTools(
     maxRounds = MAX_TOOL_ROUNDS
   } = options
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+  const anthropic = getAnthropicClient()
   const messages: MessageParam[] = [{ role: 'user', content: userInput }]
   const allToolCalls: ToolCallRecord[] = []
   const totalTokens = { input: 0, output: 0 }
@@ -63,7 +62,7 @@ export async function callAgentWithTools(
   for (let round = 0; round < maxRounds; round++) {
     const message = await anthropic.messages.create(
       {
-        model: MODEL,
+        model: getAnthropicModel('agent'),
         max_tokens: 4096,
         temperature: 0,
         system: systemPrompt,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import Anthropic from '@anthropic-ai/sdk'
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 import { NutritionalAnalysis, FoodItem, MacroTotals } from '@/app/lib/types/food-tracking'
 import { validateMealData, calculateTotalMacros } from '@/app/lib/macro-validation'
 import { 
@@ -10,10 +10,6 @@ import {
   DEFAULT_RETRY_CONFIG,
   ErrorContext 
 } from '@/app/lib/error-handling'
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-})
 
 // AI analysis timeout: 15 seconds as per requirements
 const AI_TIMEOUT_MS = 15000
@@ -301,8 +297,8 @@ async function analyzePhotoWithClaude(photoUrl: string): Promise<NutritionalAnal
   // Determine image type from URL or default to jpeg
   const imageType = photoUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg'
 
-  const message = await anthropic.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
+  const message = await getAnthropicClient().messages.create({
+    model: getAnthropicModel('vision'),
     max_tokens: 1000,
     messages: [
       {

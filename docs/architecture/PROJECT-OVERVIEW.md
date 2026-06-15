@@ -114,7 +114,7 @@ A modern, AI-powered fitness tracking application that lets you log workouts usi
 
 ### AI
 - **Provider**: Anthropic
-- **Model**: Claude Sonnet 4 (claude-sonnet-4-20250514)
+- **Model**: Shared Anthropic model helper, defaulting to Claude Sonnet (`claude-sonnet-4-6`)
 - **Use Cases**: 
   - Workout parsing
   - Natural language queries

@@ -1,5 +1,38 @@
 # Handoff
 
+## Nutrition Anthropic Model 404 Fix
+
+Completed on 2026-06-15 after food logging returned a provider 404 for `claude-sonnet-4-20250514`.
+
+Root cause:
+
+- Active nutrition, agent, workout, and query paths still hardcoded retired/stale Anthropic model IDs. Text food logging surfaced the raw provider error to the UI, so the missing-model 404 appeared directly.
+- Several API routes still initialized Anthropic at module scope, which was brittle for Next.js route loading and environment setup.
+
+Implemented cleanup:
+
+- Added shared `getAnthropicModel()` in `app/lib/anthropic-client.ts`, defaulting to `claude-sonnet-4-6`, with purpose-specific overrides and a stale-model blocklist.
+- Moved active Anthropic call sites to the shared lazy client/model helper across meal upload/text/refine/analyze, V2 agent loop, agents, workout OCR/photo parsing, PR bulk import, and query response generation.
+- Masked model/not_found/404 provider errors in text meal parsing with a user-safe temporary AI availability message.
+- Updated current architecture docs.
+- Added model-selection and food/query regression coverage; stabilized full-suite blockers in query integration, tab-cache boundary, and WHOOP cached-staleness tests.
+
+Verification completed:
+
+```bash
+npm.cmd test -- test/anthropic-client.test.ts test/food-tracking/integration.test.ts test/query/response-generator.test.ts
+npm.cmd test -- test/agents/classifier.property.test.ts test/agents/classifier-preservation.property.test.ts test/agents/classifier-meal-detection-bugfix.property.test.ts test/agents/nutritionist-agent.test.ts test/agents/trainer-agent.test.ts test/agents/socius-agent.test.ts test/api/agent-process-manager.test.ts
+npm.cmd test -- test/query/query-integration.test.ts test/sheets/tab-cache.unit.test.ts test/whoop/cached-staleness.property.test.ts
+npm.cmd test -- test/query/response-generator.test.ts test/query/query-integration.test.ts
+node node_modules\typescript\bin\tsc --noEmit --pretty false
+npm.cmd run lint
+npm.cmd run build
+npm.cmd test -- --reporter=dot --silent
+git diff --check
+```
+
+Results: all focused slices pass; TypeScript, lint, production build, diff whitespace check, and the full quiet Vitest suite pass. Full quiet suite exits 0 with 130 files and 1890 tests passed. Production build generated all 66 pages/routes.
+
 ## Nutrition Loading Review Findings
 
 Completed locally on 2026-06-15 after reviewer follow-up found two remaining loading-state risks.

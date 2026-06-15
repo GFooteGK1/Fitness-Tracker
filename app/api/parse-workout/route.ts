@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!
-})
 
 export async function POST(request: Request) {
   try {
@@ -28,8 +24,8 @@ export async function POST(request: Request) {
     const systemPrompt = buildParserSystemPrompt()
     const userPrompt = buildUserPrompt(text, date)
 
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const message = await getAnthropicClient().messages.create({
+      model: getAnthropicModel('workout'),
       max_tokens: 4096,
       system: systemPrompt,
       messages: [{

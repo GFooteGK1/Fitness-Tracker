@@ -12,14 +12,10 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import Anthropic from '@anthropic-ai/sdk'
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 import { apiError } from '@/app/lib/api-response'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024   // 10 MB
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-})
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,8 +45,8 @@ export async function POST(request: NextRequest) {
       : 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
 
     // Ask Claude Vision to extract the workout
-    const response = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
+    const response = await getAnthropicClient().messages.create({
+      model: getAnthropicModel('vision'),
       max_tokens: 512,
       messages: [
         {

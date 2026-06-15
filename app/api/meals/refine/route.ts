@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import Anthropic from '@anthropic-ai/sdk'
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 import { FoodItem, PortionSpec } from '@/app/lib/types/food-tracking'
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-})
 
 // Convert portion spec to human-readable description for Claude
 function portionToDescription(spec: PortionSpec): string {
@@ -70,8 +66,8 @@ export async function POST(request: NextRequest) {
 
     console.log('[Refine] Calling Claude for macro refinement...')
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const response = await getAnthropicClient().messages.create({
+      model: getAnthropicModel('nutrition'),
       max_tokens: 1024,
       messages: [{
         role: 'user',

@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
-import Anthropic from '@anthropic-ai/sdk'
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 import { invalidatePassiveCache } from '@/app/lib/agents/context-builder'
-
-const anthropic = new Anthropic()
 
 interface ParsedPR {
   benchmark_name: string
@@ -55,8 +53,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Use Claude to parse the raw text into structured PRs
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+    const message = await getAnthropicClient().messages.create({
+      model: getAnthropicModel('workout'),
       max_tokens: 2000,
       messages: [{ role: 'user', content: PARSE_PROMPT + text }],
       // @ts-expect-error - timeout signal

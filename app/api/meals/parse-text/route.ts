@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { getAnthropicClient } from '@/app/lib/anthropic-client'
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const userPrompt = buildUserPrompt(text)
 
     const message = await getAnthropicClient().messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: getAnthropicModel('nutrition'),
       max_tokens: 2048,
       temperature: 0, // Deterministic parsing
       system: systemPrompt,
@@ -119,10 +119,18 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[Parse Text] Error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: getParseTextUserError(error) },
       { status: 500 }
     )
   }
+}
+
+function getParseTextUserError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+  if (/model|not_found|404/i.test(message)) {
+    return 'AI nutrition analysis is temporarily unavailable. Please try again shortly.'
+  }
+  return message || 'Unknown error'
 }
 
 function buildMealParserSystemPrompt(): string {

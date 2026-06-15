@@ -355,10 +355,16 @@ function createWeeklyRequest(weekStart: string) {
 
 describe('Food Tracking Integration Tests', () => {
   let originalAnthropicKey: string | undefined
+  let originalAnthropicModel: string | undefined
+  let originalAnthropicVisionModel: string | undefined
 
   beforeEach(() => {
     originalAnthropicKey = process.env.ANTHROPIC_API_KEY
+    originalAnthropicModel = process.env.ANTHROPIC_MODEL
+    originalAnthropicVisionModel = process.env.ANTHROPIC_VISION_MODEL
     process.env.ANTHROPIC_API_KEY = 'test-anthropic-key'
+    delete process.env.ANTHROPIC_MODEL
+    delete process.env.ANTHROPIC_VISION_MODEL
     vi.clearAllMocks()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2025-06-12T12:00:00Z'))
@@ -369,6 +375,16 @@ describe('Food Tracking Integration Tests', () => {
       delete process.env.ANTHROPIC_API_KEY
     } else {
       process.env.ANTHROPIC_API_KEY = originalAnthropicKey
+    }
+    if (originalAnthropicModel === undefined) {
+      delete process.env.ANTHROPIC_MODEL
+    } else {
+      process.env.ANTHROPIC_MODEL = originalAnthropicModel
+    }
+    if (originalAnthropicVisionModel === undefined) {
+      delete process.env.ANTHROPIC_VISION_MODEL
+    } else {
+      process.env.ANTHROPIC_VISION_MODEL = originalAnthropicVisionModel
     }
     vi.restoreAllMocks()
     vi.useRealTimers()
@@ -418,6 +434,11 @@ describe('Food Tracking Integration Tests', () => {
       // Verify upload produced a stored meal ID
       expect(uploadRes.status).toBe(200)
       expect(uploadData.mealId).toBe(TEST_MEAL_ID)
+      expect(mockAnthropicCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'claude-sonnet-4-6',
+        })
+      )
 
       // -- Daily view step: same auth, same stored meal in select --
       vi.mocked(createServerClient).mockResolvedValue(mockSb as any)

@@ -4,7 +4,7 @@
  * Validates: Requirements 3.1, 4.1, 7.3
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   generateResponse,
   formatDataContext,
@@ -119,6 +119,27 @@ function createMockAnthropicClient(response?: string, error?: Error) {
 }
 
 describe('Response Generator Unit Tests', () => {
+  const originalAnthropicModel = process.env.ANTHROPIC_MODEL;
+  const originalAnthropicQueryModel = process.env.ANTHROPIC_QUERY_MODEL;
+
+  beforeEach(() => {
+    delete process.env.ANTHROPIC_MODEL;
+    delete process.env.ANTHROPIC_QUERY_MODEL;
+  });
+
+  afterEach(() => {
+    if (originalAnthropicModel === undefined) {
+      delete process.env.ANTHROPIC_MODEL;
+    } else {
+      process.env.ANTHROPIC_MODEL = originalAnthropicModel;
+    }
+    if (originalAnthropicQueryModel === undefined) {
+      delete process.env.ANTHROPIC_QUERY_MODEL;
+    } else {
+      process.env.ANTHROPIC_QUERY_MODEL = originalAnthropicQueryModel;
+    }
+  });
+
   describe('formatDataContext', () => {
     it('formats workout data correctly for WORKOUT_ONLY intent', () => {
       const context = formatDataContext('WORKOUT_ONLY', sampleWorkoutData);
@@ -223,6 +244,7 @@ describe('Response Generator Unit Tests', () => {
 
       expect(mockClient.messages.create).toHaveBeenCalledTimes(1);
       const callArgs = mockClient.messages.create.mock.calls[0][0];
+      expect(callArgs.model).toBe('claude-sonnet-4-6');
       expect(callArgs.system).toBe(WORKOUT_SYSTEM_PROMPT);
       expect(result).toBe('Your deadlift PR is 315lbs');
     });

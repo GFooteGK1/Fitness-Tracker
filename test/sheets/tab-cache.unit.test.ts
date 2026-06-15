@@ -522,9 +522,9 @@ describe('Tab Cache - Unit Tests', () => {
       // Beyond 4-hour TTL
       expect(cache.isExpired(fiveHoursAgo, 4)).toBe(true)
 
-      // Exactly at boundary (should be expired)
-      const fourHoursAgo = now - (4 * 60 * 60 * 1000)
-      expect(cache.isExpired(fourHoursAgo, 4)).toBe(false)
+      // Just inside the strict 4-hour TTL boundary
+      const fourHoursMinusOneMs = now - (4 * 60 * 60 * 1000 - 1)
+      expect(cache.isExpired(fourHoursMinusOneMs, 4)).toBe(false)
 
       // Just past boundary
       const fourHoursAndOneMs = now - (4 * 60 * 60 * 1000 + 1)

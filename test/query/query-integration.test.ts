@@ -210,7 +210,17 @@ function createErrorMockSupabase(userId: string, errorTable: string) {
 
 
 describe('Query API Integration Tests', () => {
+  let originalAnthropicKey: string | undefined;
+  let originalAnthropicModel: string | undefined;
+  let originalAnthropicQueryModel: string | undefined;
+
   beforeEach(() => {
+    originalAnthropicKey = process.env.ANTHROPIC_API_KEY;
+    originalAnthropicModel = process.env.ANTHROPIC_MODEL;
+    originalAnthropicQueryModel = process.env.ANTHROPIC_QUERY_MODEL;
+    process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
+    delete process.env.ANTHROPIC_MODEL;
+    delete process.env.ANTHROPIC_QUERY_MODEL;
     vi.clearAllMocks();
     // Default mock for Anthropic - successful response
     mockAnthropicCreate.mockResolvedValue({
@@ -219,6 +229,21 @@ describe('Query API Integration Tests', () => {
   });
 
   afterEach(() => {
+    if (originalAnthropicKey === undefined) {
+      delete process.env.ANTHROPIC_API_KEY;
+    } else {
+      process.env.ANTHROPIC_API_KEY = originalAnthropicKey;
+    }
+    if (originalAnthropicModel === undefined) {
+      delete process.env.ANTHROPIC_MODEL;
+    } else {
+      process.env.ANTHROPIC_MODEL = originalAnthropicModel;
+    }
+    if (originalAnthropicQueryModel === undefined) {
+      delete process.env.ANTHROPIC_QUERY_MODEL;
+    } else {
+      process.env.ANTHROPIC_QUERY_MODEL = originalAnthropicQueryModel;
+    }
     vi.restoreAllMocks();
   });
 

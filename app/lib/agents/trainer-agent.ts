@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   TrainerContext,
@@ -8,6 +7,7 @@ import type {
   SmartDefault
 } from './types'
 import { buildTrainerPrompt } from './prompts/trainer'
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 import { callAgentWithTools, type AgenticCallResult, type ToolCallRecord } from './tools/agentic-loop'
 import { TRAINER_TOOLS } from './tools/definitions'
 import {
@@ -16,8 +16,6 @@ import {
   hashUserInput,
   logParsingError
 } from './error-handling'
-
-const TRAINER_MODEL = 'claude-sonnet-4-20250514'
 
 /** Extended response that includes tool call metadata */
 export interface TrainerResponseWithTools extends TrainerResponse {
@@ -54,10 +52,9 @@ export async function callTrainerAgent(
   }
 
   // Fallback: single-shot call without tools (backward compatibility)
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-  const message = await anthropic.messages.create(
+  const message = await getAnthropicClient().messages.create(
     {
-      model: TRAINER_MODEL,
+      model: getAnthropicModel('agent'),
       max_tokens: 4096,
       temperature: 0,
       system: systemPrompt,

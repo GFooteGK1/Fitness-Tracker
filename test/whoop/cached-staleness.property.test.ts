@@ -59,7 +59,11 @@ describe('Property 14: Cached Data with Staleness Indicator', () => {
   it('should include staleness indicator in all responses', () => {
     fc.assert(
       fc.property(
-        fc.option(fc.date({ min: new Date('2024-01-01'), max: new Date() }), { nil: null }),
+        fc.option(
+          fc.date({ min: new Date('2024-01-01'), max: new Date() })
+            .filter(date => !Number.isNaN(date.getTime())),
+          { nil: null }
+        ),
         fc.integer({ min: 0, max: 100 }),
         (lastSyncAt, recoveryScore) => {
           const staleness = lastSyncAt
@@ -208,7 +212,8 @@ describe('Property 14: Cached Data with Staleness Indicator', () => {
   it('should calculate staleness consistently across multiple calls', () => {
     fc.assert(
       fc.property(
-        fc.date({ min: new Date('2024-01-01'), max: new Date() }),
+        fc.date({ min: new Date('2024-01-01'), max: new Date() })
+          .filter(date => !Number.isNaN(date.getTime())),
         (lastSyncAt) => {
           const now = Date.now();
           

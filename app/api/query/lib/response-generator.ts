@@ -13,6 +13,7 @@ import {
   CrossDomainData,
 } from './types';
 import { getPromptForIntent } from './prompt-templates';
+import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client';
 
 // Error types for response generation
 export class ResponseGeneratorError extends Error {
@@ -182,9 +183,25 @@ function getEmptyDataMessage(intent: QueryIntent): string {
  * Exported for testing purposes
  */
 export function createAnthropicClient(): Anthropic {
-  return new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY!,
-  });
+  return getAnthropicClient();
+}
+
+function getAnthropicErrorStatus(error: unknown): number | null {
+  const apiErrorCtor = (Anthropic as unknown as { APIError?: new (...args: any[]) => Error }).APIError;
+  if (typeof apiErrorCtor === 'function' && error instanceof apiErrorCtor) {
+    return (error as Error & { status?: number }).status ?? null;
+  }
+
+  if (error && typeof error === 'object' && 'status' in error) {
+    const status = Number((error as { status?: unknown }).status);
+    return Number.isFinite(status) ? status : null;
+  }
+
+  return null;
+}
+
+function isTimeoutError(error: unknown): boolean {
+  return error instanceof Error && error.message?.includes('timeout');
 }
 
 /**
@@ -229,7 +246,7 @@ export async function generateResponse(
   try {
     // Call Anthropic API with assembled prompt and context (Requirement 6.1)
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: getAnthropicModel('query'),
       max_tokens: 2000,
       system: systemPrompt,
       messages: [
@@ -263,15 +280,16 @@ Analyze the data and provide a conversational answer.`,
       throw error;
     }
 
-    if (error instanceof Anthropic.APIError) {
+    const status = getAnthropicErrorStatus(error);
+    if (status !== null) {
       // Handle specific API error types
-      if (error.status === 429) {
+      if (status === 429) {
         throw new ResponseGeneratorError(
           'Service busy. Please try again in a moment.',
           'API_RATE_LIMIT'
         );
       }
-      if (error.status === 408 || error.message?.includes('timeout')) {
+      if (status === 408 || isTimeoutError(error)) {
         throw new ResponseGeneratorError(
           'Request timed out. Please try again.',
           'API_TIMEOUT'
