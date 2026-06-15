@@ -23,6 +23,7 @@ import {
   getWeekDays,
   formatUTCAsLocalDate,
   formatUTCAsLocalDateWithOffset,
+  getMealTimestamp,
 } from '@/app/lib/timezone-utils'
 
 describe('getLocalDate', () => {
@@ -147,6 +148,27 @@ describe('formatUTCAsLocalDateWithOffset', () => {
 
   it('keeps UTC date when offset is zero', () => {
     expect(formatUTCAsLocalDateWithOffset('2026-04-01T23:59:59.999Z', 0)).toBe('2026-04-01')
+  })
+})
+
+describe('getMealTimestamp', () => {
+  it('returns the current timestamp when no selected date is provided', () => {
+    const now = new Date('2026-06-15T12:34:56.789Z')
+    expect(getMealTimestamp(undefined, now)).toBe('2026-06-15T12:34:56.789Z')
+  })
+
+  it('uses the selected local calendar date with the current local time', () => {
+    const selectedDate = new Date(2026, 3, 2, 0, 0, 0, 0)
+    const now = new Date(2026, 5, 15, 14, 30, 45, 123)
+    const result = new Date(getMealTimestamp(selectedDate, now))
+
+    expect(result.getFullYear()).toBe(2026)
+    expect(result.getMonth()).toBe(3)
+    expect(result.getDate()).toBe(2)
+    expect(result.getHours()).toBe(14)
+    expect(result.getMinutes()).toBe(30)
+    expect(result.getSeconds()).toBe(45)
+    expect(result.getMilliseconds()).toBe(123)
   })
 })
 

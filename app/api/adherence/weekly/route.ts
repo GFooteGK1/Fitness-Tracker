@@ -20,7 +20,9 @@ import {
   localDateToUTCEnd, 
   isValidTimezoneOffset,
   getWeekStart,
-  getLocalDate
+  getLocalDate,
+  formatUTCAsLocalDateWithOffset,
+  parseDateString
 } from '../../../lib/timezone-utils'
 
 /**
@@ -169,8 +171,10 @@ export async function GET(request: NextRequest) {
     )
 
     // Calculate days elapsed from week start to today (Requirements: 6.2)
-    // This uses local timezone to ensure correct day count
-    const today = new Date()
+    // Use the caller's timezone so week-to-date progress does not drift when
+    // the server's calendar date differs from the user's local calendar date.
+    const todayStr = formatUTCAsLocalDateWithOffset(new Date().toISOString(), tzOffset)
+    const today = parseDateString(todayStr)
     const daysElapsed: number = calculateDaysElapsed(weekStartDate, today)
 
     // Calculate cumulative adherence data (Requirements: 6.1, 6.3, 6.4, 6.5)
@@ -220,14 +224,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get Monday of current week using timezone utilities
-    const today = new Date()
-    const weekStartDate = getWeekStart(today)
-    const weekStartStr = getLocalDate(weekStartDate)
-
     // Get timezone offset from request body
     const body = await request.json().catch(() => ({}))
-    const tzOffset = body.tzOffset || 0
+    const tzOffset = Number(body.tzOffset ?? 0)
+
+    if (!Number.isFinite(tzOffset) || !isValidTimezoneOffset(tzOffset)) {
+      return NextResponse.json(
+        {
+          error: 'Invalid timezone offset',
+          details: 'Offset must be between -720 and 840 minutes'
+        },
+        { status: 400 }
+      )
+    }
+
+    // Get Monday of the user's current week using the caller's timezone.
+    const todayStr = formatUTCAsLocalDateWithOffset(new Date().toISOString(), tzOffset)
+    const weekStartDate = getWeekStart(parseDateString(todayStr))
+    const weekStartStr = getLocalDate(weekStartDate)
 
     // Redirect to GET with calculated week start
     const url = new URL(request.url)

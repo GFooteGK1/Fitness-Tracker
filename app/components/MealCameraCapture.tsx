@@ -7,6 +7,7 @@ import { createUserErrorMessage, ErrorContext } from '@/app/lib/error-handling'
 import { queuePhotoUpload, useOfflineQueue } from '@/app/lib/offline-queue'
 import { useSession } from '@/app/lib/session-management'
 import { useAuth } from '@/app/lib/auth/AuthContext'
+import { getMealTimestamp } from '@/app/lib/timezone-utils'
 import PortionSelector from './PortionSelector'
 
 interface MealCameraCaptureProps {
@@ -351,19 +352,9 @@ export default function MealCameraCapture({
     // Handle offline scenario - queue for later processing
     if (!networkState.isOnline) {
       try {
-        const now = new Date()
         const queueId = queuePhotoUpload(
           photoState.file,
-          selectedDate
-            ? new Date(
-                selectedDate.getFullYear(),
-                selectedDate.getMonth(),
-                selectedDate.getDate(),
-                now.getHours(),
-                now.getMinutes(),
-                now.getSeconds()
-              ).toISOString()
-            : new Date().toISOString()
+          getMealTimestamp(selectedDate)
         )
 
         setPhotoState(prev => ({
@@ -419,20 +410,7 @@ export default function MealCameraCapture({
         // Send full ISO timestamp with timezone - database will store in UTC
         // and the client will convert back to local time for display
         // Use selectedDate if provided (with current time of day), otherwise use current time
-        const timestamp = selectedDate
-          ? (() => {
-              const now = new Date()
-              return new Date(
-                selectedDate.getFullYear(),
-                selectedDate.getMonth(),
-                selectedDate.getDate(),
-                now.getHours(),
-                now.getMinutes(),
-                now.getSeconds()
-              ).toISOString()
-            })()
-          : new Date().toISOString()
-        formData.append('timestamp', timestamp)
+        formData.append('timestamp', getMealTimestamp(selectedDate))
 
         // Enhanced upload progress simulation with time estimation
         const progressInterval = setInterval(() => {

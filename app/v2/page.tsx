@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/app/lib/auth/supabase-client'
 import type { AgentRequest, AgentResponse } from '@/app/lib/agents/types'
-import { getLocalDate, getTimezoneOffset } from '@/app/lib/timezone-utils'
+import { getLocalDate, getTimezoneOffset, getMealTimestamp } from '@/app/lib/timezone-utils'
 
 // ============================================================
 // TYPES
@@ -544,9 +544,17 @@ export default function V2Page() {
         // Display the analysis inline and invite portion refinements via follow-up chat.
         const formData = new FormData()
         formData.append('photo', file)
+        formData.append('timestamp', getMealTimestamp())
         const uploadResponse = await fetch('/api/meals/upload', { method: 'POST', body: formData })
-        if (!uploadResponse.ok) throw new Error('Photo upload failed')
         const uploadData = await uploadResponse.json()
+
+        if (!uploadResponse.ok) {
+          throw new Error(uploadData.error || 'Photo upload failed')
+        }
+
+        if (uploadData.analysisStatus === 'failed' || uploadData.error) {
+          throw new Error(uploadData.error || 'Could not analyze the meal photo')
+        }
 
         const a = uploadData.analysis ?? {}
         const macroLine = a.total_protein !== undefined

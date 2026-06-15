@@ -176,6 +176,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser(refreshedSession.user)
           setSession(refreshedSession)
           await callWhoopInitialize()
+          try {
+            const refreshedProfile = await fetchProfile(refreshedSession.user.id)
+            setProfile(refreshedProfile)
+          } catch (error) {
+            console.error('Error fetching profile:', error)
+            setProfile(null)
+          }
         }
       }
     })
@@ -190,13 +197,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Initialize WHOOP connection when user signs in
           await callWhoopInitialize()
 
-          // Fetch profile asynchronously when user signs in
-          fetchProfile(session.user.id)
-            .then(setProfile)
-            .catch(error => {
-              console.error('Error fetching profile:', error)
-              setProfile(null)
-            })
+          try {
+            const refreshedProfile = await fetchProfile(session.user.id)
+            setProfile(refreshedProfile)
+          } catch (error) {
+            console.error('Error fetching profile:', error)
+            setProfile(null)
+          }
         } else {
           // Clear profile and WHOOP state when user signs out
           setProfile(null)
@@ -344,6 +351,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return convertedProfile
   }
 
+  const refreshProfile = useCallback(async (): Promise<UserProfile | null> => {
+    if (!user) {
+      return null
+    }
+
+    const refreshedProfile = await fetchProfile(user.id)
+    setProfile(refreshedProfile)
+    return refreshedProfile
+  }, [fetchProfile, user])
+
   // Check if user has completed onboarding
   const hasCompletedOnboarding = profile ? (
     profile.bodyMetrics.height_cm !== undefined &&
@@ -429,6 +446,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signIn,
     signOut,
     updateProfile,
+    refreshProfile,
     hasCompletedOnboarding,
     initializeWhoopConnection,
     refreshWhoopTokens,

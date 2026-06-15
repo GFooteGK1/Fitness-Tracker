@@ -49,6 +49,27 @@ export function getTimezoneOffset(date: Date = new Date()): TimezoneOffset {
   return date.getTimezoneOffset()
 }
 
+/**
+ * Builds a meal timestamp for an optional selected local date.
+ * If a date is provided, the calendar day comes from that date and the
+ * time-of-day comes from `now`; otherwise the current timestamp is used.
+ */
+export function getMealTimestamp(selectedDate?: Date, now: Date = new Date()): UTCTimestamp {
+  if (!selectedDate) {
+    return now.toISOString()
+  }
+
+  return new Date(
+    selectedDate.getFullYear(),
+    selectedDate.getMonth(),
+    selectedDate.getDate(),
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds(),
+    now.getMilliseconds()
+  ).toISOString()
+}
+
 function parseDateParts(dateStr: DateString): { year: number; monthIndex: number; day: number } {
   const [year, month, day] = dateStr.split('-').map(Number)
   return { year, monthIndex: month - 1, day }

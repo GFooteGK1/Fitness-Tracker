@@ -158,6 +158,14 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
     return Math.min((actual / target) * 100, 100)
   }
 
+  const configuredTargets = targets &&
+    targets.targetProtein > 0 &&
+    targets.targetCarbs > 0 &&
+    targets.targetFat > 0 &&
+    targets.targetCalories > 0
+    ? targets
+    : null
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8 sm:py-12">
@@ -203,7 +211,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
       </div>
 
       {/* Daily Totals and Targets - Mobile Optimized */}
-      {targets && (
+      {configuredTargets && (
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Daily Progress</h2>
 
@@ -229,13 +237,13 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Protein</span>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {formatMacro(dailyTotals.protein)} / {formatMacro(targets.targetProtein)}
+                  {formatMacro(dailyTotals.protein)} / {formatMacro(configuredTargets.targetProtein)}
                 </span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                 <div
                   className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(adherence.proteinAdherence)}`}
-                  style={{ width: `${calculateProgress(dailyTotals.protein, targets.targetProtein)}%` }}
+                  style={{ width: `${calculateProgress(dailyTotals.protein, configuredTargets.targetProtein)}%` }}
                 ></div>
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -248,13 +256,13 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Carbs</span>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {formatMacro(dailyTotals.carbs)} / {formatMacro(targets.targetCarbs)}
+                  {formatMacro(dailyTotals.carbs)} / {formatMacro(configuredTargets.targetCarbs)}
                 </span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                 <div
                   className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(adherence.carbsAdherence)}`}
-                  style={{ width: `${calculateProgress(dailyTotals.carbs, targets.targetCarbs)}%` }}
+                  style={{ width: `${calculateProgress(dailyTotals.carbs, configuredTargets.targetCarbs)}%` }}
                 ></div>
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -267,13 +275,13 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Fat</span>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {formatMacro(dailyTotals.fat)} / {formatMacro(targets.targetFat)}
+                  {formatMacro(dailyTotals.fat)} / {formatMacro(configuredTargets.targetFat)}
                 </span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                 <div
                   className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(adherence.fatAdherence)}`}
-                  style={{ width: `${calculateProgress(dailyTotals.fat, targets.targetFat)}%` }}
+                  style={{ width: `${calculateProgress(dailyTotals.fat, configuredTargets.targetFat)}%` }}
                 ></div>
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -286,13 +294,13 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Calories</span>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {formatMacro(dailyTotals.calories, '')} / {formatMacro(targets.targetCalories, '')}
+                  {formatMacro(dailyTotals.calories, '')} / {formatMacro(configuredTargets.targetCalories, '')}
                 </span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                 <div
                   className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(adherence.caloriesAdherence)}`}
-                  style={{ width: `${calculateProgress(dailyTotals.calories, targets.targetCalories)}%` }}
+                  style={{ width: `${calculateProgress(dailyTotals.calories, configuredTargets.targetCalories)}%` }}
                 ></div>
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -304,7 +312,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
       )}
 
       {/* No targets message - Mobile Optimized */}
-      {!targets && (
+      {!configuredTargets && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 sm:p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-start sm:items-center">

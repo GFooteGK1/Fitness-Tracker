@@ -1,6 +1,6 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { CacheFirst, NetworkFirst, Serwist, StaleWhileRevalidate, ExpirationPlugin } from "serwist";
+import { CacheFirst, NetworkOnly, Serwist, StaleWhileRevalidate, ExpirationPlugin } from "serwist";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -44,19 +44,11 @@ const serwist = new Serwist({
         ],
       }),
     },
-    // Network-first for API routes
+    // Network-only for API routes. Authenticated profile, meal, and target
+    // responses must not fall back to stale cached state.
     {
       matcher: ({ url }) => url.pathname.startsWith("/api/"),
-      handler: new NetworkFirst({
-        cacheName: "api-cache",
-        plugins: [
-          new ExpirationPlugin({
-            maxEntries: 32,
-            maxAgeSeconds: 24 * 60 * 60, // 1 day
-          }),
-        ],
-        networkTimeoutSeconds: 10,
-      }),
+      handler: new NetworkOnly(),
     },
     // Stale-while-revalidate for core app pages
     {

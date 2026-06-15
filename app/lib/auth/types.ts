@@ -39,6 +39,7 @@ export interface AuthContextType {
   signIn: (email: string, password: string) => Promise<any>
   signOut: () => Promise<void>
   updateProfile: (updates: Partial<UserProfile>) => Promise<UserProfile>
+  refreshProfile: () => Promise<UserProfile | null>
   hasCompletedOnboarding: boolean
   initializeWhoopConnection: () => Promise<void>
   refreshWhoopTokens: () => Promise<void>

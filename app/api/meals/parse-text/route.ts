@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import Anthropic from '@anthropic-ai/sdk'
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!
-})
+import { getAnthropicClient } from '@/app/lib/anthropic-client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,7 +38,7 @@ export async function POST(request: NextRequest) {
     const systemPrompt = buildMealParserSystemPrompt()
     const userPrompt = buildUserPrompt(text)
 
-    const message = await anthropic.messages.create({
+    const message = await getAnthropicClient().messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 2048,
       temperature: 0, // Deterministic parsing

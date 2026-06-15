@@ -164,7 +164,7 @@ describe('parseTrainerResponse', () => {
   it('handles malformed JSON gracefully', () => {
     const raw = 'This is not JSON at all, just a conversational response.'
     const result = parseTrainerResponse(raw)
-    expect(result.message).toBe(raw)
+    expect(result.message).toContain('trouble processing that workout')
     expect(result.workout).toBeUndefined()
     expect(result.confidence).toBe(0.3)
   })

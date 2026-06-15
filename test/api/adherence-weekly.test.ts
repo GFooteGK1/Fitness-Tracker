@@ -24,6 +24,10 @@ function createMockRequest(weekStart: string): NextRequest {
   return new NextRequest(`http://localhost:3000/api/adherence/weekly?weekStart=${weekStart}`)
 }
 
+function createMockRequestWithTimezone(weekStart: string, tzOffset: number): NextRequest {
+  return new NextRequest(`http://localhost:3000/api/adherence/weekly?weekStart=${weekStart}&tzOffset=${tzOffset}`)
+}
+
 // Helper to create a mock NextRequest without weekStart
 function createMockRequestWithoutWeekStart(): NextRequest {
   return new NextRequest('http://localhost:3000/api/adherence/weekly')
@@ -408,6 +412,20 @@ describe('GET /api/adherence/weekly', () => {
       expect(response.status).toBe(200)
       expect(data.daysElapsed).toBeGreaterThanOrEqual(1)
       expect(data.daysElapsed).toBeLessThanOrEqual(7)
+    })
+
+    it('should calculate days elapsed from the caller timezone', async () => {
+      vi.setSystemTime(new Date('2025-01-20T12:30:00Z'))
+
+      const mockSupabase = createAuthenticatedMockSupabase('test-user-id')
+      vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any)
+
+      const request = createMockRequestWithTimezone('2025-01-20', -720)
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.daysElapsed).toBe(2)
     })
 
     it('should cap days elapsed at 7 for past weeks', async () => {

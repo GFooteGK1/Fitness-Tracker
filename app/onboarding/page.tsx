@@ -11,7 +11,7 @@ import { BodyMetrics, UserPreferences, OnboardingRequest } from '@/app/lib/auth/
 type OnboardingStep = 'welcome' | 'body-metrics' | 'goals' | 'complete'
 
 export default function OnboardingPage() {
-  const { user, profile, loading, updateProfile, hasCompletedOnboarding } = useAuth()
+  const { user, profile, loading, refreshProfile, hasCompletedOnboarding } = useAuth()
   const router = useRouter()
 
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome')
@@ -35,10 +35,10 @@ export default function OnboardingPage() {
 
   // Redirect if onboarding already completed
   useEffect(() => {
-    if (!loading && user && hasCompletedOnboarding) {
+    if (!loading && user && hasCompletedOnboarding && currentStep !== 'complete') {
       router.push('/dashboard')
     }
-  }, [user, loading, hasCompletedOnboarding, router])
+  }, [user, loading, hasCompletedOnboarding, currentStep, router])
 
   // Initialize with existing profile data if available
   useEffect(() => {
@@ -150,6 +150,11 @@ export default function OnboardingPage() {
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to complete onboarding')
+      }
+
+      const refreshedProfile = await refreshProfile()
+      if (!refreshedProfile) {
+        throw new Error('Profile saved, but the app could not refresh your profile state. Please reload and try again.')
       }
 
       setCurrentStep('complete')

@@ -1,5 +1,45 @@
 # Handoff
 
+## Nutrition Logging / Repeated Onboarding Review
+
+Completed on 2026-06-15 after a team-style review of the nutrition, onboarding, and cross-flow state paths.
+
+Root causes found:
+
+- The repeated profile setup flow was caused by stale `AuthContext.profile` state. Onboarding saved to `/api/profile/onboarding`, but the client did not refresh the profile before computing `hasCompletedOnboarding`; sign-in/session-change handling also allowed `loading` to clear before profile fetch completed.
+- Mobile/PWA installs could resurrect stale profile, target, meal, and adherence API responses because the service worker cached all `/api/*` GETs with a one-day NetworkFirst fallback.
+- Nutrition capture paths had drifted: selected-date meal logging duplicated timestamp construction, the V2 photo path did not send a timestamp, and the V2 photo UI could show success even when upload analysis failed.
+- `/api/targets` returns a zero-valued placeholder when no target row exists, but `DailyProgressView` treated any object as configured targets and rendered 0g/0kcal progress instead of the setup prompt.
+- Weekly adherence used the server/runtime date for `daysElapsed`, which could be wrong near midnight for users whose local calendar date differed from the server date.
+- Meal upload routes created the Anthropic client at module load and logged API key metadata. That made configuration behavior brittle and exposed unnecessary key diagnostics in logs.
+
+Implemented cleanup:
+
+- Added `refreshProfile()` to `AuthContext`, awaited profile fetches during auth/session changes, and refreshed profile state immediately after onboarding completion.
+- Prevented the profile settings page from mounting body-metrics forms before the existing profile is loaded, avoiding accidental empty-profile writes.
+- Changed the service worker `/api/*` strategy to `NetworkOnly` so authenticated app state does not fall back to stale cached API responses.
+- Added shared `getMealTimestamp()` and used it from camera capture, text meal entry, and V2 photo upload.
+- Made V2 photo upload send `timestamp`, surface server error text, and treat failed analysis as a failed upload instead of success.
+- Added lazy `getAnthropicClient()` construction and removed API-key metadata logging from meal upload.
+- Made `DailyProgressView` render targets only when all target values are positive.
+- Made weekly adherence GET and POST derive "today" and week start from the caller's explicit timezone offset.
+- Updated one stale trainer-agent malformed-JSON test expectation to match the current parser contract used by the rest of the agent tests.
+
+Verification completed:
+
+```bash
+npm.cmd test -- test/timezone-utils.test.ts test/v2/meal-photo-upload.test.tsx test/api/adherence-weekly.test.ts test/food-tracking/integration.test.ts
+node node_modules\typescript\bin\tsc --noEmit --pretty false
+npm.cmd run lint
+git diff --check
+npm.cmd run build
+npm.cmd test -- test/agents/trainer-agent.test.ts
+```
+
+Results: focused nutrition/date/API suite passed 4 files and 87 tests; trainer-agent file passed 43 tests; TypeScript, lint, diff check, and production build passed. Production build completed successfully and generated all 66 pages/routes.
+
+Full `npm.cmd test` is still not green, but the remaining failures are outside this nutrition/profile cleanup: WHOOP schema migration/identifier tests, agent prompt contract tests, and auth session cleanup service tests. These appear unrelated to the changed nutrition/profile files and should be handled as separate test-suite maintenance.
+
 ## Current Feature State
 
 The agent programming-context feature is implemented through the Manager -> Socius path:

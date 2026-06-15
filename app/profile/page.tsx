@@ -60,6 +60,14 @@ export default function ProfilePage() {
           </div>
 
           {/* Profile Content */}
+          {!profile ? (
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-center py-8">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 dark:border-blue-400 mr-3"></div>
+                <span className="text-gray-600 dark:text-gray-400">Loading profile...</span>
+              </div>
+            </div>
+          ) : (
           <div className="space-y-6">
             {/* Account Information */}
             <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
@@ -162,6 +170,7 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+          )}
         </div>
       </div>
     </ProtectedRoute>

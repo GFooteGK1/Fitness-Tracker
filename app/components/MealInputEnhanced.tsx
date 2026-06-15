@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import MealCameraCapture from './MealCameraCapture'
 import { MealUploadResponse } from '@/app/lib/types/food-tracking'
+import { getMealTimestamp } from '@/app/lib/timezone-utils'
 
 interface MealInputEnhancedProps {
   onUploadComplete?: (response: MealUploadResponse) => void
@@ -133,7 +134,7 @@ export default function MealInputEnhanced({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: mealText,
-          timestamp: new Date().toISOString()
+          timestamp: getMealTimestamp(selectedDate)
         })
       })
 

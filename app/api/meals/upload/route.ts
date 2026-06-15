@@ -1,14 +1,10 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import Anthropic from '@anthropic-ai/sdk'
+import { getAnthropicClient } from '@/app/lib/anthropic-client'
 import { apiError } from '@/app/lib/api-response'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MIN_FILE_SIZE = 1000
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-})
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,15 +27,6 @@ export async function POST(request: NextRequest) {
       console.error('[Upload] ANTHROPIC_API_KEY not configured')
       return apiError('AI service not configured. Please contact support.', 500)
     }
-
-    // Debug: Log API key info (first/last few chars only for security)
-    const apiKey = process.env.ANTHROPIC_API_KEY
-    console.log('[Upload] API Key check:', {
-      length: apiKey.length,
-      prefix: apiKey.substring(0, 10),
-      suffix: apiKey.substring(apiKey.length - 4),
-      hasWhitespace: apiKey !== apiKey.trim()
-    })
 
     const formData = await request.formData()
     const file = formData.get('photo') as File
@@ -86,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const response = await anthropic.messages.create({
+      const response = await getAnthropicClient().messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
         messages: [{
