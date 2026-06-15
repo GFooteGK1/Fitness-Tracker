@@ -1,5 +1,34 @@
 # Handoff
 
+## Nutrition Loading Review Findings
+
+Completed locally on 2026-06-15 after reviewer follow-up found two remaining loading-state risks.
+
+Findings addressed:
+
+- `DailyProgressView` now wraps `/api/meals/daily` and `/api/targets` reads in bounded client-side fetches. A hung daily nutrition request now exits loading and shows retry UI; a hung targets request is logged as non-blocking and still lets daily nutrition content render.
+- `AuthContext.updateProfile()` now clears stale `profileStatus: "error"` and `profileError` after a successful profile update, so a previous profile timeout cannot keep route gates treating the profile as errored after the user saves profile data.
+
+Regression coverage added:
+
+- `test/components/DailyProgressView.test.tsx` verifies daily nutrition timeout retry UI and target-timeout non-blocking render.
+- `test/auth/auth-context.test.tsx` now verifies successful `updateProfile()` moves profile state from error back to ready and restores complete onboarding state.
+
+Verification completed:
+
+```bash
+npm.cmd test -- test/auth/auth-context.test.tsx test/components/DailyProgressView.test.tsx
+npm.cmd test -- test/auth/auth-context.test.tsx test/components/DailyProgressView.test.tsx test/v2/meal-photo-upload.test.tsx test/v2/V2Page.test.tsx
+node node_modules\typescript\bin\tsc --noEmit --pretty false
+npm.cmd run lint
+npm.cmd run build
+npm.cmd test -- --reporter=dot --silent
+```
+
+Results: focused auth/daily-progress tests pass; focused auth/daily/V2 nutrition slice passes 4 files and 17 tests; TypeScript, lint, and production build pass. Full quiet suite exits 0 with 129 files and 1885 tests passed. Production build generated all 66 pages/routes.
+
+Current branch is `main`. Changes are local and uncommitted until Greg asks to commit/push this reviewer-finding patch.
+
 ## Nutrition Loading Follow-Up Fix
 
 Completed locally on 2026-06-15 after nutrition still showed an infinite loading state after the first CTA fix.

@@ -14,6 +14,43 @@ interface DailyProgressViewProps {
   onAddMeal?: () => void
 }
 
+const DAILY_PROGRESS_FETCH_TIMEOUT_MS = process.env.NODE_ENV === 'test' ? 50 : 10000
+
+function isAbortError(error: unknown): boolean {
+  return typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    error.name === 'AbortError'
+}
+
+async function fetchJsonWithTimeout<T>(url: string, timeoutMessage: string): Promise<T> {
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), DAILY_PROGRESS_FETCH_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(url, { signal: controller.signal })
+    if (!response.ok) {
+      let errorMessage = 'Request failed'
+      try {
+        const errorData = await response.json()
+        errorMessage = errorData.error || errorMessage
+      } catch {
+        // Keep the generic message if the server returns a non-JSON error.
+      }
+      throw new Error(errorMessage)
+    }
+
+    return await response.json()
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new Error(timeoutMessage)
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
+}
+
 export default function DailyProgressView({ date, onAddMeal }: DailyProgressViewProps) {
   const { user } = useAuth()
   const [meals, setMeals] = useState<MealEntry[]>([])
@@ -37,11 +74,11 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
     if (!user) return
 
     try {
-      const response = await fetch('/api/targets')
-      if (response.ok) {
-        const targetsData = await response.json()
-        setTargets(targetsData)
-      }
+      const targetsData = await fetchJsonWithTimeout<DailyTargets>(
+        '/api/targets',
+        'Nutrition targets request timed out. Progress targets may be temporarily unavailable.'
+      )
+      setTargets(targetsData)
     } catch (err) {
       console.warn('Failed to fetch targets:', err)
     }
@@ -57,14 +94,10 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
       const dateStr = getLocalDate(date)
       // Send timezone offset so server can query correct UTC range
       const tzOffset = getTimezoneOffset()
-      const response = await fetch(`/api/meals/daily?date=${dateStr}&tzOffset=${tzOffset}`)
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to fetch daily data')
-      }
-
-      const data: DailyMealsResponse = await response.json()
+      const data = await fetchJsonWithTimeout<DailyMealsResponse>(
+        `/api/meals/daily?date=${dateStr}&tzOffset=${tzOffset}`,
+        'Nutrition data request timed out. Please try again.'
+      )
       setMeals(data.meals)
       setDailyTotals(data.dailyTotals)
       setAdherence(data.adherence)

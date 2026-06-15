@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -96,6 +96,16 @@ function OnboardingProtectedProbe() {
   )
 }
 
+function ProfileUpdateProbe() {
+  const { updateProfile } = useAuth()
+
+  return (
+    <button onClick={() => void updateProfile({ bodyMetrics: { height_cm: 183 } })}>
+      Update Profile
+    </button>
+  )
+}
+
 function createSupabaseMock(profileResult: Promise<{ data: typeof completeProfileRow | null; error: null }> = Promise.resolve({
   data: completeProfileRow,
   error: null,
@@ -174,15 +184,26 @@ describe('AuthContext', () => {
   it('unblocks onboarding-gated nutrition routes when profile loading times out', async () => {
     const pendingProfile = new Promise<{ data: typeof completeProfileRow | null; error: null }>(() => {})
     mockCreateClient.mockReturnValue(createSupabaseMock(pendingProfile))
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ initialized: false }), { status: 200 })
-    )
+    const mockFetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url === '/api/whoop/initialize') {
+        return Promise.resolve(new Response(JSON.stringify({ initialized: false }), { status: 200 }))
+      }
+
+      if (url === '/api/profile') {
+        return Promise.resolve(new Response(JSON.stringify({ profile: completeProfileRow }), { status: 200 }))
+      }
+
+      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }))
+    })
     vi.stubGlobal('fetch', mockFetch)
 
     render(
       <AuthProvider>
         <AuthProbe />
         <OnboardingProtectedProbe />
+        <ProfileUpdateProbe />
       </AuthProvider>
     )
 
@@ -195,5 +216,14 @@ describe('AuthContext', () => {
     expect(screen.getByTestId('profile-status')).toHaveTextContent('error')
     expect(screen.getByTestId('nutrition-route')).toHaveTextContent('nutrition-open')
     expect(mockRouterPush).not.toHaveBeenCalledWith('/onboarding')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Update Profile' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('profile-status')).toHaveTextContent('ready')
+    })
+
+    expect(screen.getByTestId('onboarding')).toHaveTextContent('complete')
+    expect(mockFetch).toHaveBeenCalledWith('/api/profile', expect.objectContaining({ method: 'PUT' }))
   })
 })

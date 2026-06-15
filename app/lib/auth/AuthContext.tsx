@@ -414,6 +414,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Update local profile state with the response data
     const convertedProfile = convertDatabaseProfile(updatedProfile)
     setProfile(convertedProfile)
+    setProfileStatus('ready')
+    setProfileError(null)
 
     return convertedProfile
   }
