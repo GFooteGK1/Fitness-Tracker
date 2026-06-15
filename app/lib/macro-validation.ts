@@ -9,15 +9,22 @@ const MAX_CALORIES_PER_MEAL = 5000 // calories
  * Validates Requirements 2.3, 5.3
  */
 export function calculateTotalMacros(items: FoodItem[]): MacroTotals {
-  return items.reduce(
-    (totals, item) => ({
-      protein: Math.round((totals.protein + item.protein) * 100) / 100, // Round to 2 decimal places
-      carbs: Math.round((totals.carbs + item.carbs) * 100) / 100,
-      fat: Math.round((totals.fat + item.fat) * 100) / 100,
-      calories: Math.round((totals.calories + item.calories) * 100) / 100,
+  const totals = items.reduce(
+    (acc, item) => ({
+      protein: acc.protein + item.protein,
+      carbs: acc.carbs + item.carbs,
+      fat: acc.fat + item.fat,
+      calories: acc.calories + item.calories,
     }),
     { protein: 0, carbs: 0, fat: 0, calories: 0 }
   )
+
+  return {
+    protein: Math.round(totals.protein * 100) / 100,
+    carbs: Math.round(totals.carbs * 100) / 100,
+    fat: Math.round(totals.fat * 100) / 100,
+    calories: Math.round(totals.calories * 100) / 100,
+  }
 }
 
 /**

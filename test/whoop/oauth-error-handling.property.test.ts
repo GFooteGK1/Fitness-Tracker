@@ -29,13 +29,13 @@ const OAUTH_ERROR_CODES = [
 type OAuthErrorCode = typeof OAUTH_ERROR_CODES[number];
 
 interface OAuthErrorResponse {
-  error: OAuthErrorCode;
+  error: string;
   errorDescription?: string;
 }
 
 interface ErrorHandlerResult {
   userMessage: string;
-  errorCode: OAuthErrorCode;
+  errorCode: string;
   shouldLog: boolean;
 }
 
@@ -46,18 +46,18 @@ interface ErrorHandlerResult {
 function handleOAuthError(response: OAuthErrorResponse): ErrorHandlerResult {
   const { error, errorDescription } = response;
   
-  const errorMessages: Record<OAuthErrorCode, string> = {
-    'access_denied': 'Authorization was denied. Please try again if you want to connect WHOOP.',
-    'invalid_scope': 'Invalid permissions requested. Please contact support.',
-    'server_error': 'WHOOP service is temporarily unavailable. Please try again later.',
-    'invalid_grant': 'Authorization failed. Please reconnect WHOOP.',
-    'temporarily_unavailable': 'WHOOP service is temporarily unavailable. Please try again later.',
-    'invalid_request': 'Invalid authorization request. Please try again.',
-    'unauthorized_client': 'Application is not authorized. Please contact support.',
-    'unsupported_response_type': 'Invalid authorization configuration. Please contact support.',
-  };
+  const errorMessages = new Map<string, string>([
+    ['access_denied', 'Authorization was denied. Please try again if you want to connect WHOOP.'],
+    ['invalid_scope', 'Invalid permissions requested. Please contact support.'],
+    ['server_error', 'WHOOP service is temporarily unavailable. Please try again later.'],
+    ['invalid_grant', 'Authorization failed. Please reconnect WHOOP.'],
+    ['temporarily_unavailable', 'WHOOP service is temporarily unavailable. Please try again later.'],
+    ['invalid_request', 'Invalid authorization request. Please try again.'],
+    ['unauthorized_client', 'Application is not authorized. Please contact support.'],
+    ['unsupported_response_type', 'Invalid authorization configuration. Please contact support.'],
+  ]);
   
-  const userMessage = errorMessages[error] || `Authorization failed: ${error}`;
+  const userMessage = errorMessages.get(error) ?? `Authorization failed: ${error}`;
   
   return {
     userMessage,

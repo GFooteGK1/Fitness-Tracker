@@ -1,5 +1,39 @@
 # Handoff
 
+## Nutrition CTA Loading Fix
+
+Completed on 2026-06-15 after the "Log nutrition" CTA could navigate to a stuck loading spinner.
+
+Root cause:
+
+- `AuthContext` treated WHOOP connection initialization as part of blocking auth bootstrap. A slow or hung `/api/whoop/initialize` request could keep `loading=true`, so protected routes such as `/food-progress?view=camera` never rendered even though the user session and profile were already enough to show nutrition logging.
+
+Implemented cleanup:
+
+- Moved WHOOP initialization to a background path during startup, session sync, and auth-state changes.
+- Added request-id guarding so stale WHOOP initialization results cannot overwrite cleared state after signout or a newer initialization attempt.
+- Added `test/auth/auth-context.test.tsx`, which keeps `/api/whoop/initialize` pending forever and verifies auth/profile still become ready.
+- Stabilized two full-suite property failures found during verification:
+  - `calculateTotalMacros` now sums raw item values and rounds once at the end, avoiding accumulated per-item rounding drift.
+  - WHOOP OAuth callback error handling now uses a `Map` lookup so prototype keys such as `__proto__` cannot bypass the fallback error message.
+
+Verification completed:
+
+```bash
+npm.cmd test -- test/auth/auth-context.test.tsx
+npm.cmd test -- test/v2/meal-photo-upload.test.tsx test/v2/V2Page.test.tsx
+npm.cmd test -- test/auth/auth-context.test.tsx test/auth/session-cleanup-service.test.ts test/auth/session-cleanup-service.property.test.ts test/auth/session-initialization.property.test.ts
+npm.cmd test -- test/timezone-utils.test.ts test/v2/meal-photo-upload.test.tsx test/api/adherence-weekly.test.ts test/food-tracking/integration.test.ts
+npm.cmd test -- test/real-implementation.test.ts test/whoop/oauth-error-handling.property.test.ts
+npm.cmd test -- --reporter=dot --silent
+npm.cmd run lint
+node node_modules\typescript\bin\tsc --noEmit --pretty false
+npm.cmd run build
+git diff --check
+```
+
+Results: full quiet suite exits 0 with 128 files and 1882 tests passed. Lint, TypeScript noEmit, production build, and diff whitespace check all pass. Production build generated all 66 pages/routes.
+
 ## Full Test-Suite Restoration / Beads Plan
 
 Completed on 2026-06-15 after the follow-up Beads plan for `Fitness-Tracker-fnk`.

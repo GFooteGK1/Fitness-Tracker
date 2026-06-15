@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { User, Session } from '@supabase/auth-helpers-nextjs'
 import { createClient } from './supabase'
 import { AuthContextType, UserProfile, DatabaseUserProfile } from './types'
@@ -29,6 +29,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true)
   const [whoopConnected, setWhoopConnected] = useState(false)
   const [whoopTokensValid, setWhoopTokensValid] = useState(false)
+  const whoopInitRequestIdRef = useRef(0)
   const supabase = useMemo(() => createClient(), [])
 
   // Convert database profile to client profile format
@@ -102,10 +103,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Shared helper: call /api/whoop/initialize and update state
   const callWhoopInitialize = useCallback(async (): Promise<void> => {
+    const requestId = whoopInitRequestIdRef.current + 1
+    whoopInitRequestIdRef.current = requestId
+
     try {
       const response = await fetch('/api/whoop/initialize', { method: 'POST' })
+      if (whoopInitRequestIdRef.current !== requestId) {
+        return
+      }
+
       if (response.ok) {
         const { initialized } = await response.json()
+        if (whoopInitRequestIdRef.current !== requestId) {
+          return
+        }
+
         setWhoopConnected(initialized)
         setWhoopTokensValid(initialized)
         if (initialized) console.log('[AuthContext] WHOOP connection initialized successfully')
@@ -114,6 +126,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setWhoopTokensValid(false)
       }
     } catch (whoopError) {
+      if (whoopInitRequestIdRef.current !== requestId) {
+        return
+      }
+
       authErrorLogger.logTokenOperationFailure({
         operation: 'initializeConnection',
         component: 'AuthContext',
@@ -135,8 +151,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser(initialSession.user)
           setSession(initialSession)
 
-          // Initialize WHOOP connection on startup
-          await callWhoopInitialize()
+          // WHOOP status is supplemental and must not block auth-gated pages.
+          void callWhoopInitialize()
 
           // Fetch user profile asynchronously but ensure loading state is handled
           fetchProfile(initialSession.user.id)
@@ -164,6 +180,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     sessionSyncService.initialize()
     sessionSyncService.onSessionChange(async (event) => {
       if (event === 'logout') {
+        whoopInitRequestIdRef.current += 1
         setUser(null)
         setProfile(null)
         setSession(null)
@@ -175,7 +192,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (refreshedSession?.user) {
           setUser(refreshedSession.user)
           setSession(refreshedSession)
-          await callWhoopInitialize()
+          void callWhoopInitialize()
           try {
             const refreshedProfile = await fetchProfile(refreshedSession.user.id)
             setProfile(refreshedProfile)
@@ -194,8 +211,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(session?.user ?? null)
 
         if (session?.user) {
-          // Initialize WHOOP connection when user signs in
-          await callWhoopInitialize()
+          // Initialize WHOOP status in the background when user signs in.
+          void callWhoopInitialize()
 
           try {
             const refreshedProfile = await fetchProfile(session.user.id)
@@ -206,6 +223,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         } else {
           // Clear profile and WHOOP state when user signs out
+          whoopInitRequestIdRef.current += 1
           setProfile(null)
           setWhoopConnected(false)
           setWhoopTokensValid(false)
@@ -278,6 +296,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(null)
       setProfile(null)
       setSession(null)
+      whoopInitRequestIdRef.current += 1
       setWhoopConnected(false)
       setWhoopTokensValid(false)
 
@@ -296,6 +315,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(null)
       setProfile(null)
       setSession(null)
+      whoopInitRequestIdRef.current += 1
       setWhoopConnected(false)
       setWhoopTokensValid(false)
 

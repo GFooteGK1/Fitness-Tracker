@@ -47,14 +47,14 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('[WHOOP Callback] OAuth error:', error, errorDescription);
       
-      const errorMessages: Record<string, string> = {
-        'access_denied': 'Authorization was denied. Please try again if you want to connect WHOOP.',
-        'invalid_scope': 'Invalid permissions requested. Please contact support.',
-        'server_error': 'WHOOP service is temporarily unavailable. Please try again later.',
-        'invalid_grant': 'Authorization failed. Please reconnect WHOOP.',
-      };
+      const errorMessages = new Map<string, string>([
+        ['access_denied', 'Authorization was denied. Please try again if you want to connect WHOOP.'],
+        ['invalid_scope', 'Invalid permissions requested. Please contact support.'],
+        ['server_error', 'WHOOP service is temporarily unavailable. Please try again later.'],
+        ['invalid_grant', 'Authorization failed. Please reconnect WHOOP.'],
+      ]);
       
-      const userMessage = errorMessages[error] || `Authorization failed: ${error}`;
+      const userMessage = errorMessages.get(error) ?? `Authorization failed: ${error}`;
       
       return NextResponse.redirect(
         new URL(`/profile?error=${encodeURIComponent(userMessage)}`, request.url)
