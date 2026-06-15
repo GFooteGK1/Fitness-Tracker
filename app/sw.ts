@@ -1,6 +1,6 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { CacheFirst, NetworkOnly, Serwist, StaleWhileRevalidate, ExpirationPlugin } from "serwist";
+import { CacheFirst, NetworkOnly, Serwist, ExpirationPlugin } from "serwist";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -50,7 +50,8 @@ const serwist = new Serwist({
       matcher: ({ url }) => url.pathname.startsWith("/api/"),
       handler: new NetworkOnly(),
     },
-    // Stale-while-revalidate for core app pages
+    // Network-only for authenticated app pages. Serving stale page shells can
+    // preserve old auth/profile code after a deploy and trap users on spinners.
     {
       matcher: ({ request, url }) => {
         return request.mode === "navigate" && (
@@ -60,15 +61,7 @@ const serwist = new Serwist({
           url.pathname === "/food-progress"
         );
       },
-      handler: new StaleWhileRevalidate({
-        cacheName: "app-pages",
-        plugins: [
-          new ExpirationPlugin({
-            maxEntries: 16,
-            maxAgeSeconds: 24 * 60 * 60, // 1 day
-          }),
-        ],
-      }),
+      handler: new NetworkOnly(),
     },
     // Default cache rules from serwist/next
     ...defaultCache,

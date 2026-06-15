@@ -31,6 +31,8 @@ export interface UserProfile {
 export interface AuthContextType {
   user: User | null
   profile: UserProfile | null
+  profileStatus: 'idle' | 'loading' | 'ready' | 'error'
+  profileError: string | null
   session: Session | null
   loading: boolean
   whoopConnected: boolean

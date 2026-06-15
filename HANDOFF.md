@@ -1,5 +1,40 @@
 # Handoff
 
+## Nutrition Loading Follow-Up Fix
+
+Completed locally on 2026-06-15 after nutrition still showed an infinite loading state after the first CTA fix.
+
+Root causes found:
+
+- `AuthContext.loading` was still coupled to profile loading. The prior regression only proved a hung `/api/whoop/initialize` request could not block auth; a hung or very slow `user_profiles` lookup could still keep `loading=true` forever for protected nutrition routes.
+- `ProtectedRoute requireOnboarding` redirected to onboarding whenever `hasCompletedOnboarding` was false, even if the app could not verify the profile because profile loading had errored or timed out.
+- The service worker still served `/food-progress` navigations through a one-day `StaleWhileRevalidate` app-page cache. That could preserve an old nutrition page shell after a deploy, making a pushed fix look like it did not land on mobile/PWA installs.
+
+Implemented cleanup:
+
+- Added explicit `profileStatus` and `profileError` to `AuthContext`.
+- Added bounded, request-guarded profile loading. A slow profile lookup now times out after 5 seconds in production, unblocks auth-gated pages, records `profileStatus: "error"`, and still lets a late successful profile response update state if it arrives.
+- Updated `ProtectedRoute` so onboarding-required routes only redirect to `/onboarding` after a successful profile read proves onboarding is incomplete. Profile-load errors fail open for authenticated users instead of trapping nutrition behind a spinner.
+- Updated sign-in/sign-up redirects to avoid sending already-authenticated users back through setup while profile status is still loading or errored.
+- Changed service-worker handling for authenticated app navigations (`/`, `/dashboard`, `/log`, `/food-progress`) to `NetworkOnly` so stale page shells cannot preserve old auth/profile code after deploy.
+- Added `test/auth/auth-context.test.tsx` coverage for a never-resolving profile lookup: `/food-progress`-style onboarding-gated content renders after the profile timeout and does not redirect to onboarding.
+
+Verification completed:
+
+```bash
+npm.cmd test -- test/auth/auth-context.test.tsx
+npm.cmd test -- test/auth/auth-context.test.tsx test/v2/meal-photo-upload.test.tsx test/v2/V2Page.test.tsx
+node node_modules\typescript\bin\tsc --noEmit --pretty false
+npm.cmd run lint
+npm.cmd run build
+npm.cmd test -- --reporter=dot --silent
+git diff --check
+```
+
+Results: focused auth/nutrition tests pass; TypeScript, lint, production build, and diff whitespace check pass. Full quiet suite exits 0 with 128 files and 1883 tests passed. Build generated all 66 pages/routes and bundled the updated `/sw.js`.
+
+Current branch is `main`. Changes are local and uncommitted until Greg asks to commit/push this follow-up patch.
+
 ## Nutrition CTA Loading Fix
 
 Completed on 2026-06-15 after the "Log nutrition" CTA could navigate to a stuck loading spinner.

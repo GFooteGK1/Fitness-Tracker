@@ -9,6 +9,7 @@ import { sessionSyncService } from './session-sync-service'
 import { authErrorLogger } from './auth-error-logger'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const PROFILE_FETCH_TIMEOUT_MS = process.env.NODE_ENV === 'test' ? 50 : 5000
 
 export function useAuth() {
   const context = useContext(AuthContext)
@@ -25,11 +26,14 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [profileStatus, setProfileStatus] = useState<AuthContextType['profileStatus']>('idle')
+  const [profileError, setProfileError] = useState<string | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [whoopConnected, setWhoopConnected] = useState(false)
   const [whoopTokensValid, setWhoopTokensValid] = useState(false)
   const whoopInitRequestIdRef = useRef(0)
+  const profileRequestIdRef = useRef(0)
   const supabase = useMemo(() => createClient(), [])
 
   // Convert database profile to client profile format
@@ -83,23 +87,70 @@ export function AuthProvider({ children }: AuthProviderProps) {
             .single()
 
           if (createError) {
-            console.error('Error creating profile:', createError)
-            return null
+            throw createError
           }
 
           return convertDatabaseProfile(newProfile)
         } else {
-          console.error('Error fetching profile:', error)
-          return null
+          throw error
         }
       }
 
       return convertDatabaseProfile(data)
     } catch (error) {
       console.error('Error in fetchProfile:', error)
-      return null
+      throw error
     }
   }, [convertDatabaseProfile, supabase])
+
+  const loadProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
+    const requestId = profileRequestIdRef.current + 1
+    profileRequestIdRef.current = requestId
+    setProfileStatus('loading')
+    setProfileError(null)
+
+    const profilePromise = fetchProfile(userId)
+
+    void profilePromise
+      .then((loadedProfile) => {
+        if (profileRequestIdRef.current !== requestId) {
+          return
+        }
+
+        setProfile(loadedProfile)
+        setProfileStatus('ready')
+        setProfileError(null)
+      })
+      .catch((error) => {
+        if (profileRequestIdRef.current !== requestId) {
+          return
+        }
+
+        const message = error instanceof Error ? error.message : 'Failed to load profile'
+        setProfile(null)
+        setProfileStatus('error')
+        setProfileError(message)
+      })
+
+    const timeoutPromise = new Promise<null>((resolve) => {
+      window.setTimeout(() => resolve(null), PROFILE_FETCH_TIMEOUT_MS)
+    })
+
+    let loadedProfile: UserProfile | null = null
+    try {
+      loadedProfile = await Promise.race([profilePromise, timeoutPromise])
+    } catch {
+      return null
+    }
+
+    if (loadedProfile === null && profileRequestIdRef.current === requestId) {
+      setProfile(null)
+      setProfileStatus('error')
+      setProfileError('Profile lookup timed out')
+    }
+
+    return loadedProfile
+  }, [fetchProfile])
 
   // Shared helper: call /api/whoop/initialize and update state
   const callWhoopInitialize = useCallback(async (): Promise<void> => {
@@ -154,18 +205,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // WHOOP status is supplemental and must not block auth-gated pages.
           void callWhoopInitialize()
 
-          // Fetch user profile asynchronously but ensure loading state is handled
-          fetchProfile(initialSession.user.id)
-            .then(setProfile)
-            .catch(error => {
-              console.error('Error fetching profile:', error)
-              setProfile(null)
-            })
-            .finally(() => {
-              setLoading(false)
-            })
+          await loadProfile(initialSession.user.id)
+          setLoading(false)
         } else {
           // No session, set loading to false immediately
+          profileRequestIdRef.current += 1
+          setProfile(null)
+          setProfileStatus('idle')
+          setProfileError(null)
           setLoading(false)
         }
       } catch (error) {
@@ -181,8 +228,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     sessionSyncService.onSessionChange(async (event) => {
       if (event === 'logout') {
         whoopInitRequestIdRef.current += 1
+        profileRequestIdRef.current += 1
         setUser(null)
         setProfile(null)
+        setProfileStatus('idle')
+        setProfileError(null)
         setSession(null)
         setWhoopConnected(false)
         setWhoopTokensValid(false)
@@ -193,13 +243,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser(refreshedSession.user)
           setSession(refreshedSession)
           void callWhoopInitialize()
-          try {
-            const refreshedProfile = await fetchProfile(refreshedSession.user.id)
-            setProfile(refreshedProfile)
-          } catch (error) {
-            console.error('Error fetching profile:', error)
-            setProfile(null)
-          }
+          await loadProfile(refreshedSession.user.id)
         }
       }
     })
@@ -214,17 +258,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Initialize WHOOP status in the background when user signs in.
           void callWhoopInitialize()
 
-          try {
-            const refreshedProfile = await fetchProfile(session.user.id)
-            setProfile(refreshedProfile)
-          } catch (error) {
-            console.error('Error fetching profile:', error)
-            setProfile(null)
-          }
+          await loadProfile(session.user.id)
         } else {
           // Clear profile and WHOOP state when user signs out
           whoopInitRequestIdRef.current += 1
+          profileRequestIdRef.current += 1
           setProfile(null)
+          setProfileStatus('idle')
+          setProfileError(null)
           setWhoopConnected(false)
           setWhoopTokensValid(false)
         }
@@ -237,7 +278,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       subscription.unsubscribe()
       sessionSyncService.cleanup()
     }
-  }, [callWhoopInitialize, fetchProfile, supabase])
+  }, [callWhoopInitialize, loadProfile, supabase])
 
   // Sign up function
   const signUp = async (email: string, password: string) => {
@@ -295,8 +336,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Reset AuthContext state
       setUser(null)
       setProfile(null)
+      setProfileStatus('idle')
+      setProfileError(null)
       setSession(null)
       whoopInitRequestIdRef.current += 1
+      profileRequestIdRef.current += 1
       setWhoopConnected(false)
       setWhoopTokensValid(false)
 
@@ -314,8 +358,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Even if cleanup fails, reset state and redirect
       setUser(null)
       setProfile(null)
+      setProfileStatus('idle')
+      setProfileError(null)
       setSession(null)
       whoopInitRequestIdRef.current += 1
+      profileRequestIdRef.current += 1
       setWhoopConnected(false)
       setWhoopTokensValid(false)
 
@@ -376,10 +423,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return null
     }
 
-    const refreshedProfile = await fetchProfile(user.id)
-    setProfile(refreshedProfile)
-    return refreshedProfile
-  }, [fetchProfile, user])
+    return loadProfile(user.id)
+  }, [loadProfile, user])
 
   // Check if user has completed onboarding
   const hasCompletedOnboarding = profile ? (
@@ -458,6 +503,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextType = {
     user,
     profile,
+    profileStatus,
+    profileError,
     session,
     loading,
     whoopConnected,

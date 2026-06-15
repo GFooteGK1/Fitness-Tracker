@@ -7,19 +7,19 @@ import AuthLayout from '@/app/components/auth/AuthLayout'
 import SignUpForm from '@/app/components/auth/SignUpForm'
 
 export default function SignUpPage() {
-  const { user, loading, hasCompletedOnboarding } = useAuth()
+  const { user, loading, hasCompletedOnboarding, profileStatus } = useAuth()
   const router = useRouter()
 
   // Redirect authenticated users
   useEffect(() => {
     if (!loading && user) {
-      if (hasCompletedOnboarding) {
-        router.push('/dashboard')
-      } else {
+      if (profileStatus === 'ready' && !hasCompletedOnboarding) {
         router.push('/onboarding')
+      } else if (profileStatus !== 'loading') {
+        router.push('/dashboard')
       }
     }
-  }, [user, loading, hasCompletedOnboarding, router])
+  }, [user, loading, hasCompletedOnboarding, profileStatus, router])
 
   // Show loading while checking auth state
   if (loading) {
