@@ -43,3 +43,9 @@ public/sw.js.map
 public/swe-worker-*.js
 public/workbox-*.js
 public/workbox-*.js.map
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/

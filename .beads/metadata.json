@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "Fitness_Tracker",
+  "project_id": "9750cc74-fd27-468d-82de-b12b7b518826"
+}
