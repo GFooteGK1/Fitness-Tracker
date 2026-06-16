@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { MealEntry, DailyMealsResponse, DailyTargets } from '@/app/lib/types/food-tracking'
 import { calculateAdherenceStatus, calculateDailyTotals, isPhotoUrlValid } from '@/app/lib/adherence-calculator'
+import { calculateTargetCalories } from '@/app/lib/target-management'
 import { localDateToUTCStart, localDateToUTCEnd, isValidTimezoneOffset } from '@/app/lib/timezone-utils'
 
 export async function GET(request: Request) {
@@ -176,9 +177,9 @@ export async function POST(request: Request) {
       )
     }
 
-    const { targetProtein, targetCarbs, targetFat, targetCalories, tolerancePct } = await request.json()
+    const { targetProtein, targetCarbs, targetFat, tolerancePct } = await request.json()
 
-    const requiredTargets = { targetProtein, targetCarbs, targetFat, targetCalories }
+    const requiredTargets = { targetProtein, targetCarbs, targetFat }
     for (const [key, value] of Object.entries(requiredTargets)) {
       if (typeof value !== 'number' || value <= 0) {
         return NextResponse.json(
@@ -196,6 +197,8 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
+
+    const targetCalories = calculateTargetCalories(targetProtein, targetCarbs, targetFat)
 
     // Upsert daily targets (insert or update if exists)
     const { error: upsertError } = await supabase

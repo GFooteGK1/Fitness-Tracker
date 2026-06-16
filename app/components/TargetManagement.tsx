@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { DailyTargets } from '@/app/lib/types/food-tracking'
 import { useAuth } from '@/app/lib/auth/AuthContext'
+import { calculateTargetCalories } from '@/app/lib/target-management'
 
 interface TargetManagementProps {
   onTargetsUpdated?: (targets: DailyTargets) => void
@@ -39,12 +40,13 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
       }
 
       const data: DailyTargets = await response.json()
+      const targetCalories = calculateTargetCalories(data.targetProtein, data.targetCarbs, data.targetFat)
       setTargets(data)
       setFormData({
         targetProtein: data.targetProtein,
         targetCarbs: data.targetCarbs,
         targetFat: data.targetFat,
-        targetCalories: data.targetCalories,
+        targetCalories,
         tolerancePct: data.tolerancePct
       })
     } catch (err) {
@@ -67,12 +69,21 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
       setSaving(true)
       setError('')
 
+      const calculatedCalories = calculateTargetCalories(
+        formData.targetProtein,
+        formData.targetCarbs,
+        formData.targetFat
+      )
+
       const response = await fetch('/api/targets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          targetCalories: calculatedCalories
+        }),
       })
 
       if (!response.ok) {
@@ -95,11 +106,12 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
 
   const handleCancel = () => {
     if (targets) {
+      const targetCalories = calculateTargetCalories(targets.targetProtein, targets.targetCarbs, targets.targetFat)
       setFormData({
         targetProtein: targets.targetProtein,
         targetCarbs: targets.targetCarbs,
         targetFat: targets.targetFat,
-        targetCalories: targets.targetCalories,
+        targetCalories,
         tolerancePct: targets.tolerancePct
       })
     }
@@ -108,7 +120,19 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
   }
 
   const handleInputChange = (field: keyof typeof formData, value: number) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    setFormData(prev => {
+      const next = { ...prev, [field]: value }
+
+      if (field === 'targetProtein' || field === 'targetCarbs' || field === 'targetFat') {
+        next.targetCalories = calculateTargetCalories(
+          next.targetProtein,
+          next.targetCarbs,
+          next.targetFat
+        )
+      }
+
+      return next
+    })
   }
 
   const formatMacro = (value: number, unit: string = 'g') => {
@@ -185,7 +209,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
           </div>
           <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {formatMacro(targets!.targetCalories, '')}
+              {formatMacro(calculateTargetCalories(targets!.targetProtein, targets!.targetCarbs, targets!.targetFat), '')}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Calories</div>
           </div>
@@ -247,10 +271,11 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
               <input
                 type="number"
                 min="0"
-                step="1"
+                step="0.1"
                 value={formData.targetCalories}
-                onChange={(e) => handleInputChange('targetCalories', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target"
+                readOnly
+                aria-readonly="true"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-gray-100 text-base touch-target"
                 placeholder="2000"
               />
             </div>

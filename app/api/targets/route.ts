@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '../../lib/auth/supabase-server'
 import { DailyTargets, DailyTargetsInsert } from '../../lib/types/food-tracking'
+import { calculateTargetCalories } from '../../lib/target-management'
 
 /**
  * GET /api/targets - Retrieve user's daily targets
@@ -95,21 +96,30 @@ export async function POST(request: NextRequest) {
       targetProtein,
       targetCarbs,
       targetFat,
-      targetCalories,
       tolerancePct = 5.0
     } = body
 
     // Validate required fields
     if (targetProtein === undefined || targetCarbs === undefined || 
-        targetFat === undefined || targetCalories === undefined) {
+        targetFat === undefined) {
       return NextResponse.json(
-        { error: 'Missing required fields: targetProtein, targetCarbs, targetFat, targetCalories' },
+        { error: 'Missing required fields: targetProtein, targetCarbs, targetFat' },
         { status: 400 }
       )
     }
 
     // Validate positive target values (Requirement 4.5)
-    if (targetProtein <= 0 || targetCarbs <= 0 || targetFat <= 0 || targetCalories <= 0) {
+    if (
+      typeof targetProtein !== 'number' ||
+      typeof targetCarbs !== 'number' ||
+      typeof targetFat !== 'number' ||
+      !Number.isFinite(targetProtein) ||
+      !Number.isFinite(targetCarbs) ||
+      !Number.isFinite(targetFat) ||
+      targetProtein <= 0 ||
+      targetCarbs <= 0 ||
+      targetFat <= 0
+    ) {
       return NextResponse.json(
         { error: 'All target values must be positive numbers' },
         { status: 400 }
@@ -117,12 +127,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate tolerance percentage
-    if (tolerancePct < 0 || tolerancePct > 100) {
+    if (typeof tolerancePct !== 'number' || !Number.isFinite(tolerancePct) || tolerancePct < 0 || tolerancePct > 100) {
       return NextResponse.json(
         { error: 'Tolerance percentage must be between 0 and 100' },
         { status: 400 }
       )
     }
+
+    const targetCalories = calculateTargetCalories(targetProtein, targetCarbs, targetFat)
 
     // Prepare data for database insert/update
     const targetsData: DailyTargetsInsert = {
@@ -192,15 +204,15 @@ export async function PUT(request: NextRequest) {
       targetProtein,
       targetCarbs,
       targetFat,
-      targetCalories,
       tolerancePct
     } = body
 
     // Build update object with only provided fields
     const updateData: Partial<DailyTargetsInsert> = {}
+    const hasMacroUpdate = targetProtein !== undefined || targetCarbs !== undefined || targetFat !== undefined
     
     if (targetProtein !== undefined) {
-      if (targetProtein <= 0) {
+      if (typeof targetProtein !== 'number' || !Number.isFinite(targetProtein) || targetProtein <= 0) {
         return NextResponse.json(
           { error: 'Target protein must be a positive number' },
           { status: 400 }
@@ -210,7 +222,7 @@ export async function PUT(request: NextRequest) {
     }
 
     if (targetCarbs !== undefined) {
-      if (targetCarbs <= 0) {
+      if (typeof targetCarbs !== 'number' || !Number.isFinite(targetCarbs) || targetCarbs <= 0) {
         return NextResponse.json(
           { error: 'Target carbs must be a positive number' },
           { status: 400 }
@@ -220,7 +232,7 @@ export async function PUT(request: NextRequest) {
     }
 
     if (targetFat !== undefined) {
-      if (targetFat <= 0) {
+      if (typeof targetFat !== 'number' || !Number.isFinite(targetFat) || targetFat <= 0) {
         return NextResponse.json(
           { error: 'Target fat must be a positive number' },
           { status: 400 }
@@ -229,24 +241,42 @@ export async function PUT(request: NextRequest) {
       updateData.target_fat = targetFat
     }
 
-    if (targetCalories !== undefined) {
-      if (targetCalories <= 0) {
-        return NextResponse.json(
-          { error: 'Target calories must be a positive number' },
-          { status: 400 }
-        )
-      }
-      updateData.target_calories = targetCalories
-    }
-
     if (tolerancePct !== undefined) {
-      if (tolerancePct < 0 || tolerancePct > 100) {
+      if (typeof tolerancePct !== 'number' || !Number.isFinite(tolerancePct) || tolerancePct < 0 || tolerancePct > 100) {
         return NextResponse.json(
           { error: 'Tolerance percentage must be between 0 and 100' },
           { status: 400 }
         )
       }
       updateData.tolerance_pct = tolerancePct
+    }
+
+    if (hasMacroUpdate) {
+      let protein = updateData.target_protein
+      let carbs = updateData.target_carbs
+      let fat = updateData.target_fat
+
+      if (protein === undefined || carbs === undefined || fat === undefined) {
+        const { data: existingTargets, error: existingTargetsError } = await supabase
+          .from('daily_targets')
+          .select('target_protein, target_carbs, target_fat')
+          .eq('user_id', user.id)
+          .single()
+
+        if (existingTargetsError) {
+          console.error('Error fetching existing daily targets for calorie calculation:', existingTargetsError)
+          return NextResponse.json(
+            { error: 'Failed to update daily targets' },
+            { status: 500 }
+          )
+        }
+
+        protein = protein ?? parseFloat(existingTargets.target_protein)
+        carbs = carbs ?? parseFloat(existingTargets.target_carbs)
+        fat = fat ?? parseFloat(existingTargets.target_fat)
+      }
+
+      updateData.target_calories = calculateTargetCalories(protein, carbs, fat)
     }
 
     if (Object.keys(updateData).length === 0) {

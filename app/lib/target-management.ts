@@ -7,6 +7,14 @@
 import { DailyTargets, DailyTargetsInsert, ValidationResult } from './types/food-tracking'
 
 /**
+ * Calculates calories from macro grams.
+ */
+export function calculateTargetCalories(targetProtein: number, targetCarbs: number, targetFat: number): number {
+  const calories = (targetProtein * 4) + (targetCarbs * 4) + (targetFat * 9)
+  return Math.round(calories * 10) / 10
+}
+
+/**
  * Validates daily target values
  * Requirements: 4.5 - Validate positive target values
  */
@@ -94,7 +102,7 @@ export function targetsToInsert(targets: DailyTargets): DailyTargetsInsert {
     target_protein: targets.targetProtein,
     target_carbs: targets.targetCarbs,
     target_fat: targets.targetFat,
-    target_calories: targets.targetCalories,
+    target_calories: calculateTargetCalories(targets.targetProtein, targets.targetCarbs, targets.targetFat),
     tolerance_pct: targets.tolerancePct
   }
 }
@@ -153,11 +161,15 @@ export function calculateRecommendedTargets(
   const targetFat = targetCalories * 0.25 / 9 // 25% of calories from fat
   const targetCarbs = (targetCalories - (targetProtein * 4) - (targetFat * 9)) / 4
 
+  const roundedProtein = Math.round(targetProtein)
+  const roundedCarbs = Math.round(targetCarbs)
+  const roundedFat = Math.round(targetFat)
+
   return {
-    targetProtein: Math.round(targetProtein),
-    targetCarbs: Math.round(targetCarbs),
-    targetFat: Math.round(targetFat),
-    targetCalories: Math.round(targetCalories),
+    targetProtein: roundedProtein,
+    targetCarbs: roundedCarbs,
+    targetFat: roundedFat,
+    targetCalories: calculateTargetCalories(roundedProtein, roundedCarbs, roundedFat),
     tolerancePct: 5.0
   }
 }

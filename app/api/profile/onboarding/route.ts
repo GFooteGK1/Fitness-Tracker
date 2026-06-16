@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
+import { calculateTargetCalories } from '@/app/lib/target-management'
 
 export async function POST(request: NextRequest) {
   try {
@@ -129,15 +130,27 @@ export async function POST(request: NextRequest) {
     // If initial targets are provided, create them
     let targets = null
     if (initial_targets) {
-      const { protein, carbs, fat, calories } = initial_targets
+      const { protein, carbs, fat } = initial_targets
       
       // Validate targets
-      if (protein < 0 || carbs < 0 || fat < 0 || calories < 0) {
+      if (
+        typeof protein !== 'number' ||
+        typeof carbs !== 'number' ||
+        typeof fat !== 'number' ||
+        !Number.isFinite(protein) ||
+        !Number.isFinite(carbs) ||
+        !Number.isFinite(fat) ||
+        protein <= 0 ||
+        carbs <= 0 ||
+        fat <= 0
+      ) {
         return NextResponse.json(
           { error: 'All target values must be positive' },
           { status: 400 }
         )
       }
+
+      const calories = calculateTargetCalories(protein, carbs, fat)
 
       // Create or update daily targets
       const { data: targetsData, error: targetsError } = await supabase
