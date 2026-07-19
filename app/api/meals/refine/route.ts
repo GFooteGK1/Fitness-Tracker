@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete } from '@/app/lib/llm/client'
+import { extractJson } from '@/app/lib/llm/json'
 import { FoodItem, PortionSpec } from '@/app/lib/types/food-tracking'
 
 // Convert portion spec to human-readable description for Claude
@@ -66,9 +67,11 @@ export async function POST(request: NextRequest) {
 
     console.log('[Refine] Calling Claude for macro refinement...')
 
-    const response = await getAnthropicClient().messages.create({
-      model: getAnthropicModel('nutrition'),
-      max_tokens: 1024,
+    const llmResult = await complete({
+      purpose: 'nutrition',
+      maxTokens: 1024,
+      temperature: 0,
+      reasoningEffort: 'low',
       messages: [{
         role: 'user',
         content: `Recalculate the nutritional macros for these food items based on the specified portion sizes.
@@ -92,24 +95,14 @@ Use accurate nutritional data. Round macros to 1 decimal place. Confidence shoul
       }]
     })
 
-    let parsed: {
+    const parsed = extractJson<{
       items?: unknown
       total_protein?: number
       total_carbs?: number
       total_fat?: number
       total_calories?: number
       confidence?: number
-    } | null = null
-
-    try {
-      const text = response.content[0].type === 'text' ? response.content[0].text : ''
-      const match = text.match(/\{[\s\S]*\}/)
-      if (match) {
-        parsed = JSON.parse(match[0])
-      }
-    } catch (e) {
-      console.error('[Refine] Parse error:', e)
-    }
+    }>(llmResult.text)
 
     // A malformed or empty model reply must NOT overwrite the meal: the old
     // code initialized totals to 0 and wrote unconditionally, so a bad parse

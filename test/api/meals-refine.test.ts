@@ -14,14 +14,11 @@ vi.mock('../../app/lib/auth/supabase-server', () => ({
   createServerClient: vi.fn(),
 }))
 
-vi.mock('../../app/lib/anthropic-client', () => ({
-  getAnthropicClient: vi.fn(),
-  getAnthropicModel: vi.fn(() => 'claude-test-model'),
-}))
+vi.mock('../../app/lib/llm/client', () => ({ complete: vi.fn() }))
 
 import { POST } from '../../app/api/meals/refine/route'
 import { createServerClient } from '../../app/lib/auth/supabase-server'
-import { getAnthropicClient } from '../../app/lib/anthropic-client'
+import { complete } from '../../app/lib/llm/client'
 
 // Builds a Supabase mock whose meals.update chain is a spy we can assert on.
 function supabaseWithUpdateSpy(userId = 'user-1') {
@@ -49,9 +46,14 @@ function anonSupabase() {
 }
 
 function mockModelText(text: string) {
-  const createSpy = vi.fn().mockResolvedValue({ content: [{ type: 'text', text }] })
-  vi.mocked(getAnthropicClient).mockReturnValue({ messages: { create: createSpy } } as any)
-  return createSpy
+  vi.mocked(complete).mockResolvedValue({
+    text,
+    toolCalls: [],
+    usage: { input: 0, output: 0 },
+    stopReason: 'stop',
+    model: 'test-model',
+    provider: 'anthropic',
+  })
 }
 
 const itemsWithPortion = [
