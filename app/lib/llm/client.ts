@@ -8,7 +8,9 @@
  * user-facing prose, terra for the agent loop. Several are eval-gated before
  * final lock (Phase 4) and can be overridden per purpose via env without code.
  */
-import type { LlmProviderName, ModelPurpose } from './types'
+import type { LlmProvider, LlmProviderName, LlmRequest, LlmResult, ModelPurpose } from './types'
+import { anthropicProvider } from './providers/anthropic'
+import { openaiProvider } from './providers/openai'
 
 /** Known-bad model IDs that must never be used even if set in env. */
 const RETIRED_OR_STALE_MODEL_IDS = new Set([
@@ -103,4 +105,37 @@ export function getModel(
   }
 
   return DEFAULT_MODELS[provider][purpose]
+}
+
+const PROVIDERS: Record<LlmProviderName, LlmProvider> = {
+  anthropic: anthropicProvider,
+  openai: openaiProvider,
+}
+
+export function getProvider(name: LlmProviderName = getActiveProviderName()): LlmProvider {
+  return PROVIDERS[name]
+}
+
+/**
+ * The seam entry point for call sites: resolves the active provider + the
+ * per-purpose model, runs the call, and emits one structured usage line
+ * (the A/B instrument for comparing providers/models during the migration).
+ */
+export async function complete(req: LlmRequest): Promise<LlmResult> {
+  const providerName = getActiveProviderName()
+  const model = getModel(req.purpose, providerName)
+  const start = Date.now()
+  const result = await PROVIDERS[providerName].chat(req, model)
+  console.log(
+    '[llm] ' +
+      JSON.stringify({
+        purpose: req.purpose,
+        provider: providerName,
+        model,
+        input_tokens: result.usage.input,
+        output_tokens: result.usage.output,
+        duration_ms: Date.now() - start,
+      })
+  )
+  return result
 }

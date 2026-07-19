@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete } from '@/app/lib/llm/client'
+import { extractJson } from '@/app/lib/llm/json'
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,29 +39,29 @@ export async function POST(request: NextRequest) {
     const systemPrompt = buildMealParserSystemPrompt()
     const userPrompt = buildUserPrompt(text)
 
-    const message = await getAnthropicClient().messages.create({
-      model: getAnthropicModel('nutrition'),
-      max_tokens: 2048,
-      temperature: 0, // Deterministic parsing
+    const result = await complete({
+      purpose: 'nutrition',
       system: systemPrompt,
-      messages: [{
-        role: 'user',
-        content: userPrompt
-      }]
+      messages: [{ role: 'user', content: userPrompt }],
+      maxTokens: 2048,
+      temperature: 0, // Deterministic parsing
+      reasoningEffort: 'low', // extraction: keep reasoning cheap on GPT-5.x
     })
 
-    // Extract and parse JSON response
-    let responseText = message.content[0].type === 'text' ? message.content[0].text : ''
-    
-    // Clean markdown code blocks if present
-    responseText = responseText.trim()
-    if (responseText.startsWith('```json')) {
-      responseText = responseText.replace(/^```json\s*/, '').replace(/\s*```$/, '')
-    } else if (responseText.startsWith('```')) {
-      responseText = responseText.replace(/^```\s*/, '').replace(/\s*```$/, '')
-    }
+    // Extract JSON from the model response (fence-strip + first-object fallback).
+    const parsed = extractJson<{
+      items?: unknown[]
+      totals?: { protein: number; carbs: number; fat: number; calories: number }
+      confidence?: number
+    }>(result.text)
 
-    const parsed = JSON.parse(responseText)
+    if (!parsed) {
+      // Unparseable model output — same failure class as the old JSON.parse throw.
+      return NextResponse.json(
+        { error: getParseTextUserError(new Error('Unparseable AI response')) },
+        { status: 500 }
+      )
+    }
 
     console.log('[Parse Text] Parsed result:', {
       itemCount: parsed.items?.length,
@@ -73,6 +74,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Could not identify any food items. Please be more specific.' },
         { status: 400 }
+      )
+    }
+
+    if (!parsed.totals) {
+      // Missing totals — same failure class as the old totals access throwing.
+      return NextResponse.json(
+        { error: getParseTextUserError(new Error('Missing totals in AI response')) },
+        { status: 500 }
       )
     }
 
