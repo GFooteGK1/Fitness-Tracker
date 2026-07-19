@@ -1,4 +1,4 @@
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete } from '@/app/lib/llm/client'
 import type { ClassificationResult, InputMode, InputType, AgentDomain } from './types'
 import { CLASSIFIER_SYSTEM_PROMPT, buildClassifierInput } from './prompts/classifier'
 
@@ -25,16 +25,16 @@ async function classifyWithLLM(
   content: string,
   inputMode: InputMode
 ): Promise<ClassificationResult> {
-  const message = await getAnthropicClient().messages.create({
-    model: getAnthropicModel('fast'),
-    max_tokens: 256,
-    temperature: 0,
+  const result = await complete({
+    purpose: 'fast',
     system: CLASSIFIER_SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: buildClassifierInput(content, inputMode) }]
+    messages: [{ role: 'user', content: buildClassifierInput(content, inputMode) }],
+    maxTokens: 256,
+    temperature: 0,
+    reasoningEffort: 'low',
   })
 
-  const text = message.content[0].type === 'text' ? message.content[0].text : ''
-  return parseClassificationResult(text)
+  return parseClassificationResult(result.text)
 }
 
 /**
