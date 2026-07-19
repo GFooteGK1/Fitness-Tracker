@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete } from '@/app/lib/llm/client'
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB decoded
 
@@ -59,23 +59,16 @@ export async function POST(request: NextRequest) {
     
     const startTime = Date.now()
     
-    const message = await getAnthropicClient().messages.create({
-      model: getAnthropicModel('vision'),
-      max_tokens: 2000,
+    const llmResult = await complete({
+      purpose: 'vision',
+      maxTokens: 2000,
       messages: [
         {
-          role: "user",
+          role: 'user',
           content: [
+            { type: 'image', mediaType, base64: base64Data },
             {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: mediaType,
-                data: base64Data,
-              },
-            },
-            {
-              type: "text",
+              type: 'text',
               text: `Extract the workout details from this whiteboard photo. 
 
 Please transcribe ALL workout information you see, including:
@@ -98,15 +91,7 @@ IMPORTANT: Even if the handwriting is messy or partially unclear, do your best t
     const duration = Date.now() - startTime
     console.log('OCR API response received in', duration, 'ms')
 
-    // Extract text from Claude's response
-    let extractedText = ''
-    if (message.content && message.content.length > 0) {
-      for (const block of message.content) {
-        if (block.type === 'text') {
-          extractedText += block.text
-        }
-      }
-    }
+    const extractedText = llmResult.text
 
     console.log('Extracted text length:', extractedText.length)
     console.log('First 200 chars:', extractedText.substring(0, 200))

@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete } from '@/app/lib/llm/client'
 import { apiError } from '@/app/lib/api-response'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024   // 10 MB
@@ -44,18 +44,15 @@ export async function POST(request: NextRequest) {
       ? rawType
       : 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
 
-    // Ask Claude Vision to extract the workout
-    const response = await getAnthropicClient().messages.create({
-      model: getAnthropicModel('vision'),
-      max_tokens: 512,
+    // Ask the vision model to extract the workout
+    const llmResult = await complete({
+      purpose: 'vision',
+      maxTokens: 512,
       messages: [
         {
           role: 'user',
           content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: mediaType, data: base64 }
-            },
+            { type: 'image', mediaType, base64 },
             {
               type: 'text',
               text: 'Extract all workout information from this image exactly as written. Include exercise names, rep schemes, sets, weights, time caps, scaling options, and any scores or results visible. Return the workout as plain text. If this image does not contain a workout (e.g. it is food, a person, a landscape, etc.), respond with exactly: NOT_WORKOUT'
@@ -65,7 +62,7 @@ export async function POST(request: NextRequest) {
       ]
     })
 
-    const text = response.content[0]?.type === 'text' ? response.content[0].text.trim() : ''
+    const text = llmResult.text.trim()
 
     if (!text || text === 'NOT_WORKOUT') {
       return NextResponse.json({ workoutText: null, isWorkout: false })
