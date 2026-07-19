@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/app/lib/auth/supabase-server';
+import { createServiceRoleClient } from '@/app/lib/auth/supabase-server';
 import * as syncService from '@/app/lib/whoop/sync-service';
 
 /**
  * WHOOP Sync All Users Route
- * 
- * Triggered by Vercel Cron Job every 4 hours.
- * Syncs WHOOP data for all connected users.
- * 
+ *
+ * Triggered by Vercel Cron (see vercel.json — daily at 10:30 UTC ≈ 05:30
+ * America/Chicago). Syncs WHOOP data for all connected users.
+ *
  * POST /api/whoop/sync-all
- * 
- * Security:
- * - Vercel Cron jobs are authenticated via CRON_SECRET
- * - Only accessible from Vercel's cron infrastructure
+ *
+ * Security & data access:
+ * - Authenticated via CRON_SECRET (Vercel Cron sends it as a Bearer token).
+ * - Uses a service-role Supabase client because a cron has no user session;
+ *   the cookie-scoped client would see zero rows under RLS and sync nobody.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -41,9 +42,11 @@ export async function POST(request: NextRequest) {
 
     console.log('[WHOOP Sync All] Starting scheduled sync for all users');
 
-    // 2. Get all users with WHOOP connected
-    const supabase = await createServerClient();
-    
+    // 2. Get all users with WHOOP connected.
+    // Service-role client: no user session on a cron, so RLS must be bypassed
+    // to see every user's token row (and to write their synced data below).
+    const supabase = createServiceRoleClient();
+
     const { data: tokens, error: tokensError } = await supabase
       .from('whoop_tokens')
       .select('user_id');
@@ -79,7 +82,7 @@ export async function POST(request: NextRequest) {
       try {
         console.log(`[WHOOP Sync All] Syncing user: ${user_id}`);
         
-        const result = await syncService.incrementalSync(user_id);
+        const result = await syncService.incrementalSync(user_id, supabase);
         
         if (result.success) {
           results.successful++;

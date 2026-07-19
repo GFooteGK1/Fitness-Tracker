@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cleanupExpiredPhotos } from '@/app/lib/storage'
-import { createServerClient } from '@/app/lib/auth/supabase-server'
+import { createServiceRoleClient } from '@/app/lib/auth/supabase-server'
 
 export async function POST(request: NextRequest) {
   try {
-    // Optional: Add authentication/authorization for cleanup endpoint
+    // Fail CLOSED: this is a system endpoint that deletes user photos across
+    // all users, so an unset token must reject rather than allow everyone.
     const authHeader = request.headers.get('authorization')
     const expectedToken = process.env.CLEANUP_TOKEN
 
-    if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
+    if (!expectedToken) {
+      console.error('[Cleanup] CLEANUP_TOKEN not configured; refusing to run')
+      return NextResponse.json(
+        { error: 'Cleanup token not configured' },
+        { status: 500 }
+      )
+    }
+
+    if (authHeader !== `Bearer ${expectedToken}`) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -16,7 +25,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Starting photo cleanup process...')
-    const supabase = await createServerClient()
+    // Service-role client: like the WHOOP cron, this runs with no user session
+    // and must see/modify every user's expired photos, so RLS is bypassed.
+    const supabase = createServiceRoleClient()
     const result = await cleanupExpiredPhotos(supabase)
 
     if (!result.success) {

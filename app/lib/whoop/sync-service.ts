@@ -1,4 +1,5 @@
 import { createServerClient } from '@/app/lib/auth/supabase-server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import * as whoopClient from './api-client';
 import * as tokenService from './token-service';
 import { validateWhoopIdentifier, assertValidWhoopIdentifier } from './validation';
@@ -53,35 +54,49 @@ const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff in milliseconds
 
 /**
+ * Resolve the Supabase client to use for a sync.
+ *
+ * User-context callers (the /api/whoop/sync and /callback routes) omit
+ * `client`, so we build the cookie-scoped client and RLS acts as the user.
+ * System callers with no session (the Vercel Cron in /api/whoop/sync-all)
+ * inject a service-role client so the reads/writes see every user's rows.
+ */
+async function resolveSyncClient(client?: SupabaseClient): Promise<SupabaseClient> {
+  return client ?? ((await createServerClient()) as unknown as SupabaseClient);
+}
+
+/**
  * Perform full sync - fetch last 7 days of WHOOP data
  */
-export async function fullSync(userId: string): Promise<SyncResult> {
+export async function fullSync(userId: string, client?: SupabaseClient): Promise<SyncResult> {
   console.log('[WHOOP Sync] Starting full sync for user:', userId);
 
+  const supabase = await resolveSyncClient(client);
   const endDate = new Date();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - 7);
 
-  return await syncDateRange(userId, startDate, endDate);
+  return await syncDateRange(userId, startDate, endDate, supabase);
 }
 
 /**
  * Perform incremental sync - fetch data since last sync
  */
-export async function incrementalSync(userId: string): Promise<SyncResult> {
+export async function incrementalSync(userId: string, client?: SupabaseClient): Promise<SyncResult> {
   console.log('[WHOOP Sync] Starting incremental sync for user:', userId);
 
-  const syncStatus = await getSyncStatus(userId);
+  const supabase = await resolveSyncClient(client);
+  const syncStatus = await getSyncStatus(userId, supabase);
 
   if (!syncStatus.lastSyncAt) {
     console.log('[WHOOP Sync] No previous sync found, performing full sync');
-    return await fullSync(userId);
+    return await fullSync(userId, supabase);
   }
 
   const startDate = new Date(syncStatus.lastSyncAt);
   const endDate = new Date();
 
-  return await syncDateRange(userId, startDate, endDate);
+  return await syncDateRange(userId, startDate, endDate, supabase);
 }
 
 /**
@@ -91,6 +106,7 @@ async function syncDateRange(
   userId: string,
   startDate: Date,
   endDate: Date,
+  supabase: SupabaseClient,
   options: SyncOptions = {}
 ): Promise<SyncResult> {
   const retryCount = options.retryCount || 0;
@@ -100,7 +116,7 @@ async function syncDateRange(
     await updateSyncStatus(userId, {
       status: 'syncing',
       errorMessage: null,
-    });
+    }, supabase);
 
     // Get valid access token (auto-refreshes if needed)
     const accessToken = await tokenService.getValidAccessToken(userId);
@@ -127,22 +143,22 @@ async function syncDateRange(
 
     // Store recovery data
     if (recoveryData.length > 0) {
-      recordsSynced.recovery = await storeRecoveryData(userId, recoveryData);
+      recordsSynced.recovery = await storeRecoveryData(userId, recoveryData, supabase);
     }
 
     // Store sleep data
     if (sleepData.length > 0) {
-      recordsSynced.sleep = await storeSleepData(userId, sleepData);
+      recordsSynced.sleep = await storeSleepData(userId, sleepData, supabase);
     }
 
     // Store cycle data
     if (cycleData.length > 0) {
-      recordsSynced.cycles = await storeCycleData(userId, cycleData);
+      recordsSynced.cycles = await storeCycleData(userId, cycleData, supabase);
     }
 
     // Store workout data
     if (workoutData.length > 0) {
-      recordsSynced.workouts = await storeWorkoutData(userId, workoutData);
+      recordsSynced.workouts = await storeWorkoutData(userId, workoutData, supabase);
     }
 
     // Update sync status to 'idle' with success
@@ -152,7 +168,7 @@ async function syncDateRange(
       nextSyncAt: calculateNextSyncTime(),
       errorMessage: null,
       recordsSynced,
-    });
+    }, supabase);
 
     console.log('[WHOOP Sync] Sync completed successfully:', recordsSynced);
 
@@ -171,7 +187,7 @@ async function syncDateRange(
 
       await sleep(delay);
 
-      return await syncDateRange(userId, startDate, endDate, {
+      return await syncDateRange(userId, startDate, endDate, supabase, {
         ...options,
         retryCount: retryCount + 1,
       });
@@ -183,7 +199,7 @@ async function syncDateRange(
     await updateSyncStatus(userId, {
       status: 'error',
       errorMessage,
-    });
+    }, supabase);
 
     return {
       success: false,
@@ -203,10 +219,9 @@ async function syncDateRange(
  */
 async function storeRecoveryData(
   userId: string,
-  recoveryData: any[]
+  recoveryData: any[],
+  supabase: SupabaseClient
 ): Promise<number> {
-  const supabase = await createServerClient();
-
   const records = recoveryData.map(item => transformRecoveryData(userId, item));
 
   const { error } = await supabase
@@ -256,10 +271,9 @@ function transformRecoveryData(userId: string, apiData: any): Partial<WhoopRecov
  */
 async function storeSleepData(
   userId: string,
-  sleepData: any[]
+  sleepData: any[],
+  supabase: SupabaseClient
 ): Promise<number> {
-  const supabase = await createServerClient();
-
   const records = sleepData.map(item => transformSleepData(userId, item));
 
   const { error } = await supabase
@@ -310,10 +324,9 @@ function transformSleepData(userId: string, apiData: any): Partial<WhoopSleep> {
  */
 async function storeCycleData(
   userId: string,
-  cycleData: any[]
+  cycleData: any[],
+  supabase: SupabaseClient
 ): Promise<number> {
-  const supabase = await createServerClient();
-
   const records = cycleData.map(item => transformCycleData(userId, item));
 
   const { error } = await supabase
@@ -362,10 +375,9 @@ function transformCycleData(userId: string, apiData: any): Partial<WhoopCycle> {
  */
 async function storeWorkoutData(
   userId: string,
-  workoutData: any[]
+  workoutData: any[],
+  supabase: SupabaseClient
 ): Promise<number> {
-  const supabase = await createServerClient();
-
   const records = workoutData.map(item => transformWorkoutData(userId, item));
 
   const { error } = await supabase
@@ -416,8 +428,8 @@ function transformWorkoutData(userId: string, apiData: any): Partial<WhoopWorkou
 /**
  * Get sync status for a user
  */
-export async function getSyncStatus(userId: string): Promise<WhoopSyncStatus> {
-  const supabase = await createServerClient();
+export async function getSyncStatus(userId: string, client?: SupabaseClient): Promise<WhoopSyncStatus> {
+  const supabase = await resolveSyncClient(client);
 
   const { data, error } = await supabase
     .from('whoop_sync_status')
@@ -464,10 +476,9 @@ async function updateSyncStatus(
     nextSyncAt: Date;
     errorMessage: string | null;
     recordsSynced: Record<string, number>;
-  }>
+  }>,
+  supabase: SupabaseClient
 ): Promise<void> {
-  const supabase = await createServerClient();
-
   const updateData: any = {
     user_id: userId,
     updated_at: new Date().toISOString(),
