@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete } from '@/app/lib/llm/client'
+import { extractJson } from '@/app/lib/llm/json'
 import { NutritionalAnalysis, FoodItem, MacroTotals } from '@/app/lib/types/food-tracking'
 import { validateMealData, calculateTotalMacros } from '@/app/lib/macro-validation'
 import { 
@@ -297,49 +298,29 @@ async function analyzePhotoWithClaude(photoUrl: string): Promise<NutritionalAnal
   // Determine image type from URL or default to jpeg
   const imageType = photoUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg'
 
-  const message = await getAnthropicClient().messages.create({
-    model: getAnthropicModel('vision'),
-    max_tokens: 1000,
+  const llmResult = await complete({
+    purpose: 'vision',
+    maxTokens: 1000,
+    temperature: 0,
+    reasoningEffort: 'low',
     messages: [
       {
         role: 'user',
         content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: imageType,
-              data: imageBase64,
-            },
-          },
-          {
-            type: 'text',
-            text: NUTRITION_ANALYSIS_PROMPT,
-          },
+          { type: 'image', mediaType: imageType, base64: imageBase64 },
+          { type: 'text', text: NUTRITION_ANALYSIS_PROMPT },
         ],
       },
     ],
   })
 
-  // Extract text content from Claude response
-  const textContent = message.content.find(content => content.type === 'text')
-  if (!textContent || textContent.type !== 'text') {
-    throw new Error('No text content in Claude response')
-  }
-
   // Parse JSON response
-  try {
-    const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error('No JSON found in Claude response')
-    }
-    
-    const nutritionalData = JSON.parse(jsonMatch[0]) as NutritionalAnalysis
-    return nutritionalData
-  } catch (parseError) {
-    console.error('Failed to parse Claude response:', textContent.text)
+  const nutritionalData = extractJson<NutritionalAnalysis>(llmResult.text)
+  if (!nutritionalData) {
+    console.error('Failed to parse AI response:', llmResult.text)
     throw new Error('Invalid JSON in Claude response')
   }
+  return nutritionalData
 }
 
 function validateNutritionalData(data: any): { isValid: boolean; errors: string[] } {
