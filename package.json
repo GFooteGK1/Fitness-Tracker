@@ -23,6 +23,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "next": "^15.1.0",
+    "openai": "^6.48.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "serwist": "^9.5.7"
