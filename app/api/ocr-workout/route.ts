@@ -1,10 +1,24 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
 
-export async function POST(request: Request) {
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB decoded
+
+export async function POST(request: NextRequest) {
   try {
+    // Auth check — this route spends a paid Vision call, so it must never be
+    // reachable anonymously (otherwise it is an open cost-amplification vector).
+    const supabase = await createServerClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', success: false, extractedText: '' },
+        { status: 401 }
+      )
+    }
+
     const { image } = await request.json()
-    
+
     if (!image) {
       return NextResponse.json(
         { error: 'No image provided' },
@@ -13,9 +27,22 @@ export async function POST(request: Request) {
     }
 
     console.log('OCR request received')
-    
+
     // Extract base64 data (remove data:image/...;base64, prefix if present)
     const base64Data = image.includes(',') ? image.split(',')[1] : image
+
+    // Reject oversized payloads before spending a Vision call.
+    const approxBytes = Math.floor((base64Data.length * 3) / 4)
+    if (approxBytes > MAX_IMAGE_BYTES) {
+      return NextResponse.json(
+        {
+          error: `Image too large. Maximum size is ${MAX_IMAGE_BYTES / 1024 / 1024} MB.`,
+          success: false,
+          extractedText: '',
+        },
+        { status: 413 }
+      )
+    }
     
     // Determine media type from base64 prefix
     let mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' = 'image/jpeg'

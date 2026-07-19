@@ -92,23 +92,52 @@ Use accurate nutritional data. Round macros to 1 decimal place. Confidence shoul
       }]
     })
 
-    let result = { 
-      items: items.map(i => ({ food: i.food, portion: i.portion, protein: i.protein, carbs: i.carbs, fat: i.fat, calories: i.calories })),
-      total_protein: 0, 
-      total_carbs: 0, 
-      total_fat: 0, 
-      total_calories: 0, 
-      confidence: 0.5 
-    }
-    
+    let parsed: {
+      items?: unknown
+      total_protein?: number
+      total_carbs?: number
+      total_fat?: number
+      total_calories?: number
+      confidence?: number
+    } | null = null
+
     try {
       const text = response.content[0].type === 'text' ? response.content[0].text : ''
       const match = text.match(/\{[\s\S]*\}/)
       if (match) {
-        result = JSON.parse(match[0])
+        parsed = JSON.parse(match[0])
       }
     } catch (e) {
       console.error('[Refine] Parse error:', e)
+    }
+
+    // A malformed or empty model reply must NOT overwrite the meal: the old
+    // code initialized totals to 0 and wrote unconditionally, so a bad parse
+    // silently zeroed the user's existing macros. Leave the meal untouched.
+    if (
+      !parsed ||
+      !Array.isArray(parsed.items) ||
+      typeof parsed.total_calories !== 'number' ||
+      typeof parsed.total_protein !== 'number' ||
+      typeof parsed.total_carbs !== 'number' ||
+      typeof parsed.total_fat !== 'number'
+    ) {
+      console.error('[Refine] Unusable refinement response; leaving meal unchanged')
+      return NextResponse.json({ items, refined: false })
+    }
+
+    const confidence =
+      typeof parsed.confidence === 'number'
+        ? Math.min(1, Math.max(0, parsed.confidence))
+        : 0.5
+
+    const result = {
+      items: parsed.items,
+      total_protein: parsed.total_protein,
+      total_carbs: parsed.total_carbs,
+      total_fat: parsed.total_fat,
+      total_calories: parsed.total_calories,
+      confidence,
     }
 
     // Update the meal in database with refined values
