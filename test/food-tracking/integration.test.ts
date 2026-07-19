@@ -421,6 +421,8 @@ describe('Food Tracking Integration Tests', () => {
             }),
           },
         ],
+        usage: { input_tokens: 100, output_tokens: 50 },
+        stop_reason: 'end_turn',
       })
 
       // Create a realistic-sized photo blob (> 1000 bytes)
@@ -472,6 +474,8 @@ describe('Food Tracking Integration Tests', () => {
 
       mockAnthropicCreate.mockResolvedValue({
         content: [{ type: 'text', text: '{}' }],
+        usage: { input_tokens: 100, output_tokens: 10 },
+        stop_reason: 'end_turn',
       })
 
       const photoBytes = new Uint8Array(2000)

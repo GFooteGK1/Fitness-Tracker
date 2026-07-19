@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete } from '@/app/lib/llm/client'
+import { extractJson } from '@/app/lib/llm/json'
 import { apiError } from '@/app/lib/api-response'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -20,12 +21,6 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       console.error('[Upload] Authentication failed:', authError)
       return apiError('Unauthorized', 401, authError?.message || 'No user session found')
-    }
-
-    // Verify API key is configured
-    if (!process.env.ANTHROPIC_API_KEY) {
-      console.error('[Upload] ANTHROPIC_API_KEY not configured')
-      return apiError('AI service not configured. Please contact support.', 500)
     }
 
     const formData = await request.formData()
@@ -73,24 +68,24 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const response = await getAnthropicClient().messages.create({
-        model: getAnthropicModel('vision'),
-        max_tokens: 1024,
+      const llmResult = await complete({
+        purpose: 'vision',
+        maxTokens: 1024,
+        temperature: 0,
+        reasoningEffort: 'low',
         messages: [{
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Image } },
+            { type: 'image', mediaType, base64: base64Image },
             { type: 'text', text: 'Analyze this food photo. Return JSON only: {"items":[{"food":"name","portion":"estimated size","protein":0,"carbs":0,"fat":0,"calories":0}],"total_protein":0,"total_carbs":0,"total_fat":0,"total_calories":0,"confidence":0.8,"notes":""}' }
           ]
         }]
       })
 
-      const text = response.content[0].type === 'text' ? response.content[0].text : ''
-      console.log('[Upload] Claude response:', text.substring(0, 200))
+      console.log('[Upload] AI response:', llmResult.text.substring(0, 200))
 
-      const match = text.match(/\{[\s\S]*\}/)
-      if (match) {
-        const parsed = JSON.parse(match[0])
+      const parsed = extractJson<any>(llmResult.text)
+      if (parsed) {
         result = {
           items: parsed.items || [],
           total_protein: parsed.total_protein || 0,
@@ -102,15 +97,11 @@ export async function POST(request: NextRequest) {
         }
         console.log('[Upload] Parsed result:', { itemCount: result.items.length, confidence: result.confidence })
       } else {
-        console.error('[Upload] No JSON found in Claude response:', text)
+        console.error('[Upload] No JSON found in AI response:', llmResult.text)
         result.notes = 'AI could not parse the image'
       }
-    } catch (claudeError: any) {
-      console.error('[Upload] Claude API error:', {
-        message: claudeError.message,
-        type: claudeError.type,
-        status: claudeError.status
-      })
+    } catch (aiError: any) {
+      console.error('[Upload] AI error:', { message: aiError?.message })
       result.notes = 'AI analysis failed - please enter manually'
     }
 

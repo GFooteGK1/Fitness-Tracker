@@ -141,10 +141,9 @@ export const anthropicProvider: LlmProvider = {
         : {}),
     }
 
-    const response = await getClient().messages.create(
-      params,
-      req.timeoutMs ? { signal: AbortSignal.timeout(req.timeoutMs) } : undefined
-    )
+    const response = req.timeoutMs
+      ? await getClient().messages.create(params, { signal: AbortSignal.timeout(req.timeoutMs) })
+      : await getClient().messages.create(params)
 
     let text = ''
     const toolCalls: LlmToolCall[] = []
