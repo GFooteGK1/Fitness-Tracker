@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete } from '@/app/lib/llm/client'
+import { extractJson } from '@/app/lib/llm/json'
 import { invalidatePassiveCache } from '@/app/lib/agents/context-builder'
 
 interface ParsedPR {
@@ -52,27 +53,19 @@ export async function POST(request: NextRequest) {
       return apiError('Text too long (max 10,000 characters)', 400)
     }
 
-    // Use Claude to parse the raw text into structured PRs
-    const message = await getAnthropicClient().messages.create({
-      model: getAnthropicModel('workout'),
-      max_tokens: 2000,
+    // Use the LLM seam to parse the raw text into structured PRs
+    const result = await complete({
+      purpose: 'workout',
       messages: [{ role: 'user', content: PARSE_PROMPT + text }],
-      // @ts-expect-error - timeout signal
-      signal: AbortSignal.timeout(30_000)
+      maxTokens: 2000,
+      temperature: 0, // deterministic parsing
+      reasoningEffort: 'low',
+      timeoutMs: 30_000,
     })
 
-    const responseText = message.content
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join('')
-
-    let parsedPRs: ParsedPR[]
-    try {
-      // Handle potential markdown code blocks
-      const jsonStr = responseText.replace(/```json?\n?/g, '').replace(/```/g, '').trim()
-      parsedPRs = JSON.parse(jsonStr)
-    } catch {
-      return apiError('Failed to parse Claude response as JSON', 500, responseText.slice(0, 500))
+    const parsedPRs = extractJson<ParsedPR[]>(result.text)
+    if (!parsedPRs) {
+      return apiError('Failed to parse Claude response as JSON', 500, result.text.slice(0, 500))
     }
 
     if (!Array.isArray(parsedPRs)) {
