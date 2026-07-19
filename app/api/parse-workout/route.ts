@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete } from '@/app/lib/llm/client'
+import { extractJson } from '@/app/lib/llm/json'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
 
@@ -24,28 +25,20 @@ export async function POST(request: Request) {
     const systemPrompt = buildParserSystemPrompt()
     const userPrompt = buildUserPrompt(text, date)
 
-    const message = await getAnthropicClient().messages.create({
-      model: getAnthropicModel('workout'),
-      max_tokens: 4096,
+    const result = await complete({
+      purpose: 'workout',
       system: systemPrompt,
-      messages: [{
-        role: 'user',
-        content: userPrompt
-      }]
+      messages: [{ role: 'user', content: userPrompt }],
+      maxTokens: 4096,
+      temperature: 0, // deterministic parsing (was unset -> SDK default 1.0; W6 fix)
+      reasoningEffort: 'low',
     })
 
-    // Extract and parse JSON response
-    let responseText = message.content[0].type === 'text' ? message.content[0].text : ''
-    
-    // Clean markdown code blocks if present
-    responseText = responseText.trim()
-    if (responseText.startsWith('```json')) {
-      responseText = responseText.replace(/^```json\s*/, '').replace(/\s*```$/, '')
-    } else if (responseText.startsWith('```')) {
-      responseText = responseText.replace(/^```\s*/, '').replace(/\s*```$/, '')
+    // Extract JSON from the model response (fence-strip + first-object fallback).
+    const parsed = extractJson<any>(result.text)
+    if (!parsed) {
+      return apiError('Failed to parse workout', 500, 'Unparseable AI response')
     }
-
-    const parsed = JSON.parse(responseText)
 
     // Calculate primary score for display
     const primaryScore = buildPrimaryScore(parsed)
