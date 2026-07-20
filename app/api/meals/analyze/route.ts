@@ -99,6 +99,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Use the canonical photo URL stored on the meal row, NOT the client-supplied
+    // photoUrl — the server must never fetch an arbitrary caller-provided URL (SSRF).
+    const analysisUrl: string | null = mealData.photo_url ?? null
+    if (!analysisUrl) {
+      return NextResponse.json(
+        { error: 'Meal has no photo to analyze' },
+        { status: 400 }
+      )
+    }
+
     let nutritionalData: NutritionalAnalysis
 
     try {
@@ -110,8 +120,8 @@ export async function POST(request: NextRequest) {
             setTimeout(() => reject(new Error('AI analysis timeout')), AI_TIMEOUT_MS)
           })
 
-          // Create Claude API call promise
-          const analysisPromise = analyzePhotoWithClaude(photoUrl)
+          // Create AI analysis promise (uses the DB-stored URL, never the client's)
+          const analysisPromise = analyzePhotoWithClaude(analysisUrl)
 
           // Race between analysis and timeout
           return await Promise.race([analysisPromise, timeoutPromise])
