@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { complete } from '@/app/lib/llm/client'
 import { extractJson } from '@/app/lib/llm/json'
+import { resolveAnalysisUrl } from '@/app/lib/photo-url'
 import { NutritionalAnalysis, FoodItem, MacroTotals } from '@/app/lib/types/food-tracking'
 import { validateMealData, calculateTotalMacros } from '@/app/lib/macro-validation'
 import { 
@@ -99,12 +100,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use the canonical photo URL stored on the meal row, NOT the client-supplied
-    // photoUrl — the server must never fetch an arbitrary caller-provided URL (SSRF).
-    const analysisUrl: string | null = mealData.photo_url ?? null
+    // SSRF guard: prefer the server-stored photo_url; otherwise accept the
+    // client-supplied photoUrl only if it points at our own Supabase host —
+    // never fetch an arbitrary caller-provided URL. (photo_url is currently
+    // unpopulated by the app, so in practice the allowlisted client URL is the
+    // usable source.)
+    const analysisUrl = resolveAnalysisUrl(mealData.photo_url, photoUrl)
     if (!analysisUrl) {
       return NextResponse.json(
-        { error: 'Meal has no photo to analyze' },
+        { error: 'No usable photo URL to analyze' },
         { status: 400 }
       )
     }
