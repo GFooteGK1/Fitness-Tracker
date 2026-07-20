@@ -1,5 +1,49 @@
 # Handoff
 
+## OpenAI Provider Migration + Eval Harness
+
+Completed and LIVE-validated 2026-07-20. All work on `origin/main`.
+
+**What:** migrated the app off Anthropic-only onto a provider-neutral LLM seam
+(`app/lib/llm/`) that supports **Anthropic and OpenAI**, selected at runtime by
+`LLM_PROVIDER` (default `anthropic`) with per-purpose model overrides
+(`LLM_<PROVIDER>_<PURPOSE>_MODEL`). Every call site (text, vision, query, the
+agent loop + 3 agents) goes through `complete()`; the legacy `anthropic-client.ts`
+was removed; `@anthropic-ai/sdk` is now imported only by `providers/anthropic.ts`.
+
+**Status:** complete and verified. Full suite **1,934 tests** green; a dual-adapter
+contract suite proves both providers normalize identically; and a **live smoke
+test against real OpenAI passed** — `gpt-5.4-nano` structured extraction and
+`gpt-5.6-terra` tool-call round-trip both work. Behavior on Anthropic is unchanged.
+
+**To flip to OpenAI:** set `LLM_PROVIDER=openai` + `OPENAI_API_KEY` (override a
+single purpose via e.g. `LLM_OPENAI_VISION_MODEL`). Do NOT flip production until
+the Phase 4 evals pick per-task models.
+
+**Eval harness (`scripts/eval/`, recipes in its README):**
+- Nutrition5k accuracy layer — turnkey once the dataset is pulled (gsutil → `build-manifest` → `run-eval`); needs no production data.
+- Supabase consistency layer — code done, but blocked (see findings).
+- Pure scoring unit-tested; live/pull runners are env-gated (skip in CI).
+
+**Bugs found + fixed en route:** GPT-5.x reasoning models reject `temperature`
+(provider no longer sends it); WHOOP cron + photo cleanup were silent no-ops
+(service-role client); `/api/ocr-workout` was unauthenticated; `meals/refine`
+could zero a meal's macros on a bad parse; SSRF guard on `meals/analyze`.
+
+**Key findings for the next steps:**
+- **The app never persists meal photos** — `uploadMealPhoto` has no callers and
+  every insert sets `photo_url: null`. So the Supabase consistency pull and
+  in-app labeling both require a photo-persistence change first (bead `196.5`).
+- `meals/analyze` is dead code (`queueMealAnalysis` uncalled).
+- The workout-photo OCR→parse flow has a deliberate user-review step — don't
+  collapse it (bead `dr8.5`).
+
+**Open — needs Greg:** accuracy-escalation thresholds (`xml.3`); persist-photos
+product decision (`196.5`); download Nutrition5k + run the eval (`196.3`).
+Optional Phase 6: shared rate limiter (`dr8.1`, needs KV/Upstash decision).
+
+---
+
 ## Nutrition Anthropic Model 404 Fix
 
 Completed on 2026-06-15 after food logging returned a provider 404 for `claude-sonnet-4-20250514`.
