@@ -7,8 +7,8 @@
  * from macro composition.
  */
 import type {
-  GoldenItem,
   MacroScore,
+  MacroTruth,
   ModelScore,
   PredictionOutcome,
 } from './types'
@@ -47,7 +47,7 @@ export function scoreMacro(pairs: Array<{ pred: number; truth: number }>): Macro
 export function scoreModel(
   provider: string,
   model: string,
-  items: GoldenItem[],
+  items: ReadonlyArray<{ id: string; truth: MacroTruth }>,
   outcomes: PredictionOutcome[]
 ): ModelScore {
   const truthById = new Map(items.map((i) => [i.id, i.truth]))

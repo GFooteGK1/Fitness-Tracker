@@ -1,5 +1,28 @@
 # Eval results
 
+## Text-nutrition accuracy (meal description → macros) — 2026-07-20
+
+**Setup:** 15 curated common foods at standard portions (USDA-style reference
+macros), `nutrition` purpose, meal-description → JSON. 0% refusal for all.
+
+| Model | Protein MAE/MedAPE | Carbs | Fat | Calories | Avg ms | Tokens in/out |
+|---|---|---|---|---|---|---|
+| anthropic/claude-sonnet-4-6 | 0.2 / 2.4% | 0.1 / 0% | 0.3 / 10% | 4.5 / 0% | 1533 | 1044/485 |
+| openai/gpt-5.4-nano | 0.3 / 0% | 0.2 / 0.9% | 0.2 / 0% | 1.9 / 0% | 1512 | 886/1243 |
+| openai/gpt-5.6-luna | 0.1 / 0% | 0.3 / 0% | 0.2 / 0% | 2.4 / 0% | 1493 | 886/1142 |
+
+**Verdict: nano is fully viable for text nutrition — flip it.** All three are
+near-exact (median error ~0%); nano is even best on calories. This is the
+OPPOSITE of the vision result, and expected: text nutrition is a knowledge
+*lookup* (food + portion are given), not visual estimation. So the cheapest
+model wins on cost at equal accuracy and latency. → `LLM_NUTRITION_PROVIDER=openai`.
+
+**Caveat:** curated, unambiguous portions (n=15). Real user text ("a big bowl of
+pasta") has portion ambiguity — but that's model-agnostic (all models face the
+same missing-portion problem), so it doesn't argue for a pricier model.
+
+---
+
 ## Nutrition5k accuracy — OpenAI vision candidates — 2026-07-20
 
 **Setup:** 25 Nutrition5k dishes (overhead RGB, weighed ground truth), flat-JSON

@@ -12,11 +12,18 @@ export interface MacroTruth {
   mass_g?: number
 }
 
-/** One labeled item in a golden-set manifest. */
+/** One labeled item in a (vision) golden-set manifest. */
 export interface GoldenItem {
   id: string
   imagePath: string
   mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
+  truth: MacroTruth
+}
+
+/** One labeled item for the text-nutrition eval (meal description -> macros). */
+export interface TextGoldenItem {
+  id: string
+  text: string
   truth: MacroTruth
 }
 
