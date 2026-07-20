@@ -144,7 +144,9 @@ export const openaiProvider: LlmProvider = {
       input: toResponseInput(req.messages),
       max_output_tokens: req.maxTokens,
       ...(req.system ? { instructions: req.system } : {}),
-      ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
+      // NOTE: GPT-5.x reasoning models reject `temperature` (400 Unsupported
+      // parameter). Determinism on this family comes from reasoning effort, so
+      // the neutral request's `temperature` is intentionally not forwarded here.
       ...(req.reasoningEffort ? { reasoning: { effort: req.reasoningEffort } } : {}),
       ...(req.tools && req.tools.length > 0
         ? {
