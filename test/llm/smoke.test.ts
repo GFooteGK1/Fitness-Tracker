@@ -9,6 +9,7 @@
  *   RUN_LLM_SMOKE=1 ANTHROPIC_API_KEY=... npm test -- test/llm/smoke
  *   RUN_LLM_SMOKE=1 LLM_PROVIDER=openai OPENAI_API_KEY=... npm test -- test/llm/smoke
  */
+import '../live-env' // load .env.local (vercel env pull) for real keys
 import { describe, it, expect } from 'vitest'
 import { complete, getActiveProviderName, getModel } from '../../app/lib/llm/client'
 

@@ -10,6 +10,7 @@
  * Candidates default to the migration's shortlist; override with EVAL_CANDIDATES
  * as a comma list of provider:model (e.g. "openai:gpt-5.6-luna,openai:gpt-5.4-nano").
  */
+import '../live-env' // load .env.local (vercel env pull) for real keys
 import { describe, it, expect } from 'vitest'
 import { loadManifest, runEval } from '../../scripts/eval/run-eval'
 import { formatScoresTable } from '../../scripts/eval/score'

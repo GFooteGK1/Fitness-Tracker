@@ -13,6 +13,7 @@
  * through the eval as a CONSISTENCY layer (divergence from current production),
  * NOT as accuracy.
  */
+import '../live-env' // load .env.local (vercel env pull) for real keys
 import { describe, it, expect } from 'vitest'
 import { writeFile } from 'node:fs/promises'
 import { pullSupabaseSample } from '../../scripts/eval/pull-supabase'

@@ -10,6 +10,19 @@ See `docs/decisions/ADR-0002-food-photo-eval-golden-set.md` for the design.
 - `run-eval.ts` — seam-driven runner: loads a manifest, runs each item through `complete({ purpose: 'vision' })` per candidate (selected via env overrides — no app changes), scores the results.
 - `manifest.example.json` — the manifest shape.
 
+## Local keys for the live runners
+
+The gated live tests (`RUN_EVAL` / `RUN_LLM_SMOKE` / `RUN_SUPABASE_PULL`) read
+real keys from the environment. Easiest is to mirror production:
+
+```
+vercel env pull .env.local   # writes ANTHROPIC_API_KEY / OPENAI_API_KEY / Supabase vars
+```
+
+`test/live-env.ts` auto-loads `.env.local` for those runners (it never overrides
+a var already set in your shell, and no-ops if the file is absent). `.env.local`
+is gitignored.
+
 ## Running the accuracy layer (Nutrition5k) — one command each
 
 1. **Pull the imagery** (not in the Nutrition5k git repo; it's in GCS):
