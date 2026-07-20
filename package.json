@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "migrate": "node migrate-data.js",
+    "migrate": "node scripts/migrate-data.js",
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui"
@@ -16,7 +16,6 @@
     "@anthropic-ai/sdk": "^0.32.1",
     "@serwist/next": "^9.5.7",
     "@supabase/auth-helpers-nextjs": "^0.8.7",
-    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.39.0",
     "csv-parser": "^3.2.0",
     "dotenv": "^17.2.3",
