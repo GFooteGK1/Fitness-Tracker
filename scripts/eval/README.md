@@ -10,23 +10,35 @@ See `docs/decisions/ADR-0002-food-photo-eval-golden-set.md` for the design.
 - `run-eval.ts` — seam-driven runner: loads a manifest, runs each item through `complete({ purpose: 'vision' })` per candidate (selected via env overrides — no app changes), scores the results.
 - `manifest.example.json` — the manifest shape.
 
-## Running (manual — needs data + keys)
+## Running the accuracy layer (Nutrition5k) — one command each
 
-1. Build a manifest of `GoldenItem[]` (see `manifest.example.json`). Day-one anchor
-   is **Nutrition5k** (CC-BY, weighed macros + mass); add **SNAPMe** as a separate
-   realism layer. Do not pool layers — run and report them separately.
-2. Provide real keys in the environment.
-3. Run the gated eval test:
+1. **Pull the imagery** (not in the Nutrition5k git repo; it's in GCS):
 
    ```
-   RUN_EVAL=1 \
-   EVAL_MANIFEST=scripts/eval/manifest.nutrition5k.json \
-   EVAL_LAYER=Nutrition5k \
-   OPENAI_API_KEY=... ANTHROPIC_API_KEY=... \
-   npm test -- test/eval/run-eval
+   gsutil -m cp -r gs://nutrition5k_dataset/imagery/realsense_overhead scripts/eval/data/nutrition5k/
+   # also grab metadata/dish_metadata_cafe1.csv + cafe2.csv into scripts/eval/data/nutrition5k/
    ```
 
-   Override the candidate list with `EVAL_CANDIDATES="openai:gpt-5.6-luna,openai:gpt-5.4-nano"`.
+2. **Build the manifest** from the metadata CSV + local imagery:
+
+   ```
+   RUN_BUILD_MANIFEST=1 \
+   N5K_CSV=scripts/eval/data/nutrition5k/dish_metadata_cafe1.csv,scripts/eval/data/nutrition5k/dish_metadata_cafe2.csv \
+   N5K_IMAGES=scripts/eval/data/nutrition5k/realsense_overhead \
+   N5K_LIMIT=150 N5K_OUT=scripts/eval/manifest.nutrition5k.json \
+   npm test -- test/eval/build-manifest
+   ```
+
+3. **Run the eval** (needs a real OpenAI key; add ANTHROPIC_API_KEY for the Claude baseline):
+
+   ```
+   RUN_EVAL=1 EVAL_MANIFEST=scripts/eval/manifest.nutrition5k.json EVAL_LAYER=Nutrition5k \
+   OPENAI_API_KEY=... npm test -- test/eval/run-eval
+   ```
+
+   Override candidates with `EVAL_CANDIDATES="openai:gpt-5.6-luna,openai:gpt-5.4-nano"`.
+
+The Nutrition5k anchor needs **no production data** — it's the day-one accuracy signal.
 
 ## Layers (report separately — do not pool)
 
