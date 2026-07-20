@@ -44,10 +44,9 @@ Authentication Flow:
 ```
 
 ### **API Routes:**
-- `/api/auth/signup` - User registration
-- `/api/auth/signin` - User login  
-- `/api/auth/signout` - User logout
 - `/api/profile/onboarding` - Complete profile setup
+
+_(Auth itself is handled client-side via Supabase in `AuthContext`; there are no `/api/auth/*` route handlers.)_
 
 ### **Dependencies:**
 - **Database**: `user_profiles` table in Supabase
