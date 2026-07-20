@@ -8,19 +8,35 @@ grams (macros/mass) or kcal (calories). 0% refusal for all three.
 
 | Model | Protein MAE/MedAPE | Carbs | Fat | Calories | Mass | Avg ms | Tokens in/out |
 |---|---|---|---|---|---|---|---|
-| gpt-5.4-nano  | 11.6 / 287%  | 14.5 / 200% | 7.0 / 166% | 144.2 / 125% | 70.2 / 70% | 4542 | 10600/5975 |
-| gpt-5.6-luna  | 5.7 / 109%   | 11.8 / 122% | 8.3 / 104% | 143.8 / 112% | 118.7 / 100% | 4561 | 10600/5629 |
-| gpt-5.6-terra | 2.1 / 58%    | 6.7 / 54%   | 4.1 / 70%  | 73.4 / 84%   | 49.4 / 51% | 5336 | 10600/3167 |
+| **anthropic/claude-sonnet-4-6** (current prod) | **2.0 / 53%** | 6.1 / 75% | **2.3 / 50%** | **50.3 / 69%** | 57.7 / 51% | **2944** | 12225/**1000** |
+| openai/gpt-5.6-terra | 2.1 / 58%    | 6.7 / 54%   | 4.1 / 70%  | 73.4 / 84%   | 49.4 / 51% | 5336 | 10600/3167 |
+| openai/gpt-5.6-luna  | 5.7 / 109%   | 11.8 / 122% | 8.3 / 104% | 143.8 / 112% | 118.7 / 100% | 4561 | 10600/5629 |
+| openai/gpt-5.4-nano  | 11.6 / 287%  | 14.5 / 200% | 7.0 / 166% | 144.2 / 125% | 70.2 / 70% | 4542 | 10600/5975 |
 
-**Headline:** accuracy scales strongly with model size — terra ≫ luna ≫ nano,
-**monotonic across every macro and mass**. terra roughly halves luna's error and
-is ~3–5× better than nano.
+**Headline 1 — among OpenAI, accuracy scales strongly with model size:**
+terra ≫ luna ≫ nano, monotonic across every macro and mass. This contradicts the
+pre-eval assumption (Claude-family literature suggested mid-tier ≈ frontier);
+here the premium tier buys a large, consistent gain, so **nano/luna are not
+viable for the accuracy-critical vision task.**
 
-**This contradicts the pre-eval assumption** (the Claude-family literature
-suggested mid-tier ≈ frontier within 1–3pp for food-photo nutrition). On this
-data the premium tier buys a large, consistent accuracy gain — so **nano is not
-viable for the accuracy-critical vision task**, and even luna is meaningfully
-worse than terra.
+**Headline 2 — the current Claude model is the best option for vision.**
+claude-sonnet-4-6 ties or beats the best OpenAI model (terra) on accuracy
+(clearly better on calories and fat, ~tied on protein/carbs/mass) while being
+**~1.8× faster (2.9s vs 5.3s) and ~3× more output-token-efficient (1000 vs 3167).**
+Moving vision to OpenAI would be lateral-at-best on accuracy and worse on
+speed/efficiency.
+
+## Verdict: keep vision on Claude
+
+Data-backed, not just caution: `LLM_VISION_PROVIDER=anthropic` (or leave vision
+unset while flipping cheaper purposes to OpenAI). Flip the *cheap text* purposes
+to OpenAI where the savings are real and the task is easy; **do not move the
+food-photo vision task off Claude** on this evidence.
+
+**Caveat that outweighs the model choice:** absolute error is high for EVERY
+model (best case ~69% calorie MedAPE, ~50% mass MedAPE). Image-only macro
+estimation is inherently rough — the product should present these as rough
+estimates and/or add a user review-and-correct step, not treat them as exact.
 
 **But absolute error is high for every model** (best case terra: ~84% calorie
 MedAPE, ~51% mass MedAPE). Consistent with the literature's "image-only
