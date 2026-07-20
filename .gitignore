@@ -49,3 +49,7 @@ public/workbox-*.js.map
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# Eval harness — downloaded datasets / production photos (never commit)
+scripts/eval/data/
+scripts/eval/manifest.*.json
