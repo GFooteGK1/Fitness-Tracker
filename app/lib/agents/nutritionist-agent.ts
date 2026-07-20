@@ -9,7 +9,7 @@ import type {
 } from './types'
 import { buildNutritionistPrompt } from './prompts/nutritionist'
 import { PORTION_DEFAULTS } from './constants'
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete } from '@/app/lib/llm/client'
 import { callAgentWithTools, type AgenticCallResult, type ToolCallRecord } from './tools/agentic-loop'
 import { NUTRITIONIST_TOOLS } from './tools/definitions'
 import { normalizeMealTiming } from './tools/executor'
@@ -60,19 +60,16 @@ export async function callNutritionistAgent(
   }
 
   // Fallback: single-shot call without tools (backward compatibility)
-  const message = await getAnthropicClient().messages.create(
-    {
-      model: getAnthropicModel('agent'),
-      max_tokens: 4096,
-      temperature: 0,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userInput }]
-    },
-    { signal: AbortSignal.timeout(30_000) }
-  )
+  const llmResult = await complete({
+    purpose: 'agent',
+    maxTokens: 4096,
+    temperature: 0,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userInput }],
+    timeoutMs: 30_000
+  })
 
-  const text = message.content[0].type === 'text' ? message.content[0].text : ''
-  const parsed = parseNutritionistResponse(text)
+  const parsed = parseNutritionistResponse(llmResult.text)
   const withTiming = applyTimingInference(parsed, ctx)
   const withDefaults = applyPortionDefaults(withTiming, ctx)
   const validated = validateAndFlag(withDefaults)

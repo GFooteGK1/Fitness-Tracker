@@ -7,7 +7,7 @@ import type {
   SmartDefault
 } from './types'
 import { buildTrainerPrompt } from './prompts/trainer'
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete } from '@/app/lib/llm/client'
 import { callAgentWithTools, type AgenticCallResult, type ToolCallRecord } from './tools/agentic-loop'
 import { TRAINER_TOOLS } from './tools/definitions'
 import {
@@ -52,19 +52,16 @@ export async function callTrainerAgent(
   }
 
   // Fallback: single-shot call without tools (backward compatibility)
-  const message = await getAnthropicClient().messages.create(
-    {
-      model: getAnthropicModel('agent'),
-      max_tokens: 4096,
-      temperature: 0,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userInput }]
-    },
-    { signal: AbortSignal.timeout(30_000) }
-  )
+  const llmResult = await complete({
+    purpose: 'agent',
+    maxTokens: 4096,
+    temperature: 0,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userInput }],
+    timeoutMs: 30_000
+  })
 
-  const text = message.content[0].type === 'text' ? message.content[0].text : ''
-  const parsed = parseTrainerResponse(text)
+  const parsed = parseTrainerResponse(llmResult.text)
   const withPRs = detectNewPRs(parsed, ctx.benchmark_prs)
   const withDefaults = applySmartDefaults(withPRs, ctx)
 

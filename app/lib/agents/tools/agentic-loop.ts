@@ -1,14 +1,20 @@
 /**
- * Agentic loop — wraps anthropic.messages.create() with multi-turn tool_use.
+ * Agentic loop — wraps the LLM seam with multi-turn tool use.
  *
- * When Claude returns tool_use blocks, the loop:
+ * When the model returns tool calls, the loop:
  * 1. Executes each tool call via the executor
- * 2. Sends tool results back to Claude
- * 3. Repeats until Claude returns end_turn or max rounds is reached
+ * 2. Appends the tool results (in the active provider's wire shape)
+ * 3. Repeats until the model returns no tool calls, signals a final turn, or
+ *    max rounds is reached.
+ *
+ * Provider-neutral: it drives complete() and delegates continuation-message
+ * construction to the provider's appendToolResults, so the Anthropic
+ * "tool_use + end_turn as a final action" quirk and OpenAI's function_call /
+ * function_call_output shapes are both handled without special-casing here.
  */
-import type { Tool, MessageParam, ContentBlock } from '@anthropic-ai/sdk/resources/messages'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete, getProvider } from '@/app/lib/llm/client'
+import type { LlmMessage, LlmToolDef } from '@/app/lib/llm/types'
 import { executeToolCall, type ToolResult } from './executor'
 
 const MAX_TOOL_ROUNDS = 3
@@ -34,7 +40,7 @@ export interface AgenticCallResult {
 export interface AgenticCallOptions {
   systemPrompt: string
   userInput: string
-  tools: Tool[]
+  tools: LlmToolDef[]
   userId: string
   supabase: SupabaseClient
   maxRounds?: number
@@ -54,88 +60,59 @@ export async function callAgentWithTools(
     maxRounds = MAX_TOOL_ROUNDS
   } = options
 
-  const anthropic = getAnthropicClient()
-  const messages: MessageParam[] = [{ role: 'user', content: userInput }]
+  const provider = getProvider()
+  let messages: LlmMessage[] = [{ role: 'user', content: userInput }]
   const allToolCalls: ToolCallRecord[] = []
   const totalTokens = { input: 0, output: 0 }
 
   for (let round = 0; round < maxRounds; round++) {
-    const message = await anthropic.messages.create(
-      {
-        model: getAnthropicModel('agent'),
-        max_tokens: 4096,
-        temperature: 0,
-        system: systemPrompt,
-        messages,
-        ...(tools.length > 0 ? { tools } : {})
-      },
-      { signal: AbortSignal.timeout(TIMEOUT_MS) }
-    )
+    const result = await complete({
+      purpose: 'agent',
+      maxTokens: 4096,
+      temperature: 0,
+      system: systemPrompt,
+      messages,
+      tools: tools.length > 0 ? tools : undefined,
+      timeoutMs: TIMEOUT_MS
+    })
 
-    totalTokens.input += message.usage.input_tokens
-    totalTokens.output += message.usage.output_tokens
+    totalTokens.input += result.usage.input
+    totalTokens.output += result.usage.output
 
-    // Extract tool_use blocks from response
-    const toolUseBlocks = message.content.filter(
-      (block: ContentBlock) => block.type === 'tool_use'
-    )
-
-    // If no tool calls, extract text and return
-    if (toolUseBlocks.length === 0) {
-      const textBlock = message.content.find(
-        (block: ContentBlock) => block.type === 'text'
-      )
-      const text = textBlock && textBlock.type === 'text' ? textBlock.text : ''
-      return { text, toolCalls: allToolCalls, totalTokens }
+    // No tool calls — the model answered directly.
+    if (result.toolCalls.length === 0) {
+      return { text: result.text, toolCalls: allToolCalls, totalTokens }
     }
 
-    // Execute tool calls (even if stop_reason is 'end_turn' — Claude commonly
-    // sends tool_use + end_turn together when a single tool call is its final action)
-    const toolResults: Array<{
-      type: 'tool_result'
-      tool_use_id: string
-      content: string
-    }> = []
-
-    for (const block of toolUseBlocks) {
-      if (block.type !== 'tool_use') continue
-
-      const result = await executeToolCall(
-        block.name,
-        block.input as Record<string, unknown>,
+    // Execute each tool call.
+    const toolResults: Array<{ toolCallId: string; content: string }> = []
+    for (const call of result.toolCalls) {
+      const toolResult = await executeToolCall(
+        call.name,
+        call.input as Record<string, unknown>,
         userId,
         supabase
       )
-
       allToolCalls.push({
-        name: block.name,
-        input: block.input as Record<string, unknown>,
-        result
+        name: call.name,
+        input: call.input as Record<string, unknown>,
+        result: toolResult
       })
-
-      toolResults.push({
-        type: 'tool_result',
-        tool_use_id: block.id,
-        content: JSON.stringify(result)
-      })
+      toolResults.push({ toolCallId: call.id, content: JSON.stringify(toolResult) })
     }
 
-    // If stop_reason is end_turn, return after executing tools — no further rounds needed.
-    // Extract the text block from this same response for the agent's final message.
-    if (message.stop_reason === 'end_turn') {
-      const textBlock = message.content.find(
-        (block: ContentBlock) => block.type === 'text'
-      )
-      const text = textBlock && textBlock.type === 'text' ? textBlock.text : ''
-      return { text, toolCalls: allToolCalls, totalTokens }
+    // Some models return tool calls as their FINAL action (Anthropic sends
+    // tool_use with stop_reason end_turn -> normalized to 'stop'). In that case
+    // the tools are done above and we return the accompanying text now.
+    if (result.stopReason !== 'tool_calls') {
+      return { text: result.text, toolCalls: allToolCalls, totalTokens }
     }
 
-    // Append assistant message (with tool_use blocks) and tool results to continue
-    messages.push({ role: 'assistant', content: message.content })
-    messages.push({ role: 'user', content: toolResults })
+    // Otherwise continue: append the tool-call turn + results and loop.
+    messages = provider.appendToolResults(messages, result.toolCalls, toolResults)
   }
 
-  // Exhausted max rounds — extract any text from the last response or provide fallback
+  // Exhausted max rounds — provide a sensible final message.
   const lastText = allToolCalls.length > 0
     ? 'Done — I completed the requested actions.'
     : 'I had trouble processing that. Could you try rephrasing?'

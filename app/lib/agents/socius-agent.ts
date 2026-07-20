@@ -7,7 +7,7 @@ import type {
   PatternId
 } from './types'
 import { buildSociusPrompt } from './prompts/socius'
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client'
+import { complete } from '@/app/lib/llm/client'
 import { callAgentWithTools, type ToolCallRecord } from './tools/agentic-loop'
 import { SOCIUS_TOOLS } from './tools/definitions'
 import {
@@ -61,19 +61,16 @@ export async function callSociusAgent(
     }
   }
 
-  const message = await getAnthropicClient().messages.create(
-    {
-      model: getAnthropicModel('agent'),
-      max_tokens: 4096,
-      temperature: 0,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userInput }]
-    },
-    { signal: AbortSignal.timeout(30_000) }
-  )
+  const llmResult = await complete({
+    purpose: 'agent',
+    maxTokens: 4096,
+    temperature: 0,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userInput }],
+    timeoutMs: 30_000
+  })
 
-  const text = message.content[0].type === 'text' ? message.content[0].text : ''
-  return parseSociusResponse(text)
+  return parseSociusResponse(llmResult.text)
 }
 
 /**

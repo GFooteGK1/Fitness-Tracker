@@ -1,18 +1,18 @@
 /**
- * Claude Tool definitions for SociusFit agents.
- * These schemas are passed to anthropic.messages.create({ tools: [...] })
- * so agents can execute DB operations via tool_use.
+ * Provider-neutral tool definitions for SociusFit agents.
+ * Passed through the LLM seam (complete({ tools })) so agents can execute DB
+ * operations via tool calls, regardless of the active provider.
  */
-import type { Tool } from '@anthropic-ai/sdk/resources/messages'
+import type { LlmToolDef } from '@/app/lib/llm/types'
 
 // Socius Tools
 
-export const SOCIUS_TOOLS: Tool[] = [
+export const SOCIUS_TOOLS: LlmToolDef[] = [
   {
     name: 'get_programming_readiness',
     description:
       'Read compact cross-domain daily context for programming and readiness decisions. Use this for questions about what to train, how hard to train, deloading, recovery-aware programming, or training choices that depend on workouts, nutrition, sleep, strain, HRV, and recovery.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         days: {
@@ -26,12 +26,12 @@ export const SOCIUS_TOOLS: Tool[] = [
 
 // ─── Trainer Tools ─────────────────────────────────────────────────────
 
-export const TRAINER_TOOLS: Tool[] = [
+export const TRAINER_TOOLS: LlmToolDef[] = [
   {
     name: 'log_workout',
     description:
       'Log a workout with structured blocks, score, and RPE. Use this when the user describes a completed workout. Resolve all relative dates (yesterday, last Monday, etc.) to YYYY-MM-DD before calling.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         workout_date: {
@@ -90,7 +90,7 @@ export const TRAINER_TOOLS: Tool[] = [
     name: 'log_pr',
     description:
       'Log a personal record (PR) for a benchmark workout. Use when the user reports a PR or when a new benchmark score beats their existing record.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         benchmark_name: {
@@ -116,7 +116,7 @@ export const TRAINER_TOOLS: Tool[] = [
     name: 'query_workouts',
     description:
       'Query past workouts by date range. Use when the user asks about their workout history, specific movements, or past performance. Always returns total_count (the true number of matching workouts in the DB) alongside the limited result set. Use count_only=true for quick counts without fetching full workout data.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         start_date: { type: 'string', description: 'Start date YYYY-MM-DD (inclusive)' },
@@ -140,7 +140,7 @@ export const TRAINER_TOOLS: Tool[] = [
     name: 'update_workout',
     description:
       'Update an existing workout by ID. Use when the user wants to correct a score, RPE, or tags on a previously logged workout.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         workout_id: { type: 'string', description: 'UUID of the workout to update' },
@@ -156,12 +156,12 @@ export const TRAINER_TOOLS: Tool[] = [
 
 // ─── Nutritionist Tools ────────────────────────────────────────────────
 
-export const NUTRITIONIST_TOOLS: Tool[] = [
+export const NUTRITIONIST_TOOLS: LlmToolDef[] = [
   {
     name: 'log_meal',
     description:
       'Log a meal with food items, macros, and timing. Use when the user describes food they ate. Resolve all relative dates to YYYY-MM-DD before calling.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         meal_date: { type: 'string', description: 'Date of the meal in YYYY-MM-DD format' },
@@ -199,7 +199,7 @@ export const NUTRITIONIST_TOOLS: Tool[] = [
     name: 'query_meals',
     description:
       'Query past meals by date range. Use when the user asks about their nutrition history or what they ate on a specific day. Always returns total_count (true number of matching meals) alongside the limited result set. Use count_only=true for quick counts.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         start_date: { type: 'string', description: 'Start date YYYY-MM-DD (inclusive)' },
@@ -214,7 +214,7 @@ export const NUTRITIONIST_TOOLS: Tool[] = [
     name: 'update_meal',
     description:
       'Update an existing meal by ID. Use when the user wants to correct portions, items, or timing on a previously logged meal.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         meal_id: { type: 'string', description: 'UUID of the meal to update' },
