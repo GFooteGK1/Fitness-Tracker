@@ -17,8 +17,12 @@ test against real OpenAI passed** — `gpt-5.4-nano` structured extraction and
 `gpt-5.6-terra` tool-call round-trip both work. Behavior on Anthropic is unchanged.
 
 **To flip to OpenAI:** set `LLM_PROVIDER=openai` + `OPENAI_API_KEY` (override a
-single purpose via e.g. `LLM_OPENAI_VISION_MODEL`). Do NOT flip production until
-the Phase 4 evals pick per-task models.
+single purpose's model via e.g. `LLM_OPENAI_VISION_MODEL`). For an **incremental**
+flip, use per-purpose provider overrides — `LLM_<PURPOSE>_PROVIDER` beats the
+global `LLM_PROVIDER` — e.g. `LLM_NUTRITION_PROVIDER=openai` moves just nutrition
+to OpenAI while everything else (incl. vision) stays on Anthropic. Recommended
+path: flip cheap text purposes first; keep accuracy-critical vision on Anthropic
+until the Phase 4 evals pick per-task models.
 
 **Eval harness (`scripts/eval/`, recipes in its README):**
 - Nutrition5k accuracy layer — turnkey once the dataset is pulled (gsutil → `build-manifest` → `run-eval`); needs no production data.

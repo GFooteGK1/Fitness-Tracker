@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { getModel, getActiveProviderName } from '../../app/lib/llm/client'
+import { getModel, getActiveProviderName, getProviderForPurpose } from '../../app/lib/llm/client'
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -21,6 +21,37 @@ describe('getActiveProviderName', () => {
   it('selects openai when LLM_PROVIDER=openai (case-insensitive)', () => {
     vi.stubEnv('LLM_PROVIDER', 'OpenAI')
     expect(getActiveProviderName()).toBe('openai')
+  })
+})
+
+describe('getProviderForPurpose', () => {
+  it('defaults to the global provider when no per-purpose override is set', () => {
+    expect(getProviderForPurpose('vision')).toBe('anthropic')
+    vi.stubEnv('LLM_PROVIDER', 'openai')
+    expect(getProviderForPurpose('vision')).toBe('openai')
+  })
+
+  it('per-purpose override beats the global provider', () => {
+    vi.stubEnv('LLM_PROVIDER', 'openai') // global = openai
+    vi.stubEnv('LLM_VISION_PROVIDER', 'anthropic') // but keep vision on anthropic
+    expect(getProviderForPurpose('vision')).toBe('anthropic')
+    expect(getProviderForPurpose('nutrition')).toBe('openai') // unaffected -> global
+  })
+
+  it('an override can also opt a single purpose INTO openai while the rest stay anthropic', () => {
+    vi.stubEnv('LLM_NUTRITION_PROVIDER', 'openai')
+    expect(getProviderForPurpose('nutrition')).toBe('openai')
+    expect(getProviderForPurpose('vision')).toBe('anthropic') // global default
+  })
+})
+
+describe('getModel respects the per-purpose provider', () => {
+  it('resolves the model from the purpose-selected provider', () => {
+    vi.stubEnv('LLM_PROVIDER', 'openai')
+    vi.stubEnv('LLM_VISION_PROVIDER', 'anthropic')
+    // vision -> anthropic default; nutrition -> openai default
+    expect(getModel('vision')).toBe('claude-sonnet-4-6')
+    expect(getModel('nutrition')).toBe('gpt-5.4-nano')
   })
 })
 

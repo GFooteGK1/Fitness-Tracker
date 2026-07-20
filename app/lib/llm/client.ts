@@ -58,6 +58,20 @@ export function getActiveProviderName(): LlmProviderName {
     : 'anthropic'
 }
 
+/**
+ * Resolve the provider for a specific purpose. A per-purpose override —
+ * `LLM_<PURPOSE>_PROVIDER` (e.g. `LLM_VISION_PROVIDER=anthropic`) — beats the
+ * global `LLM_PROVIDER`. This is what enables an incremental migration: flip
+ * cheap/low-risk purposes (classification, extraction) to OpenAI while keeping
+ * an accuracy-critical purpose (e.g. vision) on Anthropic, all via env.
+ */
+export function getProviderForPurpose(purpose: ModelPurpose = 'default'): LlmProviderName {
+  const perPurpose = process.env[`LLM_${purpose.toUpperCase()}_PROVIDER`]?.trim().toLowerCase()
+  if (perPurpose === 'openai') return 'openai'
+  if (perPurpose === 'anthropic') return 'anthropic'
+  return getActiveProviderName()
+}
+
 function cleanModel(value: string | undefined): string | null {
   const trimmed = value?.trim()
   if (!trimmed || RETIRED_OR_STALE_MODEL_IDS.has(trimmed)) return null
@@ -88,7 +102,7 @@ function getLegacyAnthropicModel(purpose: ModelPurpose): string | null {
  */
 export function getModel(
   purpose: ModelPurpose = 'default',
-  provider: LlmProviderName = getActiveProviderName()
+  provider: LlmProviderName = getProviderForPurpose(purpose)
 ): string {
   const p = provider.toUpperCase()
   const u = purpose.toUpperCase()
@@ -122,7 +136,7 @@ export function getProvider(name: LlmProviderName = getActiveProviderName()): Ll
  * (the A/B instrument for comparing providers/models during the migration).
  */
 export async function complete(req: LlmRequest): Promise<LlmResult> {
-  const providerName = getActiveProviderName()
+  const providerName = getProviderForPurpose(req.purpose)
   const model = getModel(req.purpose, providerName)
   const start = Date.now()
   const result = await PROVIDERS[providerName].chat(req, model)
