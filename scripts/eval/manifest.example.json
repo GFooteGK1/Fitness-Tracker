@@ -1,0 +1,14 @@
+[
+  {
+    "id": "n5k-000001",
+    "imagePath": "scripts/eval/data/nutrition5k/000001.jpg",
+    "mediaType": "image/jpeg",
+    "truth": { "protein": 32.5, "carbs": 41.0, "fat": 12.3, "calories": 431, "mass_g": 340 }
+  },
+  {
+    "id": "n5k-000002",
+    "imagePath": "scripts/eval/data/nutrition5k/000002.jpg",
+    "mediaType": "image/jpeg",
+    "truth": { "protein": 18.0, "carbs": 55.2, "fat": 8.1, "calories": 366, "mass_g": 290 }
+  }
+]
