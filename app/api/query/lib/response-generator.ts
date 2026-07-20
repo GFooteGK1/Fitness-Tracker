@@ -4,7 +4,6 @@
  * Requirements: 3.1, 4.1, 6.1, 6.2, 7.3
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import {
   QueryIntent,
   GenerateResponseParams,
@@ -13,7 +12,7 @@ import {
   CrossDomainData,
 } from './types';
 import { getPromptForIntent } from './prompt-templates';
-import { getAnthropicClient, getAnthropicModel } from '@/app/lib/anthropic-client';
+import { complete } from '@/app/lib/llm/client';
 
 // Error types for response generation
 export class ResponseGeneratorError extends Error {
@@ -178,25 +177,13 @@ function getEmptyDataMessage(intent: QueryIntent): string {
 }
 
 
-/**
- * Creates an Anthropic client instance
- * Exported for testing purposes
- */
-export function createAnthropicClient(): Anthropic {
-  return getAnthropicClient();
-}
-
+// Duck-typed error status: works for any provider error object carrying a
+// numeric `status` (Anthropic APIError, OpenAI errors, or a plain {status}).
 function getAnthropicErrorStatus(error: unknown): number | null {
-  const apiErrorCtor = (Anthropic as unknown as { APIError?: new (...args: any[]) => Error }).APIError;
-  if (typeof apiErrorCtor === 'function' && error instanceof apiErrorCtor) {
-    return (error as Error & { status?: number }).status ?? null;
-  }
-
   if (error && typeof error === 'object' && 'status' in error) {
     const status = Number((error as { status?: unknown }).status);
     return Number.isFinite(status) ? status : null;
   }
-
   return null;
 }
 
@@ -215,8 +202,7 @@ function isTimeoutError(error: unknown): boolean {
  * Requirements: 3.1, 4.1, 6.1, 6.2, 7.3
  */
 export async function generateResponse(
-  params: GenerateResponseParams,
-  anthropicClient?: Anthropic
+  params: GenerateResponseParams
 ): Promise<string> {
   const { question, intent, data } = params;
 
@@ -231,9 +217,6 @@ export async function generateResponse(
   // Format data context for Claude (Requirement 6.2)
   const dataContext = formatDataContext(intent, data);
 
-  // Create or use provided Anthropic client
-  const client = anthropicClient || createAnthropicClient();
-
   // Get current date for context (helps AI understand "today", "yesterday", etc.)
   const now = new Date();
   const currentDateStr = now.toLocaleDateString('en-US', { 
@@ -244,10 +227,10 @@ export async function generateResponse(
   });
 
   try {
-    // Call Anthropic API with assembled prompt and context (Requirement 6.1)
-    const message = await client.messages.create({
-      model: getAnthropicModel('query'),
-      max_tokens: 2000,
+    // Call the LLM seam with assembled prompt and context (Requirement 6.1)
+    const llmResult = await complete({
+      purpose: 'query',
+      maxTokens: 2000,
       system: systemPrompt,
       messages: [
         {
@@ -264,10 +247,8 @@ Analyze the data and provide a conversational answer.`,
       ],
     });
 
-    // Extract text response
-    const content = message.content[0];
-    if (content.type === 'text') {
-      return content.text;
+    if (llmResult.text) {
+      return llmResult.text;
     }
 
     throw new ResponseGeneratorError(

@@ -225,6 +225,8 @@ describe('Query API Integration Tests', () => {
     // Default mock for Anthropic - successful response
     mockAnthropicCreate.mockResolvedValue({
       content: [{ type: 'text', text: 'Mock AI response for integration test' }],
+      usage: { input_tokens: 100, output_tokens: 50 },
+      stop_reason: 'end_turn',
     });
   });
 

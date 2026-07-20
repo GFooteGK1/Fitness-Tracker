@@ -22,6 +22,9 @@ import {
   CROSS_DOMAIN_SYSTEM_PROMPT,
 } from '../../app/api/query/lib/prompt-templates';
 
+vi.mock('../../app/lib/llm/client', () => ({ complete: vi.fn() }));
+import { complete } from '../../app/lib/llm/client';
+
 // Sample test data
 const sampleWorkoutData: WorkoutData = {
   workouts: [
@@ -97,25 +100,16 @@ const emptyCrossDomainData: CrossDomainData = {
   nutrition: emptyNutritionData,
 };
 
-// Mock Anthropic client
-function createMockAnthropicClient(response?: string, error?: Error) {
-  return {
-    messages: {
-      create: vi.fn().mockImplementation(async () => {
-        if (error) {
-          throw error;
-        }
-        return {
-          content: [
-            {
-              type: 'text',
-              text: response || 'Mock AI response',
-            },
-          ],
-        };
-      }),
-    },
-  };
+// Configure the mocked LLM seam to return a given text.
+function mockLlm(text: string) {
+  vi.mocked(complete).mockResolvedValue({
+    text,
+    toolCalls: [],
+    usage: { input: 0, output: 0 },
+    stopReason: 'stop',
+    model: 'test-model',
+    provider: 'anthropic',
+  });
 }
 
 describe('Response Generator Unit Tests', () => {
@@ -123,6 +117,7 @@ describe('Response Generator Unit Tests', () => {
   const originalAnthropicQueryModel = process.env.ANTHROPIC_QUERY_MODEL;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     delete process.env.ANTHROPIC_MODEL;
     delete process.env.ANTHROPIC_QUERY_MODEL;
   });
@@ -230,57 +225,48 @@ describe('Response Generator Unit Tests', () => {
       expect(result).toContain("don't see enough data");
     });
 
-    it('calls Anthropic API with correct prompt for WORKOUT_ONLY', async () => {
-      const mockClient = createMockAnthropicClient('Your deadlift PR is 315lbs');
+    it('calls the LLM with correct prompt for WORKOUT_ONLY', async () => {
+      mockLlm('Your deadlift PR is 315lbs');
 
-      const result = await generateResponse(
-        {
-          question: 'What is my deadlift PR?',
-          intent: 'WORKOUT_ONLY',
-          data: sampleWorkoutData,
-        },
-        mockClient as any
-      );
+      const result = await generateResponse({
+        question: 'What is my deadlift PR?',
+        intent: 'WORKOUT_ONLY',
+        data: sampleWorkoutData,
+      });
 
-      expect(mockClient.messages.create).toHaveBeenCalledTimes(1);
-      const callArgs = mockClient.messages.create.mock.calls[0][0];
-      expect(callArgs.model).toBe('claude-sonnet-4-6');
+      expect(complete).toHaveBeenCalledTimes(1);
+      const callArgs = vi.mocked(complete).mock.calls[0][0];
+      expect(callArgs.purpose).toBe('query');
       expect(callArgs.system).toBe(WORKOUT_SYSTEM_PROMPT);
       expect(result).toBe('Your deadlift PR is 315lbs');
     });
 
-    it('calls Anthropic API with correct prompt for NUTRITION_ONLY', async () => {
-      const mockClient = createMockAnthropicClient('You ate 150g of protein today');
+    it('calls the LLM with correct prompt for NUTRITION_ONLY', async () => {
+      mockLlm('You ate 150g of protein today');
 
-      const result = await generateResponse(
-        {
-          question: 'How much protein did I eat today?',
-          intent: 'NUTRITION_ONLY',
-          data: sampleNutritionData,
-        },
-        mockClient as any
-      );
+      const result = await generateResponse({
+        question: 'How much protein did I eat today?',
+        intent: 'NUTRITION_ONLY',
+        data: sampleNutritionData,
+      });
 
-      expect(mockClient.messages.create).toHaveBeenCalledTimes(1);
-      const callArgs = mockClient.messages.create.mock.calls[0][0];
+      expect(complete).toHaveBeenCalledTimes(1);
+      const callArgs = vi.mocked(complete).mock.calls[0][0];
       expect(callArgs.system).toBe(NUTRITION_SYSTEM_PROMPT);
       expect(result).toBe('You ate 150g of protein today');
     });
 
-    it('calls Anthropic API with correct prompt for CROSS_DOMAIN', async () => {
-      const mockClient = createMockAnthropicClient('Your protein intake correlates with better workout performance');
+    it('calls the LLM with correct prompt for CROSS_DOMAIN', async () => {
+      mockLlm('Your protein intake correlates with better workout performance');
 
-      const result = await generateResponse(
-        {
-          question: 'How does my diet affect my lifts?',
-          intent: 'CROSS_DOMAIN',
-          data: sampleCrossDomainData,
-        },
-        mockClient as any
-      );
+      const result = await generateResponse({
+        question: 'How does my diet affect my lifts?',
+        intent: 'CROSS_DOMAIN',
+        data: sampleCrossDomainData,
+      });
 
-      expect(mockClient.messages.create).toHaveBeenCalledTimes(1);
-      const callArgs = mockClient.messages.create.mock.calls[0][0];
+      expect(complete).toHaveBeenCalledTimes(1);
+      const callArgs = vi.mocked(complete).mock.calls[0][0];
       expect(callArgs.system).toBe(CROSS_DOMAIN_SYSTEM_PROMPT);
       expect(result).toBe('Your protein intake correlates with better workout performance');
     });
@@ -291,66 +277,38 @@ describe('Response Generator Unit Tests', () => {
     it('throws ResponseGeneratorError with API_RATE_LIMIT for 429 errors', async () => {
       const rateLimitError = new Error('Rate limit exceeded');
       (rateLimitError as any).status = 429;
-      Object.setPrototypeOf(rateLimitError, { constructor: { name: 'APIError' } });
-      
-      // Create a mock that simulates Anthropic.APIError
-      const mockClient = {
-        messages: {
-          create: vi.fn().mockRejectedValue(rateLimitError),
-        },
-      };
+      vi.mocked(complete).mockRejectedValue(rateLimitError);
 
       await expect(
-        generateResponse(
-          {
-            question: 'Test question',
-            intent: 'WORKOUT_ONLY',
-            data: sampleWorkoutData,
-          },
-          mockClient as any
-        )
+        generateResponse({
+          question: 'Test question',
+          intent: 'WORKOUT_ONLY',
+          data: sampleWorkoutData,
+        })
       ).rejects.toThrow(ResponseGeneratorError);
     });
 
     it('throws ResponseGeneratorError with API_ERROR for general API errors', async () => {
-      const apiError = new Error('API Error');
-      
-      const mockClient = {
-        messages: {
-          create: vi.fn().mockRejectedValue(apiError),
-        },
-      };
+      vi.mocked(complete).mockRejectedValue(new Error('API Error'));
 
       await expect(
-        generateResponse(
-          {
-            question: 'Test question',
-            intent: 'WORKOUT_ONLY',
-            data: sampleWorkoutData,
-          },
-          mockClient as any
-        )
+        generateResponse({
+          question: 'Test question',
+          intent: 'WORKOUT_ONLY',
+          data: sampleWorkoutData,
+        })
       ).rejects.toThrow(ResponseGeneratorError);
     });
 
-    it('throws ResponseGeneratorError with INVALID_RESPONSE for unexpected response format', async () => {
-      const mockClient = {
-        messages: {
-          create: vi.fn().mockResolvedValue({
-            content: [{ type: 'image', source: {} }], // Non-text response
-          }),
-        },
-      };
+    it('throws ResponseGeneratorError with INVALID_RESPONSE for an empty response', async () => {
+      mockLlm(''); // no text content
 
       await expect(
-        generateResponse(
-          {
-            question: 'Test question',
-            intent: 'WORKOUT_ONLY',
-            data: sampleWorkoutData,
-          },
-          mockClient as any
-        )
+        generateResponse({
+          question: 'Test question',
+          intent: 'WORKOUT_ONLY',
+          data: sampleWorkoutData,
+        })
       ).rejects.toThrow('Unexpected response format from AI');
     });
   });
@@ -370,18 +328,15 @@ describe('Response Generator Unit Tests', () => {
 
     intents.forEach((intent) => {
       it(`selects correct prompt for ${intent}`, async () => {
-        const mockClient = createMockAnthropicClient('Test response');
+        mockLlm('Test response');
 
-        await generateResponse(
-          {
-            question: 'Test question',
-            intent,
-            data: testData[intent],
-          },
-          mockClient as any
-        );
+        await generateResponse({
+          question: 'Test question',
+          intent,
+          data: testData[intent],
+        });
 
-        const callArgs = mockClient.messages.create.mock.calls[0][0];
+        const callArgs = vi.mocked(complete).mock.calls[0][0];
         expect(callArgs.system).toBe(expectedPrompts[intent]);
       });
     });
