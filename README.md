@@ -8,7 +8,7 @@ AI-powered workout logging and analytics platform. Log workouts using natural la
 - 📷 **Photo OCR** - Snap a photo of the whiteboard, AI extracts the workout
 - 🎤 **Voice Input** - Speak your workout using Web Speech API
 - 🍽️ **Nutrition Tracking** - Photo-based meal logging with AI macro estimation
-- 🤖 **AI Parsing** - Claude automatically structures your data
+- 🤖 **AI Parsing** - Provider-neutral task routing structures workout and meal data
 - 📊 **Analytics Dashboard** - Track progress, PRs, and workout types
 - 🔍 **Conversational Queries** - Ask questions about your workout history
 - 📅 **Program View** - View coach programming from Google Sheets
@@ -19,7 +19,7 @@ AI-powered workout logging and analytics platform. Log workouts using natural la
 
 - **Frontend**: Next.js 15 + React 19 + TypeScript + Tailwind CSS
 - **Backend**: Supabase (PostgreSQL + Auth + Real-time)
-- **AI**: Claude Sonnet 4 (Anthropic)
+- **AI**: Provider-neutral LLM seam with Anthropic and OpenAI per task
 - **Hosting**: Vercel (frontend) + Supabase (backend)
 
 ## Getting Started
@@ -28,7 +28,7 @@ AI-powered workout logging and analytics platform. Log workouts using natural la
 
 - Node.js 20+ installed
 - Supabase account (free tier)
-- Anthropic API key
+- Anthropic and/or OpenAI API key for the tasks you enable
 
 ### 2. Clone and Install
 
@@ -56,8 +56,13 @@ Create `.env.local` in the root directory:
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
-# Anthropic
+# LLM providers (server-only)
 ANTHROPIC_API_KEY=sk-ant-your-key
+OPENAI_API_KEY=sk-your-openai-key
+
+# Optional routing; Anthropic is the default when unset
+# LLM_NUTRITION_PROVIDER=openai
+# LLM_VISION_PROVIDER=anthropic
 
 # Google Sheets API (optional - for dynamic tab detection)
 # Required if using coach programming feature
@@ -67,6 +72,8 @@ GOOGLE_SHEETS_API_KEY=your-google-sheets-api-key
 # Google Sheets Cache TTL (optional - defaults to 4 hours)
 # GOOGLE_SHEETS_CACHE_TTL_HOURS=4
 ```
+
+See `.env.local.example` for service-role, cron, and per-purpose model settings.
 
 **Note:** For the coach programming feature to work with dynamic tab detection, you'll need to set up a Google Sheets API key. See the [Google Sheets API Setup Guide](docs/guides/GOOGLE-SHEETS-API-SETUP.md) for detailed instructions.
 

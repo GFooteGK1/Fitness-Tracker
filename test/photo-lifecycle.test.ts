@@ -32,7 +32,11 @@ describe('Photo Lifecycle Properties', () => {
   it('Property 5: Photos should be stored with 30-day expiration and deleted when expired', () => {
     fc.assert(
       fc.property(
-        fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }), // upload date
+        fc.date({
+          min: new Date('2020-01-01'),
+          max: new Date('2025-12-31'),
+          noInvalidDate: true,
+        }), // upload date
         fc.integer({ min: 0, max: 60 }), // days after upload to check
         (uploadDate: Date, daysAfter: number) => {
           const photo = createPhotoMetadata(uploadDate)

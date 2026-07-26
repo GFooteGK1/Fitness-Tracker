@@ -18,7 +18,7 @@
 ├─────────────────────────────────────────────────────────────────┤
 │                    External Services                            │
 │  ├─ Supabase (Database + Auth)                                 │
-│  ├─ Anthropic API (AI Analysis)                                │
+│  ├─ Anthropic + OpenAI via app/lib/llm (AI Analysis)           │
 │  └─ Vercel (Hosting + Deployment)                              │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -99,6 +99,9 @@ User Input → Form Component → AuthContext.updateProfile() → API Route → 
 Dashboard:
 ├─ Dashboard Page (`app/dashboard/page.tsx`)
 ├─ Dashboard Stats API (`app/api/dashboard-stats/route.ts`)
+├─ Deterministic Aggregates (`app/lib/aggregates/dashboard.ts`)
+├─ Versioned View Templates (`app/lib/view-templates.ts`)
+├─ View Template API (`app/api/view-templates/[viewType]/route.ts`)
 └─ Error Boundary (`app/components/ErrorBoundary.tsx`)
 ```
 
@@ -164,8 +167,8 @@ Adherence Tracking:
 - **Offline Queue** (`app/lib/offline-queue.ts`) - Offline support
 
 ### **Dependencies:**
-- **Anthropic API** for AI analysis
-- **Supabase Storage** for photos
+- **Provider-neutral LLM seam** (`app/lib/llm`) for per-task Anthropic/OpenAI analysis
+- Meal images are analyzed in-request and discarded; `photo_url` remains null
 - **Database Tables**: `meals`, `daily_targets`, `daily_summaries`
 - **Types**: `app/lib/types/food-tracking.ts`
 
@@ -212,7 +215,7 @@ Workout Input → Processing → Storage → Query/Analysis
 ```
 
 ### **Dependencies:**
-- **AI Services**: Anthropic Claude for OCR text extraction
+- **AI Services**: provider-neutral `complete()` seam for OCR text extraction
 - **Browser APIs**: Web Speech API for voice input
 - **External Data**: Google Sheets for workout templates
 - **Database Tables**: `workouts`, `movements`, `benchmark_prs`

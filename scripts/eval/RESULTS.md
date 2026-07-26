@@ -61,24 +61,17 @@ model (best case ~69% calorie MedAPE, ~50% mass MedAPE). Image-only macro
 estimation is inherently rough — the product should present these as rough
 estimates and/or add a user review-and-correct step, not treat them as exact.
 
-**But absolute error is high for every model** (best case terra: ~84% calorie
-MedAPE, ~51% mass MedAPE). Consistent with the literature's "image-only
-estimation should not be the sole input" — the photo→macro feature likely needs
-a user review/correct step or should present estimates as rough, not exact.
-
 ### Caveats (do not over-read)
 - **n=25** — directional, not decision-grade. The monotonic ordering across 5
   independent metrics makes the *ranking* trustworthy; absolute values are noisy.
 - **Overhead lab images**, not user phone photos — real-world error likely higher
   (the SNAPMe realism layer would show this).
-- **No Claude baseline** — no ANTHROPIC_API_KEY was set, so we can't yet compare
-  OpenAI vs current production for the flip decision.
+- The Claude baseline and all OpenAI candidates used the same 25-dish manifest,
+  but provider-specific image token accounting is not directly comparable.
 - Simple flat-JSON prompt; the app's richer prompt may score differently.
 
 ### Next to make this decision-grade
-1. Add ANTHROPIC_API_KEY and re-run with the Claude vision model in the candidate
-   list (compare vs current production).
-2. Scale to ~150 dishes.
-3. Add the SNAPMe realism layer (phone photos).
+1. Scale to ~150 dishes.
+2. Add the SNAPMe realism layer (phone photos).
 
 Reproduce: see `README.md` (pull → build-manifest → run-eval).

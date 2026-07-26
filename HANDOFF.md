@@ -1,5 +1,108 @@
 # Handoff
 
+## Autonomous reliability and ADR-0001 foundation
+
+Release authorized on 2026-07-26 from the clean worktree
+`C:\Users\foote\.codex\worktrees\fitness-tracker-autonomous`, branch
+`codex/autonomous-queue`. Git history and Vercel are the authoritative surfaces
+for commit and deployment status. The two SQL migrations in this tranche were
+applied and verified in production on 2026-07-26. Older sections below are
+historical records.
+
+Implemented locally:
+
+- Rebuilt the personal-records migration as an idempotent, transactional,
+  least-privilege RLS migration and hardened `/api/pr-history` query/error
+  handling. Apply-twice and cross-user RLS proof now pass on a deleted
+  disposable Supabase project and in production.
+- Added CI for tests, strict TypeScript, lint, and build; fixed the
+  `photo-lifecycle` property generator; and accepted only compatible lockfile
+  audit patches. Forced dependency downgrades/upgrades were not taken.
+- Fixed agent tool-call continuation so it uses the provider that produced the
+  first result, rather than the process-default provider.
+- Made food-photo nutrition explicitly an estimate in the review flow, removed
+  false photo-storage language, and ensured name-only review edits persist.
+- Extracted deterministic dashboard workout aggregates into
+  `app/lib/aggregates/dashboard.ts`; the app still computes every displayed
+  number. The stats route now uses private/no-store caching.
+- Added the strict versioned view-template contract, authenticated immutable
+  version API, and RLS migration for ADR-0001. Templates control only section
+  visibility/order and narrative tone; they cannot supply fitness values or
+  executable prompt text.
+- Refreshed provider, photo-retention, eval, environment, and architecture docs.
+
+Verification completed on 2026-07-26:
+
+- `npm ci` reproduces the final lockfile; Serwist resolved to patched `9.5.12`.
+- Changed-surface slice: 13 files and 167 tests pass.
+- Full suite passed twice: 154 files and 2,006 tests passed; 5 files and 7
+  explicitly network-gated tests skipped on each run.
+- Strict TypeScript, lint (zero warnings/errors), and `git diff --check` pass.
+- Production build passes on Next 15.5.22 and generates all 66 routes,
+  including `/api/view-templates/[viewType]`.
+- Playwright verified the photo-estimate review and item-edit states at desktop
+  and 390px mobile widths; the temporary visual harness was removed afterward.
+- Production audit was reduced from 9 high findings to 3. The remainder are
+  Next-bundled PostCSS/sharp advisories; npm proposes an unsafe Next 9 downgrade,
+  so no forced fix was taken.
+- CodeRabbit review was attempted but could not run: its CLI was absent and the
+  installer was rejected as an unauthorized persistent machine change. No
+  manual review is represented as CodeRabbit output.
+- A read-only production Supabase preflight confirmed the intended project
+  (`fitness-tracker`, ref `auolnfwetmfcwhtvakzy`) is PostgreSQL 17.6, has five
+  auth users and 154 workouts, and at preflight time did not have
+  `personal_records` or `view_templates`. No write was made during preflight.
+- Supabase preview branches are unavailable on the current Free plan. The UI
+  requires a Pro upgrade and quoted branch compute at $0.01344/hour; no plan or
+  resource change was made. Supabase's current Free plan permits two active
+  projects, so Greg approved a temporary second project for verification.
+- Added `docs/migrations/verify-autonomous-queue-migrations.sql`. After both
+  migrations are applied twice, it checks structure/grants and exercises
+  cross-user RLS using two auth identities inside a transaction that always
+  rolls its fixtures back.
+- Created `fitness-tracker-migration-test` (PostgreSQL 17.6, automatic table
+  exposure disabled), seeded only two synthetic auth rows and the minimum
+  `workouts` prerequisite, and applied each migration twice successfully. The
+  RLS verifier passed. Independent readback showed 0 PR fixture rows, 1 default
+  template, 0 user-template fixtures, forced RLS on both tables, all 5 policies,
+  and correct least-privilege grants. Security Advisor reported 0 errors and
+  only the unrelated fresh-project leaked-password warning.
+- Permanently deleted the disposable project after verification. Supabase
+  confirmed deletion, and the organization readback showed only the production
+  `fitness-tracker` project. Durable evidence is in
+  `docs/migrations/autonomous-queue-verification-2026-07-26.md`.
+- Applied `personal-records-migration.sql` and `view-templates-migration.sql` to
+  production once after explicit approval. The rollback-only two-user verifier
+  passed. Independent readback found 0 personal-record rows, 1 default template,
+  0 user-template rows, forced RLS on both tables, all 5 policies, correct grants,
+  and the expected default schema/sections. Existing auth-user and workout counts
+  remained 5 and 154. Evidence is in
+  `docs/migrations/production-migration-application-2026-07-26.md`.
+- Reran the production Security Advisor after application. Its baseline remained
+  3 errors and 4 warnings, with no new migration-related finding.
+- The production Security Advisor baseline has three existing RLS-disabled
+  backup-table errors and four warnings involving a mutable function
+  `search_path`, broad execution of `set_user_id()`, and leaked-password
+  protection. These predate and are separate from these migrations; they
+  are tracked in `Fitness-Tracker-k50`.
+
+Team pass: lead/product-architecture and builder were handled in the main
+session; the reviewer pass separately checked the migration contract, durable
+diff, and post-run database state; Vitest, TypeScript, lint, build, audit,
+Playwright, live SQL readback, and Security Advisor supplied verification.
+Independent reviewer automation is the explicit skip above.
+
+Explicit gates that remain:
+
+- No additional product approval is required for this tranche; release completion
+  must be verified from GitHub and Vercel rather than inferred from this file.
+- Meal-photo persistence remains a product/privacy/cost decision; photos are
+  still analyzed in-request and discarded.
+- Hybrid AI dashboard narrative work may now build on the verified template
+  table, but its local API/foundation has not been shipped.
+
+---
+
 ## OpenAI Provider Migration + Eval Harness
 
 Completed and LIVE-validated 2026-07-20. All work on `origin/main`.

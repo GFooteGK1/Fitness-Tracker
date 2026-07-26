@@ -68,6 +68,17 @@ const itemsWithPortion = [
   },
 ]
 
+const correctedItemsWithoutPortion = [
+  {
+    food: 'roasted chicken breast',
+    portion: '1 piece',
+    protein: 30,
+    carbs: 0,
+    fat: 3,
+    calories: 150,
+  },
+]
+
 function refineRequest(body: unknown): NextRequest {
   return new NextRequest('http://localhost:3000/api/meals/refine', {
     method: 'POST',
@@ -103,6 +114,31 @@ describe('POST /api/meals/refine', () => {
     expect(updateSpy).not.toHaveBeenCalled()
   })
 
+  it('persists user corrections even when no portion recalculation is needed', async () => {
+    const { client, updateSpy } = supabaseWithUpdateSpy()
+    vi.mocked(createServerClient).mockResolvedValue(client as any)
+
+    const response = await POST(refineRequest({
+      mealId: 'm1',
+      items: correctedItemsWithoutPortion,
+    }))
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data).toEqual({
+      items: correctedItemsWithoutPortion,
+      refined: false,
+      reviewed: true,
+    })
+    expect(complete).not.toHaveBeenCalled()
+    expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      items: correctedItemsWithoutPortion,
+      manual_override: true,
+      needs_review: false,
+      reviewed_at: expect.any(String),
+    }))
+  })
+
   it('does NOT write when the parsed JSON is missing numeric totals', async () => {
     const { client, updateSpy } = supabaseWithUpdateSpy()
     vi.mocked(createServerClient).mockResolvedValue(client as any)
@@ -136,7 +172,11 @@ describe('POST /api/meals/refine', () => {
     expect(response.status).toBe(200)
     expect(data.refined).toBe(true)
     expect(data.totals.calories).toBe(155)
-    expect(updateSpy).toHaveBeenCalledTimes(1)
+    expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      total_calories: 155,
+      manual_override: true,
+      reviewed_at: expect.any(String),
+    }))
   })
 
   it('clamps an out-of-range confidence instead of writing it raw', async () => {

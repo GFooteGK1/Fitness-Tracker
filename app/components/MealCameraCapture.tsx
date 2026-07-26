@@ -642,14 +642,16 @@ export default function MealCameraCapture({
     setAnalysisResult(null)
   }, [photoState.preview])
 
-  // Handle portion confirmation - refine macros with user-specified portions
+  // Handle estimate confirmation and persist any user corrections.
   const handlePortionConfirm = useCallback(async (items: FoodItem[]) => {
     if (!analysisResult) return
 
-    const hasPortionSpecs = items.some(item => item.portionSpec)
+    const hasReviewEdits = items.some((item, index) =>
+      item.portionSpec || item.food !== analysisResult.items[index]?.food
+    )
 
-    if (!hasPortionSpecs) {
-      // No portions specified, complete with original estimates
+    if (!hasReviewEdits) {
+      // The user accepted the original estimate without corrections.
       setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
       onUploadComplete?.({
         mealId: analysisResult.mealId,
@@ -658,7 +660,7 @@ export default function MealCameraCapture({
       return
     }
 
-    // Refine macros with portion specs
+    // Persist corrected names and refine macros when portions changed.
     setIsRefining(true)
     setPhotoState(prev => ({ ...prev, analysisStatus: 'refining' }))
 
@@ -685,7 +687,7 @@ export default function MealCameraCapture({
       })
     } catch (error) {
       console.error('Portion refinement error:', error)
-      onError?.('Failed to refine portions. Meal saved with original estimates.')
+      onError?.('Failed to save corrections. Meal saved with the original estimates.')
       setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
       onUploadComplete?.({
         mealId: analysisResult.mealId,
@@ -791,6 +793,10 @@ export default function MealCameraCapture({
             className="w-full h-48 sm:h-64 object-cover rounded-lg"
           />
 
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400" role="note">
+            Your photo is used for this analysis and is not retained in your meal history.
+          </p>
+
           {/* Upload Progress Indicator - Mobile Optimized */}
           {photoState.isUploading && (
             <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -843,13 +849,13 @@ export default function MealCameraCapture({
                 {photoState.analysisStatus === 'uploading' && (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 dark:border-blue-400 mr-2"></div>
-                    Uploading your meal photo to secure storage...
+                    Sending your meal photo for analysis...
                   </div>
                 )}
                 {photoState.analysisStatus === 'analyzing' && (
                   <div className="flex items-center">
                     <div className="animate-pulse rounded-full h-3 w-3 bg-green-600 dark:bg-green-400 mr-2"></div>
-                    AI is identifying food items and calculating nutrition...
+                    AI is identifying food items and estimating nutrition...
                   </div>
                 )}
               </div>
@@ -901,7 +907,7 @@ export default function MealCameraCapture({
                   {photoState.analysisStatus === 'uploading' ? 'Uploading...' : 'Analyzing...'}
                 </>
               ) : (
-                'Upload Photo'
+                'Analyze Photo'
               )}
             </button>
 
@@ -940,13 +946,16 @@ export default function MealCameraCapture({
 
           {/* Success Message - Mobile Optimized */}
           {photoState.analysisStatus === 'complete' && (
-            <div className="mt-2 p-3 bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-800 rounded-lg">
+            <div
+              className="mt-2 p-3 bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-800 rounded-lg"
+              aria-live="polite"
+            >
               <div className="flex items-center">
                 <svg className="h-4 w-4 text-green-600 dark:text-green-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <span className="text-sm text-green-800 dark:text-green-200">
-                  Meal analyzed successfully! Nutritional data has been saved.
+                  Meal saved with estimated nutrition. You can edit it anytime.
                 </span>
               </div>
             </div>

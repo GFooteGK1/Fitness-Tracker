@@ -2,6 +2,23 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
 
+const PR_TYPES = new Set(['weight', 'reps', 'time', 'volume'])
+const DEFAULT_LIMIT = 50
+const MAX_LIMIT = 100
+const MAX_OFFSET = 10_000
+
+function parseIntegerParam(value: string | null, fallback: number, min: number, max?: number) {
+  if (value === null) return fallback
+  if (!/^\d+$/.test(value)) return null
+
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed) || parsed < min || (max !== undefined && parsed > max)) {
+    return null
+  }
+
+  return parsed
+}
+
 export async function GET(request: Request) {
   try {
     const supabase = await createServerClient()
@@ -12,10 +29,23 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url)
-    const exercise = searchParams.get('exercise')
+    const exercise = searchParams.get('exercise')?.trim() || null
     const prType = searchParams.get('prType')
-    const limit = parseInt(searchParams.get('limit') || '50', 10)
-    const offset = parseInt(searchParams.get('offset') || '0', 10)
+    const limit = parseIntegerParam(searchParams.get('limit'), DEFAULT_LIMIT, 1, MAX_LIMIT)
+    const offset = parseIntegerParam(searchParams.get('offset'), 0, 0, MAX_OFFSET)
+
+    if (limit === null) {
+      return apiError(`limit must be an integer between 1 and ${MAX_LIMIT}`, 400)
+    }
+    if (offset === null) {
+      return apiError(`offset must be an integer between 0 and ${MAX_OFFSET}`, 400)
+    }
+    if (prType && !PR_TYPES.has(prType)) {
+      return apiError('prType must be one of: weight, reps, time, volume', 400)
+    }
+    if (exercise && exercise.length > 100) {
+      return apiError('exercise must be 100 characters or fewer', 400)
+    }
 
     // Build query
     let query = supabase
@@ -54,12 +84,17 @@ export async function GET(request: Request) {
       .select('achieved_at')
       .eq('user_id', user.id)
 
+    if (allError) {
+      console.error('Error fetching PR summary:', allError)
+      return apiError('Failed to fetch PR summary', 500)
+    }
+
     let weekCount = 0
     let monthCount = 0
     let yearCount = 0
     let totalCount = 0
 
-    if (!allError && allRecords) {
+    if (allRecords) {
       totalCount = allRecords.length
       for (const rec of allRecords) {
         const d = new Date(rec.achieved_at)
