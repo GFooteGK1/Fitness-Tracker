@@ -60,7 +60,6 @@ export async function callAgentWithTools(
     maxRounds = MAX_TOOL_ROUNDS
   } = options
 
-  const provider = getProvider()
   let messages: LlmMessage[] = [{ role: 'user', content: userInput }]
   const allToolCalls: ToolCallRecord[] = []
   const totalTokens = { input: 0, output: 0 }
@@ -109,7 +108,14 @@ export async function callAgentWithTools(
     }
 
     // Otherwise continue: append the tool-call turn + results and loop.
-    messages = provider.appendToolResults(messages, result.toolCalls, toolResults)
+    // Use the provider that produced this result. The `agent` purpose can
+    // override the global provider, so resolving the default provider here
+    // can cross provider boundaries inside one tool loop.
+    messages = getProvider(result.provider).appendToolResults(
+      messages,
+      result.toolCalls,
+      toolResults
+    )
   }
 
   // Exhausted max rounds — provide a sensible final message.

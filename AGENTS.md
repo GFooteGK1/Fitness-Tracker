@@ -43,7 +43,7 @@ When working on this codebase:
 | Styling | Tailwind CSS | 3.x |
 | Database | Supabase PostgreSQL | - |
 | Auth | Supabase Auth | - |
-| Storage | Supabase Storage | - |
+| Storage | Supabase Storage helpers (meal-photo persistence is not currently wired) | - |
 | AI | Provider-neutral LLM seam (`app/lib/llm`) — Anthropic or OpenAI via `LLM_PROVIDER` | per-purpose (see `getModel`) |
 | Deployment | Vercel (serverless) | - |
 | Testing | Vitest + fast-check | 2.x |
@@ -393,12 +393,15 @@ const { data: strain } = await supabase
 1. Camera capture (environment-facing) → Preview
 2. Compress image (max 1200px, quality 0.8, <1MB)
 3. If offline → Queue in IndexedDB
-4. Upload to Supabase Storage: meal-photos/{user_id}/{timestamp}.jpg
-5. Claude Vision analysis → Extract macros + items
+4. Send the image for provider-neutral vision analysis
+5. Present the rough macro estimate for user review/correction
 6. Validate macros (macro-validation.ts)
-7. Insert to meals table
-8. Update UI with new totals
+7. Insert to meals table with photo_url = null
+8. Discard the analyzed image and update the UI with new totals
 ```
+
+Meal photos are not persisted today. `uploadMealPhoto` is dormant; enabling it
+requires an explicit storage-cost/privacy decision and updated retention UX.
 
 ### Macro Validation
 ```typescript
@@ -704,8 +707,13 @@ npm run test:ui       # Vitest UI
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
-# Anthropic
+# LLM providers (server-only)
 ANTHROPIC_API_KEY=sk-ant-your-key
+OPENAI_API_KEY=sk-your-openai-key
+
+# Optional per-purpose routing (Anthropic is the default)
+LLM_NUTRITION_PROVIDER=openai
+LLM_VISION_PROVIDER=anthropic
 
 # WHOOP
 WHOOP_CLIENT_ID=your-whoop-client-id

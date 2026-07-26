@@ -53,8 +53,25 @@ export async function POST(request: NextRequest) {
     const itemsWithPortions = items.filter(item => item.portionSpec)
     
     if (itemsWithPortions.length === 0) {
-      // No refinement needed, just return original items
-      return NextResponse.json({ items, refined: false })
+      // Food-name corrections still need to be persisted even when there is
+      // no portion-driven macro recalculation.
+      const { error: reviewUpdateError } = await supabase
+        .from('meals')
+        .update({
+          items,
+          manual_override: true,
+          reviewed_at: new Date().toISOString(),
+          needs_review: false,
+        })
+        .eq('id', mealId)
+        .eq('user_id', user.id)
+
+      if (reviewUpdateError) {
+        console.error('[Refine] DB review update error:', reviewUpdateError)
+        return NextResponse.json({ error: 'Failed to update meal' }, { status: 500 })
+      }
+
+      return NextResponse.json({ items, refined: false, reviewed: true })
     }
 
     // Build prompt for Claude to refine macros based on portion specs
@@ -65,7 +82,7 @@ export async function POST(request: NextRequest) {
       return `${i + 1}. ${item.food}: ${portionDesc}`
     }).join('\n')
 
-    console.log('[Refine] Calling Claude for macro refinement...')
+    console.log('[Refine] Calling LLM for macro refinement...')
 
     const llmResult = await complete({
       purpose: 'nutrition',
@@ -143,7 +160,9 @@ Use accurate nutritional data. Round macros to 1 decimal place. Confidence shoul
         total_fat: result.total_fat,
         total_calories: result.total_calories,
         ai_confidence: result.confidence,
-        needs_review: result.confidence < 0.7
+        needs_review: false,
+        manual_override: true,
+        reviewed_at: new Date().toISOString(),
       })
       .eq('id', mealId)
       .eq('user_id', user.id)

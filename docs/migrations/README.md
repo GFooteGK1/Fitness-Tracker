@@ -4,8 +4,13 @@ This directory contains SQL migration scripts for the SociusFit database schema.
 
 ## Current Schema Status
 
-**Last Verified:** February 5, 2026  
-**Status:** ✅ Production Ready
+**Last Verified:** July 26, 2026
+**Status:** Existing production schema and both July 26 incremental migrations are live and verified
+
+The February WHOOP v2 verification below remains historical context. On July 26,
+the personal-records and view-template migrations were applied to the production
+PostgreSQL 17.6 project and passed structural, grant, and rollback-only two-user
+RLS verification.
 
 All WHOOP v2 schema requirements are met:
 - Sleep/workout IDs stored as TEXT (supports UUIDs)
@@ -48,6 +53,14 @@ Nutrition tracking tables:
 ### `supabase-migration.sql`
 Base schema (workouts, movements, user profiles)
 
+### `personal-records-migration.sql`
+Incremental, repeatable personal-record history table with forced user-scoped
+RLS and least-privilege grants.
+
+### `view-templates-migration.sql`
+Incremental, repeatable storage for immutable ADR-0001 presentation templates,
+including the default dashboard template and forced RLS.
+
 ## Verification Scripts
 
 ### `verify-whoop-schema.sql`
@@ -59,6 +72,17 @@ Comprehensive verification script that checks:
 - Data integrity (no NULL user_ids)
 
 Run this after any schema changes to verify correctness.
+
+### `verify-autonomous-queue-migrations.sql`
+Post-apply structural, grant, and two-user RLS verification for the personal
+records and view-template migrations. Run both migrations twice first. The
+script creates verification fixtures inside a transaction and rolls them back.
+
+Both migrations passed this process on a disposable PostgreSQL 17.6 Supabase
+project on July 26, 2026. See
+`autonomous-queue-verification-2026-07-26.md` for that evidence record. They were
+then applied and independently verified in production; see
+`production-migration-application-2026-07-26.md`.
 
 ## Migration History
 
@@ -96,7 +120,10 @@ Run `complete-holistic-migration.sql` to create the full schema.
 Run `verify-whoop-schema.sql` to check current state.
 
 ### For Incremental Updates
-Individual migration files can be run separately if needed, but the complete migration is recommended.
+Run the relevant incremental migration, repeat it to prove idempotence, and then
+run its verification script. Do not run a historical aggregate migration over
+an existing production schema without first reconciling it against the live
+database.
 
 ## Important Notes
 
@@ -118,4 +145,4 @@ Individual migration files can be run separately if needed, but the complete mig
 
 ---
 
-**Last Updated:** February 5, 2026
+**Last Updated:** July 26, 2026
