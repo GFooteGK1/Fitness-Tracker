@@ -4,7 +4,7 @@ import type {
   StrengthAssessmentInput
 } from './types'
 
-export const COACH_POLICY_VERSION = '0.1.0'
+export const COACH_POLICY_VERSION = '0.2.0'
 export const E1RM_CALCULATOR_VERSION = 'epley-general-v1'
 
 export const APPROVED_NUMERIC_PRESCRIPTION_SOURCES = [

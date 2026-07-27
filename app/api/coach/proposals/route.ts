@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
-import { buildEightWeekProposal } from '@/app/lib/coach/planner'
+import { buildEightWeekProposal, validateCoachPlanningInput } from '@/app/lib/coach/planner'
 
 interface ProposalRequest {
   planningInput?: unknown
@@ -28,9 +28,22 @@ export async function POST(request: Request) {
     const idempotencyKey = validIdempotencyKey(body.idempotencyKey)
     if (!idempotencyKey) return apiError('A valid idempotency key is required', 400)
 
+    const validated = validateCoachPlanningInput(body.planningInput)
+    if (!validated.ok) {
+      return NextResponse.json(
+        { error: 'Invalid coach setup', details: validated.errors },
+        { status: 400 }
+      )
+    }
+
+    const context = await fetchCoachRuntimeContext(supabase, user.id)
+    if (!context.storageAvailable) return apiError('Coach storage unavailable', 503)
+
     let proposal
     try {
-      proposal = buildEightWeekProposal(body.planningInput)
+      proposal = buildEightWeekProposal(validated.value, {
+        assessments: context.assessments
+      })
     } catch (error) {
       return apiError(
         'Invalid coach setup',
@@ -39,14 +52,18 @@ export async function POST(request: Request) {
       )
     }
 
-    const context = await fetchCoachRuntimeContext(supabase, user.id)
-    if (!context.storageAvailable) return apiError('Coach storage unavailable', 503)
-    if (context.activeProgram) return apiError('An active program already exists', 409)
-
     const sourceSnapshot = {
       planningInput: proposal.inputSnapshot,
       assessments: context.assessments.map(assessment => ({
         id: assessment.id,
+        movement: assessment.movement,
+        variation: assessment.variation,
+        sourceLoad: assessment.load,
+        sourceReps: assessment.reps,
+        unit: assessment.unit,
+        estimatedOneRepMax: assessment.estimatedOneRepMax,
+        estimateKind: assessment.estimateKind,
+        athleteConfidence: assessment.athleteConfidence,
         calculatorVersion: assessment.calculatorVersion,
         sourceDate: assessment.assessedOn
       })),
@@ -60,7 +77,7 @@ export async function POST(request: Request) {
       .update(JSON.stringify({ proposal, sourceSnapshot }))
       .digest('hex')
 
-    const { data, error } = await supabase.rpc('create_initial_training_plan_proposal', {
+    const commonArguments = {
       p_title: proposal.title,
       p_goal_summary: proposal.goalSummary,
       p_start_date: proposal.startDate,
@@ -79,17 +96,30 @@ export async function POST(request: Request) {
         prescription: session.prescription
       })),
       p_rationale: {
-        reason: 'initial_program',
+        reason: context.activeProgram ? 'replacement_program' : 'initial_program',
         generatedBy: 'planning_kernel',
         athleteReviewRequired: true
       },
       p_input_fingerprint: inputFingerprint,
       p_idempotency_key: idempotencyKey
-    })
+    }
+    const { data, error } = context.activeProgram
+      ? await supabase.rpc('create_training_plan_replacement_proposal', {
+        p_program_id: context.activeProgram.id,
+        p_base_plan_version_id: context.activeProgram.activePlanVersionId,
+        ...commonArguments
+      })
+      : await supabase.rpc('create_initial_training_plan_proposal', commonArguments)
 
     if (error) {
       console.error('Coach proposal RPC failed:', { code: error.code })
-      if (error.code === '55000') return apiError('An active program already exists', 409)
+      if (error.code === '40001') return apiError('The active plan changed; refresh and try again', 409)
+      if (error.code === '55000') return apiError(
+        context.activeProgram
+          ? 'The active plan is unavailable for replacement'
+          : 'An active program already exists',
+        409
+      )
       if (error.code === '22023') return apiError('Proposal request conflicts with an existing request', 409)
       return apiError('Unable to save coach proposal', 503)
     }

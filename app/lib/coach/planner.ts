@@ -1,8 +1,10 @@
 import { COACH_POLICY_VERSION, getEightWeekIntent } from './policy'
+import { buildSessionPrescription } from './programming'
 import { COACH_REFERENCE_MANIFEST } from './reference'
 import {
   COACH_PROGRAM_DOMAIN_IDS,
   type CoachPlanProposalDraft,
+  type CoachPlanningContext,
   type CoachPlanningInput,
   type CoachProgramDomainId,
   type CoachReferenceDomain,
@@ -109,7 +111,10 @@ export function validateCoachPlanningInput(value: unknown): CoachPlanningValidat
   }
 }
 
-export function buildEightWeekProposal(value: unknown): CoachPlanProposalDraft {
+export function buildEightWeekProposal(
+  value: unknown,
+  context: CoachPlanningContext = {}
+): CoachPlanProposalDraft {
   const validated = validateCoachPlanningInput(value)
   if (!validated.ok) throw new Error(validated.errors.join('; '))
 
@@ -124,25 +129,7 @@ export function buildEightWeekProposal(value: unknown): CoachPlanProposalDraft {
       ((week.week - 1) * 7) + WEEKDAY_OFFSET[day]
     ),
     prescription: {
-      domain: input.primaryDomain,
-      intent: `${week.intent} ${domain.intent}`,
-      dose: {
-        source: 'validated_policy' as const,
-        sessionMinutes: input.sessionMinutes,
-        structure: sessionStructure(input.experience, week.reviewRequired)
-      },
-      effort: domain.feel,
-      rest: restGuidance(input.primaryDomain),
-      success_condition: `Finish with the target quality intact: ${domain.feel}`,
-      stop_condition: domain.stopConditions[0],
-      scale_options: [
-        'Shorten the session while preserving its primary intent.',
-        'Use an easier variation that keeps the same target quality.'
-      ],
-      evidence: {
-        doctrineVersion: COACH_REFERENCE_MANIFEST.doctrineVersion,
-        policyVersion: COACH_POLICY_VERSION
-      }
+      ...buildSessionPrescription(input, week, index + 1, domain, context)
     }
   })))
 
@@ -163,29 +150,6 @@ function getProgramDomain(id: CoachProgramDomainId): CoachReferenceDomain {
   const domain = COACH_REFERENCE_MANIFEST.domains.find(candidate => candidate.id === id)
   if (!domain) throw new Error(`Coach reference domain is unavailable: ${id}`)
   return domain
-}
-
-function sessionStructure(experience: TrainingExperience, reviewRequired: boolean): string {
-  if (reviewRequired) {
-    return 'Keep useful practice and reduce the stressors that show accumulated fatigue.'
-  }
-
-  if (experience === 'new_or_returning') {
-    return 'Practice the primary patterns and progress only after repeatable quality.'
-  }
-
-  if (experience === 'experienced') {
-    return 'Target the primary adaptation and progress one meaningful variable at a time.'
-  }
-
-  return 'Use focused, repeatable work and progress one meaningful variable at a time.'
-}
-
-function restGuidance(domain: CoachProgramDomainId): string {
-  if (domain === 'power_explosiveness' || domain === 'speed_agility') {
-    return 'Rest until speed and coordination are available again.'
-  }
-  return 'Rest until the target feel and technique are available again.'
 }
 
 function addDays(value: string, days: number): string {

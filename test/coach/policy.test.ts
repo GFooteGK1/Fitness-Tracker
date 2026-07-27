@@ -9,7 +9,7 @@ import {
 
 describe('coach deterministic policy', () => {
   it('keeps policy and calculator versions explicit', () => {
-    expect(COACH_POLICY_VERSION).toBe('0.1.0')
+    expect(COACH_POLICY_VERSION).toBe('0.2.0')
     expect(E1RM_CALCULATOR_VERSION).toBe('epley-general-v1')
   })
 

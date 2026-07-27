@@ -78,6 +78,13 @@ verification, grant readback, and Database Advisor review. See
 `coach-system-verification-2026-07-27.md` and
 `coach-system-production-application-2026-07-27.md`.
 
+### `coach-plan-replacement-migration.sql`
+Incremental, repeatable functions for atomically creating an immutable
+replacement proposal against the current active plan and applying reviewed
+program metadata only during acceptance. It preserves the existing RLS and
+least-privilege table grants; authenticated users receive execute permission on
+the bounded RPC only.
+
 ## Verification Scripts
 
 ### `verify-whoop-schema.sql`
@@ -118,6 +125,16 @@ stale-proposal rejection, and cross-user isolation. The final migration passed
 this process on a fresh PostgreSQL 17.6 Supabase project and in production on
 July 27, 2026; see `coach-system-verification-2026-07-27.md` and
 `coach-system-production-application-2026-07-27.md`.
+
+### `verify-coach-plan-replacement-migration.sql`
+Rollback-only verification for replacement proposal retry, mismatched-payload
+rejection, stale-base rejection, metadata activation, execute grants, lack of
+direct mutation grants, and cross-user isolation. Apply both coach migrations
+twice before running it.
+
+The replacement migration was applied twice and rollback-verified in production
+on July 27, 2026. See
+`coach-plan-replacement-production-application-2026-07-27.md`.
 
 ## Migration History
 

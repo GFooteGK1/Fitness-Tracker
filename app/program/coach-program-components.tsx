@@ -5,6 +5,7 @@ import type {
   ActiveCoachProgramSummary,
   CoachPlanProposalDraft,
   CoachPlanningInput,
+  CoachSessionPrescription,
   CoachStrengthAssessmentSummary,
   StrengthAssessmentInput,
   TrainingWeekday
@@ -394,22 +395,30 @@ interface ProposalPreviewProps {
   proposal: CoachPlanProposalDraft
   onAccept: () => void
   accepting: boolean
+  replacement?: boolean
 }
 
-export function ProposalPreview({ proposal, onAccept, accepting }: ProposalPreviewProps) {
+export function ProposalPreview({
+  proposal,
+  onAccept,
+  accepting,
+  replacement = false
+}: ProposalPreviewProps) {
   return (
     <section className="rounded-2xl border border-blue-200 bg-blue-50/60 p-5 shadow-sm dark:border-blue-900 dark:bg-blue-950/20 sm:p-6">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">
         Step 2 · Athlete review
       </p>
-      <h2 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">Review your proposal</h2>
+      <h2 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
+        {replacement ? 'Review your replacement proposal' : 'Review your proposal'}
+      </h2>
       <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
         {proposal.title} · {formatDate(proposal.startDate)} to {formatDate(proposal.endDate)}
       </p>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid gap-3 lg:grid-cols-2">
         {proposal.weeks.map(week => {
-          const example = proposal.sessions.find(session => session.weekNumber === week.week)
+          const sessions = proposal.sessions.filter(session => session.weekNumber === week.week)
           return (
             <article key={week.week} className="rounded-xl border border-blue-100 bg-white p-4 dark:border-blue-900 dark:bg-gray-900">
               <div className="flex items-start justify-between gap-3">
@@ -421,12 +430,20 @@ export function ProposalPreview({ proposal, onAccept, accepting }: ProposalPrevi
                 )}
               </div>
               <p className="mt-3 text-sm leading-5 text-gray-700 dark:text-gray-200">{week.intent}</p>
-              {example && (
-                <div className="mt-4 border-t border-gray-100 pt-3 text-xs leading-5 text-gray-500 dark:border-gray-800 dark:text-gray-400">
-                  <p><span className="font-semibold text-gray-700 dark:text-gray-200">Feel:</span> {example.prescription.effort}</p>
-                  <p className="mt-1"><span className="font-semibold text-gray-700 dark:text-gray-200">Stop:</span> {example.prescription.stop_condition}</p>
+              <details className="mt-4 border-t border-gray-100 pt-3 dark:border-gray-800" open={week.week === 1}>
+                <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-blue-700 dark:text-blue-300">
+                  {sessions.length} sessions
+                </summary>
+                <div className="mt-3 space-y-3">
+                  {sessions.map(session => (
+                    <SessionPrescriptionCard
+                      key={`${session.weekNumber}-${session.sessionIndex}`}
+                      prescription={session.prescription}
+                      label={`Session ${session.sessionIndex} · ${formatDate(session.scheduledDate)}`}
+                    />
+                  ))}
                 </div>
-              )}
+              </details>
             </article>
           )
         })}
@@ -445,7 +462,7 @@ export function ProposalPreview({ proposal, onAccept, accepting }: ProposalPrevi
         disabled={accepting}
         className="mt-5 min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
       >
-        {accepting ? 'Accepting plan…' : 'Accept this plan'}
+        {accepting ? 'Accepting plan…' : replacement ? 'Accept replacement plan' : 'Accept this plan'}
       </button>
     </section>
   )
@@ -498,7 +515,9 @@ export function ActiveProgramView({ program }: { program: ActiveCoachProgramSumm
                     {formatDate(session.scheduledDate)}
                   </p>
                 )}
-                {typeof session.prescription.intent === 'string' && (
+                {isDetailedPrescription(session.prescription) ? (
+                  <SessionPrescriptionCard prescription={session.prescription} />
+                ) : typeof session.prescription.intent === 'string' && (
                   <p className="mt-2 text-sm text-gray-700 dark:text-gray-200">
                     {session.prescription.intent}
                   </p>
@@ -510,6 +529,117 @@ export function ActiveProgramView({ program }: { program: ActiveCoachProgramSumm
       )}
     </section>
   )
+}
+
+function SessionPrescriptionCard({
+  prescription,
+  label
+}: {
+  prescription: CoachSessionPrescription
+  label?: string
+}) {
+  return (
+    <article className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-950/50">
+      {label && (
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          {label}
+        </p>
+      )}
+      <h4 className={`${label ? 'mt-1 ' : ''}font-bold text-gray-950 dark:text-white`}>
+        {prescription.session_title}
+      </h4>
+      <p className="mt-1 text-sm leading-5 text-gray-700 dark:text-gray-200">
+        {prescription.intent}
+      </p>
+
+      <div className="mt-3 space-y-3">
+        {prescription.dose.blocks.map(block => (
+          <section key={block.label} className="border-l-2 border-blue-200 pl-3 dark:border-blue-900">
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              {block.label} · {block.minutes} min
+            </p>
+            {block.exercises.map(exercise => (
+              <div key={exercise.name} className="mt-1">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{exercise.name}</p>
+                <p className="text-sm text-gray-700 dark:text-gray-200">{exercise.prescription}</p>
+                {exercise.load_guidance && (
+                  <p className="mt-1 text-xs font-medium text-blue-700 dark:text-blue-300">
+                    Saved baseline: {exercise.load_guidance.loadRange.min}-
+                    {exercise.load_guidance.loadRange.max} {exercise.load_guidance.loadRange.unit}{' '}
+                    ({exercise.load_guidance.percentRange[0]}-{exercise.load_guidance.percentRange[1]}% e1RM)
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Swap: {exercise.substitutions.join(' or ')}
+                </p>
+              </div>
+            ))}
+          </section>
+        ))}
+      </div>
+
+      <div className="mt-3 border-t border-gray-200 pt-3 text-xs leading-5 text-gray-600 dark:border-gray-800 dark:text-gray-300">
+        <p><span className="font-semibold">Feel:</span> {prescription.effort}</p>
+        <p><span className="font-semibold">Recovery:</span> {prescription.rest}</p>
+        <p><span className="font-semibold">Success:</span> {prescription.success_condition}</p>
+        <p><span className="font-semibold">Stop:</span> {prescription.stop_condition}</p>
+        <p className="mt-1"><span className="font-semibold">Progress:</span> {prescription.progression.next_week}</p>
+        {prescription.constraint_notes.map(note => (
+          <p key={note} className="mt-1 font-medium">{note}</p>
+        ))}
+      </div>
+    </article>
+  )
+}
+
+function isDetailedPrescription(
+  value: Record<string, unknown>
+): value is Record<string, unknown> & CoachSessionPrescription {
+  if (
+    typeof value.session_role !== 'string'
+    || typeof value.session_title !== 'string'
+    || !isRecord(value.dose)
+    || !Array.isArray(value.dose.blocks)
+    || !isRecord(value.progression)
+    || typeof value.progression.next_session !== 'string'
+    || typeof value.progression.next_week !== 'string'
+    || !Array.isArray(value.constraint_notes)
+    || !value.constraint_notes.every(note => typeof note === 'string')
+    || typeof value.stop_condition !== 'string'
+    || typeof value.success_condition !== 'string'
+  ) return false
+
+  return value.dose.blocks.every(block => (
+    isRecord(block)
+    && typeof block.label === 'string'
+    && typeof block.minutes === 'number'
+    && Array.isArray(block.exercises)
+    && block.exercises.every(exercise => (
+      isRecord(exercise)
+      && typeof exercise.name === 'string'
+      && typeof exercise.prescription === 'string'
+      && typeof exercise.effort === 'string'
+      && typeof exercise.rest === 'string'
+      && Array.isArray(exercise.substitutions)
+      && exercise.substitutions.every(substitution => typeof substitution === 'string')
+      && (exercise.load_guidance === undefined || isLoadGuidance(exercise.load_guidance))
+    ))
+  ))
+}
+
+function isLoadGuidance(value: unknown): boolean {
+  return isRecord(value)
+    && Array.isArray(value.percentRange)
+    && value.percentRange.length === 2
+    && value.percentRange.every(item => typeof item === 'number')
+    && isRecord(value.loadRange)
+    && typeof value.loadRange.min === 'number'
+    && typeof value.loadRange.max === 'number'
+    && (value.loadRange.unit === 'lb' || value.loadRange.unit === 'kg')
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function formatDate(value: string): string {

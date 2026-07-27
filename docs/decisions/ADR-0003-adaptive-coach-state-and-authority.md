@@ -55,12 +55,31 @@ version, supersedes the prior accepted version, activates the proposal, and
 supports safe retry. The LLM cannot create unvalidated plan content or activate a
 plan on its own.
 
+The same boundary applies to replacement programming. Creating a replacement
+stores a new proposed version against the current active version but does not
+change active state. Only explicit acceptance supersedes the old version and
+applies the reviewed title, goal, and dates.
+
+### Policy 0.2 sessions are actionable without becoming falsely precise
+
+The deterministic kernel owns domain-specific roles, equipment-supported
+movement selection, timed blocks, working ranges, rest, stop rules,
+substitutions, and one-variable progression. It uses an athlete's saved
+assessment for percentage and load guidance only when the movement matches.
+Unmatched exercises receive no invented load.
+
+The kernel auto-filters only bounded, explicit exclusions. Other limitation
+text remains visible for athlete review rather than being interpreted as a
+medical diagnosis or restriction.
+
 ## Consequences
 
 - The coach can be conversational without making the conversation the database.
 - Every active prescription can be traced to athlete inputs, doctrine, policy,
   and a specific accepted plan version.
 - Adaptations are inspectable proposals rather than silent mutations.
+- An athlete can replace an early or outdated plan without deleting canonical
+  history or briefly deactivating the accepted plan.
 - The schema is larger than a transcript-only design, but it supports RLS,
   correction, concurrency, evaluation, and future UI review flows.
 - The Program page can remain a persistent assessment, proposal-review, and

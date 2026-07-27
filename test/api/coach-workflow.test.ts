@@ -207,6 +207,72 @@ describe('adaptive coach API workflow', () => {
     )
   })
 
+  it('uses saved assessments and creates a replacement proposal when a plan is active', async () => {
+    const supabase = supabaseClient()
+    supabase.rpc.mockResolvedValue({
+      data: [{
+        proposal_id: '11111111-1111-4111-8111-111111111111',
+        proposed_program_id: '22222222-2222-4222-8222-222222222222',
+        proposed_plan_version_id: '33333333-3333-4333-8333-333333333333'
+      }],
+      error: null
+    })
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+    vi.mocked(fetchCoachRuntimeContext).mockResolvedValue({
+      generatedAt: '2026-07-27T00:00:00.000Z',
+      storageAvailable: true,
+      doctrineVersion: '0.1.0',
+      policyVersion: '0.2.0',
+      assessments: [{
+        id: 'assessment-1', movement: 'Back Squat', variation: null,
+        load: 225, unit: 'lb', reps: 5, assessedOn: '2026-07-27',
+        isTrueRepMax: true, rir: 0, rpe: null, athleteConfidence: 0.9,
+        estimatedOneRepMax: 262.5, estimateKind: 'estimated_1rm',
+        calculatorVersion: 'epley-general-v1'
+      }],
+      memories: [],
+      activeProgram: {
+        id: 'program-active', title: 'Strength · 8 weeks', goalSummary: planningInput.goal,
+        startDate: '2026-08-03', endDate: '2026-09-27', activePlanVersionId: 'plan-active',
+        planVersion: 1, currentWeek: 1, currentWeekRole: 'establish',
+        referenceVersion: '0.1.0', policyVersion: '0.1.0', weeks: [], upcomingSessions: []
+      }
+    })
+
+    const response = await createCoachProposal(request('/api/coach/proposals', {
+      planningInput,
+      idempotencyKey: 'coach-replacement-request-1'
+    }))
+
+    expect(response.status).toBe(201)
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      'create_training_plan_replacement_proposal',
+      expect.objectContaining({
+        p_program_id: 'program-active',
+        p_base_plan_version_id: 'plan-active',
+        p_rationale: expect.objectContaining({ reason: 'replacement_program' }),
+        p_sessions: expect.arrayContaining([
+          expect.objectContaining({
+            prescription: expect.objectContaining({
+              dose: expect.objectContaining({
+                blocks: expect.arrayContaining([
+                  expect.objectContaining({
+                    exercises: expect.arrayContaining([
+                      expect.objectContaining({
+                        name: 'Barbell back squat',
+                        load_guidance: expect.objectContaining({ assessmentId: 'assessment-1' })
+                      })
+                    ])
+                  })
+                ])
+              })
+            })
+          })
+        ])
+      })
+    )
+  })
+
   it('accepts only the named proposal and returns refreshed canonical state', async () => {
     const supabase = supabaseClient()
     supabase.rpc.mockResolvedValue({
