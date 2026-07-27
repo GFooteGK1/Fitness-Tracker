@@ -1,6 +1,6 @@
 # Handoff
 
-## Actionable adaptive coach prescriptions (production migration verified; publish authorized)
+## Actionable adaptive coach prescriptions (released and production-verified)
 
 Prepared on 2026-07-27 from `origin/main` on branch
 `codex/program-specificity` in the clean worktree
@@ -54,8 +54,15 @@ Release boundary:
 - Security Advisor added only the expected authenticated-definer warning for the
   bounded replacement RPC; Performance Advisor reported no coach-schema finding.
   Existing unrelated advisor findings remain unchanged.
-- Commit, push, PR, merge, and Vercel deployment readback remain to complete the
-  authorized publish flow.
+- PR #42 passed exact-commit CI in 1m38s and its Vercel preview completed. It was
+  squash-merged to `main` as `87c6d46`. Main CI run `30313385336` passed tests,
+  strict TypeScript, lint, and build in 1m51s. Vercel reported the exact merge
+  commit deployed successfully to Production.
+- The generated production deployment URL returned the expected Vercel-auth 302
+  before application routing. No browser login was attempted because the active
+  browser identity is Greg's work Vercel account and must not be connected to
+  this personal project. GitHub/Vercel exact-commit readback and the live
+  rollback-only database verifier are the authoritative production proof.
 - After database verification and release, the next vertical slice remains
   prescribed-session completion, concise session check-ins, deterministic
   weekly review, and inspectable adaptation proposals.
@@ -70,8 +77,7 @@ stored prescriptions. Vitest, TypeScript, lint, build, and browser
 checks supplied verification. Separate delegation was skipped because Greg did
 not request it.
 
-Bead `Fitness-Tracker-ofn` remains in progress until GitHub CI, merge, Vercel
-production deployment, and a protected runtime canary are complete.
+Bead `Fitness-Tracker-ofn` is complete after this release-record update lands.
 
 ## Node 24 runtime migration (release authorized)
 
