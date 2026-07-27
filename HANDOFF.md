@@ -755,10 +755,9 @@ Result: all passed. Focused test slice: 3 files, 69 tests passed. Production bui
 
 ## Adaptive Coach Foundation and First Program Workflow (2026-07-27)
 
-- Work is committed as `921b608` on branch `codex/adaptive-coach-brain` and
-  published in draft PR #40. CI and the Vercel preview pass. The production
-  Supabase migration is applied and verified; application merge and production
-  deployment remain pending at this handoff point.
+- Released through PR #40 as merge commit `e4b133d`. Exact-commit PR CI, the
+  Vercel preview, main-branch CI, and the Vercel production deployment all
+  passed. The production Supabase migration is applied and verified.
 - `app/lib/coach/` now contains the machine-readable twelve-domain doctrine,
   deterministic e1RM and eight-week policy, coach types, and bounded runtime
   loading for confirmed assessments, confirmed memories, and an accepted plan.
@@ -831,6 +830,13 @@ Result: all passed. Focused test slice: 3 files, 69 tests passed. Production bui
   the accepted view read stored plan intent rather than current policy.
 - The next vertical slice is execution feedback: prescribed-session completion,
   a concise session check-in, deterministic weekly review, and an inspectable
-  adaptation proposal. The remaining release gates are PR #40 merge, Vercel
-  production readiness, and a signed-in canary.
-- Bead `Fitness-Tracker-e17` remains in progress until those release gates pass.
+  adaptation proposal.
+- Production release proof: PR CI passed in 1m29s; main CI run `30305928290`
+  passed tests, strict TypeScript, lint, and build in 1m51s; Vercel reported the
+  production deployment for `e4b133d` successful. Greg confirmed the existing
+  production app login succeeds. The protected deployment URL attempted to use
+  the browser's active work Vercel identity, so that path was abandoned without
+  intentionally connecting the work account. Live plan creation/acceptance was
+  not exercised against Greg's real athlete state; atomic behavior was proven
+  with the rollback-only production verifier instead.
+- Bead `Fitness-Tracker-e17` is complete and may be closed.
