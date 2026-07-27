@@ -102,17 +102,41 @@ Dashboard:
 ├─ Deterministic Aggregates (`app/lib/aggregates/dashboard.ts`)
 ├─ Versioned View Templates (`app/lib/view-templates.ts`)
 ├─ View Template API (`app/api/view-templates/[viewType]/route.ts`)
+├─ Async Narrative Component (`app/components/DashboardNarrative.tsx`)
+├─ Narrative API (`app/api/dashboard-narrative/route.ts`)
+├─ Compute-vs-Compose Guard (`app/lib/dashboard-narrative.ts`)
+├─ Narrative Orchestration (`app/lib/dashboard-narrative-service.ts`)
+├─ User-Scoped Cache Adapter (`app/lib/dashboard-narrative-store.ts`)
 └─ Error Boundary (`app/components/ErrorBoundary.tsx`)
 ```
+
+### **Hybrid Render Invariant:**
+```
+Supabase domain tables/views → app-computed facts → deterministic cards (immediate)
+                                  └─ versioned template + LLM seam → validated narrative (async)
+                                                                       └─ view_compositions cache
+```
+
+The app remains authoritative for every number. The model can only compose a
+bounded headline, summary, and section-tagged highlights; output containing a
+number absent from the deterministic facts is rejected. The narrative cache is
+private per user and keyed by local day, template version/content, and facts
+content. A relevant new log changes the facts fingerprint and causes a cache
+miss without write-path invalidation hooks. If the API, cache, or provider is
+unavailable, the existing numeric dashboard remains usable.
 
 ### **Data Sources:**
 - **Workouts** from `workouts` table
 - **Block Scores** from `block_scores` table (optional)
 - **User Profile** for personalization
+- **Compact cross-domain facts** from `get_programming_readiness_context`
+- **Recent records** from `personal_records`
+- **Ephemeral composition cache** from `view_compositions` (presentation only)
 
 ### **Dependencies:**
 - **Authentication** (protected route)
 - **Multiple Database Tables** (workouts, block_scores, user_profiles)
+- **Provider-neutral LLM seam** (`app/lib/llm/client.ts`) for narrative composition
 - **Error Handling** for graceful failures
 
 ### **Impact Analysis:**

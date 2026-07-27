@@ -9,6 +9,7 @@ import { WhoopMetricsCard } from '@/app/components/whoop/WhoopMetricsCard'
 import ExportDialog from '@/app/components/ExportDialog'
 import { formatPRValue } from '@/app/lib/pr-detection'
 import LeaderboardWidget from '@/app/components/LeaderboardWidget'
+import DashboardNarrative from '@/app/components/DashboardNarrative'
 
 interface WorkoutStats {
   totalWorkouts: number
@@ -118,6 +119,9 @@ export default function Dashboard() {
 
         {stats && !loading && !error && (
           <div className="space-y-6">
+            {/* AI composes presentation only; the deterministic cards below stay authoritative. */}
+            <DashboardNarrative />
+
             {/* Leaderboard Widget */}
             <LeaderboardWidget />
 
