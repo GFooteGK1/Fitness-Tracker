@@ -68,7 +68,7 @@ describe('dashboard narrative contract', () => {
 
     expect(request.purpose).toBe('query')
     expect(request.responseFormat).toBe('json')
-    expect(request.maxTokens).toBeLessThanOrEqual(500)
+    expect(request.maxTokens).toBe(800)
     expect(request.system).toContain('never calculate')
     expect(request.system).toContain('untrusted data')
     expect(request.messages[0].content).toContain('"totalProtein":142')
@@ -87,6 +87,25 @@ describe('dashboard narrative contract', () => {
     expect(parsed).toEqual(expect.objectContaining({
       headline: 'Recovery supports a focused training day',
     }))
+  })
+
+  it('accepts digits repeated verbatim from canonical fact strings', () => {
+    const factsWithNumberedExercise = {
+      ...facts,
+      personalRecords: [{
+        ...facts.personalRecords[0],
+        exercise: '5 RFT (Wall Ball, TTB, Double Unders)',
+      }],
+    }
+
+    expect(parseDashboardNarrative(JSON.stringify({
+      headline: 'Latest PR logged',
+      summary: 'The latest PR was 5 RFT.',
+      highlights: [{
+        section: 'personal_records',
+        text: '5 RFT is the recorded exercise name.',
+      }],
+    }), DEFAULT_DASHBOARD_VIEW_TEMPLATE, factsWithNumberedExercise)).not.toBeNull()
   })
 
   it('rejects hidden sections, unsupported fields, and numbers not present in facts', () => {

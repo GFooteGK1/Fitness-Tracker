@@ -83,6 +83,35 @@ describe('anthropicProvider.chat', () => {
     expect(block.source).toEqual({ type: 'base64', media_type: 'image/png', data: 'AAAA' })
   })
 
+  it('includes the requested JSON schema in the Anthropic system prompt', async () => {
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'text', text: '{"headline":"Ready"}' }],
+      usage: { input_tokens: 10, output_tokens: 5 },
+      stop_reason: 'end_turn',
+    })
+
+    await anthropicProvider.chat({
+      purpose: 'query',
+      system: 'Summarize deterministic facts.',
+      messages: [{ role: 'user', content: '{}' }],
+      maxTokens: 800,
+      responseFormat: 'json',
+      jsonSchema: {
+        name: 'dashboard_narrative',
+        schema: {
+          type: 'object',
+          required: ['headline'],
+          properties: { headline: { type: 'string' } },
+        },
+      },
+    }, 'claude-query')
+
+    const params = mockCreate.mock.calls[0][0]
+    expect(params.system).toContain('Summarize deterministic facts.')
+    expect(params.system).toContain('Return only a JSON value')
+    expect(params.system).toContain('"headline"')
+  })
+
   it('extracts tool_use blocks and maps stop_reason to tool_calls', async () => {
     mockCreate.mockResolvedValue({
       content: [

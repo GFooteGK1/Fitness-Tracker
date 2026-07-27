@@ -103,6 +103,9 @@ export async function getDashboardNarrative({
 
   const result = await complete(buildDashboardNarrativeRequest(template, facts))
   if (result.stopReason === 'refusal') throw new Error('LLM refused dashboard narrative')
+  if (result.stopReason === 'max_tokens') {
+    throw new Error('LLM dashboard narrative hit the output token limit')
+  }
 
   const composition = parseDashboardNarrative(result.text, template, facts)
   if (!composition) throw new Error('LLM returned an invalid dashboard narrative')
