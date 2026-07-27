@@ -1,6 +1,6 @@
 # Handoff
 
-## Node 24 runtime migration (local, release pending)
+## Node 24 runtime migration (release authorized)
 
 Prepared on 2026-07-27 from `origin/main` on branch
 `codex/node-24-runtime` in the clean worktree
@@ -25,9 +25,21 @@ Verification completed locally on Node 24.13.1:
   network-gated tests skipped.
 - Strict TypeScript with incremental output disabled and lint both passed.
 - The placeholder-backed production build passed and generated all 67 routes.
-- Final diff/config inspection passed. The authoritative proof that the GitHub
-  annotation is gone remains a PR Actions run because local execution cannot
-  run hosted actions.
+- Final diff/config inspection passed. Hosted proof that the GitHub annotation
+  is gone is recorded below.
+
+Hosted verification completed on PR #39 on 2026-07-27:
+
+- The PR CI run passed on commit `863df26` in 1m50s. Checkout, Node setup,
+  install, 2,040 tests, strict TypeScript, lint, and production build all
+  completed successfully.
+- The check-run annotations endpoint returned an empty list. The setup log
+  confirms `node-version: 24`, a cached Node 24.18.0 toolchain, and runtime
+  `node: v24.18.0`; the former Node 20 deprecation annotation is gone.
+- The Vercel preview deployment completed successfully on the same commit.
+- Greg explicitly authorized commit and merge. The final gates are the new
+  exact-commit CI run after this handoff update, squash merge, main-branch CI,
+  and the Vercel production deployment readback.
 
 Team pass: automation-SRE owns the CI/runtime contract; software engineer owns
 the scoped configuration and test-stability edits; reviewer and verifier are
