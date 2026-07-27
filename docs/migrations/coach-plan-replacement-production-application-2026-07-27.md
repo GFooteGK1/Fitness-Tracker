@@ -62,3 +62,15 @@ and leaked-password protection disabled.
 The Performance Advisor reported no coach-schema finding. Its results were the
 existing RLS initialization-plan, duplicate-policy, and duplicate-index warnings
 on older application tables.
+
+## Application release
+
+- PR #42 passed exact-commit CI in 1m38s and its Vercel preview completed.
+- PR #42 was squash-merged to `main` as `87c6d46`.
+- Main CI run `30313385336` passed tests, strict TypeScript, lint, and build in
+  1m51s.
+- Vercel reported the exact merge commit deployed successfully to Production.
+- The generated deployment URL is protected and returned a Vercel-auth 302
+  before application routing. No signed-in browser canary was attempted because
+  the browser's active work Vercel identity must not be connected to this
+  personal project.
