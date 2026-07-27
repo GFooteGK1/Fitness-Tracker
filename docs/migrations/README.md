@@ -4,8 +4,8 @@ This directory contains SQL migration scripts for the SociusFit database schema.
 
 ## Current Schema Status
 
-**Last Verified:** July 26, 2026
-**Status:** Existing production schema and both July 26 incremental migrations are live and verified
+**Last Verified:** July 27, 2026
+**Status:** Existing production schema and all three incremental migrations are live and verified
 
 The February WHOOP v2 verification below remains historical context. On July 26,
 the personal-records and view-template migrations were applied to the production
@@ -61,6 +61,12 @@ RLS and least-privilege grants.
 Incremental, repeatable storage for immutable ADR-0001 presentation templates,
 including the default dashboard template and forced RLS.
 
+### `view-compositions-migration.sql`
+Live incremental migration for ephemeral, user-scoped AI-composed view
+cache entries. Cache identity includes local day, template version/content, and
+deterministic facts content. Forced RLS ensures authenticated users can access
+only their own cached presentation.
+
 ## Verification Scripts
 
 ### `verify-whoop-schema.sql`
@@ -83,6 +89,14 @@ project on July 26, 2026. See
 `autonomous-queue-verification-2026-07-26.md` for that evidence record. They were
 then applied and independently verified in production; see
 `production-migration-application-2026-07-26.md`.
+
+### `verify-view-compositions-migration.sql`
+Rollback-only structural, least-privilege grant, and two-user RLS verification
+for `view-compositions-migration.sql`. Run the migration twice first. The
+verifier creates two user-scoped cache entries inside a transaction and rolls
+all fixtures back. The migration passed apply-twice and verifier execution in
+production on July 27, 2026; see
+`view-compositions-production-application-2026-07-27.md`.
 
 ## Migration History
 
@@ -145,4 +159,4 @@ database.
 
 ---
 
-**Last Updated:** July 26, 2026
+**Last Updated:** July 27, 2026

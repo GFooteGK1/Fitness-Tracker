@@ -1,5 +1,75 @@
 # Handoff
 
+## Hybrid on-demand dashboard (production database ready, app release pending)
+
+Work completed on 2026-07-27 in the clean worktree
+`C:\Users\foote\.codex\worktrees\fitness-tracker-hybrid-dashboard`, branch
+`codex/hybrid-dashboard`, based on `origin/main` at `082cc02`. This section is
+the current truth for `Fitness-Tracker-ti3.3`; the release section below remains
+the deployed app baseline. The production Supabase migration is applied and
+verified; no commit, push, or Vercel deployment has been performed for this
+slice.
+
+Implemented locally:
+
+- Preserved the existing dashboard cards as the immediate and authoritative
+  numeric surface. `DashboardNarrative` mounts only after those deterministic
+  dashboard facts are available and cannot block or replace them.
+- Added authenticated `/api/dashboard-narrative`. It gets a versioned dashboard
+  template, compact 7-day cross-domain context plus recent PRs, and calls the
+  provider-neutral `complete()` seam with purpose `query` for strict JSON.
+- Added a compute-vs-compose guard: prompt strings are treated as untrusted data,
+  output is bounded to headline/summary/three section-tagged highlights, and any
+  numeral or spelled-out number not present in the app-computed facts is rejected.
+- Added `view-compositions-migration.sql` for a private Supabase cache keyed by
+  user, local day, template version/content fingerprint, and facts fingerprint.
+  A relevant new workout, meal, recovery sync, target change, or PR changes the
+  fingerprint and logically invalidates the previous composition without
+  coupling every write route to cache deletion.
+- Added loading, cached, empty/disabled, provider-unavailable, and retry states.
+  Provider/cache failure explicitly leaves the numeric dashboard current and
+  usable.
+
+Verification completed locally on 2026-07-27:
+
+- Focused verification: 6 test files and 23 tests passed.
+- Full Vitest suite passed: 161 files and 2,034 tests passed; 5 files and 7
+  explicitly network-gated tests skipped.
+- Strict TypeScript passed with incremental output disabled (the sandbox blocked
+  writing `tsconfig.tsbuildinfo`; this was not a type error).
+- `next lint` passed with zero warnings/errors. Its only notice is the upstream
+  Next 15 deprecation of `next lint` ahead of Next 16.
+- Production build passed on Next 15.5.22 and generated 67 routes, including
+  `/api/dashboard-narrative`.
+- Playwright CLI verified the composed card in a real browser at 1440x1000 and
+  390x844. Highlights remained a three-column desktop grid and stacked cleanly
+  on mobile; deterministic cards stayed visible beneath the narrative. Temporary
+  preview, screenshots, browser state, server logs, and processes were removed.
+- `git diff --check` passed after the final documentation pass.
+
+Team pass: frontend lead owned hierarchy, responsive states, and graceful
+degradation; architect owned cache identity and the compute-vs-compose boundary;
+builder work was done in the main session; reviewer caught and fixed the
+same-version template cache collision plus spelled-number provenance gap;
+Vitest, TypeScript, lint, build, and Playwright supplied verification. Separate
+subagents were intentionally skipped because the session instructions prohibited
+delegation unless Greg explicitly requested it.
+
+Explicit release gates and known scope:
+
+- `docs/migrations/view-compositions-migration.sql` was applied twice in
+  production and passed rollback-only structural, grant, and two-user RLS
+  verification. See
+  `docs/migrations/view-compositions-production-application-2026-07-27.md`.
+- The narrative arrives asynchronously as one validated composition through the
+  existing non-streaming LLM seam. The page progressively renders numbers first,
+  but this slice does not add token-level provider streaming.
+- The compact narrative facts currently cover workouts, nutrition, recovery, and
+  recent PRs. The existing leaderboard card remains deterministic; leaderboard
+  narrative is omitted until a compact rank aggregate is available.
+- Keep `Fitness-Tracker-ti3.3` in progress until migration verification and an
+  explicitly approved release are complete.
+
 ## Autonomous reliability and ADR-0001 foundation
 
 Release authorized on 2026-07-26 from the clean worktree
