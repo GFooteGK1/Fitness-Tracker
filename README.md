@@ -26,7 +26,7 @@ AI-powered workout logging and analytics platform. Log workouts using natural la
 
 ### 1. Prerequisites
 
-- Node.js 20+ installed
+- Node.js 24 installed
 - Supabase account (free tier)
 - Anthropic and/or OpenAI API key for the tasks you enable
 

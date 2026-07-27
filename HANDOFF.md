@@ -1,5 +1,47 @@
 # Handoff
 
+## Node 24 runtime migration (local, release pending)
+
+Prepared on 2026-07-27 from `origin/main` on branch
+`codex/node-24-runtime` in the clean worktree
+`C:\Users\foote\.codex\worktrees\fitness-tracker-hybrid-dashboard`.
+
+- Migrated the CI action runtime to Node 24-native `actions/checkout@v7` and
+  `actions/setup-node@v7`, and changed the CI application runtime from Node 20
+  to Node 24.
+- Declared `engines.node` as `24.x` so npm and Vercel use the same runtime
+  contract, updated onboarding documentation, and aligned `@types/node` plus
+  its lockfile dependencies with Node 24.
+- Stabilized the existing WHOOP staleness property test by using one captured
+  timestamp. Its exact 24-hour case previously depended on whether the clock
+  advanced between two `Date.now()` calls and failed once under the full
+  verification load.
+
+Verification completed locally on Node 24.13.1:
+
+- `npm ci` reproduced the final lockfile.
+- Focused WHOOP verification passed: 1 file / 8 tests.
+- Full Vitest passed: 162 files / 2,040 tests, with 5 files / 7 explicitly
+  network-gated tests skipped.
+- Strict TypeScript with incremental output disabled and lint both passed.
+- The placeholder-backed production build passed and generated all 67 routes.
+- Final diff/config inspection passed. The authoritative proof that the GitHub
+  annotation is gone remains a PR Actions run because local execution cannot
+  run hosted actions.
+
+Team pass: automation-SRE owns the CI/runtime contract; software engineer owns
+the scoped configuration and test-stability edits; reviewer and verifier are
+handled in the main session because delegation is not permitted. Security
+review confirms workflow permissions remain `contents: read`, no secrets or
+production configuration were changed, and the action-major update stays
+within the existing GitHub-maintained actions. No architecture-map or ADR
+update is needed because application boundaries and runtime ownership did not
+change.
+
+Bead `Fitness-Tracker-1f9` tracks this migration. Keep it open until the branch
+is committed, the PR Actions run passes without the Node 20 annotation, the PR
+is merged, and the Vercel production deployment reports ready on Node 24.
+
 ## Mobile header overflow fix (release authorized)
 
 Prepared on 2026-07-27 from `origin/main` on branch

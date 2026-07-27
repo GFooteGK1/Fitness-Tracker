@@ -46,8 +46,9 @@ describe('Property 11: Fallback to Recent Data', () => {
       fc.property(
         fc.integer({ min: 0, max: 72 }), // hours ago
         (hoursAgo) => {
-          const lastSyncAt = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
-          const staleness = Date.now() - lastSyncAt.getTime() > 24 * 60 * 60 * 1000;
+          const now = Date.now();
+          const lastSyncAt = new Date(now - hoursAgo * 60 * 60 * 1000);
+          const staleness = now - lastSyncAt.getTime() > 24 * 60 * 60 * 1000;
 
           if (hoursAgo > 24) {
             expect(staleness).toBe(true);
