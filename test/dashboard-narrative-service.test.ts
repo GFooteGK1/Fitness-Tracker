@@ -147,4 +147,19 @@ describe('getDashboardNarrative', () => {
     })).rejects.toThrow('invalid dashboard narrative')
     expect(store.saveCached).not.toHaveBeenCalled()
   })
+
+  it('reports an exhausted output budget before parsing truncated JSON', async () => {
+    const store = makeStore()
+    const complete = vi.fn().mockResolvedValue({
+      text: '{"headline":"truncated',
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      stopReason: 'max_tokens',
+    })
+
+    await expect(getDashboardNarrative({
+      userId: 'user-1', localDate: '2026-07-27', store, complete,
+    })).rejects.toThrow('output token limit')
+    expect(store.saveCached).not.toHaveBeenCalled()
+  })
 })

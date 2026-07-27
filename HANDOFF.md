@@ -1,14 +1,14 @@
 # Handoff
 
-## Hybrid on-demand dashboard (production database ready, app release pending)
+## Hybrid on-demand dashboard (released; runtime hardening tracked below)
 
-Work completed on 2026-07-27 in the clean worktree
-`C:\Users\foote\.codex\worktrees\fitness-tracker-hybrid-dashboard`, branch
-`codex/hybrid-dashboard`, based on `origin/main` at `082cc02`. This section is
-the current truth for `Fitness-Tracker-ti3.3`; the release section below remains
-the deployed app baseline. The production Supabase migration is applied and
-verified; no commit, push, or Vercel deployment has been performed for this
-slice.
+The initial implementation was merged through PR #34 as `36dc261` and deployed
+to the `gfootegk1` personal Vercel project on 2026-07-27. The production
+Supabase migration was applied twice and independently verified before that
+merge. A signed-in production canary then exposed the graceful-degradation path
+described below; deterministic cards remained available while the narrative
+returned 503. Runtime hardening was prepared from `origin/main` in the clean
+worktree `C:\Users\foote\.codex\worktrees\fitness-tracker-hybrid-dashboard`.
 
 Implemented locally:
 
@@ -47,6 +47,29 @@ Verification completed locally on 2026-07-27:
   preview, screenshots, browser state, server logs, and processes were removed.
 - `git diff --check` passed after the final documentation pass.
 
+Production canary and runtime correction on 2026-07-27:
+
+- GitHub CI passed on `36dc261`, and Vercel marked the production deployment
+  ready under `gregs-projects-98860c8b/fitness-tracker`. Anonymous route probing
+  returned the expected 401 from `/api/dashboard-narrative`.
+- The signed-in dashboard rendered current WHOOP, PR, and workout numbers while
+  the narrative card correctly fell back to `Today's read is unavailable`.
+- Vercel runtime logs showed two Anthropic `query` calls ending at exactly the
+  500-token ceiling, followed by `LLM returned an invalid dashboard narrative`.
+  The neutral seam also promised Anthropic JSON-schema prompting but did not
+  include the schema in the provider request.
+- Runtime hardening now appends the requested JSON schema to Anthropic's system
+  prompt, raises this bounded narrative budget to 800 tokens, reports
+  `max_tokens` distinctly, and treats digits embedded in canonical fact strings
+  as valid provenance while still rejecting invented numbers.
+- Regression tests failed on all three mismatches before the fix and pass after
+  it. The full suite passes at 161 files / 2,038 tests, with 5 files / 7
+  explicitly network-gated tests skipped. Strict TypeScript and lint pass.
+- A build without the required public Supabase variables failed at the known
+  auth-page prerender gate. The placeholder-backed rerun produced a complete
+  `.next` build tree but did not exit before the 180-second local timeout, so
+  GitHub CI remains the authoritative hotfix build gate.
+
 Team pass: frontend lead owned hierarchy, responsive states, and graceful
 degradation; architect owned cache identity and the compute-vs-compose boundary;
 builder work was done in the main session; reviewer caught and fixed the
@@ -67,8 +90,8 @@ Explicit release gates and known scope:
 - The compact narrative facts currently cover workouts, nutrition, recovery, and
   recent PRs. The existing leaderboard card remains deterministic; leaderboard
   narrative is omitted until a compact rank aggregate is available.
-- Keep `Fitness-Tracker-ti3.3` in progress until migration verification and an
-  explicitly approved release are complete.
+- Keep `Fitness-Tracker-ti3.3` in progress until the runtime hotfix passes
+  GitHub CI plus a signed-in production narrative canary.
 
 ## Autonomous reliability and ADR-0001 foundation
 

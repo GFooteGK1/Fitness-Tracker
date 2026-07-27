@@ -41,6 +41,19 @@ function getClient(): Anthropic {
   return client
 }
 
+function toAnthropicSystem(req: LlmRequest): string | undefined {
+  const parts = req.system?.trim() ? [req.system.trim()] : []
+  if (req.responseFormat === 'json') {
+    const schema = req.jsonSchema?.schema
+    parts.push(
+      schema
+        ? `Return only a JSON value matching this JSON Schema, with no markdown fences or commentary: ${JSON.stringify(schema)}`
+        : 'Return only valid JSON, with no markdown fences or commentary.'
+    )
+  }
+  return parts.length > 0 ? parts.join('\n\n') : undefined
+}
+
 function toAnthropicContent(content: string | ContentPart[]): string | ContentBlockParam[] {
   if (typeof content === 'string') return content
   return content.map((part): ContentBlockParam => {
@@ -122,11 +135,12 @@ export const anthropicProvider: LlmProvider = {
   name: 'anthropic',
 
   async chat(req: LlmRequest, model: string): Promise<LlmResult> {
+    const system = toAnthropicSystem(req)
     const params: MessageCreateParamsNonStreaming = {
       model,
       max_tokens: req.maxTokens,
       messages: toAnthropicMessages(req.messages),
-      ...(req.system ? { system: req.system } : {}),
+      ...(system ? { system } : {}),
       ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
       ...(req.tools && req.tools.length > 0
         ? {

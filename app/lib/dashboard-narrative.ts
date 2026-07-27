@@ -179,7 +179,7 @@ export function buildDashboardNarrativeRequest(
         },
       },
     },
-    maxTokens: 500,
+    maxTokens: 800,
     reasoningEffort: 'low',
   }
 }
@@ -199,6 +199,7 @@ function numericTokens(value: string): number[] {
 
 function collectFactNumbers(value: unknown, output: number[] = []): number[] {
   if (typeof value === 'number' && Number.isFinite(value)) output.push(value)
+  if (typeof value === 'string') output.push(...numericTokens(value))
   if (Array.isArray(value)) value.forEach(item => collectFactNumbers(item, output))
   if (value && typeof value === 'object') {
     Object.values(value as Record<string, unknown>)
