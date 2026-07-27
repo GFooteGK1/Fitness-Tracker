@@ -755,10 +755,10 @@ Result: all passed. Focused test slice: 3 files, 69 tests passed. Production bui
 
 ## Adaptive Coach Foundation and First Program Workflow (2026-07-27)
 
-- Work is local on branch `codex/adaptive-coach-brain` in worktree
-  `C:\Users\foote\.codex\worktrees\fitness-tracker-adaptive-coach`, based on
-  `origin/main` at `76fcb9b`. It is not committed, pushed, deployed, or applied
-  to Supabase.
+- Work is committed as `921b608` on branch `codex/adaptive-coach-brain` and
+  published in draft PR #40. CI and the Vercel preview pass. The production
+  Supabase migration is applied and verified; application merge and production
+  deployment remain pending at this handoff point.
 - `app/lib/coach/` now contains the machine-readable twelve-domain doctrine,
   deterministic e1RM and eight-week policy, coach types, and bounded runtime
   loading for confirmed assessments, confirmed memories, and an accepted plan.
@@ -781,8 +781,10 @@ Result: all passed. Focused test slice: 3 files, 69 tests passed. Production bui
   empty `search_path`, deny anon/public execution, and intentionally allow only
   authenticated/service execution. Performance Advisor found no unindexed
   foreign keys. Both disposable projects and their temporary passwords were
-  permanently deleted; production was not modified. Evidence is in
-  `docs/migrations/coach-system-verification-2026-07-27.md`.
+  permanently deleted. The same migration was subsequently applied twice and
+  rollback-verified in production. Evidence is in
+  `docs/migrations/coach-system-verification-2026-07-27.md` and
+  `docs/migrations/coach-system-production-application-2026-07-27.md`.
 - The obsolete Google Sheets Program page is replaced by the first athlete-facing
   coach workflow. `/program` now confirms goal, schedule, equipment, constraints,
   and optional known 1RM/3RM/5RM baselines; produces a deterministic qualitative
@@ -829,7 +831,6 @@ Result: all passed. Focused test slice: 3 files, 69 tests passed. Production bui
   the accepted view read stored plan intent rather than current policy.
 - The next vertical slice is execution feedback: prescribed-session completion,
   a concise session check-in, deterministic weekly review, and an inspectable
-  adaptation proposal. Production migration, commit, push, and deployment remain
-  separate approval gates.
-- Bead `Fitness-Tracker-e17` remains the intended tracker, but `bd` was not
-  available on PATH in the final session, so its status was not mutated.
+  adaptation proposal. The remaining release gates are PR #40 merge, Vercel
+  production readiness, and a signed-in canary.
+- Bead `Fitness-Tracker-e17` remains in progress until those release gates pass.

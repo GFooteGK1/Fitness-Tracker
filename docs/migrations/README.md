@@ -68,14 +68,15 @@ deterministic facts content. Forced RLS ensures authenticated users can access
 only their own cached presentation.
 
 ### `coach-system-migration.sql`
-Pending incremental migration for the adaptive coach foundation: strength
+Incremental migration for the adaptive coach foundation: strength
 assessments, explicitly confirmed memory, eight-week programs, immutable plan
 versions and prescriptions, adaptation proposals, and check-ins. It includes
 forced RLS, tenant-consistent foreign keys, least-privilege grants, and atomic
 RPCs for memory versioning, initial proposal creation, and plan acceptance. It
-has passed fresh-project apply-twice, rollback-only two-user verification, grant
-readback, and Database Advisor review, but has not been applied to production.
-See `coach-system-verification-2026-07-27.md`.
+has passed fresh-project and production apply-twice, rollback-only two-user
+verification, grant readback, and Database Advisor review. See
+`coach-system-verification-2026-07-27.md` and
+`coach-system-production-application-2026-07-27.md`.
 
 ## Verification Scripts
 
@@ -114,9 +115,9 @@ Rollback-only two-user verification for the adaptive coach schema. Run
 assessment and memory idempotency, initial and replacement plan activation,
 atomic initial-proposal creation and retry, mismatched-payload rejection,
 stale-proposal rejection, and cross-user isolation. The final migration passed
-this process on a fresh PostgreSQL 17.6 Supabase project on July 27, 2026; see
-`coach-system-verification-2026-07-27.md`. Production application remains a
-separate approval gate.
+this process on a fresh PostgreSQL 17.6 Supabase project and in production on
+July 27, 2026; see `coach-system-verification-2026-07-27.md` and
+`coach-system-production-application-2026-07-27.md`.
 
 ## Migration History
 
