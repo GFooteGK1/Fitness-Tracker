@@ -67,6 +67,17 @@ cache entries. Cache identity includes local day, template version/content, and
 deterministic facts content. Forced RLS ensures authenticated users can access
 only their own cached presentation.
 
+### `coach-system-migration.sql`
+Incremental migration for the adaptive coach foundation: strength
+assessments, explicitly confirmed memory, eight-week programs, immutable plan
+versions and prescriptions, adaptation proposals, and check-ins. It includes
+forced RLS, tenant-consistent foreign keys, least-privilege grants, and atomic
+RPCs for memory versioning, initial proposal creation, and plan acceptance. It
+has passed fresh-project and production apply-twice, rollback-only two-user
+verification, grant readback, and Database Advisor review. See
+`coach-system-verification-2026-07-27.md` and
+`coach-system-production-application-2026-07-27.md`.
+
 ## Verification Scripts
 
 ### `verify-whoop-schema.sql`
@@ -97,6 +108,16 @@ verifier creates two user-scoped cache entries inside a transaction and rolls
 all fixtures back. The migration passed apply-twice and verifier execution in
 production on July 27, 2026; see
 `view-compositions-production-application-2026-07-27.md`.
+
+### `verify-coach-system-migration.sql`
+Rollback-only two-user verification for the adaptive coach schema. Run
+`coach-system-migration.sql` twice before this script. It checks forced RLS,
+assessment and memory idempotency, initial and replacement plan activation,
+atomic initial-proposal creation and retry, mismatched-payload rejection,
+stale-proposal rejection, and cross-user isolation. The final migration passed
+this process on a fresh PostgreSQL 17.6 Supabase project and in production on
+July 27, 2026; see `coach-system-verification-2026-07-27.md` and
+`coach-system-production-application-2026-07-27.md`.
 
 ## Migration History
 

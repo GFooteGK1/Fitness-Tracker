@@ -511,3 +511,61 @@ System Tests:
 ⚠️ **High Impact**: Test infrastructure changes affect development workflow
 ⚠️ **Medium Impact**: New test categories require setup updates
 ⚠️ **Low Impact**: Individual test additions are isolated
+
+---
+
+## Adaptive Coach System
+
+### Core modules
+
+```
+Adaptive Coach:
+|- Machine-readable doctrine (`app/lib/coach/reference.ts`)
+|- Deterministic policy (`app/lib/coach/policy.ts`)
+|- Eight-week planning kernel (`app/lib/coach/planner.ts`)
+|- Bounded athlete context (`app/lib/coach/athlete-context.ts`)
+|- Socius prompt and tools (`app/lib/agents/`)
+|- Persistent setup, proposal, and active-plan view (`app/program/`)
+|- Authenticated coach workflow routes (`app/api/coach/`)
+|- Canonical user state (Supabase coach tables)
+`- Atomic memory, proposal, and plan transitions (database RPCs)
+```
+
+### Authority and data flow
+
+```
+Athlete statements + logged facts
+  -> Program setup and explicit assessment or memory confirmation
+  -> user-scoped Supabase state
+  -> deterministic planning policy
+  -> atomic immutable proposed plan version + sessions
+  -> persistent athlete preview
+  -> athlete acceptance RPC
+  -> active prescribed sessions
+  -> check-ins and logged results
+  -> next inspectable adaptation proposal
+```
+
+Supabase is canonical for adaptive programming. Google Sheets is not imported or
+synchronized into this system. Global doctrine and numeric policy remain
+version-controlled application assets; stored plans retain their doctrine and
+policy versions. The LLM selects context, asks questions, and composes concise
+coaching language. Application policy computes numeric prescriptions, and only
+an explicit atomic acceptance transition can activate a plan.
+
+`/program` is the durable review surface; `/v2` remains the conversational
+surface for questions and explanation. The initial planning kernel emits
+qualitative intent, feel, rest, success, stop, and scale guidance. User-supplied
+session duration is retained, but the kernel does not infer exercise loads or
+other numeric doses that are not yet covered by validated policy.
+
+### Critical invariants
+
+- Weeks 4 and 8 are review-led deloads within the initial eight-week horizon.
+- Durable memory is explicit, versioned, correctable, provenance-bearing, and
+  idempotent; inferred conversation is not silently persisted.
+- Accepted plan and prescription content is immutable.
+- RLS and composite ownership constraints keep all athlete state user-scoped.
+- Stale proposals fail rather than overwriting a newer accepted plan.
+
+See `docs/decisions/ADR-0003-adaptive-coach-state-and-authority.md`.

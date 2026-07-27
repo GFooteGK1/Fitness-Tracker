@@ -11,6 +11,7 @@ import { fetchRecentChat, fetchPendingUrgentInsights } from './chat-persistence'
 import { fetchWorkoutForDate } from '@/app/lib/sheets/workout-fetcher'
 import { localDateToUTCStart, localDateToUTCEnd } from '@/app/lib/timezone-utils'
 import { fetchProgrammingReadinessContext } from './programming-context'
+import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
 
 // ─── Passive Context Cache ────────────────────────────────────────────
 // Short-lived per-user cache for the 8-query passive context fetch.
@@ -338,15 +339,30 @@ export async function buildNutritionistContext(userId: string, tzOffset = 0): Pr
 
 // ─── Socius Context Builder ──────────────────────────────────────────
 
-export async function buildSociusContext(userId: string, tzOffset = 0, programmingDays = 30): Promise<SociusContext> {
+export async function buildSociusContext(
+  userId: string,
+  tzOffset = 0,
+  programmingDays = 30,
+  includeCoachContext = false
+): Promise<SociusContext> {
   const supabase = await createServerClient()
 
-  const [passive, thirtyDaySummary, recentInsights, dataAvailability, programmingContext] = await Promise.all([
+  const [
+    passive,
+    thirtyDaySummary,
+    recentInsights,
+    dataAvailability,
+    programmingContext,
+    coachContext
+  ] = await Promise.all([
     buildPassiveContext(userId, tzOffset),
     fetchThirtyDaySummary(supabase, userId),
     fetchRecentInsightsDetailed(supabase, userId),
     fetchDataAvailability(supabase, userId),
-    fetchProgrammingReadinessContext(supabase, userId, programmingDays)
+    fetchProgrammingReadinessContext(supabase, userId, programmingDays),
+    includeCoachContext
+      ? fetchCoachRuntimeContext(supabase, userId)
+      : Promise.resolve(undefined)
   ])
 
   return {
@@ -354,7 +370,8 @@ export async function buildSociusContext(userId: string, tzOffset = 0, programmi
     thirty_day_summary: thirtyDaySummary,
     recent_insights: recentInsights,
     data_availability: dataAvailability,
-    programming_context: programmingContext
+    programming_context: programmingContext,
+    ...(coachContext ? { coach_context: coachContext } : {})
   }
 }
 
