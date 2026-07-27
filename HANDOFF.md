@@ -1,14 +1,12 @@
 # Handoff
 
-## Hybrid on-demand dashboard (released; runtime hardening tracked below)
+## Hybrid on-demand dashboard (released and live-verified)
 
-The initial implementation was merged through PR #34 as `36dc261` and deployed
-to the `gfootegk1` personal Vercel project on 2026-07-27. The production
-Supabase migration was applied twice and independently verified before that
-merge. A signed-in production canary then exposed the graceful-degradation path
-described below; deterministic cards remained available while the narrative
-returned 503. Runtime hardening was prepared from `origin/main` in the clean
-worktree `C:\Users\foote\.codex\worktrees\fitness-tracker-hybrid-dashboard`.
+The initial implementation was merged through PR #34 as `36dc261`. Runtime
+hardening was merged through PR #35 as `04cf15f` after a signed-in production
+canary exposed the graceful-degradation path described below. Both releases
+deployed to the `gfootegk1` personal Vercel project on 2026-07-27. The production
+Supabase migration was applied twice and independently verified before release.
 
 Implemented locally:
 
@@ -69,6 +67,13 @@ Production canary and runtime correction on 2026-07-27:
   auth-page prerender gate. The placeholder-backed rerun produced a complete
   `.next` build tree but did not exit before the 180-second local timeout, so
   GitHub CI remains the authoritative hotfix build gate.
+- PR #35 merged to `main` as `04cf15f`. The authoritative main-branch CI run
+  passed tests, strict TypeScript, lint, and production build in 1m59s, and the
+  corresponding Vercel production deployment reported success.
+- A signed-in production canary returned 200 and rendered the narrative above
+  the still-visible deterministic cards. Its Anthropic `query` call used 376
+  output tokens within the new 800-token budget; a repeat request returned the
+  cached composition with 200 in 456ms and no second LLM call.
 
 Team pass: frontend lead owned hierarchy, responsive states, and graceful
 degradation; architect owned cache identity and the compute-vs-compose boundary;
@@ -90,8 +95,10 @@ Explicit release gates and known scope:
 - The compact narrative facts currently cover workouts, nutrition, recovery, and
   recent PRs. The existing leaderboard card remains deterministic; leaderboard
   narrative is omitted until a compact rank aggregate is available.
-- Keep `Fitness-Tracker-ti3.3` in progress until the runtime hotfix passes
-  GitHub CI plus a signed-in production narrative canary.
+- `Fitness-Tracker-ti3.3` may be closed: the migration, GitHub CI, Vercel
+  deployment, signed-in production narrative, and cached repeat request all
+  passed. Token-level streaming and leaderboard narrative remain follow-on
+  scope rather than release blockers for this hybrid-render slice.
 
 ## Autonomous reliability and ADR-0001 foundation
 
