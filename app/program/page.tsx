@@ -42,6 +42,7 @@ export default function ProgramPage() {
   const [setupSaved, setSetupSaved] = useState(false)
   const [creatingProposal, setCreatingProposal] = useState(false)
   const [acceptingProposal, setAcceptingProposal] = useState(false)
+  const [replacingPlan, setReplacingPlan] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const intakeKey = useRef<string | null>(null)
@@ -55,7 +56,9 @@ export default function ProgramPage() {
       const response = await fetch('/api/coach')
       const body = await response.json()
       if (!response.ok) throw new Error(errorMessage(body, 'Coach state unavailable'))
-      setContext(body.context as CoachRuntimeContext)
+      const nextContext = body.context as CoachRuntimeContext
+      setContext(nextContext)
+      setPlanningInput(current => hydratePlanningInput(current, nextContext))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Coach state unavailable')
     } finally {
@@ -180,6 +183,8 @@ export default function ProgramPage() {
 
       setContext(body.context as CoachRuntimeContext)
       setProposal(null)
+      setReplacingPlan(false)
+      proposalKey.current = null
       setStatus('Plan accepted.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to accept proposal')
@@ -228,59 +233,99 @@ export default function ProgramPage() {
               The private coach storage contract must be available before plans or baselines can be saved.
             </p>
           </section>
-        ) : context?.activeProgram ? (
-          <>
-            <ActiveProgramView program={context.activeProgram} />
-            <div className="flex justify-start">
-              <a
-                href="/v2"
-                className="inline-flex min-h-11 items-center rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-800 hover:border-blue-500 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-              >
-                Discuss this plan with Socius
-              </a>
-            </div>
-            <StrengthAssessmentPanel
-              assessments={context.assessments}
-              onSubmit={saveAssessment}
-            />
-          </>
         ) : context ? (
           <>
-            <CoachSetupForm
-              value={planningInput}
-              onChange={updatePlanningInput}
-              onSave={() => void saveSetup()}
-              saving={savingSetup}
-              saved={setupSaved}
-            />
+            {context.activeProgram && <ActiveProgramView program={context.activeProgram} />}
 
-            <StrengthAssessmentPanel
-              assessments={context.assessments}
-              onSubmit={saveAssessment}
-            />
-
-            {setupSaved && !proposal && (
-              <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
-                <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">
-                  Your confirmed setup and any known baselines will be attached to the proposal snapshot.
-                  No plan becomes active until you review and accept it.
-                </p>
+            {context.activeProgram && !replacingPlan && (
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href="/v2"
+                  className="inline-flex min-h-11 items-center rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-800 hover:border-blue-500 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                >
+                  Discuss this plan with Socius
+                </a>
                 <button
                   type="button"
-                  onClick={() => void createProposal()}
-                  disabled={creatingProposal}
-                  className="mt-4 min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
+                  onClick={() => {
+                    setReplacingPlan(true)
+                    setSetupSaved(false)
+                    setProposal(null)
+                    setStatus(null)
+                    setError(null)
+                    proposalKey.current = null
+                  }}
+                  className="min-h-11 rounded-xl border border-blue-600 bg-white px-4 py-2 font-semibold text-blue-700 hover:bg-blue-50 dark:bg-gray-800 dark:text-blue-300 dark:hover:bg-blue-950/30"
                 >
-                  {creatingProposal ? 'Creating proposal…' : 'Create 8-week proposal'}
+                  Build a replacement proposal
                 </button>
-              </section>
+              </div>
             )}
 
-            {proposal && (
-              <ProposalPreview
-                proposal={proposal.proposal}
-                onAccept={() => void acceptProposal()}
-                accepting={acceptingProposal}
+            {(!context.activeProgram || replacingPlan) && (
+              <>
+                {context.activeProgram && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReplacingPlan(false)
+                      setProposal(null)
+                      setSetupSaved(false)
+                      proposalKey.current = null
+                    }}
+                    className="min-h-11 rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                  >
+                    Keep current plan
+                  </button>
+                )}
+
+                <CoachSetupForm
+                  value={planningInput}
+                  onChange={updatePlanningInput}
+                  onSave={() => void saveSetup()}
+                  saving={savingSetup}
+                  saved={setupSaved}
+                />
+
+                <StrengthAssessmentPanel
+                  assessments={context.assessments}
+                  onSubmit={saveAssessment}
+                />
+
+                {setupSaved && !proposal && (
+                  <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
+                    <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">
+                      Your confirmed setup and any known baselines will be attached to the proposal snapshot.
+                      No plan becomes active until you review and accept it.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void createProposal()}
+                      disabled={creatingProposal}
+                      className="mt-4 min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
+                    >
+                      {creatingProposal
+                        ? 'Creating proposal…'
+                        : context.activeProgram ? 'Create replacement proposal' : 'Create 8-week proposal'}
+                    </button>
+                  </section>
+                )}
+
+                {proposal && (
+                  <ProposalPreview
+                    proposal={proposal.proposal}
+                    onAccept={() => void acceptProposal()}
+                    accepting={acceptingProposal}
+                    replacement={Boolean(context.activeProgram)}
+                  />
+                )}
+              </>
+            )}
+
+            {context.activeProgram && !replacingPlan && (
+              <StrengthAssessmentPanel
+                assessments={context.assessments}
+                onSubmit={saveAssessment}
               />
             )}
           </>
@@ -288,6 +333,50 @@ export default function ProgramPage() {
       </main>
     </ProtectedRoute>
   )
+}
+
+function hydratePlanningInput(
+  current: CoachPlanningInput,
+  context: CoachRuntimeContext
+): CoachPlanningInput {
+  const memory = (key: string) => context.memories.find(item => item.memoryKey === key)?.content
+  const goal = memory('primary_goal')
+  const schedule = memory('training_schedule')
+  const equipment = memory('available_equipment')
+  const constraints = memory('training_constraints')
+
+  return {
+    ...current,
+    primaryDomain: isProgramDomain(goal?.primaryDomain) ? goal.primaryDomain : current.primaryDomain,
+    goal: typeof goal?.goal === 'string' ? goal.goal : current.goal,
+    experience: isExperience(schedule?.experience) ? schedule.experience : current.experience,
+    trainingDays: isTrainingDays(schedule?.trainingDays) ? schedule.trainingDays : current.trainingDays,
+    sessionMinutes: isSessionMinutes(schedule?.sessionMinutes) ? schedule.sessionMinutes : current.sessionMinutes,
+    equipment: typeof equipment?.equipment === 'string' ? equipment.equipment : current.equipment,
+    constraints: typeof constraints?.constraints === 'string' ? constraints.constraints : current.constraints,
+    startDate: current.startDate || nextMonday()
+  }
+}
+
+function isProgramDomain(value: unknown): value is CoachPlanningInput['primaryDomain'] {
+  return ['strength', 'hypertrophy', 'power_explosiveness', 'speed_agility', 'aerobic', 'resilience']
+    .includes(String(value))
+}
+
+function isExperience(value: unknown): value is CoachPlanningInput['experience'] {
+  return ['new_or_returning', 'consistent', 'experienced'].includes(String(value))
+}
+
+function isTrainingDays(value: unknown): value is CoachPlanningInput['trainingDays'] {
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+  return Array.isArray(value)
+    && value.length >= 2
+    && value.length <= 6
+    && value.every(item => typeof item === 'string' && days.includes(item))
+}
+
+function isSessionMinutes(value: unknown): value is CoachPlanningInput['sessionMinutes'] {
+  return [30, 45, 60, 75, 90].includes(Number(value))
 }
 
 function nextMonday(): string {

@@ -1,5 +1,78 @@
 # Handoff
 
+## Actionable adaptive coach prescriptions (production migration verified; publish authorized)
+
+Prepared on 2026-07-27 from `origin/main` on branch
+`codex/program-specificity` in the clean worktree
+`C:\Users\foote\.codex\worktrees\fitness-tracker-program-specificity`.
+
+- Replaced the repeated qualitative session output with policy 0.2.0: six
+  domain-specific three-session rotations, equipment-supported movement
+  selection, bodyweight fallbacks, timed preparation/primary/support blocks,
+  working ranges, effort, recovery, stop rules, substitutions, and
+  one-variable progression.
+- Weeks 4 and 8 remain review-led deloads. Weeks 3 and 7 carry the highest
+  planned volume; new or returning athletes receive a reduced starting dose.
+- Explicit `no overhead` and `no running` constraints filter only those bounded
+  categories. Other constraint text stays visible as an athlete note and is not
+  interpreted as a medical diagnosis. Ordinary gym access does not imply track
+  or hill access.
+- Matching strength assessments add labeled e1RM percentage and rounded load
+  ranges to primary strength work only. Unmatched and support movements receive
+  no invented load guidance.
+- `/program` now renders the full prescription in collapsed week groups and in
+  the accepted-plan view. An athlete with an active plan can preview a
+  replacement while the current plan remains active, cancel it, or explicitly
+  accept it.
+- `create_training_plan_replacement_proposal` stores the proposed version and
+  sessions atomically against the active base. The revised acceptance RPC
+  rejects stale bases, supersedes the prior accepted version, and applies the
+  reviewed title, goal, and dates only during acceptance.
+
+Verification completed locally on Node 24.13.1:
+
+- Focused coach/API/UI/migration verification: 4 files and 47 tests passed.
+- Full Vitest: 2,106 passed, 7 intentionally env-gated tests skipped, 0 failed.
+- Strict TypeScript, lint with no warnings/errors, and `git diff --check` passed.
+- A clean placeholder-backed Next 15.5.9 production build compiled, type-checked,
+  prerendered all 71 routes, and included `/program` plus the coach APIs. The
+  build required an unsandboxed write to generated `.next` artifacts because
+  sandboxed Node received `EPERM`; no production service was contacted.
+- Playwright verified the proposal at 390px and 320px: document width matched
+  viewport width, no horizontal overflow occurred, and the console had no
+  errors or warnings. Temporary preview and browser artifacts were removed.
+
+Release boundary:
+
+- Greg authorized release on 2026-07-27. The replacement migration was applied
+  twice to production and the final rollback-only verifier passed. Independent
+  readback confirmed the verifier left 5 auth users, 1 program, 1 accepted plan
+  version, 1 proposal, and 48 sessions—the same state as preflight. Both definer
+  RPCs retain an empty `search_path`; anon/public execution and authenticated
+  direct table mutation are denied. Durable evidence is in
+  `docs/migrations/coach-plan-replacement-production-application-2026-07-27.md`.
+- Security Advisor added only the expected authenticated-definer warning for the
+  bounded replacement RPC; Performance Advisor reported no coach-schema finding.
+  Existing unrelated advisor findings remain unchanged.
+- Commit, push, PR, merge, and Vercel deployment readback remain to complete the
+  authorized publish flow.
+- After database verification and release, the next vertical slice remains
+  prescribed-session completion, concise session check-ins, deterministic
+  weekly review, and inspectable adaptation proposals.
+
+Team pass: product/coach architecture and frontend lead owned the intent-first
+prescription contract and review hierarchy; the main session implemented the
+backend, deterministic kernel, migration, and UI. The reviewer pass tightened
+equipment semantics, eliminated vacuous assessment/no-running tests, checked
+the definer-RPC authority and stale-base behavior, reset proposal idempotency at
+acceptance/replacement boundaries, and preserved compatibility with older
+stored prescriptions. Vitest, TypeScript, lint, build, and browser
+checks supplied verification. Separate delegation was skipped because Greg did
+not request it.
+
+Bead `Fitness-Tracker-ofn` remains in progress until GitHub CI, merge, Vercel
+production deployment, and a protected runtime canary are complete.
+
 ## Node 24 runtime migration (release authorized)
 
 Prepared on 2026-07-27 from `origin/main` on branch

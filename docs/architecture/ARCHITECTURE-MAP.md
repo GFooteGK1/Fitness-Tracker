@@ -554,10 +554,17 @@ coaching language. Application policy computes numeric prescriptions, and only
 an explicit atomic acceptance transition can activate a plan.
 
 `/program` is the durable review surface; `/v2` remains the conversational
-surface for questions and explanation. The initial planning kernel emits
-qualitative intent, feel, rest, success, stop, and scale guidance. User-supplied
-session duration is retained, but the kernel does not infer exercise loads or
-other numeric doses that are not yet covered by validated policy.
+surface for questions and explanation. The versioned planning kernel emits
+domain-specific session roles, timed blocks, equipment-supported movement
+choices, working ranges, effort, rest, stop, substitutions, and progression.
+Saved strength assessments add labeled percentage and rounded load ranges only
+when the prescribed movement matches the assessment. The model does not invent
+these values.
+
+An active program does not block future programming. The athlete may create an
+immutable replacement proposal against the current accepted version while that
+version remains active. A separate stale-base-checked acceptance transition
+supersedes it and updates program metadata atomically.
 
 ### Critical invariants
 
@@ -567,5 +574,8 @@ other numeric doses that are not yet covered by validated policy.
 - Accepted plan and prescription content is immutable.
 - RLS and composite ownership constraints keep all athlete state user-scoped.
 - Stale proposals fail rather than overwriting a newer accepted plan.
+- Proposal creation never mutates the currently accepted plan.
 
 See `docs/decisions/ADR-0003-adaptive-coach-state-and-authority.md`.
+The current deterministic numeric and selection ranges are recorded in
+`docs/coach/programming-policy-0.2.0.md`.

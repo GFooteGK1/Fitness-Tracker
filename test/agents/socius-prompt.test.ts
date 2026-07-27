@@ -396,7 +396,7 @@ describe('buildSociusPrompt - adaptive coach contract', () => {
     const prompt = buildSociusPrompt(makeBaseContext())
 
     expect(prompt).toContain('Doctrine version: 0.1.0')
-    expect(prompt).toContain('Policy version: 0.1.0')
+    expect(prompt).toContain('Policy version: 0.2.0')
     expect(prompt).toContain('Weeks 4 and 8 are review-led deloads')
     expect(prompt).toContain('Do not invent loads, percentages, paces, calorie targets')
     expect(prompt).toContain('Never activate or silently rewrite a program')

@@ -49,19 +49,59 @@ export interface CoachPlanningInput {
   startDate: string
 }
 
+export type CoachSessionVolumeLevel = 'low' | 'moderate' | 'high'
+
+export interface CoachExerciseLoadGuidance {
+  source: 'saved_assessment'
+  assessmentId: string
+  assessmentMovement: string
+  basis: string
+  percentRange: [number, number]
+  loadRange: {
+    min: number
+    max: number
+    unit: LoadUnit
+  }
+}
+
+export interface CoachPrescriptionExercise {
+  name: string
+  purpose: string
+  prescription: string
+  effort: string
+  rest: string
+  substitutions: string[]
+  load_guidance?: CoachExerciseLoadGuidance
+}
+
+export interface CoachPrescriptionBlock {
+  label: string
+  minutes: number
+  exercises: CoachPrescriptionExercise[]
+}
+
 export interface CoachSessionPrescription {
   domain: CoachProgramDomainId
+  session_role: string
+  session_title: string
   intent: string
   dose: {
     source: 'validated_policy'
     sessionMinutes: CoachPlanningInput['sessionMinutes']
     structure: string
+    volume_level: CoachSessionVolumeLevel
+    blocks: CoachPrescriptionBlock[]
   }
   effort: string
   rest: string
   success_condition: string
   stop_condition: string
   scale_options: string[]
+  constraint_notes: string[]
+  progression: {
+    next_session: string
+    next_week: string
+  }
   evidence: {
     doctrineVersion: string
     policyVersion: string
@@ -83,6 +123,10 @@ export interface CoachPlanProposalDraft {
     prescription: CoachSessionPrescription
   }>
   inputSnapshot: CoachPlanningInput
+}
+
+export interface CoachPlanningContext {
+  assessments?: readonly CoachStrengthAssessmentSummary[]
 }
 
 export interface CoachReferenceDomain {

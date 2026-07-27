@@ -12,6 +12,16 @@ const verifier = readFileSync(
   'utf-8'
 )
 
+const replacementMigration = readFileSync(
+  join(process.cwd(), 'docs', 'migrations', 'coach-plan-replacement-migration.sql'),
+  'utf-8'
+)
+
+const replacementVerifier = readFileSync(
+  join(process.cwd(), 'docs', 'migrations', 'verify-coach-plan-replacement-migration.sql'),
+  'utf-8'
+)
+
 const USER_TABLES = [
   'coach_strength_assessments',
   'coach_memories',
@@ -89,6 +99,37 @@ describe('adaptive coach database migration', () => {
       'GRANT EXECUTE ON FUNCTION public.create_initial_training_plan_proposal'
     )
     expect(verifier).toContain('create_initial_training_plan_proposal')
+  })
+
+  it('creates replacement proposals atomically without granting direct mutation', () => {
+    expect(replacementMigration).toMatch(/^BEGIN;/m)
+    expect(replacementMigration).toMatch(/^COMMIT;/m)
+    expect(replacementMigration).toContain(
+      'CREATE OR REPLACE FUNCTION public.create_training_plan_replacement_proposal'
+    )
+    expect(replacementMigration).toContain('pg_advisory_xact_lock')
+    expect(replacementMigration).toContain('base_plan_version_id')
+    expect(replacementMigration).toContain('v_program.active_plan_version_id')
+    expect(replacementMigration).toContain('input_fingerprint')
+    expect(replacementMigration).toContain("SET search_path = ''")
+    expect(replacementMigration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.create_training_plan_replacement_proposal'
+    )
+    expect(replacementMigration).not.toMatch(
+      /GRANT[^;]*UPDATE[^;]*public\.(training_plan_versions|adaptation_proposals)[^;]*authenticated/i
+    )
+  })
+
+  it('ships rollback-only replacement retry, stale-base, metadata, and cross-user verification', () => {
+    expect(replacementVerifier).toMatch(/^BEGIN;/m)
+    expect(replacementVerifier).toMatch(/^ROLLBACK;/m)
+    expect(replacementVerifier).not.toMatch(/^COMMIT;/m)
+    expect(replacementVerifier).toContain('verify_replacement_retry')
+    expect(replacementVerifier).toContain('verify_replacement_mismatched_retry')
+    expect(replacementVerifier).toContain('verify_stale_replacement')
+    expect(replacementVerifier).toContain('verify_cross_user_replacement')
+    expect(replacementVerifier).toContain('has_function_privilege')
+    expect(replacementVerifier).toContain('active_plan_version_id')
   })
 
   it('versions confirmed coach memory atomically and idempotently', () => {
