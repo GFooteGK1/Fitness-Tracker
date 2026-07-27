@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '../lib/auth/AuthContext';
 import UserMenu from './UserMenu';
@@ -90,62 +91,52 @@ export default function Navigation() {
       {/* Mobile Navigation */}
       {!loading && user && (
         <div className="md:hidden border-t border-gray-200 dark:border-gray-700">
-          <div className="flex justify-around py-2">
+          <div
+            role="group"
+            aria-label="Mobile navigation"
+            className="grid grid-cols-6 py-2"
+          >
             <Link 
               href="/dashboard" 
-              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+              className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
             >
               <span className="text-lg mb-1">📊</span>
               Dashboard
             </Link>
             <Link 
               href="/program" 
-              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+              className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
             >
               <span className="text-lg mb-1">💪</span>
               Program
             </Link>
             <Link
               href="/templates"
-              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+              className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
             >
               <span className="text-lg mb-1">📋</span>
               WODs
             </Link>
             <Link
               href="/log"
-              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+              className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
             >
               <span className="text-lg mb-1">📝</span>
               Log
             </Link>
             <Link 
               href="/food-progress" 
-              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+              className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
             >
               <span className="text-lg mb-1">🍽️</span>
               Food
             </Link>
             <Link
               href="/query"
-              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+              className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
             >
               <span className="text-lg mb-1">🔍</span>
               Query
-            </Link>
-            <Link
-              href="/leaderboards"
-              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-            >
-              <span className="text-lg mb-1">🏆</span>
-              Board
-            </Link>
-            <Link
-              href="/pr-history"
-              className="flex flex-col items-center py-2 px-3 text-xs text-gray-600 dark:text-gray-300 hover:text-amber-500 dark:hover:text-amber-400"
-            >
-              <span className="text-lg mb-1">&#127942;</span>
-              PRs
             </Link>
           </div>
         </div>
