@@ -1,5 +1,36 @@
 # Handoff
 
+## Mobile header overflow fix (release authorized)
+
+Prepared on 2026-07-27 from `origin/main` on branch
+`codex/mobile-header-nav` in the clean worktree
+`C:\Users\foote\.codex\worktrees\fitness-tracker-hybrid-dashboard`.
+
+- Removed the mobile-only Board and PR shortcuts from the shared header while
+  retaining the desktop Leaderboards and PRs links.
+- Constrained the six remaining mobile shortcuts to a fixed six-column grid;
+  each link can shrink inside its column instead of widening the page.
+- Added an accessible label for the mobile shortcut group and regression tests
+  for both the mobile and desktop navigation contracts.
+- Focused test passed: 1 file / 2 tests. Full Vitest passed: 162 files / 2,040
+  tests, with 5 files / 7 network-gated tests skipped. Strict TypeScript, lint,
+  and `git diff --check` passed.
+- Playwright verified the exact row at a 320x640 viewport. The document and
+  viewport widths were both 320px, all six shortcuts were visible in one row,
+  and the temporary preview/browser artifacts were removed.
+
+Team pass: frontend lead owned the mobile hierarchy and touch layout; builder,
+reviewer, and verifier were handled in the main session because delegation was
+not permitted. The React review found no new hook, state, performance, or type
+risks; the change adds semantic grouping and preserves the existing link
+targets. No architecture-map or ADR update is needed because responsibilities
+and boundaries did not change.
+
+Release was authorized on 2026-07-27. Publish through the repository PR and
+Vercel Git integration; close bead `Fitness-Tracker-00k` only after main CI, the
+production deployment, and a signed-in 320px mobile canary pass. GitHub,
+Vercel, and Beads are the authoritative post-commit status surfaces.
+
 ## Hybrid on-demand dashboard (released and live-verified)
 
 The initial implementation was merged through PR #34 as `36dc261`. Runtime
