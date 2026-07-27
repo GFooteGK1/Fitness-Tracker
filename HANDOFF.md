@@ -700,3 +700,136 @@ npm.cmd run build
 ```
 
 Result: all passed. Focused test slice: 3 files, 69 tests passed. Production build completed successfully and generated all 66 pages/routes.
+
+## Adaptive Coach Brain and Memory Planning (2026-07-27)
+
+- qplan issue `Fitness-Tracker-8q5` evaluated four research streams, three architectures, isolated claim verification, and a Tier 4 multi-perspective spec review.
+- Recommended direction: a relational-first rolling coach loop in the existing Program and V2 surfaces. Durable, correctable user memories and immutable plan proposals remain application-owned; the LLM explains deterministic planning output and never activates a plan or invents numeric prescriptions.
+- First vertical slice: confirmed memory -> one-week proposal -> atomic acceptance -> prescribed-session completion/check-in -> deterministic weekly review.
+- Required foundations: a versioned prescription schema distinct from logged workout results, a versioned machine-readable training/safety policy, provenance/freshness-aware context, an atomic activation RPC, RLS/idempotency/race tests, and coaching trace evals.
+- Explicitly deferred from v1: embeddings, event sourcing, autonomous adaptation, new standalone Today/Progress screens, offline mutation queues, privacy export tooling, and model shadow/canary infrastructure.
+- Product decisions later resolved below: Supabase is canonical with no Google
+  Sheets import, and the initial horizon is an eight-week intent with review-led
+  deloads in weeks 4 and 8.
+- No application implementation or deployment was performed during planning.
+
+## Evidence-Based Coach Training Doctrine (2026-07-27)
+
+- Greg resolved the programming source of truth: the app and Supabase are
+  canonical. Google Sheets import or synchronization is no longer part of the
+  adaptive-coach plan.
+- The planning horizon is an eight-week training intent. Weeks 4 and 8 are
+  review-led deloads; the coach reduces the stressors showing fatigue rather
+  than applying an identical no-training week to every athlete.
+- Initial assessment accepts known 1RM, 3RM, or 5RM values. Derived values must
+  remain labeled estimated 1RM, retain their source set/date/confidence and
+  calculator version, and be recalibrated from later performance.
+- The coaching philosophy is intent-first and concise. The prescription states
+  the target adaptation, what the work should feel like, and the success or
+  stop condition before adding only the structure needed to act.
+- A center-of-gravity review vetted ten cross-disciplinary experts and produced
+  ten convergence points, five meaningful divergences, and twelve product
+  recommendations. The full report is
+  center-of-gravity-report-evidence-based-training-doctrine.md; the concise
+  app-facing reference is docs/coach/training-doctrine.md.
+- The final reference contains twelve domains: assessment and baselines;
+  strength; hypertrophy; power and explosiveness; speed, deceleration, and
+  change of direction; aerobic conditioning; anaerobic work capacity; nutrition
+  and fueling; resilience and movement capacity; recovery and fatigue;
+  movement skill and technique; and adherence and behavior.
+- Important evidence correction: hypertrophy work can generally approach one
+  to two repetitions in reserve, but power, speed, and explosive work should
+  preserve velocity and technique and stop before failure-level fatigue.
+- Recovery scores and workload trends are advisory evidence, not autonomous
+  plan controls. Medical diagnosis, rehabilitation, injury prediction, and
+  restrictive nutrition remain outside the general-wellness coach boundary.
+- Bead Fitness-Tracker-4xx tracks this research tranche. Local validation
+  confirmed the ten-expert registry, report structure and scoring tags, source
+  links, and identical dated/latest report copies. No application code,
+  Supabase schema, tests, commit, or deployment were performed.
+- Team pass: product/coach architecture led the doctrine; the research builder,
+  reviewer, and verifier were handled in the main session because delegation
+  was not permitted. No architecture map or ADR changed because this tranche
+  adds evidence and policy reference material without changing runtime
+  boundaries.
+
+## Adaptive Coach Foundation and First Program Workflow (2026-07-27)
+
+- Work is local on branch `codex/adaptive-coach-brain` in worktree
+  `C:\Users\foote\.codex\worktrees\fitness-tracker-adaptive-coach`, based on
+  `origin/main` at `76fcb9b`. It is not committed, pushed, deployed, or applied
+  to Supabase.
+- `app/lib/coach/` now contains the machine-readable twelve-domain doctrine,
+  deterministic e1RM and eight-week policy, coach types, and bounded runtime
+  loading for confirmed assessments, confirmed memories, and an accepted plan.
+- Socius preloads coach state only for manager-classified programming requests;
+  read tools can refresh state and select up to four doctrine domains. New write
+  tools store only explicit user-confirmed 1RM/3RM/5RM assessments and explicit
+  confirmed memory. Numeric prescription, silent plan mutation, and inferred
+  memory remain prohibited in the prompt contract.
+- `docs/migrations/coach-system-migration.sql` defines assessments, versioned
+  memory, eight-week programs, immutable plan versions and prescribed sessions,
+  adaptation proposals, and check-ins. Forced RLS, least-privilege grants,
+  tenant-consistent foreign keys, indexed access paths, atomic memory versioning,
+  stale-proposal rejection, atomic initial proposal creation, and idempotent
+  atomic plan acceptance are included.
+- `docs/migrations/verify-coach-system-migration.sql` is rollback-only and
+  exercises two-user RLS, assessment and memory idempotency, initial and
+  replacement activation, atomic proposal retry and mismatch rejection, and
+  stale-proposal rejection. The final migration was applied twice and verified
+  on a fresh disposable PostgreSQL 17.6 Supabase project. All three RPCs use an
+  empty `search_path`, deny anon/public execution, and intentionally allow only
+  authenticated/service execution. Performance Advisor found no unindexed
+  foreign keys. Both disposable projects and their temporary passwords were
+  permanently deleted; production was not modified. Evidence is in
+  `docs/migrations/coach-system-verification-2026-07-27.md`.
+- The obsolete Google Sheets Program page is replaced by the first athlete-facing
+  coach workflow. `/program` now confirms goal, schedule, equipment, constraints,
+  and optional known 1RM/3RM/5RM baselines; produces a deterministic qualitative
+  eight-week proposal; visibly marks review-led deloads in weeks 4 and 8; and
+  requires a separate acceptance action before the plan becomes active.
+- `/api/coach`, `/api/coach/intake`, `/api/coach/assessments`,
+  `/api/coach/proposals`, and `/api/coach/proposals/[id]/accept` are authenticated
+  user-scoped routes. Assessment retries use input fingerprints; intake memories
+  are versioned through the RPC; proposal rows and sessions are created in one
+  transaction; acceptance refreshes canonical state.
+- The accepted Program view reads the immutable stored week intent rather than
+  recomputing it from the current policy. V2 remains the discussion/explanation
+  surface; Program owns the persistent plan and review state.
+- ADR-0003 records the authority boundary: Supabase is canonical for athlete and
+  programming state; code owns doctrine and deterministic numeric policy; the
+  model explains and proposes; an explicit atomic acceptance transition owns
+  activation. The architecture map and migration README reflect this boundary.
+- Prior foundation verification passed: focused coach/agent/migration slice (9
+  files, 142 tests), full Vitest suite (166 files and 2,073 tests passed; 5 files
+  and 7 env-gated tests skipped), strict TypeScript, lint, diff check, and build.
+  The new workflow slice passes 10 files and 88 tests. Final full Vitest passes
+  169 files and 2,085 tests, with 5 files and 7 intentionally network-gated
+  tests skipped. Strict TypeScript, lint with no warnings/errors, and `git diff
+  --check` pass. A real browser
+  verified the setup, baseline, and proposal layout at 390px and 320px with no
+  horizontal overflow, minimum 48px buttons, and zero console errors in the
+  final fresh session. A clean placeholder-backed Next.js production build
+  compiled successfully, type-checked, generated all 71 routes, and included
+  `/program` plus the five `/api/coach` routes. Two earlier sandboxed build runs
+  hung because the sandbox could not recreate `.next`; after removing only the
+  generated directory and allowing the build to write it, the build completed
+  in 30 seconds. Lint was run and passed separately before the final build.
+- Existing non-blocking warnings remain: Node's transitive `punycode`
+  deprecation during tests, Next 15's `next lint` deprecation notice, and the
+  previously reported npm audit findings. No dependency or audit-fix changes
+  were made.
+- Team pass: product/coach architecture, backend and frontend implementation,
+  security/schema review, React review, and verification were completed in the
+  main session because agent delegation was not requested. The Supabase
+  best-practices pass specifically added composite ownership constraints,
+  foreign-key indexes, least privilege, transaction locks, empty `search_path`
+  on definer RPCs, and mismatched-payload idempotency rejection. The React pass
+  kept data fetching out of render, prevented server/client date drift, and made
+  the accepted view read stored plan intent rather than current policy.
+- The next vertical slice is execution feedback: prescribed-session completion,
+  a concise session check-in, deterministic weekly review, and an inspectable
+  adaptation proposal. Production migration, commit, push, and deployment remain
+  separate approval gates.
+- Bead `Fitness-Tracker-e17` remains the intended tracker, but `bd` was not
+  available on PATH in the final session, so its status was not mutated.

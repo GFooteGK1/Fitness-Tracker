@@ -1,176 +1,320 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '../lib/auth/AuthContext';
-import ProtectedRoute from '../components/auth/ProtectedRoute';
-import { getLocalDate, parseDateString } from '../lib/timezone-utils';
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
+import type {
+  CoachPlanProposalDraft,
+  CoachPlanningInput,
+  CoachRuntimeContext,
+  CoachStrengthAssessmentSummary,
+  StrengthAssessmentInput
+} from '@/app/lib/coach/types'
+import {
+  ActiveProgramView,
+  CoachSetupForm,
+  ProposalPreview,
+  StrengthAssessmentPanel
+} from './coach-program-components'
 
-interface WorkoutData {
-  workout: string | null;
-  date: string;
-  found: boolean;
-  message?: string;
-  availableDates?: {
-    first: string;
-    last: string;
-    all: string[];
-  };
+interface ProposalResponse {
+  proposalId: string
+  idempotencyKey: string
+  proposal: CoachPlanProposalDraft
+}
+
+const INITIAL_PLANNING_INPUT: CoachPlanningInput = {
+  primaryDomain: 'strength',
+  goal: '',
+  experience: 'consistent',
+  trainingDays: ['monday', 'wednesday', 'friday'],
+  sessionMinutes: 60,
+  equipment: '',
+  constraints: '',
+  startDate: ''
 }
 
 export default function ProgramPage() {
-  const [selectedDate, setSelectedDate] = useState(() => getLocalDate());
+  const [context, setContext] = useState<CoachRuntimeContext | null>(null)
+  const [planningInput, setPlanningInput] = useState<CoachPlanningInput>(INITIAL_PLANNING_INPUT)
+  const [proposal, setProposal] = useState<ProposalResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [savingSetup, setSavingSetup] = useState(false)
+  const [setupSaved, setSetupSaved] = useState(false)
+  const [creatingProposal, setCreatingProposal] = useState(false)
+  const [acceptingProposal, setAcceptingProposal] = useState(false)
+  const [status, setStatus] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const intakeKey = useRef<string | null>(null)
+  const proposalKey = useRef<string | null>(null)
+  const assessmentKey = useRef<string | null>(null)
 
-  const [workoutData, setWorkoutData] = useState<WorkoutData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchWorkout = async (date: string) => {
-    setLoading(true);
-    setError(null);
-
+  const loadCoachState = useCallback(async () => {
+    setLoading(true)
+    setError(null)
     try {
-      const response = await fetch(`/api/workouts?date=${date}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch workout');
-      }
-
-      setWorkoutData(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-      setWorkoutData(null);
+      const response = await fetch('/api/coach')
+      const body = await response.json()
+      if (!response.ok) throw new Error(errorMessage(body, 'Coach state unavailable'))
+      setContext(body.context as CoachRuntimeContext)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Coach state unavailable')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }, [])
 
   useEffect(() => {
-    fetchWorkout(selectedDate);
-  }, [selectedDate]);
+    setPlanningInput(current => current.startDate
+      ? current
+      : { ...current, startDate: nextMonday() })
+    void loadCoachState()
+  }, [loadCoachState])
 
-  const formatDate = (dateStr: string) => {
-    const date = parseDateString(dateStr);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+  const updatePlanningInput = (next: CoachPlanningInput) => {
+    setPlanningInput(next)
+    setSetupSaved(false)
+    setProposal(null)
+    setStatus(null)
+    setError(null)
+    intakeKey.current = null
+    proposalKey.current = null
+  }
+
+  const saveSetup = async () => {
+    setSavingSetup(true)
+    setStatus(null)
+    setError(null)
+    intakeKey.current ??= createIdempotencyKey('coach-intake')
+
+    try {
+      const response = await fetch('/api/coach/intake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planningInput,
+          idempotencyKey: intakeKey.current
+        })
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(errorMessage(body, 'Unable to save coach setup'))
+
+      setSetupSaved(true)
+      setStatus('Coach setup saved.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to save coach setup')
+    } finally {
+      setSavingSetup(false)
+    }
+  }
+
+  const saveAssessment = async (input: StrengthAssessmentInput): Promise<string | null> => {
+    assessmentKey.current ??= createIdempotencyKey('coach-assessment')
+    try {
+      const response = await fetch('/api/coach/assessments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assessment: input,
+          idempotencyKey: assessmentKey.current
+        })
+      })
+      const body = await response.json()
+      if (!response.ok) return errorMessage(body, 'Unable to save baseline')
+
+      const assessment = body.assessment as CoachStrengthAssessmentSummary
+      setContext(current => current ? {
+        ...current,
+        assessments: [
+          assessment,
+          ...current.assessments.filter(existing => existing.id !== assessment.id)
+        ]
+      } : current)
+      assessmentKey.current = null
+      return null
+    } catch {
+      return 'Unable to save baseline'
+    }
+  }
+
+  const createProposal = async () => {
+    setCreatingProposal(true)
+    setStatus(null)
+    setError(null)
+    proposalKey.current ??= createIdempotencyKey('coach-proposal')
+
+    try {
+      const response = await fetch('/api/coach/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planningInput,
+          idempotencyKey: proposalKey.current
+        })
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(errorMessage(body, 'Unable to create proposal'))
+
+      setProposal(body as ProposalResponse)
+      setStatus('Proposal ready for your review.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to create proposal')
+    } finally {
+      setCreatingProposal(false)
+    }
+  }
+
+  const acceptProposal = async () => {
+    if (!proposal) return
+    setAcceptingProposal(true)
+    setStatus(null)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/coach/proposals/${proposal.proposalId}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idempotencyKey: proposal.idempotencyKey })
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(errorMessage(body, 'Unable to accept proposal'))
+
+      setContext(body.context as CoachRuntimeContext)
+      setProposal(null)
+      setStatus('Plan accepted.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to accept proposal')
+    } finally {
+      setAcceptingProposal(false)
+    }
+  }
 
   return (
     <ProtectedRoute>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            💪 Daily Program
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            View your coach&apos;s daily workout programming from Google Sheets
+      <main className="mx-auto max-w-6xl space-y-5 pb-10">
+        <header className="rounded-2xl bg-gradient-to-br from-gray-950 to-blue-950 p-5 text-white shadow-sm sm:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">Socius coach</p>
+          <h1 className="mt-2 text-2xl font-bold sm:text-3xl">Your training plan, built with you</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
+            This is the durable plan home. Use Socius to discuss and understand the work;
+            only a plan you review and accept becomes active here.
           </p>
-        </div>
+        </header>
 
-        {/* Date Navigation */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-          <label htmlFor="program-date" className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            📅 Program Date
-          </label>
-          <input
-            type="date"
-            id="program-date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="block w-full px-3 py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 box-border"
-            style={{
-              minHeight: '48px',
-              fontSize: '16px',
-              colorScheme: 'light dark',
-              maxWidth: '100%',
-              margin: '0',
-              WebkitAppearance: 'none',
-              appearance: 'none'
-            }}
-          />
-        </div>
+        {status && (
+          <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+            {status}
+          </p>
+        )}
 
-        {/* Workout Content */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600 dark:text-gray-400">Loading workout...</span>
-            </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <div className="text-red-500 dark:text-red-400 mb-2">
-                <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Error Loading Workout
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
-              <button
-                onClick={() => fetchWorkout(selectedDate)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Try Again
+        {error && (
+          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+            <p>{error}</p>
+            {loading === false && context === null && (
+              <button type="button" onClick={() => void loadCoachState()} className="mt-2 font-semibold underline">
+                Try again
               </button>
-            </div>
-          ) : workoutData?.found && workoutData.workout ? (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Workout for {formatDate(selectedDate)}
-              </h3>
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap">
-                {workoutData.workout}
-              </div>
+            )}
+          </div>
+        )}
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 mt-6">
-                <a
-                  href={`/log?workout=${encodeURIComponent(workoutData.workout)}`}
-                  className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors text-center font-medium"
-                >
-                  📝 Log This Workout
-                </a>
+        {loading ? (
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            Loading coach state…
+          </div>
+        ) : context && !context.storageAvailable ? (
+          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900 dark:bg-amber-950/30">
+            <h2 className="text-lg font-bold text-amber-950 dark:text-amber-100">Coach setup is not available yet</h2>
+            <p className="mt-2 text-sm text-amber-900 dark:text-amber-200">
+              The private coach storage contract must be available before plans or baselines can be saved.
+            </p>
+          </section>
+        ) : context?.activeProgram ? (
+          <>
+            <ActiveProgramView program={context.activeProgram} />
+            <div className="flex justify-start">
+              <a
+                href="/v2"
+                className="inline-flex min-h-11 items-center rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-800 hover:border-blue-500 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+              >
+                Discuss this plan with Socius
+              </a>
+            </div>
+            <StrengthAssessmentPanel
+              assessments={context.assessments}
+              onSubmit={saveAssessment}
+            />
+          </>
+        ) : context ? (
+          <>
+            <CoachSetupForm
+              value={planningInput}
+              onChange={updatePlanningInput}
+              onSave={() => void saveSetup()}
+              saving={savingSetup}
+              saved={setupSaved}
+            />
+
+            <StrengthAssessmentPanel
+              assessments={context.assessments}
+              onSubmit={saveAssessment}
+            />
+
+            {setupSaved && !proposal && (
+              <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
+                <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">
+                  Your confirmed setup and any known baselines will be attached to the proposal snapshot.
+                  No plan becomes active until you review and accept it.
+                </p>
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(workoutData.workout || '');
-                    // You could add a toast notification here
-                  }}
-                  className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-6 py-3 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-center font-medium"
+                  type="button"
+                  onClick={() => void createProposal()}
+                  disabled={creatingProposal}
+                  className="mt-4 min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
                 >
-                  📋 Copy Workout
+                  {creatingProposal ? 'Creating proposal…' : 'Create 8-week proposal'}
                 </button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="text-gray-400 dark:text-gray-500 mb-4">
-                <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                No Workout Found
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                {workoutData?.message || `No workout scheduled for ${formatDate(selectedDate)}`}
-              </p>
+              </section>
+            )}
 
-              {workoutData?.availableDates && (
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  <p>Available dates: {workoutData.availableDates.first} to {workoutData.availableDates.last}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+            {proposal && (
+              <ProposalPreview
+                proposal={proposal.proposal}
+                onAccept={() => void acceptProposal()}
+                accepting={acceptingProposal}
+              />
+            )}
+          </>
+        ) : null}
+      </main>
     </ProtectedRoute>
-  );
+  )
+}
+
+function nextMonday(): string {
+  const date = new Date()
+  const weekday = date.getDay()
+  const daysAhead = weekday === 1 ? 7 : (8 - weekday) % 7
+  date.setDate(date.getDate() + daysAhead)
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0')
+  ].join('-')
+}
+
+function createIdempotencyKey(prefix: string): string {
+  const randomPart = globalThis.crypto?.randomUUID?.()
+    ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return `${prefix}:${randomPart}`
+}
+
+function errorMessage(body: unknown, fallback: string): string {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return fallback
+  const error = 'error' in body && typeof body.error === 'string' ? body.error : fallback
+  if (!('details' in body)) return error
+  if (typeof body.details === 'string' && body.details) return `${error}: ${body.details}`
+  if (Array.isArray(body.details) && body.details.every(item => typeof item === 'string')) {
+    return `${error}: ${body.details.join('; ')}`
+  }
+  return error
 }

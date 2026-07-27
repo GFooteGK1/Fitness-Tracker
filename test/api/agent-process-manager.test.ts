@@ -186,7 +186,7 @@ describe('/api/agent/process Manager integration', () => {
     expect(response.status).toBe(200)
     expect(body.manager_decision.intent).toBe('programming_request')
     expect(body.manager_decision.context_request.recent_recovery_days).toBe(30)
-    expect(buildSociusContext).toHaveBeenCalledWith('user-123', -360, 30)
+    expect(buildSociusContext).toHaveBeenCalledWith('user-123', -360, 30, true)
     expect(callSociusAgent).toHaveBeenCalledWith(
       expect.objectContaining({ user_id: 'user-123' }),
       'Program tomorrow based on my recovery',

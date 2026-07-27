@@ -269,7 +269,8 @@ function createSociusCaller(
     try {
       const tzOffset = (request as AgentRequest).tz_offset ?? 0
       const contextDays = (request as AgentRequest).manager_decision?.context_request.recent_recovery_days ?? 30
-      const ctx = await buildSociusContext(userId, tzOffset, contextDays)
+      const includeCoachContext = (request as AgentRequest).manager_decision?.intent === 'programming_request'
+      const ctx = await buildSociusContext(userId, tzOffset, contextDays, includeCoachContext)
       const response = await callSociusAgent(ctx, content, supabase, userId)
 
       // Persist any new insights above the confidence threshold
