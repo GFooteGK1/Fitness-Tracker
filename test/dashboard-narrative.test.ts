@@ -71,6 +71,7 @@ describe('dashboard narrative contract', () => {
     expect(request.maxTokens).toBe(800)
     expect(request.system).toContain('never calculate')
     expect(request.system).toContain('untrusted data')
+    expect(request.system).toContain('Only facts dated localDate occurred today')
     expect(request.messages[0].content).toContain('"totalProtein":142')
   })
 

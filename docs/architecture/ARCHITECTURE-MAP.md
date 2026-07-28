@@ -129,7 +129,9 @@ unavailable, the existing numeric dashboard remains usable.
 - **Workouts** from `workouts` table
 - **Block Scores** from `block_scores` table (optional)
 - **User Profile** for personalization
-- **Compact cross-domain facts** from `get_programming_readiness_context`
+- **Compact workout/recovery facts** from `get_programming_readiness_context`
+- **Local-day nutrition facts** regrouped from user-scoped `meals` using the
+  caller timezone offset, plus current `daily_targets`
 - **Recent records** from `personal_records`
 - **Ephemeral composition cache** from `view_compositions` (presentation only)
 

@@ -73,6 +73,7 @@ describe('GET /api/dashboard-narrative', () => {
     expect(getDashboardNarrative).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'user-1',
       localDate: '2026-07-27',
+      timezoneOffset: 300,
     }))
   })
 

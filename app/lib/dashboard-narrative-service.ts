@@ -35,7 +35,11 @@ interface SaveNarrative extends CacheKey, CachedNarrative {
 
 export interface DashboardNarrativeStore {
   getTemplate(userId: string): Promise<NarrativeTemplate>
-  getFacts(userId: string, localDate: string): Promise<DashboardNarrativeFacts>
+  getFacts(
+    userId: string,
+    localDate: string,
+    timezoneOffset: number,
+  ): Promise<DashboardNarrativeFacts>
   getCached(key: CacheKey): Promise<CachedNarrative | null>
   saveCached(value: SaveNarrative): Promise<void>
 }
@@ -61,12 +65,14 @@ export type DashboardNarrativeResult =
 export async function getDashboardNarrative({
   userId,
   localDate,
+  timezoneOffset = 0,
   store,
   complete,
   now = () => new Date(),
 }: {
   userId: string
   localDate: string
+  timezoneOffset?: number
   store: DashboardNarrativeStore
   complete: CompleteNarrative
   now?: () => Date
@@ -74,7 +80,7 @@ export async function getDashboardNarrative({
   const { version, template } = await store.getTemplate(userId)
   if (!template.showNarrative) return { status: 'disabled', composition: null }
 
-  const facts = await store.getFacts(userId, localDate)
+  const facts = await store.getFacts(userId, localDate, timezoneOffset)
   if (!hasVisibleDashboardNarrativeFacts(template, facts)) {
     return { status: 'empty', composition: null }
   }
