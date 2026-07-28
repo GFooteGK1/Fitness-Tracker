@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import MealCameraCapture from './MealCameraCapture'
+import FastMealLogger from './FastMealLogger'
 import { MealUploadResponse } from '@/app/lib/types/food-tracking'
 import { getMealTimestamp } from '@/app/lib/timezone-utils'
 
@@ -162,6 +163,23 @@ export default function MealInputEnhanced({
 
   return (
     <div className="space-y-4">
+      <FastMealLogger
+        selectedDate={selectedDate}
+        onLogged={onUploadComplete}
+        onError={onError}
+      />
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="bg-white px-4 font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+            OR USE PHOTO, VOICE, OR TEXT
+          </span>
+        </div>
+      </div>
+
       {/* Camera Component - Always visible */}
       <MealCameraCapture
         onUploadComplete={onUploadComplete}

@@ -64,6 +64,13 @@ used by the idempotent `/api/check-prs` write path. Applied and independently
 read back in production on July 28, 2026 before the matching API deployment;
 see `personal-record-idempotency-production-application-2026-07-28.md`.
 
+### `../../supabase/migrations/20260728143952_nutrition_fast_logging.sql`
+Forward, repeatable migration for private reviewed food-label facts, barcode
+provenance, deterministic quick-log source references, and per-user request
+idempotency. It forces RLS on `food_catalog_entries`, keeps source-meal foreign
+keys tenant-consistent, and stores no label or meal images. Apply this migration
+before deploying the matching `/api/foods/*` and fast meal routes.
+
 ### `view-templates-migration.sql`
 Incremental, repeatable storage for immutable ADR-0001 presentation templates,
 including the default dashboard template and forced RLS.
@@ -143,6 +150,11 @@ The replacement migration was applied twice and rollback-verified in production
 on July 27, 2026. See
 `coach-plan-replacement-production-application-2026-07-27.md`.
 
+### `verify-nutrition-fast-logging.sql`
+Rollback-only structural, grant, idempotency, source-meal ownership, and
+two-user RLS verification for the nutrition fast-log migration. It requires two
+existing auth users and rolls back every catalog and meal fixture.
+
 ## Migration History
 
 ### Phase 1: Base Schema (January 2026)
@@ -204,4 +216,4 @@ database.
 
 ---
 
-**Last Updated:** July 27, 2026
+**Last Updated:** July 28, 2026

@@ -37,6 +37,15 @@ export interface FoodItem {
   carbs: number;
   fat: number;
   calories: number;
+  nutritionSource?: {
+    catalogEntryId: string;
+    source: 'open_food_facts' | 'manual_label';
+    barcode?: string;
+    nutritionBasis: 'per_serving' | 'per_100g';
+    servingAmount: number;
+    servingUnit: string;
+    servings: number;
+  };
 }
 
 // Main meal entry interface matching the meals table
