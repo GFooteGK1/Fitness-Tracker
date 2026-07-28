@@ -1,5 +1,96 @@
 # Handoff
 
+## Fast nutrition logging, reviewed label facts, and UPC/EAN capture (production schema verified; application release pending)
+
+Prepared on 2026-07-28 from exact `origin/main` commit `ed64582` on branch
+`codex/fast-nutrition-logging` in the clean worktree
+`C:\Users\foote\.codex\worktrees\fitness-tracker-pr-dedupe-review`.
+
+- The existing Add Meal surface now begins with deterministic common meals and
+  packaged-food entry. Photo, voice, and text remain available beneath it.
+- Common meals are a projection of the 300 most recent user-owned meal rows.
+  Exact macro/item snapshots are grouped and ranked by frequency, recency, and
+  a stable signature. Rows still needing review are excluded. One tap copies
+  the snapshot into a new meal with a fresh local-date-aware UTC timestamp;
+  neither ranking nor logging calls an LLM.
+- Quick-log retries reuse their request UUID. The generated migration adds a
+  per-user unique request index, a tenant-consistent source-meal foreign key,
+  and explicit entry-method provenance, so an uncertain response or concurrent
+  retry cannot create a second meal.
+- `food_catalog_entries` stores private reviewed name/brand/barcode, serving
+  basis, macros, normalized source nutrition, explicit correction differences,
+  bounded source metadata, and fetch/verification/use timestamps. Logged meal
+  items retain their own macro and provenance snapshot. No meal or label image
+  is retained.
+- Barcode lookup checks the user's saved catalog first, then uses a fixed-host,
+  fixed-field Open Food Facts v3 adapter with a custom app identity, six-second
+  timeout, redirect rejection, and 256 KB response cap. UPC-A, UPC-E, EAN-8,
+  EAN-13, and GTIN-14 normalization/checks are deterministic. Provider facts
+  are re-read when first logged, and the athlete must review the product,
+  serving, and macros before any meal is written.
+- The client progressively uses the native Barcode Detection API for UPC/EAN.
+  Manual barcode and full manual-label entry remain available when camera APIs,
+  permission, a product match, or the provider are unavailable. No production
+  dependency was added.
+- ADR-0004 records the canonical-meal, private-catalog, review-first, and
+  compute-in-code decisions. The architecture map and migration registry now
+  include the new boundaries.
+
+Database and release state:
+
+- Generated forward migration
+  `supabase/migrations/20260728143952_nutrition_fast_logging.sql` creates the
+  catalog, forced owner-scoped RLS, least-privilege grants, bounded constraints,
+  indexes, request idempotency, and source-meal ownership constraints.
+- `docs/migrations/verify-nutrition-fast-logging.sql` is rollback-only and
+  checks structure, grants, request idempotency, cross-user catalog isolation,
+  and cross-user source-meal rejection with two auth users.
+- Greg authorized the production release. The migration was applied once
+  through linked migration push, executed a second time against the live schema,
+  and passed the rollback-only two-user verifier. Independent readback confirmed
+  five auth users, 358 meals, zero catalog rows, one migration-history row, all
+  expected columns/constraints/indexes/policies/grants, forced RLS, and an empty
+  trigger-function `search_path`. Counts matched preflight, so the verifier left
+  no fixtures. The post-application advisors reported no finding tied to the new
+  catalog or fast-log boundaries. Durable evidence is in
+  `docs/migrations/nutrition-fast-logging-production-application-2026-07-28.md`.
+- The database is ready. Commit, exact-commit CI, Vercel preview, merge, main CI,
+  production deployment, and route canaries remain before the application is
+  considered released.
+
+Final verification on Node 24.13.1:
+
+- TDD produced the expected initial failures before the new modules/routes and
+  again for UPC-E checksum handling plus retry-stable request IDs.
+- Final feature slice: 7 files and 27 tests passed. The adjacent nutrition
+  regression slice passed 12 files and 80 tests.
+- Final full Vitest passed with 0 failures: 178 files passed, 5 skipped; 2,141
+  tests passed, 7 intentionally environment-gated tests skipped.
+- Strict TypeScript with incremental output disabled, lint with zero warnings
+  or errors, tracked and untracked whitespace checks, and the final
+  placeholder-backed production build passed. The build generated all 75
+  routes, including the four new fast-nutrition APIs, and contacted no
+  production service.
+- Playwright verified manual-label and unsupported-scanner states at 320px.
+  Document/body width matched the 320px viewport, Scan UPC and Log reviewed
+  food were both 48px high, and the clean console had zero errors or warnings.
+  The temporary route, environment file, browser state, screenshots, server,
+  and generated stale route type were removed.
+- Existing non-blocking warnings remain: Next 15's lint deprecation notice,
+  seven-month-old Browserslist data, and transitive Node `punycode` warnings.
+
+Team pass: product/data architecture, backend and frontend implementation,
+security/schema review, React review, and verification were completed in the
+main session because Greg did not request delegation. The review added true
+UPC-E validation, retry-stable idempotency keys, current review timestamps on
+quick logs, fixed-host/size/time provider bounds, forced RLS, tenant-consistent
+foreign keys, correction provenance, and accurate non-review-pending language.
+
+Bead `Fitness-Tracker-vig` remains in progress until the branch is committed and
+released through GitHub/Vercel. A signed-in production canary for common-meal,
+manual-label, and barcode flows remains an explicit account-boundary gap unless
+it can be run without connecting Greg's work Vercel identity.
+
 ## Personal-record idempotency and local-day Today's Read (released and production-verified)
 
 Released on 2026-07-28 from current `origin/main` on branch

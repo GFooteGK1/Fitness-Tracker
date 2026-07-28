@@ -154,6 +154,7 @@ unavailable, the existing numeric dashboard remains usable.
 Food Tracking:
 ├─ Food Progress Page (`app/food-progress/page.tsx`)
 ├─ Meal Components:
+│  ├─ FastMealLogger (`app/components/FastMealLogger.tsx`)
 │  ├─ MealCameraCapture (`app/components/MealCameraCapture.tsx`)
 │  ├─ MealEntryCard (`app/components/MealEntryCard.tsx`)
 │  ├─ MealEditModal (`app/components/MealEditModal.tsx`)
@@ -167,11 +168,17 @@ Food Tracking:
 ### **API Routes:**
 ```
 Meal Management:
+├─ /api/meals/common - Deterministic common/recent meal projection
+├─ /api/meals/quick-log - Idempotent snapshot copy with a fresh timestamp
 ├─ /api/meals/upload - Photo upload & AI analysis
 ├─ /api/meals/analyze - AI nutrition analysis
 ├─ /api/meals/daily - Daily meal summaries
 ├─ /api/meals/[id] - Individual meal CRUD
 └─ /api/meals/cleanup - Photo cleanup
+
+Reviewed Food Facts:
+├─ /api/foods/barcode - Private catalog first, then bounded Open Food Facts v3 lookup
+└─ /api/foods/log - Review-gated catalog upsert and deterministic meal log
 ```
 
 ### **Supporting Systems:**
@@ -195,7 +202,13 @@ Adherence Tracking:
 ### **Dependencies:**
 - **Provider-neutral LLM seam** (`app/lib/llm`) for per-task Anthropic/OpenAI analysis
 - Meal images are analyzed in-request and discarded; `photo_url` remains null
-- **Database Tables**: `meals`, `daily_targets`, `daily_summaries`
+- Common meals are derived from exact non-review-pending `meals` snapshots; no
+  LLM or mutable common-meal template is involved
+- Barcode/label facts are review-gated and stored in private
+  `food_catalog_entries`; logged meal items retain immutable macro snapshots
+- Native UPC/EAN scanning is progressively enhanced with manual barcode and
+  manual-label fallbacks
+- **Database Tables**: `meals`, `food_catalog_entries`, `daily_targets`, `daily_summaries`
 - **Types**: `app/lib/types/food-tracking.ts`
 
 ### **Impact Analysis:**
@@ -313,6 +326,7 @@ Database Relationships:
 ├─ user_profiles (1:1 with auth.users)
 │  └─ Referenced by: meals, workouts, daily_targets
 ├─ meals (many:1 with user_profiles)
+├─ food_catalog_entries (many:1 with auth.users; private reviewed label facts)
 ├─ workouts (many:1 with user_profiles)
 ├─ daily_targets (1:1 with user_profiles)
 ├─ movements (reference data)
