@@ -62,6 +62,20 @@ authentication warnings, intentional authenticated coach RPC warnings, and
 existing RLS/index performance findings; this migration introduced none of
 them.
 
+## Application release
+
+- PR #44 passed exact-commit CI on application commit `99ec822` and its Vercel
+  preview completed successfully.
+- The PR was squash-merged to `main` as `a0ddd03`.
+- Main CI run `30367516991` passed tests, strict TypeScript, lint, and the
+  production build.
+- Vercel's GitHub status for exact merge commit `a0ddd03` reported
+  `Deployment has completed` with state `success` for the personal
+  `gregs-projects-98860c8b/fitness-tracker` project.
+- No signed-in browser canary was attempted because the available browser
+  identity belongs to Greg's work Vercel account and must remain disconnected
+  from this personal project.
+
 ## Recovery boundary
 
 The uniqueness constraint can be removed only after rolling the application

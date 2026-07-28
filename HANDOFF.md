@@ -1,8 +1,8 @@
 # Handoff
 
-## Personal-record idempotency and local-day Today's Read (migration live; code release in progress)
+## Personal-record idempotency and local-day Today's Read (released and production-verified)
 
-Prepared on 2026-07-28 from current `origin/main` on branch
+Released on 2026-07-28 from current `origin/main` on branch
 `codex/pr-dedupe-local-day` in the clean worktree
 `C:\Users\foote\.codex\worktrees\fitness-tracker-pr-dedupe-review`.
 
@@ -58,15 +58,23 @@ Release boundary:
 - The production migration is applied and independently read back. Durable
   evidence is in
   `docs/migrations/personal-record-idempotency-production-application-2026-07-28.md`.
-  Commit/push through the normal PR/CI path and verify the exact production
-  deployment; the required unique constraint is already live before the API.
+- PR #44 passed exact-commit CI on `99ec822` in 1m47s and its Vercel preview
+  completed successfully. It was squash-merged to `main` as `a0ddd03`.
+  Main-branch CI run `30367516991` passed tests, strict TypeScript, lint, and
+  build in 1m43s. Vercel reported the exact merge commit deployed successfully
+  to Production.
+- A signed-in browser canary was not attempted because the available browser
+  identity is Greg's work Vercel account and must not be connected to this
+  personal project. Exact-commit GitHub/Vercel readback plus the independent
+  database readback are the release proof.
 - Team pass: the main session handled lead debugging/product behavior, software
   implementation, data/security review, and verification because Greg did not
   request delegation. The review added database idempotency, user-scoped local
   meal reads, deterministic cache inputs, and matched current/historical volume
   semantics. No new provider call or authority boundary was introduced.
-- Bead `Fitness-Tracker-bq1` remains in progress until the code release and
-  production deployment are verified.
+- Bead `Fitness-Tracker-bq1` is complete and may be closed after this release
+  record merges. The next nutrition logging tranche is tracked separately as
+  P1 epic `Fitness-Tracker-vig`; do not mix it into this released fix.
 
 ## Actionable adaptive coach prescriptions (released and production-verified)
 
