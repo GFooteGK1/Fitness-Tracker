@@ -101,117 +101,113 @@ export function detectPRsFromBlocks(
     }
   }
 
+  type Candidate = { exercise: string; value: number };
+  const weightCandidates = new Map<string, Candidate>();
+  const repsCandidates = new Map<string, Candidate>();
+  const timeCandidates = new Map<string, Candidate>();
+  const volumeCandidates = new Map<string, Candidate>();
+
+  // First collapse the parsed workout to one best candidate for each record.
+  // Parsed sets commonly repeat the same movement event; comparing every event
+  // independently creates duplicate rows and intermediate "records".
   for (const block of blocks) {
-    // --- Max weight per exercise ---
-    if (block.segments) {
-      for (const segment of block.segments) {
-        if (!segment.events) continue;
-        for (const event of segment.events) {
-          const name = event.movement_name;
-          const load = event.performed?.load?.value;
-          if (load && load > 0) {
-            const key = `${name.toLowerCase()}:weight`;
-            const prev = bestMap.get(key) ?? 0;
-            if (load > prev) {
-              prs.push({
-                isPR: true,
-                prType: 'weight',
-                previousBest: prev,
-                newRecord: load,
-                exercise: name,
-                improvement: formatImprovement('weight', prev, load),
-              });
-            }
+    for (const segment of block.segments ?? []) {
+      const rounds = segment.rounds ?? 1;
+      for (const event of segment.events ?? []) {
+        const name = event.movement_name;
+        const normalizedName = name.toLowerCase();
+        const load = event.performed?.load?.value ?? 0;
+        const reps = event.performed?.reps ?? 0;
 
-            // --- Max reps at this weight ---
-            const reps = event.performed?.reps;
-            if (reps && reps > 0) {
-              const repsExercise = `${name} @ ${load} lbs`;
-              const repsKey = `${repsExercise.toLowerCase()}:reps`;
-              const prevReps = bestMap.get(repsKey) ?? 0;
-              if (reps > prevReps) {
-                prs.push({
-                  isPR: true,
-                  prType: 'reps',
-                  previousBest: prevReps,
-                  newRecord: reps,
-                  exercise: repsExercise,
-                  improvement: formatImprovement('reps', prevReps, reps),
-                });
-              }
-            }
+        if (load > 0) {
+          const currentWeight = weightCandidates.get(normalizedName);
+          if (!currentWeight || load > currentWeight.value) {
+            weightCandidates.set(normalizedName, { exercise: name, value: load });
           }
-        }
-      }
-    }
 
-    // --- Fastest time for named WODs ---
-    if (block.block_score?.time_s && block.title) {
-      const wodName = block.title;
-      const timeS = block.block_score.time_s;
-      const key = `${wodName.toLowerCase()}:time`;
-      const prevTime = timeBestMap.get(key);
+          if (reps > 0) {
+            const repsExercise = `${name} @ ${load} lbs`;
+            const repsKey = repsExercise.toLowerCase();
+            const currentReps = repsCandidates.get(repsKey);
+            if (!currentReps || reps > currentReps.value) {
+              repsCandidates.set(repsKey, { exercise: repsExercise, value: reps });
+            }
 
-      if (prevTime === undefined) {
-        // First time doing this WOD
-        prs.push({
-          isPR: true,
-          prType: 'time',
-          previousBest: 0,
-          newRecord: timeS,
-          exercise: wodName,
-          improvement: formatImprovement('time', 0, timeS),
-        });
-      } else if (timeS < prevTime) {
-        // Faster than previous best (ties are NOT a PR)
-        prs.push({
-          isPR: true,
-          prType: 'time',
-          previousBest: prevTime,
-          newRecord: timeS,
-          exercise: wodName,
-          improvement: formatImprovement('time', prevTime, timeS),
-        });
-      }
-    }
-
-    // --- Highest volume per exercise (sets x reps x weight) ---
-    if (block.segments) {
-      // Accumulate volume per exercise across all segments
-      const volumeByExercise = new Map<string, { name: string; volume: number }>();
-      for (const segment of block.segments) {
-        if (!segment.events) continue;
-        const rounds = segment.rounds ?? 1;
-        for (const event of segment.events) {
-          const name = event.movement_name;
-          const reps = event.performed?.reps ?? 0;
-          const load = event.performed?.load?.value ?? 0;
-          if (reps > 0 && load > 0) {
-            const vol = rounds * reps * load;
-            const existing = volumeByExercise.get(name.toLowerCase());
-            if (existing) {
-              existing.volume += vol;
+            const volume = rounds * reps * load;
+            const currentVolume = volumeCandidates.get(normalizedName);
+            if (currentVolume) {
+              currentVolume.value += volume;
             } else {
-              volumeByExercise.set(name.toLowerCase(), { name, volume: vol });
+              volumeCandidates.set(normalizedName, { exercise: name, value: volume });
             }
           }
         }
       }
+    }
 
-      for (const [, { name, volume }] of volumeByExercise) {
-        const key = `${name.toLowerCase()}:volume`;
-        const prevVol = bestMap.get(key) ?? 0;
-        if (volume > prevVol) {
-          prs.push({
-            isPR: true,
-            prType: 'volume',
-            previousBest: prevVol,
-            newRecord: volume,
-            exercise: name,
-            improvement: formatImprovement('volume', prevVol, volume),
-          });
-        }
+    const timeS = block.block_score?.time_s ?? 0;
+    if (timeS > 0 && block.title) {
+      const key = block.title.toLowerCase();
+      const currentTime = timeCandidates.get(key);
+      if (!currentTime || timeS < currentTime.value) {
+        timeCandidates.set(key, { exercise: block.title, value: timeS });
       }
+    }
+  }
+
+  for (const [exerciseKey, candidate] of weightCandidates) {
+    const previousBest = bestMap.get(`${exerciseKey}:weight`) ?? 0;
+    if (candidate.value > previousBest) {
+      prs.push({
+        isPR: true,
+        prType: 'weight',
+        previousBest,
+        newRecord: candidate.value,
+        exercise: candidate.exercise,
+        improvement: formatImprovement('weight', previousBest, candidate.value),
+      });
+    }
+  }
+
+  for (const [exerciseKey, candidate] of repsCandidates) {
+    const previousBest = bestMap.get(`${exerciseKey}:reps`) ?? 0;
+    if (candidate.value > previousBest) {
+      prs.push({
+        isPR: true,
+        prType: 'reps',
+        previousBest,
+        newRecord: candidate.value,
+        exercise: candidate.exercise,
+        improvement: formatImprovement('reps', previousBest, candidate.value),
+      });
+    }
+  }
+
+  for (const [exerciseKey, candidate] of timeCandidates) {
+    const previousBest = timeBestMap.get(`${exerciseKey}:time`) ?? 0;
+    if (previousBest === 0 || candidate.value < previousBest) {
+      prs.push({
+        isPR: true,
+        prType: 'time',
+        previousBest,
+        newRecord: candidate.value,
+        exercise: candidate.exercise,
+        improvement: formatImprovement('time', previousBest, candidate.value),
+      });
+    }
+  }
+
+  for (const [exerciseKey, candidate] of volumeCandidates) {
+    const previousBest = bestMap.get(`${exerciseKey}:volume`) ?? 0;
+    if (candidate.value > previousBest) {
+      prs.push({
+        isPR: true,
+        prType: 'volume',
+        previousBest,
+        newRecord: candidate.value,
+        exercise: candidate.exercise,
+        improvement: formatImprovement('volume', previousBest, candidate.value),
+      });
     }
   }
 

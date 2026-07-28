@@ -4,8 +4,8 @@ This directory contains SQL migration scripts for the SociusFit database schema.
 
 ## Current Schema Status
 
-**Last Verified:** July 27, 2026
-**Status:** Existing production schema and all three incremental migrations are live and verified
+**Last Verified:** July 28, 2026
+**Status:** Existing production schema and all listed incremental migrations are live and verified
 
 The February WHOOP v2 verification below remains historical context. On July 26,
 the personal-records and view-template migrations were applied to the production
@@ -56,6 +56,13 @@ Base schema (workouts, movements, user profiles)
 ### `personal-records-migration.sql`
 Incremental, repeatable personal-record history table with forced user-scoped
 RLS and least-privilege grants.
+
+### `../../supabase/migrations/20260728134202_personal_record_idempotency.sql`
+Forward migration that retains the best result per workout/exercise/type,
+removes duplicate and intermediate PR rows, and adds the uniqueness constraint
+used by the idempotent `/api/check-prs` write path. Applied and independently
+read back in production on July 28, 2026 before the matching API deployment;
+see `personal-record-idempotency-production-application-2026-07-28.md`.
 
 ### `view-templates-migration.sql`
 Incremental, repeatable storage for immutable ADR-0001 presentation templates,

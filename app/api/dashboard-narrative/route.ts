@@ -28,6 +28,7 @@ export async function GET(request: Request) {
     const result = await getDashboardNarrative({
       userId: user.id,
       localDate: localDateForOffset(new Date(), timezoneOffset),
+      timezoneOffset,
       store: createDashboardNarrativeStore(supabase),
       complete,
     })

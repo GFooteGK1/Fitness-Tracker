@@ -298,6 +298,67 @@ describe('detectPRsFromBlocks', () => {
       expect(sqPR).toBeDefined()
       expect(gracePR).toBeDefined()
     })
+
+    it('keeps only the best result when parsed sets repeat the same movement', () => {
+      const blocks: WorkoutBlock[] = [{
+        block_type: 'STRENGTH',
+        segments: [{
+          rounds: 1,
+          events: [
+            ...Array.from({ length: 2 }, () => ({
+              movement_name: 'BB Back Squat',
+              performed: { reps: 4, load: { value: 275, unit: 'lb' } },
+            })),
+            ...Array.from({ length: 3 }, () => ({
+              movement_name: 'BB Back Squat',
+              performed: { reps: 3, load: { value: 285, unit: 'lb' } },
+            })),
+          ],
+        }],
+      }]
+
+      const prs = detectPRsFromBlocks(blocks, [
+        { exercise: 'BB Back Squat', pr_type: 'weight', value: 265 },
+      ])
+
+      expect(prs.filter(pr => pr.prType === 'weight')).toEqual([
+        expect.objectContaining({ exercise: 'BB Back Squat', newRecord: 285 }),
+      ])
+      expect(prs.filter(pr => pr.prType === 'reps')).toEqual([
+        expect.objectContaining({ exercise: 'BB Back Squat @ 275 lbs', newRecord: 4 }),
+        expect.objectContaining({ exercise: 'BB Back Squat @ 285 lbs', newRecord: 3 }),
+      ])
+    })
+
+    it('emits one session-volume record when a movement spans blocks', () => {
+      const blocks: WorkoutBlock[] = [
+        makeStrengthBlock({
+          segments: [{
+            rounds: 2,
+            events: [{
+              movement_name: 'Deadlift',
+              performed: { reps: 5, load: { value: 200, unit: 'lb' } },
+            }],
+          }],
+        }),
+        makeStrengthBlock({
+          segments: [{
+            rounds: 1,
+            events: [{
+              movement_name: 'Deadlift',
+              performed: { reps: 3, load: { value: 225, unit: 'lb' } },
+            }],
+          }],
+        }),
+      ]
+
+      const volumePRs = detectPRsFromBlocks(blocks, [])
+        .filter(pr => pr.prType === 'volume' && pr.exercise === 'Deadlift')
+
+      expect(volumePRs).toEqual([
+        expect.objectContaining({ newRecord: 2675 }),
+      ])
+    })
   })
 
   describe('edge cases', () => {

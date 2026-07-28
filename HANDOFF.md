@@ -1,5 +1,73 @@
 # Handoff
 
+## Personal-record idempotency and local-day Today's Read (migration live; code release in progress)
+
+Prepared on 2026-07-28 from current `origin/main` on branch
+`codex/pr-dedupe-local-day` in the clean worktree
+`C:\Users\foote\.codex\worktrees\fitness-tracker-pr-dedupe-review`.
+
+- Production readback confirmed that one July 28 workout created repeated and
+  intermediate `personal_records` rows. PR detection now collapses the complete
+  workout to one best weight, reps-at-load, time, and session-volume candidate
+  per exercise/type before comparing history. Historical volume is aggregated
+  at the same whole-session boundary.
+- `/api/check-prs` now uses an idempotent upsert keyed by
+  `(user_id, workout_id, exercise, pr_type)`. The generated forward migration
+  `supabase/migrations/20260728134202_personal_record_idempotency.sql` first
+  retains the best existing result for each key and then adds the matching
+  unique constraint. The migration must run before the API is deployed.
+- A production dry run found 14 redundant/intermediate rows across six record
+  keys for one user. Greg approved the production cleanup on 2026-07-28. The
+  migration applied successfully and preserved one best result per key; final
+  readback reports zero duplicate groups, one matching unique constraint, and
+  one migration-history row. Post-application advisors reported no finding on
+  `personal_records`; no RLS policy or grant changed.
+- Opening the dashboard does call the authenticated narrative endpoint, but an
+  unchanged fact/template fingerprint returns the stored `view_compositions`
+  result without calling the LLM. The existing cache-hit regression test proves
+  `complete` is not called. Production had two July 28 compositions associated
+  with actual fact changes rather than one composition per app open.
+- Meal timestamps remain correctly stored as UTC. The defect was the dashboard
+  readiness RPC grouping `DATE(meal_timestamp)` in UTC. The narrative store now
+  queries the user-scoped seven-day meal window, groups meals by the browser's
+  validated timezone offset, and recomputes target percentages from
+  `daily_targets`. A production example stored at 01:09 UTC now remains on the
+  prior America/Chicago calendar day. The narrative prompt also forbids calling
+  prior-date meals or workouts "today."
+- Recent PR facts are read in deterministic order and defensively collapsed to
+  one best workout/exercise/type result, keeping cache fingerprints stable even
+  before the production cleanup is applied.
+
+Verification on Node 24.13.1:
+
+- Focused PR regression slice: 2 files and 28 tests passed, including a failing
+  first run that exposed the historical session-volume mismatch.
+- Final full Vitest suite passed with 0 failures (171 files passed, 5 skipped;
+  2,114 tests passed, 7 intentionally env-gated tests skipped).
+- Strict TypeScript with incremental output disabled, lint with no warnings or
+  errors, and `git diff --check` passed.
+- The final placeholder-backed Next 15.5.9 production build compiled,
+  type-checked, generated all 71 routes, and included `/api/check-prs` and
+  `/api/dashboard-narrative`. The build contacted no production service.
+- Existing non-blocking warnings remain: the Next 15 lint deprecation notice,
+  stale Browserslist data during build, and Node's transitive `punycode`
+  warnings during tests. No dependency changes were made.
+
+Release boundary:
+
+- The production migration is applied and independently read back. Durable
+  evidence is in
+  `docs/migrations/personal-record-idempotency-production-application-2026-07-28.md`.
+  Commit/push through the normal PR/CI path and verify the exact production
+  deployment; the required unique constraint is already live before the API.
+- Team pass: the main session handled lead debugging/product behavior, software
+  implementation, data/security review, and verification because Greg did not
+  request delegation. The review added database idempotency, user-scoped local
+  meal reads, deterministic cache inputs, and matched current/historical volume
+  semantics. No new provider call or authority boundary was introduced.
+- Bead `Fitness-Tracker-bq1` remains in progress until the code release and
+  production deployment are verified.
+
 ## Actionable adaptive coach prescriptions (released and production-verified)
 
 Prepared on 2026-07-27 from `origin/main` on branch

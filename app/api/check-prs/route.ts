@@ -83,6 +83,7 @@ export async function POST(request: Request) {
       for (const workout of historicalBlocks) {
         const wBlocks = workout.blocks as WorkoutBlock[]
         if (!wBlocks) continue
+        const volumeByExercise = new Map<string, { exercise: string; value: number }>()
         for (const block of wBlocks) {
           if (block.segments) {
             for (const seg of block.segments) {
@@ -100,11 +101,14 @@ export async function POST(request: Request) {
                       pr_type: 'reps',
                       value: reps,
                     })
-                    historicalRecords.push({
-                      exercise: name,
-                      pr_type: 'volume',
-                      value: rounds * reps * load,
-                    })
+                    const volume = rounds * reps * load
+                    const key = name.toLowerCase()
+                    const current = volumeByExercise.get(key)
+                    if (current) {
+                      current.value += volume
+                    } else {
+                      volumeByExercise.set(key, { exercise: name, value: volume })
+                    }
                   }
                 }
               }
@@ -117,6 +121,13 @@ export async function POST(request: Request) {
               value: block.block_score.time_s,
             })
           }
+        }
+        for (const volume of volumeByExercise.values()) {
+          historicalRecords.push({
+            exercise: volume.exercise,
+            pr_type: 'volume',
+            value: volume.value,
+          })
         }
       }
     }
@@ -138,7 +149,10 @@ export async function POST(request: Request) {
 
       const { error: insertError } = await supabase
         .from('personal_records')
-        .insert(prRecords)
+        .upsert(prRecords, {
+          onConflict: 'user_id,workout_id,exercise,pr_type',
+          ignoreDuplicates: true,
+        })
 
       if (insertError) {
         console.error('Error storing PRs:', insertError)
