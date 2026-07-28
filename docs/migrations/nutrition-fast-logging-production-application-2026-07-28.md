@@ -66,9 +66,22 @@ no advisor finding.
 
 ## Application release
 
-The database is ready for the application write paths. GitHub exact-commit CI,
-the Vercel preview, squash merge, main CI, production deployment, and route
-canaries are recorded in the handoff after release.
+- PR #46 passed exact-commit CI run `30381653946` on `ba6c552` in 1m19s, and
+  its Vercel preview completed successfully.
+- The PR was squash-merged to `main` as `4064ba3`.
+- Main CI run `30381790603` passed tests, strict TypeScript, lint, and build in
+  1m55s.
+- GitHub deployment `5644247088` reported exact commit `4064ba3` successful in
+  the Production environment. Vercel's exact-commit status reported
+  `Deployment has completed` with state `success`.
+- Anonymous POST canaries reached `/api/meals/quick-log` and `/api/foods/log`
+  and returned the expected application 401. Anonymous GETs to
+  `/api/meals/common` and `/api/foods/barcode` were stopped by the existing
+  Vercel SSO layer with 302 before app routing.
+- A signed-in functional canary was not attempted because the available browser
+  Vercel identity is Greg's work account and must not be connected to this
+  personal project. This is the only remaining canary gap; it does not weaken
+  the exact-commit deployment or rollback-only database proof.
 
 ## Recovery boundary
 
