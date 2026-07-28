@@ -1,9 +1,9 @@
 # Handoff
 
-## Fast nutrition logging, reviewed label facts, and UPC/EAN capture (production schema verified; application release pending)
+## Fast nutrition logging, reviewed label facts, and UPC/EAN capture (released and production-verified)
 
-Prepared on 2026-07-28 from exact `origin/main` commit `ed64582` on branch
-`codex/fast-nutrition-logging` in the clean worktree
+Released on 2026-07-28 through PR #46 as exact `main` commit `4064ba3` from
+branch `codex/fast-nutrition-logging` in the clean worktree
 `C:\Users\foote\.codex\worktrees\fitness-tracker-pr-dedupe-review`.
 
 - The existing Add Meal surface now begins with deterministic common meals and
@@ -54,9 +54,18 @@ Database and release state:
   no fixtures. The post-application advisors reported no finding tied to the new
   catalog or fast-log boundaries. Durable evidence is in
   `docs/migrations/nutrition-fast-logging-production-application-2026-07-28.md`.
-- The database is ready. Commit, exact-commit CI, Vercel preview, merge, main CI,
-  production deployment, and route canaries remain before the application is
-  considered released.
+- PR #46 passed exact-commit CI on `ba6c552` in 1m19s and its Vercel preview
+  completed successfully. It was squash-merged to `main` as `4064ba3`. Main CI
+  run `30381790603` passed tests, strict TypeScript, lint, and build in 1m55s.
+  GitHub deployment `5644247088` and Vercel both report the exact merge commit
+  successfully deployed to Production.
+- Anonymous POST canaries for `/api/meals/quick-log` and `/api/foods/log`
+  reached the application and returned the expected 401. Anonymous GETs for
+  `/api/meals/common` and `/api/foods/barcode` were intercepted by the existing
+  Vercel SSO boundary with 302 before application routing. A signed-in common,
+  manual-label, and barcode canary was not attempted because the available
+  browser Vercel identity is Greg's work account and must remain disconnected
+  from this personal project.
 
 Final verification on Node 24.13.1:
 
@@ -86,10 +95,11 @@ UPC-E validation, retry-stable idempotency keys, current review timestamps on
 quick logs, fixed-host/size/time provider bounds, forced RLS, tenant-consistent
 foreign keys, correction provenance, and accurate non-review-pending language.
 
-Bead `Fitness-Tracker-vig` remains in progress until the branch is committed and
-released through GitHub/Vercel. A signed-in production canary for common-meal,
-manual-label, and barcode flows remains an explicit account-boundary gap unless
-it can be run without connecting Greg's work Vercel identity.
+Bead `Fitness-Tracker-vig` remains in progress only for a signed-in production
+canary of the common-meal, manual-label, and barcode flows. The migration,
+release, exact-commit CI, production deployment, and anonymous write-route
+canaries are complete; do not connect Greg's work Vercel identity to close the
+remaining canary gap.
 
 ## Personal-record idempotency and local-day Today's Read (released and production-verified)
 
