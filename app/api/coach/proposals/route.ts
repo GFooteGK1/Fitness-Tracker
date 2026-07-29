@@ -3,7 +3,13 @@ import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
-import { buildEightWeekProposal, validateCoachPlanningInput } from '@/app/lib/coach/planner'
+import {
+  buildProgrammingProfile,
+  validateCompleteCoachPlanningInput
+} from '@/app/lib/coach/complete-intake'
+import { buildCompleteEightWeekPlan } from '@/app/lib/coach/complete-program'
+import { validateCompleteProgrammingPlan } from '@/app/lib/coach/program-validator'
+import type { TrainingWeekday } from '@/app/lib/coach/types'
 
 interface ProposalRequest {
   planningInput?: unknown
@@ -28,7 +34,7 @@ export async function POST(request: Request) {
     const idempotencyKey = validIdempotencyKey(body.idempotencyKey)
     if (!idempotencyKey) return apiError('A valid idempotency key is required', 400)
 
-    const validated = validateCoachPlanningInput(body.planningInput)
+    const validated = validateCompleteCoachPlanningInput(body.planningInput)
     if (!validated.ok) {
       return NextResponse.json(
         { error: 'Invalid coach setup', details: validated.errors },
@@ -41,9 +47,10 @@ export async function POST(request: Request) {
 
     let proposal
     try {
-      proposal = buildEightWeekProposal(validated.value, {
-        assessments: context.assessments
-      })
+      const profile = buildProgrammingProfile(validated.value, context.assessments)
+      proposal = buildCompleteEightWeekPlan(profile)
+      const proposalValidation = validateCompleteProgrammingPlan(proposal)
+      if (!proposalValidation.ok) throw new Error(proposalValidation.errors.join('; '))
     } catch (error) {
       return apiError(
         'Invalid coach setup',
@@ -53,7 +60,8 @@ export async function POST(request: Request) {
     }
 
     const sourceSnapshot = {
-      planningInput: proposal.inputSnapshot,
+      planningInput: validated.value,
+      programmingProfile: proposal.profileSnapshot,
       assessments: context.assessments.map(assessment => ({
         id: assessment.id,
         movement: assessment.movement,
@@ -79,25 +87,35 @@ export async function POST(request: Request) {
 
     const commonArguments = {
       p_title: proposal.title,
-      p_goal_summary: proposal.goalSummary,
+      p_goal_summary: proposal.profileSnapshot.athleteGoalSummary,
       p_start_date: proposal.startDate,
-      p_reference_version: proposal.referenceVersion,
+      p_reference_version: proposal.evidenceReferenceVersion,
       p_policy_version: proposal.policyVersion,
       p_intent: {
+        format: proposal.format,
         horizon_weeks: 8,
-        primary_domain: proposal.inputSnapshot.primaryDomain,
-        weeks: proposal.weeks
+        kernel_version: proposal.kernelVersion,
+        primary_domain: proposal.profileSnapshot.primaryGoal.domain,
+        weeks: proposal.weeks.map(week => ({
+          week: week.weekNumber,
+          role: week.role,
+          intent: week.intent,
+          reviewRequired: week.review.status === 'pending_athlete_review',
+          review: week.review,
+          coverage: week.schedule.ledger
+        }))
       },
       p_input_snapshot: sourceSnapshot,
-      p_sessions: proposal.sessions.map(session => ({
-        week_number: session.weekNumber,
-        session_index: session.sessionIndex,
-        scheduled_date: session.scheduledDate,
-        prescription: session.prescription
-      })),
+      p_sessions: proposal.weeks.flatMap(week => week.sessions.map((session, index) => ({
+        week_number: week.weekNumber,
+        session_index: index + 1,
+        scheduled_date: scheduledDate(proposal.startDate, week.weekNumber, session.day),
+        prescription: session
+      }))),
       p_rationale: {
         reason: context.activeProgram ? 'replacement_program' : 'initial_program',
         generatedBy: 'planning_kernel',
+        kernelVersion: proposal.kernelVersion,
         athleteReviewRequired: true
       },
       p_input_fingerprint: inputFingerprint,
@@ -143,6 +161,26 @@ export async function POST(request: Request) {
     console.error('Coach proposal POST error:', error)
     return apiError('Unable to create coach proposal', 500)
   }
+}
+
+const WEEKDAY_OFFSET: Record<TrainingWeekday, number> = {
+  monday: 0,
+  tuesday: 1,
+  wednesday: 2,
+  thursday: 3,
+  friday: 4,
+  saturday: 5,
+  sunday: 6
+}
+
+function scheduledDate(
+  startDate: string,
+  weekNumber: number,
+  day: TrainingWeekday
+): string {
+  const date = new Date(`${startDate}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + ((weekNumber - 1) * 7) + WEEKDAY_OFFSET[day])
+  return date.toISOString().slice(0, 10)
 }
 
 async function readJson(request: Request): Promise<ProposalRequest | null> {

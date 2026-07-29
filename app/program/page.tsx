@@ -3,12 +3,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import type {
-  CoachPlanProposalDraft,
-  CoachPlanningInput,
   CoachRuntimeContext,
   CoachStrengthAssessmentSummary,
   StrengthAssessmentInput
 } from '@/app/lib/coach/types'
+import type { CompleteCoachPlanningInput } from '@/app/lib/coach/complete-intake'
+import type { CompleteProgrammingPlanDraft } from '@/app/lib/coach/complete-program'
+import {
+  MOVEMENT_EQUIPMENT_IDS,
+  type MovementEquipmentId
+} from '@/app/lib/coach/movement-catalog'
 import {
   ActiveProgramView,
   CoachSetupForm,
@@ -19,23 +23,27 @@ import {
 interface ProposalResponse {
   proposalId: string
   idempotencyKey: string
-  proposal: CoachPlanProposalDraft
+  proposal: CompleteProgrammingPlanDraft
 }
 
-const INITIAL_PLANNING_INPUT: CoachPlanningInput = {
+const INITIAL_PLANNING_INPUT: CompleteCoachPlanningInput = {
+  format: 'complete_programming_intake_v0_3',
   primaryDomain: 'strength',
   goal: '',
   experience: 'consistent',
   trainingDays: ['monday', 'wednesday', 'friday'],
   sessionMinutes: 60,
-  equipment: '',
+  equipment: 'Bodyweight',
+  resolvedEquipmentIds: ['bodyweight'],
   constraints: '',
+  constraintKinds: [],
+  secondaryGoals: [],
   startDate: ''
 }
 
 export default function ProgramPage() {
   const [context, setContext] = useState<CoachRuntimeContext | null>(null)
-  const [planningInput, setPlanningInput] = useState<CoachPlanningInput>(INITIAL_PLANNING_INPUT)
+  const [planningInput, setPlanningInput] = useState<CompleteCoachPlanningInput>(INITIAL_PLANNING_INPUT)
   const [proposal, setProposal] = useState<ProposalResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [savingSetup, setSavingSetup] = useState(false)
@@ -73,7 +81,7 @@ export default function ProgramPage() {
     void loadCoachState()
   }, [loadCoachState])
 
-  const updatePlanningInput = (next: CoachPlanningInput) => {
+  const updatePlanningInput = (next: CompleteCoachPlanningInput) => {
     setPlanningInput(next)
     setSetupSaved(false)
     setProposal(null)
@@ -336,9 +344,9 @@ export default function ProgramPage() {
 }
 
 function hydratePlanningInput(
-  current: CoachPlanningInput,
+  current: CompleteCoachPlanningInput,
   context: CoachRuntimeContext
-): CoachPlanningInput {
+): CompleteCoachPlanningInput {
   const memory = (key: string) => context.memories.find(item => item.memoryKey === key)?.content
   const goal = memory('primary_goal')
   const schedule = memory('training_schedule')
@@ -349,25 +357,32 @@ function hydratePlanningInput(
     ...current,
     primaryDomain: isProgramDomain(goal?.primaryDomain) ? goal.primaryDomain : current.primaryDomain,
     goal: typeof goal?.goal === 'string' ? goal.goal : current.goal,
+    secondaryGoals: isSecondaryGoals(goal?.secondaryGoals) ? goal.secondaryGoals : current.secondaryGoals,
     experience: isExperience(schedule?.experience) ? schedule.experience : current.experience,
     trainingDays: isTrainingDays(schedule?.trainingDays) ? schedule.trainingDays : current.trainingDays,
     sessionMinutes: isSessionMinutes(schedule?.sessionMinutes) ? schedule.sessionMinutes : current.sessionMinutes,
     equipment: typeof equipment?.equipment === 'string' ? equipment.equipment : current.equipment,
+    resolvedEquipmentIds: isEquipmentIds(equipment?.resolvedEquipmentIds)
+      ? equipment.resolvedEquipmentIds
+      : current.resolvedEquipmentIds,
     constraints: typeof constraints?.constraints === 'string' ? constraints.constraints : current.constraints,
+    constraintKinds: isConstraintKinds(constraints?.constraintKinds)
+      ? constraints.constraintKinds
+      : current.constraintKinds,
     startDate: current.startDate || nextMonday()
   }
 }
 
-function isProgramDomain(value: unknown): value is CoachPlanningInput['primaryDomain'] {
+function isProgramDomain(value: unknown): value is CompleteCoachPlanningInput['primaryDomain'] {
   return ['strength', 'hypertrophy', 'power_explosiveness', 'speed_agility', 'aerobic', 'resilience']
     .includes(String(value))
 }
 
-function isExperience(value: unknown): value is CoachPlanningInput['experience'] {
+function isExperience(value: unknown): value is CompleteCoachPlanningInput['experience'] {
   return ['new_or_returning', 'consistent', 'experienced'].includes(String(value))
 }
 
-function isTrainingDays(value: unknown): value is CoachPlanningInput['trainingDays'] {
+function isTrainingDays(value: unknown): value is CompleteCoachPlanningInput['trainingDays'] {
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
   return Array.isArray(value)
     && value.length >= 2
@@ -375,8 +390,39 @@ function isTrainingDays(value: unknown): value is CoachPlanningInput['trainingDa
     && value.every(item => typeof item === 'string' && days.includes(item))
 }
 
-function isSessionMinutes(value: unknown): value is CoachPlanningInput['sessionMinutes'] {
+function isSessionMinutes(value: unknown): value is CompleteCoachPlanningInput['sessionMinutes'] {
   return [30, 45, 60, 75, 90].includes(Number(value))
+}
+
+function isEquipmentIds(value: unknown): value is MovementEquipmentId[] {
+  return Array.isArray(value)
+    && value.length > 0
+    && value.every(item => MOVEMENT_EQUIPMENT_IDS.includes(item as MovementEquipmentId))
+}
+
+function isConstraintKinds(
+  value: unknown
+): value is CompleteCoachPlanningInput['constraintKinds'] {
+  return Array.isArray(value)
+    && value.every(item => item === 'no_overhead' || item === 'no_running')
+}
+
+function isSecondaryGoals(
+  value: unknown
+): value is CompleteCoachPlanningInput['secondaryGoals'] {
+  return Array.isArray(value)
+    && value.length <= 2
+    && value.every(item => (
+      typeof item === 'object'
+      && item !== null
+      && !Array.isArray(item)
+      && 'domain' in item
+      && isProgramDomain(item.domain)
+      && 'allocation' in item
+      && (item.allocation === 'development' || item.allocation === 'maintenance')
+      && 'athleteIntent' in item
+      && typeof item.athleteIntent === 'string'
+    ))
 }
 
 function nextMonday(): string {

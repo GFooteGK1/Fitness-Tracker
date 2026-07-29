@@ -3,22 +3,53 @@
 import React, { useState, type FormEvent } from 'react'
 import type {
   ActiveCoachProgramSummary,
-  CoachPlanProposalDraft,
-  CoachPlanningInput,
   CoachSessionPrescription,
   CoachStrengthAssessmentSummary,
   StrengthAssessmentInput,
   TrainingWeekday
 } from '@/app/lib/coach/types'
+import type { CompleteCoachPlanningInput } from '@/app/lib/coach/complete-intake'
+import type { CompleteProgrammingPlanDraft } from '@/app/lib/coach/complete-program'
+import type {
+  CompleteProgrammingDose,
+  CompleteProgrammingExercisePrescription,
+  CompleteProgrammingSessionPrescription,
+  ProgrammingExecutionTarget,
+  ProgrammingSessionBlockRole
+} from '@/app/lib/coach/programming-schema'
+import {
+  MOVEMENT_CATALOG,
+  type MovementEquipmentId
+} from '@/app/lib/coach/movement-catalog'
 import { getLocalDate, parseDateString } from '@/app/lib/timezone-utils'
 
-const FOCUS_OPTIONS: Array<{ value: CoachPlanningInput['primaryDomain']; label: string }> = [
+const FOCUS_OPTIONS: Array<{ value: CompleteCoachPlanningInput['primaryDomain']; label: string }> = [
   { value: 'strength', label: 'Strength' },
   { value: 'hypertrophy', label: 'Build muscle' },
   { value: 'power_explosiveness', label: 'Power and explosiveness' },
   { value: 'speed_agility', label: 'Speed and agility' },
   { value: 'aerobic', label: 'Aerobic conditioning' },
   { value: 'resilience', label: 'Resilience and movement capacity' }
+]
+
+const EQUIPMENT_OPTIONS: Array<{ value: MovementEquipmentId; label: string }> = [
+  { value: 'bodyweight', label: 'Bodyweight' },
+  { value: 'barbell', label: 'Barbell' },
+  { value: 'rack', label: 'Rack' },
+  { value: 'dumbbell', label: 'Dumbbells' },
+  { value: 'kettlebell', label: 'Kettlebells' },
+  { value: 'bench', label: 'Bench' },
+  { value: 'band', label: 'Bands' },
+  { value: 'cable', label: 'Cable' },
+  { value: 'machine', label: 'Machines' },
+  { value: 'pull_up_bar', label: 'Pull-up bar' },
+  { value: 'medicine_ball', label: 'Medicine ball' },
+  { value: 'box', label: 'Box' },
+  { value: 'sled', label: 'Sled' },
+  { value: 'bike', label: 'Bike' },
+  { value: 'rower', label: 'Rower' },
+  { value: 'treadmill', label: 'Treadmill' },
+  { value: 'track', label: 'Track or field' }
 ]
 
 const WEEKDAYS: Array<{ value: TrainingWeekday; short: string; label: string }> = [
@@ -34,8 +65,8 @@ const WEEKDAYS: Array<{ value: TrainingWeekday; short: string; label: string }> 
 const FIELD_CLASS = 'mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-base text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100'
 
 interface CoachSetupFormProps {
-  value: CoachPlanningInput
-  onChange: (value: CoachPlanningInput) => void
+  value: CompleteCoachPlanningInput
+  onChange: (value: CompleteCoachPlanningInput) => void
   onSave: () => void
   saving: boolean
   saved: boolean
@@ -53,6 +84,22 @@ export function CoachSetupForm({
       ? value.trainingDays.filter(candidate => candidate !== day)
       : [...value.trainingDays, day]
     onChange({ ...value, trainingDays })
+  }
+  const toggleEquipment = (equipmentId: MovementEquipmentId) => {
+    const resolvedEquipmentIds = value.resolvedEquipmentIds.includes(equipmentId)
+      ? value.resolvedEquipmentIds.filter(candidate => candidate !== equipmentId)
+      : [...value.resolvedEquipmentIds, equipmentId]
+    const equipment = EQUIPMENT_OPTIONS
+      .filter(option => resolvedEquipmentIds.includes(option.value))
+      .map(option => option.label)
+      .join(', ')
+    onChange({ ...value, resolvedEquipmentIds, equipment })
+  }
+  const toggleConstraint = (kind: CompleteCoachPlanningInput['constraintKinds'][number]) => {
+    const constraintKinds = value.constraintKinds.includes(kind)
+      ? value.constraintKinds.filter(candidate => candidate !== kind)
+      : [...value.constraintKinds, kind]
+    onChange({ ...value, constraintKinds })
   }
 
   return (
@@ -78,7 +125,8 @@ export function CoachSetupForm({
             value={value.primaryDomain}
             onChange={event => onChange({
               ...value,
-              primaryDomain: event.target.value as CoachPlanningInput['primaryDomain']
+              primaryDomain: event.target.value as CompleteCoachPlanningInput['primaryDomain'],
+              secondaryGoals: value.secondaryGoals.filter(goal => goal.domain !== event.target.value)
             })}
             className={FIELD_CLASS}
           >
@@ -95,7 +143,7 @@ export function CoachSetupForm({
             value={value.experience}
             onChange={event => onChange({
               ...value,
-              experience: event.target.value as CoachPlanningInput['experience']
+              experience: event.target.value as CompleteCoachPlanningInput['experience']
             })}
             className={FIELD_CLASS}
           >
@@ -117,6 +165,53 @@ export function CoachSetupForm({
           className={FIELD_CLASS}
         />
       </label>
+
+      <div className="mt-5 grid gap-5 sm:grid-cols-2">
+        <label className="text-sm font-medium text-gray-800 dark:text-gray-200">
+          Supporting focus (optional)
+          <select
+            aria-label="Supporting focus"
+            value={value.secondaryGoals[0]?.domain ?? ''}
+            onChange={event => {
+              const domain = event.target.value as CompleteCoachPlanningInput['primaryDomain'] | ''
+              onChange({
+                ...value,
+                secondaryGoals: domain ? [{
+                  domain,
+                  allocation: 'maintenance',
+                  athleteIntent: `Support ${FOCUS_OPTIONS.find(option => option.value === domain)?.label ?? domain}`
+                }] : []
+              })
+            }}
+            className={FIELD_CLASS}
+          >
+            <option value="">No supporting focus</option>
+            {FOCUS_OPTIONS.filter(option => option.value !== value.primaryDomain).map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+        {value.secondaryGoals[0] && (
+          <label className="text-sm font-medium text-gray-800 dark:text-gray-200">
+            Supporting dose
+            <select
+              aria-label="Supporting dose"
+              value={value.secondaryGoals[0].allocation}
+              onChange={event => onChange({
+                ...value,
+                secondaryGoals: [{
+                  ...value.secondaryGoals[0],
+                  allocation: event.target.value as 'development' | 'maintenance'
+                }]
+              })}
+              className={FIELD_CLASS}
+            >
+              <option value="maintenance">Maintain</option>
+              <option value="development">Develop alongside primary</option>
+            </select>
+          </label>
+        )}
+      </div>
 
       <fieldset className="mt-5">
         <legend className="text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -156,7 +251,7 @@ export function CoachSetupForm({
             value={value.sessionMinutes}
             onChange={event => onChange({
               ...value,
-              sessionMinutes: Number(event.target.value) as CoachPlanningInput['sessionMinutes']
+              sessionMinutes: Number(event.target.value) as CompleteCoachPlanningInput['sessionMinutes']
             })}
             className={FIELD_CLASS}
           >
@@ -181,17 +276,60 @@ export function CoachSetupForm({
         </label>
       </div>
 
-      <label className="mt-5 block text-sm font-medium text-gray-800 dark:text-gray-200">
-        Available equipment
-        <textarea
-          aria-label="Available equipment"
-          value={value.equipment}
-          onChange={event => onChange({ ...value, equipment: event.target.value })}
-          rows={2}
-          placeholder="Barbell and rack, commercial gym, home dumbbells, track, bike..."
-          className={FIELD_CLASS}
-        />
-      </label>
+      <fieldset className="mt-5">
+        <legend className="text-sm font-medium text-gray-800 dark:text-gray-200">
+          Available equipment
+        </legend>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Select what the plan may use. Unselected equipment will never be assumed from notes.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {EQUIPMENT_OPTIONS.map(option => {
+            const selected = value.resolvedEquipmentIds.includes(option.value)
+            return (
+              <label
+                key={option.value}
+                className={`flex min-h-11 cursor-pointer items-center rounded-lg border px-3 py-2 text-sm font-medium ${
+                  selected
+                    ? 'border-blue-600 bg-blue-50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-100'
+                    : 'border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  aria-label={option.label}
+                  checked={selected}
+                  onChange={() => toggleEquipment(option.value)}
+                  className="mr-2 size-4"
+                />
+                {option.label}
+              </label>
+            )
+          })}
+        </div>
+      </fieldset>
+
+      <fieldset className="mt-5">
+        <legend className="text-sm font-medium text-gray-800 dark:text-gray-200">
+          Movement constraints
+        </legend>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          {([
+            ['no_overhead', 'Do not prescribe overhead work'],
+            ['no_running', 'Do not prescribe running']
+          ] as const).map(([kind, label]) => (
+            <label key={kind} className="flex min-h-11 items-center rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600">
+              <input
+                type="checkbox"
+                checked={value.constraintKinds.includes(kind)}
+                onChange={() => toggleConstraint(kind)}
+                className="mr-2 size-4"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <label className="mt-5 block text-sm font-medium text-gray-800 dark:text-gray-200">
         Constraints or preferences
@@ -392,7 +530,7 @@ export function StrengthAssessmentPanel({ assessments, onSubmit }: StrengthAsses
 }
 
 interface ProposalPreviewProps {
-  proposal: CoachPlanProposalDraft
+  proposal: CompleteProgrammingPlanDraft
   onAccept: () => void
   accepting: boolean
   replacement?: boolean
@@ -416,30 +554,50 @@ export function ProposalPreview({
         {proposal.title} · {formatDate(proposal.startDate)} to {formatDate(proposal.endDate)}
       </p>
 
-      <div className="mt-6 grid gap-3 lg:grid-cols-2">
+      <div className="mt-6 space-y-3">
         {proposal.weeks.map(week => {
-          const sessions = proposal.sessions.filter(session => session.weekNumber === week.week)
+          const sessions = week.sessions
           return (
-            <article key={week.week} className="rounded-xl border border-blue-100 bg-white p-4 dark:border-blue-900 dark:bg-gray-900">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="font-bold text-gray-950 dark:text-white">Week {week.week}</h3>
-                {week.reviewRequired && (
+            <article key={week.weekNumber} className="min-w-0 rounded-xl border border-blue-100 bg-white p-4 dark:border-blue-900 dark:bg-gray-900">
+              <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                <h3 className="font-bold text-gray-950 dark:text-white">Week {week.weekNumber}</h3>
+                {week.review.status === 'pending_athlete_review' && (
                   <span className="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-                    {week.week === 4 ? 'Review-led deload' : 'Deload and assess'}
+                    {week.weekNumber === 4 ? 'Review before deload' : 'Review and assess'}
                   </span>
                 )}
               </div>
-              <p className="mt-3 text-sm leading-5 text-gray-700 dark:text-gray-200">{week.intent}</p>
-              <details className="mt-4 border-t border-gray-100 pt-3 dark:border-gray-800" open={week.week === 1}>
+              <p className="mt-3 break-words text-sm leading-5 text-gray-700 dark:text-gray-200">{week.intent}</p>
+              <details className="mt-4 border-t border-gray-100 pt-3 dark:border-gray-800">
+                <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  Weekly coverage · {week.schedule.ledger.filter(entry => entry.plannedDose > 0).length} planned
+                </summary>
+                <ul className="mt-2 space-y-2">
+                  {week.schedule.ledger.map(entry => {
+                    const gap = week.schedule.gaps.find(candidate => candidate.requirementId === entry.requirement.id)
+                    return (
+                      <li key={entry.requirement.id} className="min-w-0 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-gray-950/50">
+                        <p className="break-words font-medium text-gray-900 dark:text-white">{entry.requirement.targetLabel}</p>
+                        <p className="mt-1 break-words text-xs text-gray-600 dark:text-gray-300">
+                          {entry.plannedDose > 0
+                            ? `${entry.plannedDose} ${doseUnitLabel(entry.requirement.dose.unit)}`
+                            : gap?.detail ?? 'Not planned'}
+                        </p>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </details>
+              <details className="mt-2 border-t border-gray-100 pt-2 dark:border-gray-800" open={week.weekNumber === 1}>
                 <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-blue-700 dark:text-blue-300">
-                  {sessions.length} sessions
+                  {sessions.length} complete sessions
                 </summary>
                 <div className="mt-3 space-y-3">
-                  {sessions.map(session => (
-                    <SessionPrescriptionCard
-                      key={`${session.weekNumber}-${session.sessionIndex}`}
-                      prescription={session.prescription}
-                      label={`Session ${session.sessionIndex} · ${formatDate(session.scheduledDate)}`}
+                  {sessions.map((session, index) => (
+                    <CompleteSessionCard
+                      key={session.sessionId}
+                      prescription={session}
+                      label={`Session ${index + 1} · ${weekdayLabel(session.day)}`}
                     />
                   ))}
                 </div>
@@ -515,7 +673,9 @@ export function ActiveProgramView({ program }: { program: ActiveCoachProgramSumm
                     {formatDate(session.scheduledDate)}
                   </p>
                 )}
-                {isDetailedPrescription(session.prescription) ? (
+                {isCompletePrescription(session.prescription) ? (
+                  <CompleteSessionCard prescription={session.prescription} />
+                ) : isDetailedPrescription(session.prescription) ? (
                   <SessionPrescriptionCard prescription={session.prescription} />
                 ) : typeof session.prescription.intent === 'string' && (
                   <p className="mt-2 text-sm text-gray-700 dark:text-gray-200">
@@ -528,6 +688,84 @@ export function ActiveProgramView({ program }: { program: ActiveCoachProgramSumm
         </div>
       )}
     </section>
+  )
+}
+
+function CompleteSessionCard({
+  prescription,
+  label
+}: {
+  prescription: CompleteProgrammingSessionPrescription
+  label?: string
+}) {
+  return (
+    <article className="min-w-0 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-950/50">
+      {label && (
+        <p className="break-words text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          {label}
+        </p>
+      )}
+      <div className="mt-1 flex min-w-0 flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h4 className="break-words font-bold text-gray-950 dark:text-white">{prescription.title}</h4>
+          <p className="mt-1 break-words text-sm leading-5 text-gray-700 dark:text-gray-200">
+            {prescription.intent}
+          </p>
+        </div>
+        <span className="shrink-0 text-xs font-semibold text-gray-500 dark:text-gray-400">
+          {prescription.scheduledMinutes} min
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {prescription.blocks.map(block => (
+          <section key={block.id} className="min-w-0 border-l-2 border-blue-200 pl-3 dark:border-blue-900">
+            <p className="break-words text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              {blockRoleLabel(block.role)} · {block.estimatedMinutes} min
+            </p>
+            <p className="mt-1 break-words text-xs text-gray-600 dark:text-gray-300">
+              Why: {block.intent}
+            </p>
+            {block.exercises.map(exercise => (
+              <div key={`${block.id}:${exercise.movementId}`} className="mt-3 min-w-0">
+                <p className="break-words text-sm font-semibold text-gray-900 dark:text-white">
+                  {exercise.movementName}
+                </p>
+                <p className="mt-1 break-words text-sm text-gray-700 dark:text-gray-200">
+                  {formatDose(exercise.dose)} · {formatExecutionTarget(exercise.executionTarget)}
+                </p>
+                {exercise.loadAnchor && (
+                  <p className="mt-1 break-words text-xs font-medium text-blue-700 dark:text-blue-300">
+                    Load: {exercise.loadAnchor.loadRange.min}-{exercise.loadAnchor.loadRange.max}{' '}
+                    {exercise.loadAnchor.loadRange.unit}
+                    {exercise.loadAnchor.source === 'saved_assessment'
+                      ? ` (${exercise.loadAnchor.percentRange.min}-${exercise.loadAnchor.percentRange.max}% saved e1RM)`
+                      : ' (accepted prior plan)'}
+                  </p>
+                )}
+                <p className="mt-1 break-words text-xs text-gray-600 dark:text-gray-300">
+                  Rest: {formatRange(exercise.restSeconds)} sec
+                </p>
+                <p className="mt-1 break-words text-xs text-gray-600 dark:text-gray-300">
+                  Success: {exercise.successCondition}
+                </p>
+                <p className="mt-1 break-words text-xs font-medium text-amber-800 dark:text-amber-200">
+                  Stop: {exercise.stopCondition}
+                </p>
+                <p className="mt-1 break-words text-xs text-gray-500 dark:text-gray-400">
+                  {substitutionText(exercise)}
+                </p>
+                {exercise.selectionReasons.length > 0 && (
+                  <p className="mt-1 break-words text-xs text-gray-500 dark:text-gray-400">
+                    Selected because: {exercise.selectionReasons.join(' ')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </section>
+        ))}
+      </div>
+    </article>
   )
 }
 
@@ -590,6 +828,69 @@ function SessionPrescriptionCard({
       </div>
     </article>
   )
+}
+
+function isCompletePrescription(
+  value: Record<string, unknown>
+): value is Record<string, unknown> & CompleteProgrammingSessionPrescription {
+  return value.schemaVersion === 1
+    && value.format === 'complete_programming_v0_3'
+    && value.kernelVersion === '0.3.0'
+    && typeof value.title === 'string'
+    && typeof value.intent === 'string'
+    && typeof value.scheduledMinutes === 'number'
+    && Array.isArray(value.blocks)
+}
+
+function doseUnitLabel(unit: string): string {
+  return unit.replaceAll('_', ' ')
+}
+
+function weekdayLabel(day: TrainingWeekday): string {
+  return day.charAt(0).toUpperCase() + day.slice(1)
+}
+
+function blockRoleLabel(role: ProgrammingSessionBlockRole): string {
+  const labels: Record<ProgrammingSessionBlockRole, string> = {
+    specific_preparation: 'Specific preparation',
+    priority_adaptation: 'Priority work',
+    secondary_adaptation: 'Secondary work',
+    assistance_and_capacity: 'Assistance and capacity',
+    conditioning: 'Conditioning',
+    downshift: 'Downshift'
+  }
+  return labels[role]
+}
+
+function formatDose(dose: CompleteProgrammingDose): string {
+  if (dose.kind === 'sets_reps') {
+    return `${formatRange(dose.sets)} sets × ${formatRange(dose.repetitions)} reps`
+  }
+  if (dose.kind === 'quality_repetitions') {
+    return `${dose.totalRepetitions ?? formatRange(dose.repetitionsPerSeries)} quality reps`
+  }
+  if (dose.kind === 'continuous') {
+    return `${formatRange(dose.durationMinutes)} minutes continuous`
+  }
+  return `${dose.totalIntervals ?? formatRange(dose.repetitions)} intervals · ${formatRange(dose.workSeconds)} sec work / ${formatRange(dose.recoverySeconds)} sec recovery`
+}
+
+function formatExecutionTarget(target: ProgrammingExecutionTarget): string {
+  if (target.kind === 'rir') return `${formatRange(target.range)} reps in reserve`
+  if (target.kind === 'rpe') return `RPE ${formatRange(target.range)}`
+  return target.cue
+}
+
+function formatRange(range: { min: number; max: number }): string {
+  return range.min === range.max ? String(range.min) : `${range.min}-${range.max}`
+}
+
+function substitutionText(exercise: CompleteProgrammingExercisePrescription): string {
+  if (exercise.substitutionMovementIds.length === 0) return exercise.substitutionGuidance
+  const names = exercise.substitutionMovementIds.map(id => (
+    MOVEMENT_CATALOG.find(movement => movement.id === id)?.name ?? id
+  ))
+  return `Equivalent options: ${names.join(' or ')}`
 }
 
 function isDetailedPrescription(

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { COACH_REFERENCE_MANIFEST } from './reference'
-import { COACH_POLICY_VERSION } from './policy'
+import { COMPLETE_PROGRAMMING_POLICY_VERSION } from './programming-policy'
 import type {
   ActiveCoachProgramSummary,
   CoachMemorySummary,
@@ -138,7 +138,7 @@ export async function fetchCoachRuntimeContext(
     generatedAt: new Date().toISOString(),
     storageAvailable: storageAvailable && (!program?.active_plan_version_id || activeProgram !== null),
     doctrineVersion: COACH_REFERENCE_MANIFEST.doctrineVersion,
-    policyVersion: COACH_POLICY_VERSION,
+    policyVersion: COMPLETE_PROGRAMMING_POLICY_VERSION,
     assessments,
     memories,
     activeProgram
@@ -150,7 +150,7 @@ export function emptyCoachRuntimeContext(): CoachRuntimeContext {
     generatedAt: new Date().toISOString(),
     storageAvailable: false,
     doctrineVersion: COACH_REFERENCE_MANIFEST.doctrineVersion,
-    policyVersion: COACH_POLICY_VERSION,
+    policyVersion: COMPLETE_PROGRAMMING_POLICY_VERSION,
     assessments: [],
     memories: [],
     activeProgram: null
