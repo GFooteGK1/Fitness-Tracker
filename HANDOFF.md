@@ -1,12 +1,13 @@
 # Handoff
 
-## Adaptive coach execution feedback (database verified; app release in progress)
+## Adaptive coach execution feedback (released and production-deployed)
 
-Implemented on 2026-07-29 on branch `codex/coach-execution-feedback` in the
-isolated worktree
+Released on 2026-07-29 through PR #53 as `main` commit `43211d4`, from source
+commit `d6f3ece` on branch `codex/coach-execution-feedback`, in the isolated
+worktree
 `C:\Users\foote\.codex\worktrees\fitness-tracker-pr-dedupe-review`.
-The source is locally verified but not yet committed, pushed, or deployed. The
-production database migration is applied and rollback-verified.
+The production database migration is applied and rollback-verified, and the
+matching application release is deployed.
 
 - `app/lib/coach/execution-feedback.ts` owns validated session outcomes,
   session RPE, energy, pain signals, notes, and the deterministic weekly-review
@@ -67,10 +68,19 @@ Release boundary:
   the accepted-session content trigger were read back independently. Durable
   evidence is in
   `docs/migrations/coach-execution-feedback-production-application-2026-07-29.md`.
-- Remaining: commit, push, obtain exact-head CI and preview
-  evidence, merge, confirm main CI and exact-commit Vercel production
-  deployment, then perform a signed-in session-result canary without connecting
-  Greg's work Vercel identity.
+- PR #53 exact-head CI run `30484776768` passed tests, strict TypeScript, lint,
+  and build for source commit `d6f3ece`; its Vercel preview succeeded. The PR
+  was squash-merged to `main` as `43211d4`.
+- Main CI run `30484942094` passed the same four gates in 1m32s. Supabase's
+  main-branch check succeeded. GitHub deployment `5663871929` and the Vercel
+  commit status both report exact main commit `43211d4` successfully deployed
+  to Production.
+- The personal-project production alias
+  `fitness-tracker-gregs-projects-98860c8b.vercel.app` resolves but redirects
+  unauthenticated requests through Vercel SSO. No Vercel login was attempted,
+  so Greg's work Vercel identity was not connected. The remaining product
+  canary is Greg's signed-in completion or skip of one prescribed session from
+  Program, followed by confirmation that the saved result survives a refresh.
 - Automated CodeRabbit review was unavailable because the CLI was absent and
   its installer could not execute through the available Windows/WSL path. The
   local reviewer pass covered auth, RLS, atomicity, idempotency, immutable-plan
