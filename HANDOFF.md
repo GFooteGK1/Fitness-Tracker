@@ -1,9 +1,9 @@
 # Handoff
 
-## UPC camera scanner compatibility fix (local, verified, unreleased)
+## UPC camera scanner compatibility fix (released and production-verified)
 
-Prepared on 2026-07-29 on branch `codex/fix-upc-camera-scanner`, based on the
-current `origin/main`, in the isolated worktree
+Released on 2026-07-29 through PR #50 as `main` commit `4d25473`, from source
+commit `a68c198` on branch `codex/fix-upc-camera-scanner`, in the isolated worktree
 `C:\Users\foote\.codex\worktrees\fitness-tracker-pr-dedupe-review`.
 
 - Root cause: `FastMealLogger` returned before `getUserMedia()` whenever the
@@ -42,9 +42,16 @@ Verification on Node 24:
   variables. A later sandboxed retry stalled on generated `.next` permissions;
   removing only the ignored build output and rerunning with write permission
   completed successfully.
-- Physical camera behavior is not yet verified on Greg's signed-in phone; that
-  is the required post-deploy canary. No commit, PR, deployment, or production
-  mutation has been performed.
+- PR CI run `30475473605` passed tests, TypeScript, lint, and build for exact
+  source commit `a68c198`; its Vercel preview succeeded. PR #50 was squash-
+  merged to `main` as `4d25473`. Main CI run `30475672620` passed the same four
+  gates in 2m04s. GitHub deployment `5662126268` and the Vercel commit status
+  both report the exact main commit successfully deployed to Production.
+- The deployment-specific production URL redirects unauthenticated requests to
+  Vercel SSO, so no work-account login was attempted. The repository homepage
+  alias `fitness-tracker-eta-lilac.vercel.app` is stale and returns Vercel
+  `DEPLOYMENT_NOT_FOUND`; it is not release evidence. Physical camera behavior
+  is not yet verified on Greg's signed-in phone and remains the product canary.
 
 Team pass: frontend implementation led the camera and user-feedback changes;
 the reviewer checked async start/cancel races, decoder and media cleanup,
