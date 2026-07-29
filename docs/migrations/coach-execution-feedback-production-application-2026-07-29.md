@@ -70,6 +70,10 @@ indexes. This release did not broaden or modify those objects.
 
 ## Application release
 
-Database application is complete. Commit, exact-head CI, GitHub PR merge, main
-CI, Vercel exact-commit deployment, and the signed-in athlete canary are tracked
-separately in the project handoff.
+Database application and application release are complete. Source commit
+`d6f3ece` passed exact-head CI and Vercel preview in PR #53. The PR was
+squash-merged as `43211d4`; main CI run `30484942094`, the Supabase main-branch
+check, Vercel commit status, and GitHub Production deployment `5663871929` all
+succeeded for that exact commit. The signed-in athlete canary remains for Greg
+to perform without connecting his work Vercel identity; its steps are tracked
+in the project handoff.
