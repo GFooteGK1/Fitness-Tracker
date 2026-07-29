@@ -103,7 +103,23 @@ describe('fetchCoachRuntimeContext', () => {
             intent: 'Produce repeatable force',
             dose: { source: 'validated_policy' }
           },
-          status: 'planned'
+          status: 'completed'
+        }],
+        error: null
+      },
+      coach_checkins: {
+        data: [{
+          id: 'checkin-1',
+          prescribed_session_id: 'session-1',
+          responses: {
+            schemaVersion: 1,
+            outcome: 'as_planned',
+            sessionRpe: 7,
+            energy: 'okay',
+            pain: 'none',
+            note: null
+          },
+          occurred_at: '2026-08-10T18:00:00.000Z'
         }],
         error: null
       }
@@ -134,7 +150,21 @@ describe('fetchCoachRuntimeContext', () => {
       weeks: expect.arrayContaining([
         expect.objectContaining({ week: 4, role: 'deload_review', reviewRequired: true })
       ]),
-      upcomingSessions: [{ id: 'session-1', weekNumber: 3 }]
+      upcomingSessions: [{ id: 'session-1', weekNumber: 3 }],
+      sessionCheckins: [{
+        id: 'checkin-1',
+        prescribedSessionId: 'session-1',
+        outcome: 'as_planned',
+        sessionRpe: 7
+      }],
+      currentWeekReview: {
+        weekNumber: 3,
+        status: 'ready',
+        completedSessions: 1,
+        adaptationProposal: {
+          action: 'continue_as_written'
+        }
+      }
     })
   })
 

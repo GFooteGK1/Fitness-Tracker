@@ -548,11 +548,12 @@ Adaptive Coach:
 |- Eight-week draft assembly (`app/lib/coach/complete-program.ts`)
 |- Whole-plan completeness gate (`app/lib/coach/program-validator.ts`)
 |- Bounded athlete context (`app/lib/coach/athlete-context.ts`)
+|- Deterministic session feedback and weekly review (`app/lib/coach/execution-feedback.ts`)
 |- Socius prompt and tools (`app/lib/agents/`)
 |- Persistent setup, proposal, and active-plan view (`app/program/`)
 |- Authenticated coach workflow routes (`app/api/coach/`)
 |- Canonical user state (Supabase coach tables)
-`- Atomic memory, proposal, and plan transitions (database RPCs)
+`- Atomic memory, proposal, plan, and session-result transitions (database RPCs)
 ```
 
 ### Authority and data flow
@@ -576,6 +577,15 @@ version-controlled application assets; stored plans retain their doctrine and
 policy versions. The LLM selects context, asks questions, and composes concise
 coaching language. Application policy computes numeric prescriptions, and only
 an explicit atomic acceptance transition can activate a plan.
+
+Execution feedback follows the same authority boundary. Completing or skipping
+a prescribed session and storing its concise RPE, energy, pain, outcome, and
+note check-in is one idempotent database transition. The app computes the
+current-week review directly from accepted session statuses and canonical
+check-ins; opening Program does not invoke an LLM. A review may preview
+continuation, a lower-stress replacement, or a safety pause, but it never edits
+future prescriptions. Any multi-session adjustment still requires a separately
+generated and explicitly accepted replacement plan.
 
 `/program` is the durable review surface; `/v2` remains the conversational
 surface for questions and explanation. The versioned planning kernel emits
@@ -607,8 +617,8 @@ profile snapshot across eight independently inspectable weekly ledgers and
 leaves weeks 4 and 8 pending athlete review rather than fabricating a uniform
 deload. The completeness gate rejects unaccounted coverage, invalid sequencing,
 time or dose drift, ineligible movements, false substitutions, vague interval
-work, unproven loads, and missing review state. The unreleased proposal route
-now builds a structured v0.3 profile, runs this gate, and only then invokes the
+work, unproven loads, and missing review state. The proposal route builds a
+structured v0.3 profile, runs this gate, and only then invokes the
 existing atomic proposal RPC. The storage compatibility migration broadens the
 immutable prescription check to accept both legacy v0.2 and complete v0.3
 formats without changing RLS, grants, triggers, or RPC authority. The active
@@ -632,6 +642,9 @@ supersedes it and updates program metadata atomically.
 - RLS and composite ownership constraints keep all athlete state user-scoped.
 - Stale proposals fail rather than overwriting a newer accepted plan.
 - Proposal creation never mutates the currently accepted plan.
+- A terminal prescribed-session result and its check-in are recorded atomically.
+- Weekly reviews are deterministic and do not spend LLM tokens.
+- Adaptation previews never invent numeric changes or mutate future sessions.
 
 See `docs/decisions/ADR-0003-adaptive-coach-state-and-authority.md`.
 The current deterministic numeric and selection ranges are recorded in
