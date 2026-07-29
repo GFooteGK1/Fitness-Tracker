@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { validateCoachPlanningInput } from '@/app/lib/coach/planner'
-import type { CoachPlanningInput } from '@/app/lib/coach/types'
+import {
+  validateCompleteCoachPlanningInput,
+  type CompleteCoachPlanningInput
+} from '@/app/lib/coach/complete-intake'
 
 interface IntakeRequest {
   planningInput?: unknown
@@ -24,7 +26,7 @@ export async function POST(request: Request) {
     const body = await readJson(request)
     if (!body) return apiError('Request body must be valid JSON', 400)
 
-    const validated = validateCoachPlanningInput(body.planningInput)
+    const validated = validateCompleteCoachPlanningInput(body.planningInput)
     if (!validated.ok) {
       return NextResponse.json(
         { error: 'Invalid coach setup', details: validated.errors },
@@ -67,12 +69,16 @@ export async function POST(request: Request) {
   }
 }
 
-function memoryWrites(input: CoachPlanningInput): MemoryWrite[] {
+function memoryWrites(input: CompleteCoachPlanningInput): MemoryWrite[] {
   return [
     {
       key: 'primary_goal',
       kind: 'goal',
-      content: { goal: input.goal, primaryDomain: input.primaryDomain }
+      content: {
+        goal: input.goal,
+        primaryDomain: input.primaryDomain,
+        secondaryGoals: input.secondaryGoals
+      }
     },
     {
       key: 'training_schedule',
@@ -87,12 +93,18 @@ function memoryWrites(input: CoachPlanningInput): MemoryWrite[] {
     {
       key: 'available_equipment',
       kind: 'equipment',
-      content: { equipment: input.equipment }
+      content: {
+        equipment: input.equipment,
+        resolvedEquipmentIds: input.resolvedEquipmentIds
+      }
     },
     {
       key: 'training_constraints',
       kind: 'constraint',
-      content: { constraints: input.constraints }
+      content: {
+        constraints: input.constraints,
+        constraintKinds: input.constraintKinds
+      }
     }
   ]
 }

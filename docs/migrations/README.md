@@ -4,8 +4,8 @@ This directory contains SQL migration scripts for the SociusFit database schema.
 
 ## Current Schema Status
 
-**Last Verified:** July 28, 2026
-**Status:** Existing production schema and all listed incremental migrations are live and verified
+**Last Verified:** July 29, 2026
+**Status:** Production-applied migrations, including complete-programming v0.3 compatibility, are live and verified
 
 The February WHOOP v2 verification below remains historical context. On July 26,
 the personal-records and view-template migrations were applied to the production
@@ -99,6 +99,17 @@ program metadata only during acceptance. It preserves the existing RLS and
 least-privilege table grants; authenticated users receive execute permission on
 the bounded RPC only.
 
+### `coach-complete-programming-v0-3-migration.sql`
+Release-gating compatibility migration for immutable complete-programming v0.3
+session prescriptions. It replaces only the existing prescription JSON check,
+retains legacy v0.2 rows, enforces the new format on future writes, and validates
+all existing rows in a separate short transaction. It does not change tables,
+RLS policies, grants, triggers, or RPCs. The canonical SQL is mirrored exactly
+at `../../supabase/migrations/20260728234500_coach_complete_programming_v0_3.sql`.
+Apply this migration before deploying the matching v0.3 proposal route.
+It was applied twice and rollback-verified in production on July 29, 2026;
+see `coach-complete-programming-v0-3-production-application-2026-07-29.md`.
+
 ## Verification Scripts
 
 ### `verify-whoop-schema.sql`
@@ -149,6 +160,16 @@ twice before running it.
 The replacement migration was applied twice and rollback-verified in production
 on July 27, 2026. See
 `coach-plan-replacement-production-application-2026-07-27.md`.
+
+### `verify-coach-complete-programming-v0-3-migration.sql`
+Rollback-only compatibility verification for the dual-format prescription
+contract. Apply the v0.3 compatibility migration twice first. The verifier
+proves that representative legacy v0.2 and complete v0.3 prescriptions pass,
+an incomplete object fails, and the installed constraint contains both format
+markers. The migration passed production apply-twice, rollback-only
+verification, independent row-count and constraint readback, and direct
+RLS/privilege/trigger inspection on July 29, 2026. See
+`coach-complete-programming-v0-3-production-application-2026-07-29.md`.
 
 ### `verify-nutrition-fast-logging.sql`
 Rollback-only structural, grant, idempotency, source-meal ownership, and
@@ -216,4 +237,4 @@ database.
 
 ---
 
-**Last Updated:** July 28, 2026
+**Last Updated:** July 29, 2026

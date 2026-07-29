@@ -1,5 +1,248 @@
 # Handoff
 
+## Complete programming kernel v0.3 through production migration (application release in progress)
+
+Prepared on 2026-07-29 from current `origin/main` commit `ffc1910` on branch
+`codex/evidence-backed-programming-reference` in the isolated worktree
+`C:\Users\foote\.codex\worktrees\fitness-tracker-pr-dedupe-review`.
+
+Release status: application integration and all local quality gates are complete.
+The compatibility migration was applied to production twice on July 29 and
+passed its rollback-only verifier plus independent constraint, row-count,
+RLS, privilege, and trigger readback. No production row counts changed. The
+application is still uncommitted and undeployed; exact-head CI, merge, Vercel
+production verification, and the strongest safe application canary remain.
+
+- The prior twelve-domain doctrine remains valid. This tranche narrows the
+  unresolved question to how complete eight-week plans, training weeks, and
+  sessions are assembled for generally healthy adults training two to six days
+  per week.
+- `docs/coach/complete-programming-evidence-research.md` is a new autonomous
+  center-of-gravity report based on the 2026 ACSM position stand and primary
+  reviews/meta-analyses covering dose and frequency, split versus full body,
+  exercise order, warm-up, rest, movement selection, autoregulation, velocity
+  loss, sprint and power practice, HIIT construction, concurrent training,
+  periodization critique, and time-efficient supersets.
+- The central conclusion is that completeness is defined by adaptation roles,
+  weekly coverage, and the athlete's time and recovery budget, not a universal
+  exercise count. Specific preparation and the priority adaptation are default
+  requirements. Secondary, assistance/capacity, conditioning, and downshift
+  work are included only when each fills a named need.
+- `app/lib/coach/programming-reference.ts` is the versioned machine-readable
+  source registry, evidence-rule set, and product composition contract. It
+  explicitly separates evidence claims from product decisions, preserves the
+  compute-in-code and athlete-acceptance boundary, labels weeks 4 and 8 as
+  product-defined review checkpoints, and is not yet imported by the live
+  planner.
+- `app/lib/coach/programming-schema.ts` adds the migration-safe v0.3 contracts:
+  one lead goal and at most two bounded secondary goals, per-day 30-to-90-minute
+  availability, resolved-versus-unresolved equipment and constraint facts,
+  factual recent training, traceable weekly coverage requirements and ledgers,
+  six block roles, structured dose/execution/load details, and a stored-format
+  detector. The legacy intake adapter copies the original v0.2 snapshot and
+  deliberately does not interpret free-text equipment or limitations.
+- `app/lib/coach/programming-policy.ts` adds deterministic product policy
+  `0.3.0`, linked to the evidence reference. It owns goal-allocation limits,
+  supported session time and preservation behavior, domain-specific coverage
+  kinds and numeric starting anchors, output-preserving recovery, one-variable
+  progression, and review-led weeks 4 and 8. Every dose anchor is labeled
+  `product_policy`, cites evidence-rule IDs, and avoids a universal exercise
+  count.
+- `app/lib/coach/movement-catalog.ts` is the versioned v0.3 catalog with 61
+  definitions across every supported domain. Each movement owns stable IDs,
+  intent, patterns and regions, equipment, skill/fatigue/impact costs,
+  unilateral/overhead/running flags, assessment aliases, explicit coverage
+  targets, a substitution group, and a progression family. New or returning
+  athletes have a low-skill bodyweight fallback in every domain.
+- Catalog eligibility is deterministic over resolved equipment, training
+  experience, and explicit no-overhead/no-running constraints. Substitutions
+  must remain in the same substitution group and preserve the requested domain
+  and every requested coverage target. The source must own that coverage too,
+  preventing a drill or bike effort from being relabeled as true locomotor
+  sprint exposure. When no equivalent exists, the result is empty so the
+  scheduler can surface an equipment or constraint gap.
+- `app/lib/coach/weekly-coverage.ts` converts the normalized primary and
+  secondary goals into an inspectable weekly ledger before exercise selection.
+  Versioned policy now holds 22 goal/domain coverage templates, including
+  target type, priority, bounded secondary rank, dose anchor, exposure range,
+  estimated time, recovery preference, incompatibilities, and evidence rules.
+- The scheduler accounts for 2-to-6-day, 30-to-90-minute schedules; derives
+  weekly sets, quality repetitions, minutes, or intervals from policy anchors;
+  retains recent factual dose inside policy bounds; starts new/returning
+  athletes at minimum frequency; separates high-cost aerobic intervals from
+  lead power/speed when possible; and emits explicit reduced or omitted gaps
+  for time, recovery, equipment, constraints, experience, or unsupported
+  coverage. It does not choose a movement or prescribe a load.
+- Assessment matches retain exact assessment-to-movement candidates.
+  Ambiguous aliases remain inspectable but are excluded from the safe load
+  anchor ID list, so a generic `Deadlift` assessment cannot silently anchor a
+  kettlebell or barbell movement. Weeks 4 and 8 are marked for review without
+  automatically rewriting or deloading the ledger.
+- `app/lib/coach/session-composer.ts` turns each assigned day into a complete
+  v0.3 session. Preparation directly rehearses that day's selected priority
+  movement or modality; the remaining ledger assignments become ordered
+  priority, secondary, assistance/capacity, or conditioning blocks. Every work
+  movement exposes its role, coverage requirement, exact planned dose,
+  execution target, rest, success/stop conditions, evidence, deterministic
+  selection reasons, and only coverage-equivalent eligible substitutions.
+- Movement selection scores unambiguous assessment matches first, then explicit
+  preferences, recent familiarity, and lower fatigue cost with stable-ID ties.
+  Strength load guidance uses a policy-owned 65-75% starting range only when one
+  saved assessment maps unambiguously to the selected movement; ambiguous
+  aliases and unmatched exercises receive no invented load. Sessions fail fast
+  if upstream assignments could ever exceed the accepted time budget. When no
+  equivalent eligible substitute exists, the prescription says to revise the
+  plan rather than naming a false swap. Unused available days remain explicit
+  instead of being filled with arbitrary work.
+- `app/lib/coach/complete-program.ts` now assembles eight deterministic weekly
+  ledgers and their complete sessions into one versioned draft while preserving
+  the accepted profile snapshot. Weeks 4 and 8 remain pending athlete review;
+  the builder does not infer fatigue, fabricate a deload, activate a plan, or
+  change the profile between weeks.
+- `app/lib/coach/program-validator.ts` is the non-mutating whole-plan gate. It
+  reconciles requirement, ledger, assignment, day, block, exercise, dose, and
+  time references; validates ordering, equipment, experience, explicit
+  constraints, movement coverage, substitutions, conditioning detail, rest,
+  execution and stop guidance; and recomputes assessment-based load ranges
+  from the saved e1RM, percentage, unit, and rounding policy.
+- Six executable goldens span every supported programming domain, new,
+  consistent, and experienced athletes, 2-to-5-day schedules, 30-to-75-minute
+  availability, and bodyweight through mixed equipment. They freeze exact
+  first-week movement selections and validate all eight weeks. Adversarial
+  mutations prove that missing preparation, unaccounted coverage, time drift,
+  vague intervals, false substitutions, ineligible movements, unsupported
+  loads, malformed input, and incorrect review state fail. The legacy v0.2
+  one-primary-plus-one-support proposal cannot pass as complete v0.3.
+- `docs/coach/programming-kernel-v0.3-validation.md` records the golden matrix,
+  failure gate, and remaining release boundary without committing brittle
+  full-plan JSON snapshots.
+- `app/lib/coach/complete-intake.ts` validates a structured v0.3 setup with
+  resolved equipment, explicit no-overhead/no-running constraints, and up to
+  two bounded secondary goals. Free-text notes remain unresolved context and
+  are never interpreted as deterministic eligibility facts.
+- `/api/coach/proposals` now builds a complete eight-week v0.3 draft, runs the
+  whole-plan validator, fingerprints the exact proposal and source snapshot,
+  and only then calls the existing atomic initial or replacement RPC. The
+  legacy v0.2 planner remains compatibility code; accepted prescriptions are
+  always read from their stored payload and never recomputed.
+- The Program setup stores the new structured facts through the existing
+  versioned memory RPC. Proposal review exposes weekly coverage, complete
+  sessions, why every block exists, dose, feel, rest, success and stop
+  conditions, load provenance, substitutions, and selection reasons.
+- The accepted-plan renderer branches on stored format. Complete v0.3 sessions
+  use the new renderer while legacy v0.2 sessions retain their existing
+  detailed renderer. An explicit regression proves the legacy read path.
+- `coach-complete-programming-v0-3-migration.sql` broadens only the immutable
+  prescription JSON check to accept legacy v0.2 and complete v0.3. Constraint
+  replacement and existing-row validation use separate short transactions;
+  new writes remain enforced throughout. RLS, grants, triggers, tables, and
+  RPCs are unchanged. The generated Supabase migration is byte-identical.
+- `docs/coach/programming-kernel-v0.3-spec.md` defines the next architecture:
+  normalized goal allocation, weekly coverage ledger, tagged movement catalog,
+  deterministic role-based session composer, time-budget hierarchy, mixed-goal
+  sequencing, progression/review, completeness validation, and golden plans.
+  The architecture map now records this reference and future boundary.
+- The root `center-of-gravity-report-complete-programming-construction.md`
+  points to the canonical report and machine-readable reference.
+- Production project `fitness-tracker` (`auolnfwetmfcwhtvakzy`, PostgreSQL
+  17.6) accepted the compatibility migration twice. The installed constraint is
+  validated and accepts both legacy v0.2 and complete v0.3 prescriptions. Auth
+  users, programs, plan versions, and sessions remained 5 / 1 / 2 / 96 before
+  and after the rollback-only verifier. See
+  `docs/migrations/coach-complete-programming-v0-3-production-application-2026-07-29.md`.
+
+Beads:
+
+- Epic `Fitness-Tracker-jmi` tracks the complete programming kernel.
+- `Fitness-Tracker-jmi.1` through `Fitness-Tracker-jmi.6` track the completed
+  local evidence/reference, schema/policy, movement-catalog, and weekly
+  scheduler/session-composer/whole-plan-validation tranches.
+- `Fitness-Tracker-jmi.7` remains in progress. Local Program integration,
+  compatibility, mobile verification, repository gates, and live migration
+  apply-twice/rollback verification are complete. The remaining release
+  boundary is commit/CI, deployment, and safe production application readback.
+
+Verification on Node 24.13.1:
+
+- The reference source-resolution test failed first and was corrected in the
+  prior tranche. The v0.3 schema/policy tests then failed first on the two
+  intentionally absent modules before implementation.
+- The movement catalog test then failed first on the intentionally absent
+  module. A focused run caught that row-erg skill eligibility needed a
+  consistent athlete in the test and that punctuation-normalized push-up
+  aliases were duplicates; both catalog/test facts were corrected.
+- The weekly scheduler test failed first on the intentionally absent module.
+  Strict TypeScript later caught narrow `never[]` inference in internal day
+  state; the arrays were explicitly typed before the repository gate.
+- Final focused coach regression passed: 7 files and 59 tests, including 100
+  randomized catalog eligibility combinations and 100 randomized domain,
+  day-count, and session-length schedules.
+- The session composer test failed first on the intentionally absent module.
+  Reviewer tightening added fail-fast budget enforcement, exact
+  assessment-to-movement load anchoring, task-specific preparation, and honest
+  no-equivalent-substitution guidance.
+- Final focused coach regression passed: 8 files and 64 tests, including 100
+  randomized complete-session profiles.
+- The whole-plan test failed first because the builder and validator modules
+  did not exist. Reviewer tightening then added malformed-input safety, exact
+  ledger/day/block accounting, source movement coverage, explicit-constraint
+  enforcement, deterministic load recomputation, duplicate protection, and
+  exact first-week golden selections.
+- Final focused coach regression passed: 11 files and 83 tests. The new
+  whole-plan slice contributes 14 tests, including six named eight-week
+  goldens, adversarial mutations, the v0.2 rejection regression, and 36
+  randomized deterministic domain/state combinations.
+- Final full quiet Vitest passed: 185 files and 2,192 tests passed; 5 files and
+  7 intentionally environment-gated tests skipped.
+- Strict TypeScript with incremental output disabled, lint with no warnings or
+  errors, tracked diff whitespace, and an explicit untracked-file whitespace
+  scan passed. Existing non-blocking Next 15 lint deprecation and transitive
+  Node `punycode` warnings remain.
+- The final coach integration slice passes 16 files and 115 tests, including
+  atomic initial/replacement proposal contracts, complete-plan rendering,
+  legacy stored-session rendering, and the dual-format migration contract.
+- Full quiet Vitest passes 187 files and 2,198 tests; 5 files and 7 intentionally
+  environment-gated tests are skipped. Strict TypeScript with incremental
+  output disabled and lint with zero warnings or errors pass.
+- A placeholder-backed Next.js 15.5.9 production build compiled, type-checked,
+  generated all 75 routes, and included `/program` plus the coach APIs without
+  contacting a production service.
+- Playwright rendered a representative strength-plus-aerobic proposal at 320px
+  and 390px. Document width matched each viewport, the acceptance control was
+  48px high, complete session content remained readable, and a compiled-page
+  reload reported zero console errors. Temporary visual routes, environment
+  values, screenshots, Playwright logs, and stale generated route types were
+  removed afterward.
+
+Team pass: product/coach architecture led the role-based completeness,
+migration, and authority decisions; the research builder performed the
+multi-source evidence synthesis; the software builder added the schema, policy,
+catalog, and TDD coverage; the reviewer checked evidence-versus-product
+labeling, snapshot aliasing, coverage-priority trimming, numeric authority,
+legacy compatibility, graph connectivity, substitution equivalence, dose
+accounting, time/recovery gaps, interference placement, and ambiguous
+assessment provenance. The session-composer review also checked task-specific
+preparation, block order, time, load provenance, substitutions, and movement
+selection traceability. The whole-plan review checked eight-week identity,
+coverage and time reconciliation, exact dose preservation, constraint and
+substitution eligibility, conditioning completeness, load recomputation,
+review-state honesty, malformed inputs, and legacy rejection; the verifier ran
+focused and full tests, strict TypeScript, lint, and tracked/untracked
+whitespace checks. The jmi.7 review additionally checked structured-input
+validation, proposal fingerprinting, existing RPC contracts, dual-format stored
+reads, mobile disclosure hierarchy, and explicit replacement acceptance. The
+Supabase/Postgres best-practices pass shortened the constraint replacement lock
+scope by moving existing-row validation into a second transaction. Separate
+agents were not used because Greg did not request delegation.
+
+Application behavior still exists only in this local worktree. Production
+Supabase now has the verified dual-format compatibility constraint, but no data
+rows, dependencies, commits, pushes, CI runs, deployments, or application
+behavior changed in this tranche. Remaining release order is: commit/push,
+require exact-head CI, merge and verify the Vercel production deployment, then
+perform the strongest safe production application canary. Keep `jmi.7` open
+until that evidence is recorded.
+
 ## Fast nutrition logging, reviewed label facts, and UPC/EAN capture (released and production-verified)
 
 Released on 2026-07-28 through PR #46 as exact `main` commit `4064ba3` from

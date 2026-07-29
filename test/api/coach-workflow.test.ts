@@ -20,13 +20,17 @@ import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
 
 const planningInput = {
+  format: 'complete_programming_intake_v0_3',
   primaryDomain: 'strength',
   goal: 'Build useful full-body strength',
   experience: 'consistent',
   trainingDays: ['monday', 'wednesday', 'friday'],
   sessionMinutes: 60,
   equipment: 'Barbell, rack, dumbbells, and a bike',
+  resolvedEquipmentIds: ['bodyweight', 'barbell', 'rack', 'dumbbell', 'bike'],
   constraints: 'Keep Saturday free',
+  constraintKinds: [],
+  secondaryGoals: [],
   startDate: '2026-08-03'
 }
 
@@ -89,7 +93,8 @@ describe('adaptive coach API workflow', () => {
       p_kind: 'goal',
       p_content: {
         goal: planningInput.goal,
-        primaryDomain: planningInput.primaryDomain
+        primaryDomain: planningInput.primaryDomain,
+        secondaryGoals: []
       }
     }))
     expect(supabase.rpc).toHaveBeenNthCalledWith(2, 'confirm_coach_memory', expect.objectContaining({
@@ -186,20 +191,29 @@ describe('adaptive coach API workflow', () => {
     const body = await response.json()
 
     expect(response.status).toBe(201)
-    expect(body.proposal.sessions).toHaveLength(24)
+    expect(body.proposal.format).toBe('complete_programming_plan_v0_3')
+    expect(body.proposal.weeks.flatMap((week: { sessions: unknown[] }) => week.sessions))
+      .toHaveLength(24)
     expect(body.proposalId).toBe('11111111-1111-4111-8111-111111111111')
     expect(supabase.rpc).toHaveBeenCalledWith(
       'create_initial_training_plan_proposal',
       expect.objectContaining({
         p_input_fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/),
-        p_intent: expect.objectContaining({ horizon_weeks: 8 }),
+        p_intent: expect.objectContaining({
+          horizon_weeks: 8,
+          format: 'complete_programming_plan_v0_3'
+        }),
         p_sessions: expect.arrayContaining([
           expect.objectContaining({
             week_number: 1,
             session_index: 1,
             prescription: expect.objectContaining({
+              format: 'complete_programming_v0_3',
               domain: 'strength',
-              dose: expect.objectContaining({ source: 'validated_policy' })
+              blocks: expect.arrayContaining([
+                expect.objectContaining({ role: 'specific_preparation' }),
+                expect.objectContaining({ role: 'priority_adaptation' })
+              ])
             })
           })
         ])
@@ -254,18 +268,16 @@ describe('adaptive coach API workflow', () => {
         p_sessions: expect.arrayContaining([
           expect.objectContaining({
             prescription: expect.objectContaining({
-              dose: expect.objectContaining({
-                blocks: expect.arrayContaining([
-                  expect.objectContaining({
-                    exercises: expect.arrayContaining([
-                      expect.objectContaining({
-                        name: 'Barbell back squat',
-                        load_guidance: expect.objectContaining({ assessmentId: 'assessment-1' })
-                      })
-                    ])
-                  })
-                ])
-              })
+              blocks: expect.arrayContaining([
+                expect.objectContaining({
+                  exercises: expect.arrayContaining([
+                    expect.objectContaining({
+                      movementId: 'barbell_back_squat',
+                      loadAnchor: expect.objectContaining({ assessmentId: 'assessment-1' })
+                    })
+                  ])
+                })
+              ])
             })
           })
         ])

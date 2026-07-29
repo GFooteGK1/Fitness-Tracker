@@ -537,8 +537,16 @@ System Tests:
 ```
 Adaptive Coach:
 |- Machine-readable doctrine (`app/lib/coach/reference.ts`)
-|- Deterministic policy (`app/lib/coach/policy.ts`)
-|- Eight-week planning kernel (`app/lib/coach/planner.ts`)
+|- Complete-programming evidence and composition contract (`app/lib/coach/programming-reference.ts`)
+|- Legacy deterministic policy and planner v0.2 (`app/lib/coach/policy.ts`, `planner.ts`)
+|- Structured v0.3 intake and profile construction (`app/lib/coach/complete-intake.ts`)
+|- v0.3 profile, coverage, and prescription contracts (`app/lib/coach/programming-schema.ts`)
+|- v0.3 dose, progression, review, and time policy (`app/lib/coach/programming-policy.ts`)
+|- Versioned movement definitions and substitution graph (`app/lib/coach/movement-catalog.ts`)
+|- Goal-to-week coverage ledger and day assignment (`app/lib/coach/weekly-coverage.ts`)
+|- Role-based complete session composition (`app/lib/coach/session-composer.ts`)
+|- Eight-week draft assembly (`app/lib/coach/complete-program.ts`)
+|- Whole-plan completeness gate (`app/lib/coach/program-validator.ts`)
 |- Bounded athlete context (`app/lib/coach/athlete-context.ts`)
 |- Socius prompt and tools (`app/lib/agents/`)
 |- Persistent setup, proposal, and active-plan view (`app/program/`)
@@ -577,6 +585,37 @@ Saved strength assessments add labeled percentage and rounded load ranges only
 when the prescribed movement matches the assessment. The model does not invent
 these values.
 
+The broader doctrine describes what each adaptation requires. The separate
+complete-programming reference records the evidence and product contract for
+assembling weeks and sessions: completeness is defined by adaptation roles,
+weekly coverage, and the athlete's time and recovery budget rather than a fixed
+exercise count. The v0.3 schema normalizes one lead goal and at most
+two secondary goals, per-day time budgets, traceable weekly requirements, and
+role-based prescription details. The v0.3 policy owns numeric starting
+bounds and review behavior. The movement catalog owns equipment, skill, cost,
+constraint, coverage, assessment-alias, substitution, and progression tags;
+substitutions must preserve the requested domain and coverage target. These
+definitions feed the weekly coverage scheduler, which creates requirements
+before movements are chosen, accounts for dose and estimated time, separates
+incompatible exposures when possible, and emits explicit time, recovery,
+equipment, constraint, experience, or unsupported gaps. The session composer
+turns assigned coverage into task-specific preparation,
+priority, secondary, assistance/capacity, and conditioning blocks with
+inspectable selection reasons, policy dose, recovery, stop conditions, and
+equivalent substitutions. The eight-week draft assembler preserves the same
+profile snapshot across eight independently inspectable weekly ledgers and
+leaves weeks 4 and 8 pending athlete review rather than fabricating a uniform
+deload. The completeness gate rejects unaccounted coverage, invalid sequencing,
+time or dose drift, ineligible movements, false substitutions, vague interval
+work, unproven loads, and missing review state. The unreleased proposal route
+now builds a structured v0.3 profile, runs this gate, and only then invokes the
+existing atomic proposal RPC. The storage compatibility migration broadens the
+immutable prescription check to accept both legacy v0.2 and complete v0.3
+formats without changing RLS, grants, triggers, or RPC authority. The active
+Program view renders by stored format, so already accepted legacy sessions
+remain readable and are never silently upgraded or recomputed. The database
+migration must precede the matching application deployment.
+
 An active program does not block future programming. The athlete may create an
 immutable replacement proposal against the current accepted version while that
 version remains active. A separate stale-base-checked acceptance transition
@@ -588,6 +627,8 @@ supersedes it and updates program metadata atomically.
 - Durable memory is explicit, versioned, correctable, provenance-bearing, and
   idempotent; inferred conversation is not silently persisted.
 - Accepted plan and prescription content is immutable.
+- Stored legacy and v0.3 prescriptions render from their accepted payload; the
+  app does not recompute either format under a newer policy.
 - RLS and composite ownership constraints keep all athlete state user-scoped.
 - Stale proposals fail rather than overwriting a newer accepted plan.
 - Proposal creation never mutates the currently accepted plan.
@@ -595,3 +636,6 @@ supersedes it and updates program metadata atomically.
 See `docs/decisions/ADR-0003-adaptive-coach-state-and-authority.md`.
 The current deterministic numeric and selection ranges are recorded in
 `docs/coach/programming-policy-0.2.0.md`.
+The researched construction contract and v0.3 implementation boundary are
+recorded in `docs/coach/complete-programming-evidence-research.md` and
+`docs/coach/programming-kernel-v0.3-spec.md`.
