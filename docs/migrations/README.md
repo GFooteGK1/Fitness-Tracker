@@ -110,6 +110,18 @@ Apply this migration before deploying the matching v0.3 proposal route.
 It was applied twice and rollback-verified in production on July 29, 2026;
 see `coach-complete-programming-v0-3-production-application-2026-07-29.md`.
 
+### `coach-execution-feedback-migration.sql`
+Execution-feedback migration for atomically recording a prescribed
+session's terminal result and concise check-in. It removes authenticated direct
+writes to `prescribed_sessions` and `coach_checkins`, then grants only the
+bounded `record_coach_session_result` RPC. The function serializes against the
+active program, rejects stale or non-accepted plans, validates the feedback
+contract in Postgres, and safely replays an identical idempotency key. The
+canonical SQL is mirrored exactly at
+`../../supabase/migrations/20260729182500_coach_execution_feedback.sql`.
+It was applied twice and rollback-verified in production on July 29, 2026;
+see `coach-execution-feedback-production-application-2026-07-29.md`.
+
 ## Verification Scripts
 
 ### `verify-whoop-schema.sql`
@@ -170,6 +182,13 @@ markers. The migration passed production apply-twice, rollback-only
 verification, independent row-count and constraint readback, and direct
 RLS/privilege/trigger inspection on July 29, 2026. See
 `coach-complete-programming-v0-3-production-application-2026-07-29.md`.
+
+### `verify-coach-execution-feedback-migration.sql`
+Rollback-only verification for completed and skipped results, identical retry,
+mismatched retry rejection, cross-user isolation, function execute grants, and
+removal of authenticated direct table writes. Apply the execution-feedback
+migration twice before running it. This verifier has not been run against
+production.
 
 ### `verify-nutrition-fast-logging.sql`
 Rollback-only structural, grant, idempotency, source-meal ownership, and

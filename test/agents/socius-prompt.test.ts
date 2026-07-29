@@ -448,7 +448,9 @@ describe('buildSociusPrompt - adaptive coach contract', () => {
           referenceVersion: '0.1.0',
           policyVersion: '0.1.0',
           weeks: [...getEightWeekIntent()],
-          upcomingSessions: []
+          upcomingSessions: [],
+          sessionCheckins: [],
+          currentWeekReview: null
         }
       }
     }))

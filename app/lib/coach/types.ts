@@ -1,3 +1,8 @@
+import type {
+  CoachSessionCheckinSummary,
+  CoachWeeklyReview
+} from './execution-feedback'
+
 export const COACH_DOMAIN_IDS = [
   'assessment',
   'strength',
@@ -253,8 +258,10 @@ export interface ActiveCoachProgramSummary {
     sessionIndex: number
     scheduledDate: string | null
     prescription: Record<string, unknown>
-    status: string
+    status: 'planned' | 'completed' | 'skipped'
   }>
+  sessionCheckins: CoachSessionCheckinSummary[]
+  currentWeekReview: CoachWeeklyReview | null
 }
 
 export interface CoachRuntimeContext {

@@ -9,6 +9,11 @@ import type {
   TrainingWeekday
 } from '@/app/lib/coach/types'
 import type { CompleteCoachPlanningInput } from '@/app/lib/coach/complete-intake'
+import type {
+  CoachSessionCheckinInput,
+  CoachSessionCheckinSummary,
+  CoachWeeklyReview
+} from '@/app/lib/coach/execution-feedback'
 import type { CompleteProgrammingPlanDraft } from '@/app/lib/coach/complete-program'
 import type {
   CompleteProgrammingDose,
@@ -626,7 +631,29 @@ export function ProposalPreview({
   )
 }
 
-export function ActiveProgramView({ program }: { program: ActiveCoachProgramSummary }) {
+interface ActiveProgramViewProps {
+  program: ActiveCoachProgramSummary
+  onRecordSessionResult?: (
+    sessionId: string,
+    feedback: CoachSessionCheckinInput
+  ) => Promise<string | null>
+  savingSessionId?: string | null
+}
+
+export function ActiveProgramView({
+  program,
+  onRecordSessionResult,
+  savingSessionId = null
+}: ActiveProgramViewProps) {
+  const [openSessionId, setOpenSessionId] = useState<string | null>(null)
+  const visibleSessions = program.upcomingSessions
+    .filter(session => (
+      session.status === 'planned'
+      || program.currentWeek === null
+      || session.weekNumber >= program.currentWeek
+    ))
+    .slice(0, 6)
+
   return (
     <section className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/20 sm:p-6">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
@@ -659,15 +686,28 @@ export function ActiveProgramView({ program }: { program: ActiveCoachProgramSumm
         </div>
       )}
 
-      {program.upcomingSessions.length > 0 && (
+      {program.currentWeekReview && (
+        <WeeklyReviewCard review={program.currentWeekReview} />
+      )}
+
+      {visibleSessions.length > 0 && (
         <div className="mt-6">
-          <h3 className="font-semibold text-gray-900 dark:text-white">Upcoming sessions</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-white">Session results and upcoming work</h3>
           <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-            {program.upcomingSessions.slice(0, 6).map(session => (
+            {visibleSessions.map(session => (
               <li key={session.id} className="rounded-xl bg-white p-4 dark:bg-gray-900">
                 <p className="font-semibold text-gray-900 dark:text-white">
                   Week {session.weekNumber} · Session {session.sessionIndex}
                 </p>
+                <span className={`mt-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                  session.status === 'completed'
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                    : session.status === 'skipped'
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200'
+                }`}>
+                  {sessionStatusLabel(session.status)}
+                </span>
                 {session.scheduledDate && (
                   <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     {formatDate(session.scheduledDate)}
@@ -682,6 +722,35 @@ export function ActiveProgramView({ program }: { program: ActiveCoachProgramSumm
                     {session.prescription.intent}
                   </p>
                 )}
+                {program.sessionCheckins.find(item => item.prescribedSessionId === session.id) && (
+                  <SessionCheckinSummaryCard
+                    checkin={program.sessionCheckins.find(item => (
+                      item.prescribedSessionId === session.id
+                    )) as CoachSessionCheckinSummary}
+                  />
+                )}
+                {session.status === 'planned' && onRecordSessionResult && (
+                  openSessionId === session.id ? (
+                    <SessionCheckinForm
+                      sessionId={session.id}
+                      saving={savingSessionId === session.id}
+                      onCancel={() => setOpenSessionId(null)}
+                      onSubmit={async feedback => {
+                        const error = await onRecordSessionResult(session.id, feedback)
+                        if (!error) setOpenSessionId(null)
+                        return error
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setOpenSessionId(session.id)}
+                      className="mt-4 min-h-11 w-full rounded-xl border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/30"
+                    >
+                      Log session result
+                    </button>
+                  )
+                )}
               </li>
             ))}
           </ul>
@@ -689,6 +758,204 @@ export function ActiveProgramView({ program }: { program: ActiveCoachProgramSumm
       )}
     </section>
   )
+}
+
+function WeeklyReviewCard({ review }: { review: CoachWeeklyReview }) {
+  const proposal = review.adaptationProposal
+  return (
+    <section className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold text-gray-900 dark:text-white">Week {review.weekNumber} review</h3>
+        {review.checkpointReviewRequired && (
+          <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+            Planned review checkpoint
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-sm text-gray-700 dark:text-gray-200">
+        {review.status === 'ready'
+          ? `${review.completedSessions} of ${review.plannedSessions} completed · ${review.skippedSessions} skipped`
+          : review.status === 'in_progress'
+            ? `${review.completedSessions + review.skippedSessions} of ${review.plannedSessions} results logged`
+            : 'No session results logged yet.'}
+      </p>
+      {review.signals.length > 0 && (
+        <ul className="mt-3 space-y-1 text-sm text-gray-600 dark:text-gray-300">
+          {review.signals.map(signal => <li key={signal}>• {signal}</li>)}
+        </ul>
+      )}
+      {proposal && (
+        <div className="mt-4 border-t border-blue-200 pt-4 dark:border-blue-900">
+          <h4 className="font-semibold text-gray-900 dark:text-white">{proposal.title}</h4>
+          <p className="mt-1 text-sm leading-6 text-gray-700 dark:text-gray-200">
+            {proposal.rationale}
+          </p>
+          <ul className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-300">
+            {proposal.proposedChanges.map(change => <li key={change}>• {change}</li>)}
+          </ul>
+          {proposal.requiresAcceptance && (
+            <p className="mt-3 text-sm font-semibold text-blue-800 dark:text-blue-200">
+              No future session has changed. Review and accept a replacement proposal before applying an adjustment.
+            </p>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function SessionCheckinSummaryCard({ checkin }: { checkin: CoachSessionCheckinSummary }) {
+  return (
+    <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-gray-950/50 dark:text-gray-300">
+      {checkin.outcome === 'skipped' ? 'Skipped' : `Session RPE ${checkin.sessionRpe}`}
+      {' · '}{energyLabel(checkin.energy)} energy
+      {checkin.pain !== 'none' ? ` · ${painLabel(checkin.pain)}` : ''}
+      {checkin.note && <p className="mt-1">{checkin.note}</p>}
+    </div>
+  )
+}
+
+function SessionCheckinForm({
+  sessionId,
+  saving,
+  onSubmit,
+  onCancel
+}: {
+  sessionId: string
+  saving: boolean
+  onSubmit: (feedback: CoachSessionCheckinInput) => Promise<string | null>
+  onCancel: () => void
+}) {
+  const [outcome, setOutcome] = useState<CoachSessionCheckinInput['outcome']>('as_planned')
+  const [sessionRpe, setSessionRpe] = useState('7')
+  const [energy, setEnergy] = useState<CoachSessionCheckinInput['energy']>('okay')
+  const [pain, setPain] = useState<CoachSessionCheckinInput['pain']>('none')
+  const [note, setNote] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault()
+    setError(null)
+    const result = await onSubmit({
+      outcome,
+      sessionRpe: outcome === 'skipped' ? null : Number(sessionRpe),
+      energy,
+      pain,
+      note: note.trim() || null,
+      occurredAt: new Date().toISOString()
+    })
+    if (result) setError(result)
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      data-session-id={sessionId}
+      className="mt-4 space-y-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700"
+    >
+      <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+        How did this session go?
+        <select
+          aria-label="How did this session go?"
+          value={outcome}
+          onChange={event => setOutcome(event.target.value as CoachSessionCheckinInput['outcome'])}
+          className={FIELD_CLASS}
+        >
+          <option value="as_planned">As planned</option>
+          <option value="modified">Modified</option>
+          <option value="stopped_early">Stopped early</option>
+          <option value="skipped">Skipped</option>
+        </select>
+      </label>
+      {outcome !== 'skipped' && (
+        <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+          Session RPE
+          <input
+            aria-label="Session RPE"
+            type="number"
+            min="1"
+            max="10"
+            step="0.5"
+            required
+            value={sessionRpe}
+            onChange={event => setSessionRpe(event.target.value)}
+            className={FIELD_CLASS}
+          />
+        </label>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+          Energy
+          <select
+            aria-label="Energy"
+            value={energy}
+            onChange={event => setEnergy(event.target.value as CoachSessionCheckinInput['energy'])}
+            className={FIELD_CLASS}
+          >
+            <option value="low">Low</option>
+            <option value="okay">Okay</option>
+            <option value="high">High</option>
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+          Pain signal
+          <select
+            aria-label="Pain signal"
+            value={pain}
+            onChange={event => setPain(event.target.value as CoachSessionCheckinInput['pain'])}
+            className={FIELD_CLASS}
+          >
+            <option value="none">None</option>
+            <option value="mild">Mild</option>
+            <option value="concerning">Concerning</option>
+          </select>
+        </label>
+      </div>
+      <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+        Session note (optional)
+        <textarea
+          aria-label="Session note"
+          value={note}
+          maxLength={500}
+          rows={2}
+          onChange={event => setNote(event.target.value)}
+          className={FIELD_CLASS}
+        />
+      </label>
+      {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="min-h-11 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {saving ? 'Saving result…' : 'Save session result'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="min-h-11 rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function sessionStatusLabel(status: 'planned' | 'completed' | 'skipped'): string {
+  if (status === 'completed') return 'Completed'
+  if (status === 'skipped') return 'Skipped'
+  return 'Planned'
+}
+
+function energyLabel(energy: CoachSessionCheckinInput['energy']): string {
+  return energy === 'okay' ? 'Okay' : energy.charAt(0).toUpperCase() + energy.slice(1)
+}
+
+function painLabel(pain: CoachSessionCheckinInput['pain']): string {
+  return pain === 'mild' ? 'Mild pain signal' : 'Concerning pain signal'
 }
 
 function CompleteSessionCard({

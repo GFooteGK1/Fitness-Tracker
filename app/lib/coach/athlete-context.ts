@@ -1,6 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { COACH_REFERENCE_MANIFEST } from './reference'
 import { COMPLETE_PROGRAMMING_POLICY_VERSION } from './programming-policy'
+import {
+  buildCoachWeeklyReview,
+  validateCoachSessionCheckinInput,
+  type CoachExecutionSession,
+  type CoachSessionCheckinSummary
+} from './execution-feedback'
 import type {
   ActiveCoachProgramSummary,
   CoachMemorySummary,
@@ -14,7 +20,8 @@ import type {
 
 const MAX_ASSESSMENTS = 20
 const MAX_MEMORIES = 30
-const MAX_UPCOMING_SESSIONS = 16
+const MAX_PROGRAM_SESSIONS = 48
+const MAX_SESSION_CHECKINS = 96
 
 interface StrengthAssessmentRow {
   id: string
@@ -67,6 +74,13 @@ interface PrescribedSessionRow {
   scheduled_date: string | null
   prescription: unknown
   status: string
+}
+
+interface CoachCheckinRow {
+  id: string
+  prescribed_session_id: string | null
+  responses: unknown
+  occurred_at: string
 }
 
 export async function fetchCoachRuntimeContext(
@@ -165,7 +179,7 @@ async function fetchActiveProgram(
 ): Promise<ActiveCoachProgramSummary | null> {
   if (!program.active_plan_version_id) return null
 
-  const [versionResult, sessionResult] = await Promise.all([
+  const [versionResult, sessionResult, checkinResult] = await Promise.all([
     supabase
       .from('training_plan_versions')
       .select('id, version, reference_version, policy_version, intent')
@@ -179,10 +193,23 @@ async function fetchActiveProgram(
       .eq('user_id', userId)
       .order('week_number', { ascending: true })
       .order('session_index', { ascending: true })
-      .limit(MAX_UPCOMING_SESSIONS)
+      .limit(MAX_PROGRAM_SESSIONS),
+    supabase
+      .from('coach_checkins')
+      .select('id, prescribed_session_id, responses, occurred_at')
+      .eq('plan_version_id', program.active_plan_version_id)
+      .eq('user_id', userId)
+      .eq('checkin_type', 'session')
+      .order('occurred_at', { ascending: true })
+      .limit(MAX_SESSION_CHECKINS)
   ])
 
-  if (versionResult.error || sessionResult.error || !versionResult.data?.[0]) {
+  if (
+    versionResult.error
+    || sessionResult.error
+    || checkinResult.error
+    || !versionResult.data?.[0]
+  ) {
     return null
   }
 
@@ -192,6 +219,25 @@ async function fetchActiveProgram(
   const currentWeekRole: EightWeekRole | null = currentWeek === null
     ? null
     : weeks.find(week => week.week === currentWeek)?.role ?? null
+  const sessions = ((sessionResult.data ?? []) as PrescribedSessionRow[])
+    .map(normalizeSession)
+    .filter((session): session is ActiveCoachProgramSummary['upcomingSessions'][number] => session !== null)
+  const sessionCheckins = ((checkinResult.data ?? []) as CoachCheckinRow[])
+    .map(normalizeSessionCheckin)
+    .filter((checkin): checkin is CoachSessionCheckinSummary => checkin !== null)
+  const currentWeekIntent = currentWeek === null
+    ? null
+    : weeks.find(week => week.week === currentWeek) ?? null
+  const currentWeekReview = currentWeek !== null
+    && currentWeekIntent
+    && sessions.some(session => session.weekNumber === currentWeek)
+    ? buildCoachWeeklyReview({
+      weekNumber: currentWeek,
+      reviewRequired: currentWeekIntent.reviewRequired,
+      sessions: sessions as CoachExecutionSession[],
+      checkins: sessionCheckins
+    })
+    : null
 
   return {
     id: program.id,
@@ -206,9 +252,9 @@ async function fetchActiveProgram(
     referenceVersion: version.reference_version,
     policyVersion: version.policy_version,
     weeks,
-    upcomingSessions: ((sessionResult.data ?? []) as PrescribedSessionRow[])
-      .map(normalizeSession)
-      .filter((session): session is ActiveCoachProgramSummary['upcomingSessions'][number] => session !== null)
+    upcomingSessions: sessions,
+    sessionCheckins,
+    currentWeekReview
   }
 }
 
@@ -308,7 +354,12 @@ function normalizeSession(
   const weekNumber = toFiniteNumber(row.week_number)
   const sessionIndex = toFiniteNumber(row.session_index)
 
-  if (!row.id || weekNumber === null || sessionIndex === null) return null
+  if (
+    !row.id
+    || weekNumber === null
+    || sessionIndex === null
+    || !['planned', 'completed', 'skipped'].includes(row.status)
+  ) return null
 
   return {
     id: row.id,
@@ -316,7 +367,22 @@ function normalizeSession(
     sessionIndex,
     scheduledDate: row.scheduled_date,
     prescription: isRecord(row.prescription) ? row.prescription : {},
-    status: row.status
+    status: row.status as 'planned' | 'completed' | 'skipped'
+  }
+}
+
+function normalizeSessionCheckin(row: CoachCheckinRow): CoachSessionCheckinSummary | null {
+  if (!row.id || !row.prescribed_session_id) return null
+  const validation = validateCoachSessionCheckinInput({
+    ...(isRecord(row.responses) ? row.responses : {}),
+    occurredAt: row.occurred_at
+  })
+  if (!validation.ok) return null
+
+  return {
+    id: row.id,
+    prescribedSessionId: row.prescribed_session_id,
+    ...validation.value
   }
 }
 

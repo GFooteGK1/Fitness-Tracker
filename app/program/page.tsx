@@ -9,6 +9,7 @@ import type {
 } from '@/app/lib/coach/types'
 import type { CompleteCoachPlanningInput } from '@/app/lib/coach/complete-intake'
 import type { CompleteProgrammingPlanDraft } from '@/app/lib/coach/complete-program'
+import type { CoachSessionCheckinInput } from '@/app/lib/coach/execution-feedback'
 import {
   MOVEMENT_EQUIPMENT_IDS,
   type MovementEquipmentId
@@ -50,12 +51,14 @@ export default function ProgramPage() {
   const [setupSaved, setSetupSaved] = useState(false)
   const [creatingProposal, setCreatingProposal] = useState(false)
   const [acceptingProposal, setAcceptingProposal] = useState(false)
+  const [savingSessionId, setSavingSessionId] = useState<string | null>(null)
   const [replacingPlan, setReplacingPlan] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const intakeKey = useRef<string | null>(null)
   const proposalKey = useRef<string | null>(null)
   const assessmentKey = useRef<string | null>(null)
+  const sessionResultKeys = useRef(new Map<string, string>())
 
   const loadCoachState = useCallback(async () => {
     setLoading(true)
@@ -201,6 +204,37 @@ export default function ProgramPage() {
     }
   }
 
+  const recordSessionResult = async (
+    sessionId: string,
+    feedback: CoachSessionCheckinInput
+  ): Promise<string | null> => {
+    setSavingSessionId(sessionId)
+    setStatus(null)
+    setError(null)
+    const idempotencyKey = sessionResultKeys.current.get(sessionId)
+      ?? createIdempotencyKey('coach-session')
+    sessionResultKeys.current.set(sessionId, idempotencyKey)
+
+    try {
+      const response = await fetch(`/api/coach/sessions/${sessionId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idempotencyKey, feedback })
+      })
+      const body = await response.json()
+      if (!response.ok) return errorMessage(body, 'Unable to save session feedback')
+
+      setContext(body.context as CoachRuntimeContext)
+      sessionResultKeys.current.delete(sessionId)
+      setStatus('Session feedback saved.')
+      return null
+    } catch {
+      return 'Unable to save session feedback'
+    } finally {
+      setSavingSessionId(null)
+    }
+  }
+
   return (
     <ProtectedRoute>
       <main className="mx-auto max-w-6xl space-y-5 pb-10">
@@ -243,7 +277,13 @@ export default function ProgramPage() {
           </section>
         ) : context ? (
           <>
-            {context.activeProgram && <ActiveProgramView program={context.activeProgram} />}
+            {context.activeProgram && (
+              <ActiveProgramView
+                program={context.activeProgram}
+                onRecordSessionResult={recordSessionResult}
+                savingSessionId={savingSessionId}
+              />
+            )}
 
             {context.activeProgram && !replacingPlan && (
               <div className="flex flex-wrap gap-3">

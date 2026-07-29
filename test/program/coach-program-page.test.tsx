@@ -102,7 +102,9 @@ describe('ProgramPage adaptive coach workflow', () => {
                 scheduledDate: '2026-08-03',
                 status: 'planned',
                 prescription: acceptedDraft.weeks[0].sessions[0]
-              }]
+              }],
+              sessionCheckins: [],
+              currentWeekReview: null
             }
           }
         })
@@ -155,7 +157,7 @@ describe('ProgramPage adaptive coach workflow', () => {
     })
     expect(screen.getByText('Strength · 8 weeks')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Eight-week intent' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Upcoming sessions' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Session results and upcoming work' })).toBeInTheDocument()
     expect(screen.getAllByText(/Specific preparation/).length).toBeGreaterThan(0)
 
     const initialProposalCall = vi.mocked(fetch).mock.calls.find(([requested]) => (
@@ -187,7 +189,8 @@ describe('ProgramPage adaptive coach workflow', () => {
         goalSummary: 'Build useful full-body strength', startDate: '2026-08-03',
         endDate: '2026-09-27', activePlanVersionId: 'plan-active', planVersion: 1,
         currentWeek: 1, currentWeekRole: 'establish', referenceVersion: '0.1.0',
-        policyVersion: '0.1.0', weeks: [], upcomingSessions: []
+        policyVersion: '0.1.0', weeks: [], upcomingSessions: [],
+        sessionCheckins: [], currentWeekReview: null
       }
     }
     vi.mocked(fetch).mockImplementation(async (input, init) => {
@@ -223,7 +226,7 @@ describe('ProgramPage adaptive coach workflow', () => {
     expect(screen.getByRole('heading', { name: 'Active training plan' })).toBeInTheDocument()
   })
 
-  it('keeps accepted legacy session prescriptions fully readable', () => {
+  it('keeps unresolved prior-week legacy sessions visible and fully readable', () => {
     const legacyPrescription: CoachSessionPrescription = {
       domain: 'strength',
       session_role: 'lead strength session',
@@ -270,8 +273,8 @@ describe('ProgramPage adaptive coach workflow', () => {
       endDate: '2026-09-20',
       activePlanVersionId: 'legacy-plan-version',
       planVersion: 1,
-      currentWeek: 1,
-      currentWeekRole: 'establish',
+      currentWeek: 2,
+      currentWeekRole: 'build',
       referenceVersion: '0.1.0',
       policyVersion: '0.2.0',
       weeks: [],
@@ -282,7 +285,9 @@ describe('ProgramPage adaptive coach workflow', () => {
         scheduledDate: '2026-07-27',
         status: 'planned',
         prescription: legacyPrescription as unknown as Record<string, unknown>
-      }]
+      }],
+      sessionCheckins: [],
+      currentWeekReview: null
     }
 
     render(<ActiveProgramView program={program} />)
@@ -294,5 +299,140 @@ describe('ProgramPage adaptive coach workflow', () => {
     expect(screen.getByText('Stop:').closest('p'))
       .toHaveTextContent('Stop if position or speed materially changes')
     expect(screen.getByText('Keep the accepted legacy prescription unchanged.')).toBeInTheDocument()
+  })
+
+  it('records concise session feedback and shows the deterministic weekly review', async () => {
+    const acceptedDraft = completeProposal({
+      format: 'complete_programming_intake_v0_3',
+      primaryDomain: 'strength',
+      goal: 'Build useful full-body strength',
+      experience: 'consistent',
+      trainingDays: ['monday', 'wednesday', 'friday'],
+      sessionMinutes: 60,
+      equipment: 'Barbell and rack',
+      resolvedEquipmentIds: ['bodyweight', 'barbell', 'rack'],
+      constraints: '',
+      constraintKinds: [],
+      secondaryGoals: [],
+      startDate: '2026-08-03'
+    })
+    const session = {
+      id: '11111111-1111-4111-8111-111111111111',
+      weekNumber: 1,
+      sessionIndex: 1,
+      scheduledDate: '2026-08-03',
+      status: 'planned' as const,
+      prescription: acceptedDraft.weeks[0].sessions[0]
+    }
+    const activeProgram = {
+      id: 'program-active',
+      title: acceptedDraft.title,
+      goalSummary: 'Build useful full-body strength',
+      startDate: '2026-08-03',
+      endDate: '2026-09-27',
+      activePlanVersionId: 'plan-active',
+      planVersion: 1,
+      currentWeek: 1,
+      currentWeekRole: 'establish' as const,
+      referenceVersion: '0.1.0',
+      policyVersion: '0.3.0',
+      weeks: [{
+        week: 1,
+        role: 'establish' as const,
+        intent: 'Establish a repeatable baseline.',
+        reviewRequired: false
+      }],
+      upcomingSessions: [session],
+      sessionCheckins: [],
+      currentWeekReview: {
+        weekNumber: 1,
+        status: 'not_started' as const,
+        checkpointReviewRequired: false,
+        plannedSessions: 1,
+        completedSessions: 0,
+        skippedSessions: 0,
+        completionRate: 0,
+        checkinCount: 0,
+        averageSessionRpe: null,
+        signals: ['0 of 1 sessions completed'],
+        adaptationProposal: null
+      }
+    }
+    const completedContext = {
+      ...emptyContext,
+      activeProgram: {
+        ...activeProgram,
+        upcomingSessions: [{ ...session, status: 'completed' as const }],
+        sessionCheckins: [{
+          id: 'checkin-1',
+          prescribedSessionId: session.id,
+          outcome: 'as_planned' as const,
+          sessionRpe: 7.5,
+          energy: 'okay' as const,
+          pain: 'none' as const,
+          note: 'Strong and controlled.',
+          occurredAt: '2026-08-03T18:30:00.000Z'
+        }],
+        currentWeekReview: {
+          weekNumber: 1,
+          status: 'ready' as const,
+          checkpointReviewRequired: false,
+          plannedSessions: 1,
+          completedSessions: 1,
+          skippedSessions: 0,
+          completionRate: 1,
+          checkinCount: 1,
+          averageSessionRpe: 7.5,
+          signals: ['1 of 1 sessions completed', 'Average session RPE 7.5'],
+          adaptationProposal: {
+            status: 'preview' as const,
+            action: 'continue_as_written' as const,
+            title: 'Continue the accepted plan',
+            rationale: 'The week was completed as planned at a controlled cost with no pain signal.',
+            proposedChanges: ['Keep the accepted plan unchanged.'],
+            requiresAcceptance: false,
+            numericChangeStatus: 'not_needed' as const
+          }
+        }
+      }
+    }
+
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url === '/api/coach' && !init) {
+        return response({ context: { ...emptyContext, activeProgram } })
+      }
+      if (url.endsWith(`/sessions/${session.id}/complete`)) {
+        return response({ context: completedContext })
+      }
+      return response({ error: 'Unexpected request' }, false, 500)
+    })
+
+    await act(async () => render(<ProgramPage />))
+    fireEvent.click(await screen.findByRole('button', { name: 'Log session result' }))
+    fireEvent.change(screen.getByLabelText('Session RPE'), { target: { value: '7.5' } })
+    fireEvent.change(screen.getByLabelText('Session note'), {
+      target: { value: 'Strong and controlled.' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save session result' }))
+
+    expect(await screen.findByText('Session feedback saved.')).toBeInTheDocument()
+    expect(screen.getByText('Continue the accepted plan')).toBeInTheDocument()
+    expect(screen.getByText('Completed')).toBeInTheDocument()
+
+    const resultCall = vi.mocked(fetch).mock.calls.find(([requested]) => (
+      (typeof requested === 'string' ? requested : requested.toString())
+        .endsWith(`/sessions/${session.id}/complete`)
+    ))
+    expect(JSON.parse(String(resultCall?.[1]?.body))).toMatchObject({
+      idempotencyKey: expect.stringMatching(/^coach-session:/),
+      feedback: {
+        outcome: 'as_planned',
+        sessionRpe: 7.5,
+        energy: 'okay',
+        pain: 'none',
+        note: 'Strong and controlled.'
+      }
+    })
   })
 })

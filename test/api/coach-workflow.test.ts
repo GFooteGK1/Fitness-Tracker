@@ -15,6 +15,7 @@ import { GET as getCoachState } from '@/app/api/coach/route'
 import { POST as saveCoachIntake } from '@/app/api/coach/intake/route'
 import { POST as createCoachProposal } from '@/app/api/coach/proposals/route'
 import { POST as acceptCoachProposal } from '@/app/api/coach/proposals/[id]/accept/route'
+import { POST as recordCoachSessionResult } from '@/app/api/coach/sessions/[id]/complete/route'
 import { POST as saveStrengthAssessment } from '@/app/api/coach/assessments/route'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
@@ -249,7 +250,8 @@ describe('adaptive coach API workflow', () => {
         id: 'program-active', title: 'Strength · 8 weeks', goalSummary: planningInput.goal,
         startDate: '2026-08-03', endDate: '2026-09-27', activePlanVersionId: 'plan-active',
         planVersion: 1, currentWeek: 1, currentWeekRole: 'establish',
-        referenceVersion: '0.1.0', policyVersion: '0.1.0', weeks: [], upcomingSessions: []
+        referenceVersion: '0.1.0', policyVersion: '0.1.0', weeks: [], upcomingSessions: [],
+        sessionCheckins: [], currentWeekReview: null
       }
     })
 
@@ -310,5 +312,73 @@ describe('adaptive coach API workflow', () => {
       p_idempotency_key: 'coach-proposal-request-1'
     })
     expect(fetchCoachRuntimeContext).toHaveBeenCalledWith(supabase, 'user-1')
+  })
+
+  it('records session completion and its check-in through one atomic RPC', async () => {
+    const supabase = supabaseClient()
+    supabase.rpc.mockResolvedValue({
+      data: [{
+        prescribed_session_id: '11111111-1111-4111-8111-111111111111',
+        session_status: 'completed',
+        checkin_id: '22222222-2222-4222-8222-222222222222',
+        occurred_at: '2026-08-03T18:30:00.000Z'
+      }],
+      error: null
+    })
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+
+    const response = await recordCoachSessionResult(
+      request('/api/coach/sessions/11111111-1111-4111-8111-111111111111/complete', {
+        idempotencyKey: 'coach-session-result-1',
+        feedback: {
+          outcome: 'modified',
+          sessionRpe: 8,
+          energy: 'okay',
+          pain: 'none',
+          note: 'Used the bike substitution.',
+          occurredAt: '2026-08-03T18:30:00.000Z'
+        }
+      }),
+      { params: Promise.resolve({ id: '11111111-1111-4111-8111-111111111111' }) }
+    )
+
+    expect(response.status).toBe(200)
+    expect(supabase.rpc).toHaveBeenCalledWith('record_coach_session_result', {
+      p_session_id: '11111111-1111-4111-8111-111111111111',
+      p_status: 'completed',
+      p_responses: {
+        schemaVersion: 1,
+        outcome: 'modified',
+        sessionRpe: 8,
+        energy: 'okay',
+        pain: 'none',
+        note: 'Used the bike substitution.'
+      },
+      p_occurred_at: '2026-08-03T18:30:00.000Z',
+      p_idempotency_key: 'coach-session-result-1'
+    })
+    expect(fetchCoachRuntimeContext).toHaveBeenCalledWith(supabase, 'user-1')
+  })
+
+  it('rejects invalid session feedback before calling the database', async () => {
+    const supabase = supabaseClient()
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+
+    const response = await recordCoachSessionResult(
+      request('/api/coach/sessions/11111111-1111-4111-8111-111111111111/complete', {
+        idempotencyKey: 'coach-session-result-2',
+        feedback: {
+          outcome: 'as_planned',
+          sessionRpe: 12,
+          energy: 'okay',
+          pain: 'none',
+          occurredAt: '2026-08-03T18:30:00.000Z'
+        }
+      }),
+      { params: Promise.resolve({ id: '11111111-1111-4111-8111-111111111111' }) }
+    )
+
+    expect(response.status).toBe(400)
+    expect(supabase.rpc).not.toHaveBeenCalled()
   })
 })

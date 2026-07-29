@@ -1,5 +1,89 @@
 # Handoff
 
+## Adaptive coach execution feedback (database verified; app release in progress)
+
+Implemented on 2026-07-29 on branch `codex/coach-execution-feedback` in the
+isolated worktree
+`C:\Users\foote\.codex\worktrees\fitness-tracker-pr-dedupe-review`.
+The source is locally verified but not yet committed, pushed, or deployed. The
+production database migration is applied and rollback-verified.
+
+- `app/lib/coach/execution-feedback.ts` owns validated session outcomes,
+  session RPE, energy, pain signals, notes, and the deterministic weekly-review
+  rules. Program reads do not call an LLM. A review waits until every session
+  is terminal, never diagnoses pain, never invents a numeric adjustment, and
+  never mutates an accepted plan.
+- `/api/coach/sessions/[id]/complete` authenticates the athlete, validates the
+  bounded feedback payload, and calls one atomic database RPC before returning
+  refreshed canonical coach context.
+- `coach-execution-feedback-migration.sql` and its byte-identical generated
+  Supabase migration add `record_coach_session_result`. The security-definer
+  function locks the active program and prescribed session, verifies accepted
+  active-plan ownership, supports exact idempotent retries, and atomically
+  writes the terminal session state plus its check-in. Authenticated direct
+  writes to the two execution-feedback tables are revoked; only authenticated
+  RPC execution is granted.
+- The rollback-only verifier covers completed and skipped results, exact retry,
+  mismatched retry rejection, cross-user rejection, and final privileges. It
+  passed against production after the migration was applied twice.
+- Coach context now loads all 48 possible sessions plus bounded session
+  check-ins and computes the current-week review in application code. An
+  invalid or missing check-in holds the plan for review instead of inferring a
+  result.
+- Program shows unresolved prior-week sessions, current and upcoming work,
+  terminal status and feedback, a concise mobile check-in, and an inspectable
+  adaptation preview. A lower-stress recommendation explicitly requires the
+  athlete to build and accept a replacement proposal; no future prescription
+  changes silently.
+- Reviewer tightening preserved immutable accepted prescriptions, existing
+  legacy rendering, RLS/tenant boundaries, deterministic compute authority,
+  and mobile control sizing. The 320px browser pass shortened the native
+  outcome choices so the selected value no longer clips.
+
+Verification on Node 24.13.1:
+
+- Focused coach/API/UI/migration regression: 6 files and 66 tests passed.
+- Final full silent Vitest: 190 files and 2,215 tests passed; 5 files and 7
+  intentionally environment-gated tests skipped.
+- Strict TypeScript, lint with no warnings/errors, and `git diff --check`
+  passed.
+- A clean placeholder-backed Next.js 15.5.22 production build compiled,
+  type-checked, generated all 75 source routes, and included
+  `/api/coach/sessions/[id]/complete` plus `/program`. The first sandboxed build
+  stalled on stale generated `.next` permissions; only the verified ignored
+  build directory was removed, and the final unsandboxed source-only build
+  passed.
+- Playwright exercised the compiled feedback form at 320px and 390px. Document
+  width matched the viewport, every button/input/select/textarea was at least
+  44px high, the skipped outcome removed session RPE, and the console had zero
+  errors or warnings. The temporary route, screenshots, and browser snapshots
+  were removed before the final build.
+
+Release boundary:
+
+- Production database verification is complete. Preflight and postflight both
+  show 5 auth users, 1 active program, 2 plan versions, 96 sessions, and 0
+  check-ins. Forced RLS, least-privilege grants, empty function search path, and
+  the accepted-session content trigger were read back independently. Durable
+  evidence is in
+  `docs/migrations/coach-execution-feedback-production-application-2026-07-29.md`.
+- Remaining: commit, push, obtain exact-head CI and preview
+  evidence, merge, confirm main CI and exact-commit Vercel production
+  deployment, then perform a signed-in session-result canary without connecting
+  Greg's work Vercel identity.
+- Automated CodeRabbit review was unavailable because the CLI was absent and
+  its installer could not execute through the available Windows/WSL path. The
+  local reviewer pass covered auth, RLS, atomicity, idempotency, immutable-plan
+  behavior, React state, accessibility, and regression risk instead.
+- Beads was not updated because the `bd` command is unavailable in this
+  environment; no `.beads` files were edited manually.
+
+Team pass: the software-engineer role led implementation; the reviewer role
+checked database authority, cross-user access, retry conflicts, immutable-plan
+and UI regressions; the verifier role ran focused/full tests, TypeScript, lint,
+diff, production build, and compiled mobile-browser checks. Separate agents
+were not used because Greg did not request delegation.
+
 ## UPC camera scanner compatibility fix (released and production-verified)
 
 Released on 2026-07-29 through PR #50 as `main` commit `4d25473`, from source
@@ -550,9 +634,8 @@ Release boundary:
   browser identity is Greg's work Vercel account and must not be connected to
   this personal project. GitHub/Vercel exact-commit readback and the live
   rollback-only database verifier are the authoritative production proof.
-- After database verification and release, the next vertical slice remains
-  prescribed-session completion, concise session check-ins, deterministic
-  weekly review, and inspectable adaptation proposals.
+- That follow-on execution-feedback slice is now implemented as the unreleased
+  local candidate documented at the top of this handoff.
 
 Team pass: product/coach architecture and frontend lead owned the intent-first
 prescription contract and review hierarchy; the main session implemented the
@@ -1394,9 +1477,8 @@ Result: all passed. Focused test slice: 3 files, 69 tests passed. Production bui
   on definer RPCs, and mismatched-payload idempotency rejection. The React pass
   kept data fetching out of render, prevented server/client date drift, and made
   the accepted view read stored plan intent rather than current policy.
-- The next vertical slice is execution feedback: prescribed-session completion,
-  a concise session check-in, deterministic weekly review, and an inspectable
-  adaptation proposal.
+- That execution-feedback slice is now implemented as the unreleased local
+  candidate documented at the top of this handoff.
 - Production release proof: PR CI passed in 1m29s; main CI run `30305928290`
   passed tests, strict TypeScript, lint, and build in 1m51s; Vercel reported the
   production deployment for `e4b133d` successful. Greg confirmed the existing
