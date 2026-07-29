@@ -8,24 +8,13 @@ import {
   scaleNutrition,
   type FoodCatalogDraft,
 } from '@/app/lib/nutrition/barcode'
+import { startBarcodeDecoder } from '@/app/lib/nutrition/barcode-scanner'
 import type { CommonMeal } from '@/app/lib/nutrition/fast-log'
 
 interface FastMealLoggerProps {
   selectedDate?: Date
   onLogged?: (response: MealUploadResponse) => void
   onError?: (error: string) => void
-}
-
-interface DetectedBarcode {
-  rawValue: string
-}
-
-interface BarcodeDetectorInstance {
-  detect(source: HTMLVideoElement): Promise<DetectedBarcode[]>
-}
-
-interface BarcodeDetectorConstructor {
-  new(options: { formats: string[] }): BarcodeDetectorInstance
 }
 
 function requestId(): string {
@@ -72,9 +61,10 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
   const [servings, setServings] = useState(1)
   const [loggingFood, setLoggingFood] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [scannerStarting, setScannerStarting] = useState(false)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const scanTimerRef = useRef<number | null>(null)
+  const decoderStopRef = useRef<null | (() => void)>(null)
   const scannerActiveRef = useRef(false)
   const commonRequestIdsRef = useRef(new Map<string, string>())
   const foodRequestIdRef = useRef<string | null>(null)
@@ -100,13 +90,12 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
 
   const stopScanner = useCallback(() => {
     scannerActiveRef.current = false
-    if (scanTimerRef.current !== null) {
-      window.clearTimeout(scanTimerRef.current)
-      scanTimerRef.current = null
-    }
+    decoderStopRef.current?.()
+    decoderStopRef.current = null
     for (const track of streamRef.current?.getTracks() || []) track.stop()
     streamRef.current = null
     if (videoRef.current) videoRef.current.srcObject = null
+    setScannerStarting(false)
     setScannerOpen(false)
   }, [])
 
@@ -153,52 +142,63 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
   }, [showError])
 
   const startScanner = useCallback(async () => {
-    const Detector = (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector
-    if (!Detector || !navigator.mediaDevices?.getUserMedia) {
+    if (!navigator.mediaDevices?.getUserMedia) {
       setLookupStatus('Camera barcode scanning is not supported here. Enter the code manually.')
       return
     }
 
+    setScannerStarting(true)
+    setLookupStatus('Starting camera...')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         audio: false,
       })
       streamRef.current = stream
       setScannerOpen(true)
       scannerActiveRef.current = true
-      await new Promise<void>(resolve => window.setTimeout(resolve, 0))
-      const video = videoRef.current
+      let video = videoRef.current
+      for (let attempt = 0; !video && attempt < 10; attempt += 1) {
+        await new Promise<void>(resolve => window.setTimeout(resolve, 0))
+        video = videoRef.current
+      }
       if (!video) {
         stopScanner()
+        showError('Barcode camera preview could not start. Enter the code manually.')
         return
       }
-      video.srcObject = stream
-      await video.play()
-      const detector = new Detector({ formats: ['ean_8', 'ean_13', 'upc_a', 'upc_e'] })
 
-      const scan = async () => {
-        if (!scannerActiveRef.current || !videoRef.current) return
-        try {
-          const results = await detector.detect(videoRef.current)
-          const code = results[0]?.rawValue
-          if (code) {
-            setBarcodeInput(code)
-            stopScanner()
-            await lookupBarcode(code)
-            return
-          }
-        } catch {
-          // A frame may be unreadable while the camera focuses. Keep scanning.
-        }
-        scanTimerRef.current = window.setTimeout(() => void scan(), 250)
+      const stopDecoder = await startBarcodeDecoder(stream, video, code => {
+        if (!scannerActiveRef.current) return
+        setBarcodeInput(code)
+        stopScanner()
+        void lookupBarcode(code)
+      })
+      if (!scannerActiveRef.current) {
+        stopDecoder()
+        return
       }
-      await scan()
-    } catch {
+      decoderStopRef.current = stopDecoder
+      setScannerStarting(false)
+      setLookupStatus('Point the camera at the barcode.')
+    } catch (error) {
       stopScanner()
-      setLookupStatus('Camera access was unavailable. Enter the barcode manually.')
+      const cameraError = error instanceof DOMException ? error.name : ''
+      if (cameraError === 'NotAllowedError') {
+        showError('Camera permission was denied. Allow camera access in browser settings and try again.')
+      } else if (cameraError === 'NotFoundError') {
+        showError('No camera was found. Enter the barcode manually.')
+      } else if (cameraError === 'NotReadableError') {
+        showError('The camera is already in use. Close the other camera app and try again.')
+      } else {
+        showError('Camera access was unavailable. Enter the barcode manually.')
+      }
     }
-  }, [lookupBarcode, stopScanner])
+  }, [lookupBarcode, showError, stopScanner])
 
   const logCommonMeal = async (meal: CommonMeal) => {
     const retryRequestId = commonRequestIdsRef.current.get(meal.sourceMealId) || requestId()
@@ -339,9 +339,10 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
           <button
             type="button"
             onClick={() => void startScanner()}
-            className="min-h-12 rounded-lg border-2 border-blue-600 px-4 font-semibold text-blue-700 dark:text-blue-300"
+            disabled={scannerStarting || scannerOpen}
+            className="min-h-12 rounded-lg border-2 border-blue-600 px-4 font-semibold text-blue-700 disabled:border-gray-400 disabled:text-gray-400 dark:text-blue-300"
           >
-            Scan UPC
+            {scannerStarting ? 'Starting...' : scannerOpen ? 'Scanning...' : 'Scan UPC'}
           </button>
         </div>
 
@@ -355,7 +356,7 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
 
         {scannerOpen && (
           <div className="mt-3 rounded-lg bg-black p-2">
-            <video ref={videoRef} aria-label="Barcode camera preview" playsInline muted className="max-h-64 w-full rounded object-cover" />
+            <video ref={videoRef} aria-label="Barcode camera preview" autoPlay playsInline muted className="max-h-64 w-full rounded object-cover" />
             <button type="button" onClick={stopScanner} className="mt-2 min-h-11 w-full rounded bg-white px-3 font-medium text-gray-900">
               Cancel scan
             </button>

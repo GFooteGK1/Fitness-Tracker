@@ -1,11 +1,32 @@
 // @vitest-environment jsdom
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
+
+const barcodeScannerMocks = vi.hoisted(() => ({
+  startBarcodeDecoder: vi.fn(),
+}))
+
+vi.mock('@/app/lib/nutrition/barcode-scanner', () => barcodeScannerMocks)
+
 import FastMealLogger from '@/app/components/FastMealLogger'
 
 const requestId = '33333333-3333-4333-8333-333333333333'
+const manualDraftForTest = {
+  brand: '',
+  barcodeLookupKey: '0012345678905',
+  source: 'open_food_facts',
+  sourceKey: '0012345678905',
+  sourceRef: '012345678905',
+  servingAmount: 1,
+  servingUnit: 'serving',
+  servingLabel: '1 serving',
+  nutritionBasis: 'per_serving',
+  nutrition: { protein: 1, carbs: 2, fat: 3, calories: 39 },
+  sourceNutrition: { protein: 1, carbs: 2, fat: 3, calories: 39 },
+  sourcePayload: {},
+}
 
 function jsonResponse(body: unknown, ok = true) {
   return { ok, json: vi.fn().mockResolvedValue(body) }
@@ -14,6 +35,7 @@ function jsonResponse(body: unknown, ok = true) {
 describe('FastMealLogger', () => {
   beforeEach(() => {
     vi.stubGlobal('crypto', { randomUUID: vi.fn(() => requestId) })
+    barcodeScannerMocks.startBarcodeDecoder.mockReset()
   })
 
   afterEach(() => {
@@ -141,7 +163,88 @@ describe('FastMealLogger', () => {
     })
   })
 
-  it('keeps manual barcode entry available when native scanning is unsupported', async () => {
+  it('opens the camera when native barcode detection is unavailable', async () => {
+    const stopTrack = vi.fn()
+    const stopDecoder = vi.fn()
+    const stream = {
+      getTracks: () => [{ stop: stopTrack }],
+    }
+    const getUserMedia = vi.fn().mockResolvedValue({
+      ...stream,
+    })
+    barcodeScannerMocks.startBarcodeDecoder.mockResolvedValue(stopDecoder)
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ meals: [] })))
+    render(<FastMealLogger />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+
+    await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(1))
+    expect(getUserMedia).toHaveBeenCalledWith({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    })
+    await waitFor(() => expect(barcodeScannerMocks.startBarcodeDecoder).toHaveBeenCalledWith(
+      stream,
+      expect.any(HTMLVideoElement),
+      expect.any(Function),
+    ))
+    expect(screen.getByLabelText('Barcode camera preview')).toBeInTheDocument()
+    expect(screen.getByText('Point the camera at the barcode.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel scan' }))
+    expect(stopDecoder).toHaveBeenCalledTimes(1)
+    expect(stopTrack).toHaveBeenCalledTimes(1)
+    expect(screen.queryByLabelText('Barcode camera preview')).not.toBeInTheDocument()
+  })
+
+  it('looks up a detected barcode and releases the camera', async () => {
+    const stopTrack = vi.fn()
+    const stopDecoder = vi.fn()
+    const stream = { getTracks: () => [{ stop: stopTrack }] }
+    const getUserMedia = vi.fn().mockResolvedValue(stream)
+    let onDetected: ((value: string) => void) | undefined
+    barcodeScannerMocks.startBarcodeDecoder.mockImplementation(async (_stream, _video, callback) => {
+      onDetected = callback
+      return stopDecoder
+    })
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.startsWith('/api/meals/common')) return jsonResponse({ meals: [] })
+      if (url.startsWith('/api/foods/barcode')) {
+        return jsonResponse({
+          origin: 'provider',
+          food: {
+            ...manualDraftForTest,
+            name: 'Detected product',
+            barcode: '012345678905',
+          },
+        })
+      }
+      return jsonResponse({})
+    })
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<FastMealLogger />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+    await waitFor(() => expect(onDetected).toBeTypeOf('function'))
+    await act(async () => {
+      onDetected?.('012345678905')
+    })
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/foods/barcode?code=012345678905'))
+    expect(await screen.findByDisplayValue('Detected product')).toBeInTheDocument()
+    expect(stopDecoder).toHaveBeenCalledTimes(1)
+    expect(stopTrack).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps manual barcode entry available when camera access is unsupported', async () => {
+    vi.stubGlobal('navigator', {})
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ meals: [] })))
     render(<FastMealLogger />)
 
@@ -149,5 +252,20 @@ describe('FastMealLogger', () => {
 
     expect(await screen.findByText('Camera barcode scanning is not supported here. Enter the code manually.')).toBeInTheDocument()
     expect(screen.getByLabelText('UPC or EAN barcode')).toBeInTheDocument()
+  })
+
+  it('explains how to recover when camera permission is denied', async () => {
+    const getUserMedia = vi.fn().mockRejectedValue(new DOMException('Denied', 'NotAllowedError'))
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ meals: [] })))
+    const onError = vi.fn()
+    render(<FastMealLogger onError={onError} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+
+    const message = 'Camera permission was denied. Allow camera access in browser settings and try again.'
+    expect(await screen.findByText(message)).toBeInTheDocument()
+    expect(onError).toHaveBeenCalledWith(message)
+    expect(screen.getByRole('button', { name: 'Scan UPC' })).toBeEnabled()
   })
 })
