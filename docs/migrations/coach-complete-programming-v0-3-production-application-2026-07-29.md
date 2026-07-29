@@ -65,6 +65,10 @@ constraint readbacks cover every object this migration could affect.
 
 ## Application release
 
-The matching application code has not yet been committed or deployed. It must
-pass exact-head CI and Vercel production verification before this release is
-complete.
+The matching application source is commit `7d8679b` in PR #48. Exact source-
+head CI passed tests, strict TypeScript, lint, and production build in 2m05s.
+Vercel reported the preview Ready; its direct URL redirects to Vercel SSO, so
+the browser's active work identity was not connected to this personal project.
+The PR has not yet merged and the application has not yet deployed to
+production. Final exact-head CI, merge, Vercel production verification, and the
+strongest safe application canary remain.
