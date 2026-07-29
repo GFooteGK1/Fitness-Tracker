@@ -65,10 +65,23 @@ constraint readbacks cover every object this migration could affect.
 
 ## Application release
 
-The matching application source is commit `7d8679b` in PR #48. Exact source-
-head CI passed tests, strict TypeScript, lint, and production build in 2m05s.
-Vercel reported the preview Ready; its direct URL redirects to Vercel SSO, so
-the browser's active work identity was not connected to this personal project.
-The PR has not yet merged and the application has not yet deployed to
-production. Final exact-head CI, merge, Vercel production verification, and the
-strongest safe application canary remain.
+The matching application source is commit `7d8679b` with release evidence in
+`e38f00a`. PR #48's exact final-head CI passed tests, strict TypeScript, lint,
+and production build in 1m47s, and its Vercel preview was Ready. The PR was
+squash-merged to `main` as `cea983d`.
+
+Main CI run `30452185991` passed the same gates in 2m05s. Supabase's merge
+integration completed successfully and recorded migration version
+`20260728234500`. Vercel reported the exact merge commit deployed successfully
+to Production. The public `/program` route returned HTTP 200.
+
+Post-merge database readback again confirmed five auth users, one program, two
+versions, 96 sessions, and a validated constraint accepting both formats. The
+counts still match preflight.
+
+The protected preview redirects to Vercel SSO, so the browser's active work
+identity was not connected to this personal project. A direct authenticated
+browser canary was not performed because the local browser-control runtime could
+not start. No production plan was created or accepted during verification; the
+rollback-only database verifier supplied live contract proof without altering
+Greg's athlete state.
