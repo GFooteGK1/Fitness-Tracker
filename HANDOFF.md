@@ -1,20 +1,22 @@
 # Handoff
 
-## Complete programming kernel v0.3 release PR (merge and production verification in progress)
+## Complete programming kernel v0.3 (released and production-verified)
 
-Prepared on 2026-07-29 from current `origin/main` commit `ffc1910` on branch
+Released on 2026-07-29 through PR #48 as `main` commit `cea983d`, from branch
 `codex/evidence-backed-programming-reference` in the isolated worktree
 `C:\Users\foote\.codex\worktrees\fitness-tracker-pr-dedupe-review`.
 
-Release status: application integration and all local quality gates are complete.
+Release status: complete. Application integration and all local quality gates passed.
 The compatibility migration was applied to production twice on July 29 and
 passed its rollback-only verifier plus independent constraint, row-count,
 RLS, privilege, and trigger readback. No production row counts changed. Source
-commit `7d8679b` is pushed in PR #48; its exact-head CI passed tests, strict
-TypeScript, lint, and build in 2m05s, and its Vercel preview is Ready. The
-preview redirects to Vercel SSO, so no work-account login was attempted. Merge,
-Vercel production verification, and the strongest safe application canary
-remain.
+commit `7d8679b` and release evidence commit `e38f00a` passed exact-head CI in
+PR #48. The PR was squash-merged to `main` as `cea983d`. Main CI run
+`30452185991` passed tests, strict TypeScript, lint, and build in 2m05s;
+Supabase's merge integration succeeded; and Vercel reported the exact merge
+commit deployed successfully to Production. The public `/program` route returned
+HTTP 200. The protected preview redirects to Vercel SSO, so no work-account
+login was attempted.
 
 - The prior twelve-domain doctrine remains valid. This tranche narrows the
   unresolved question to how complete eight-week plans, training weeks, and
@@ -238,13 +240,15 @@ Supabase/Postgres best-practices pass shortened the constraint replacement lock
 scope by moving existing-row validation into a second transaction. Separate
 agents were not used because Greg did not request delegation.
 
-Production Supabase has the verified dual-format compatibility constraint, but
-no data rows or dependencies changed. Application source is committed and
-pushed in PR #48; the preview deployment and source-head CI passed. A docs-only
-release-evidence commit must receive exact-head CI before PR #48 is marked ready
-and merged. Then verify the Vercel production deployment and perform the
-strongest safe production application canary. Keep `jmi.7` open until that
-evidence is recorded.
+Production Supabase has the verified dual-format compatibility constraint, and
+no data rows or dependencies changed. Post-merge readback confirmed the
+migration is recorded in `supabase_migrations`, the constraint remains validated
+for both formats, and users/programs/versions/sessions remain 5 / 1 / 2 / 96.
+The authenticated browser canary was not performed because the local browser
+control runtime could not start; this was a tooling failure, not an app or login
+failure. No production plan was created or accepted for testing. The rollback-
+only database verifier, exact-head CI, Supabase integration, exact-commit Vercel
+status, and public Program response provide the completed release evidence.
 
 ## Fast nutrition logging, reviewed label facts, and UPC/EAN capture (released and production-verified)
 
