@@ -1,5 +1,58 @@
 # Handoff
 
+## UPC camera scanner compatibility fix (local, verified, unreleased)
+
+Prepared on 2026-07-29 on branch `codex/fix-upc-camera-scanner`, based on the
+current `origin/main`, in the isolated worktree
+`C:\Users\foote\.codex\worktrees\fitness-tracker-pr-dedupe-review`.
+
+- Root cause: `FastMealLogger` returned before `getUserMedia()` whenever the
+  browser did not expose the experimental native `BarcodeDetector`. This is
+  common on mobile browsers and explains why tapping **Scan UPC** did not open
+  the camera.
+- `app/lib/nutrition/barcode-scanner.ts` now owns scanner lifecycle. It prefers
+  the native detector when available and lazily loads ZXing's one-dimensional
+  reader otherwise. Only UPC-A, UPC-E, EAN-8, and EAN-13 are enabled.
+- `FastMealLogger` now requests the rear camera independently of native barcode
+  support, waits for the preview element, starts the decoder, disables duplicate
+  start requests, and stops decoder and media tracks on detection, cancel, or
+  unmount. Manual barcode and label entry remain available.
+- Camera permission denial, missing camera, and camera-in-use failures now have
+  actionable messages. No image or camera frame is persisted.
+- `@zxing/browser` 0.2.1 and `@zxing/library` 0.23.0 are the only new production
+  dependencies. They are split into on-demand scanner chunks; the normal `/v2`
+  initial bundle is unchanged. The production dependency audit reports no ZXing
+  advisory. The existing Next/PostCSS/Sharp advisories remain separate.
+- Regression coverage proves camera startup without native `BarcodeDetector`,
+  rear-camera constraints, decoder startup, detected-code lookup, cancel and
+  detection cleanup, unsupported-camera manual fallback, permission guidance,
+  native decoding, lazy ZXing fallback, and UPC/EAN-only hints.
+
+Verification on Node 24:
+
+- Focused scanner/component: 2 files, 9 tests passed.
+- Nutrition/fast-log regression: 8 files, 32 tests passed.
+- Full silent Vitest: 188 files and 2,203 tests passed; 5 files and 7
+  intentionally environment-gated tests skipped. An earlier noisy run had one
+  transient failure; the immediate clean silent rerun passed the full suite.
+- Strict TypeScript, lint with no warnings/errors, and `git diff --check` pass.
+- Placeholder-backed Next.js production build passes and generates all 75
+  routes. The first build without placeholders compiled and type-checked, then
+  correctly stopped because the clean worktree lacked public Supabase build
+  variables. A later sandboxed retry stalled on generated `.next` permissions;
+  removing only the ignored build output and rerunning with write permission
+  completed successfully.
+- Physical camera behavior is not yet verified on Greg's signed-in phone; that
+  is the required post-deploy canary. No commit, PR, deployment, or production
+  mutation has been performed.
+
+Team pass: frontend implementation led the camera and user-feedback changes;
+the reviewer checked async start/cancel races, decoder and media cleanup,
+unsupported/denied fallbacks, mobile target sizing, dependency scope, lazy
+loading, and preservation of manual entry. The verifier ran focused and full
+tests, TypeScript, lint, audit, diff check, and the production build. Separate
+agents were not used because Greg did not request delegation.
+
 ## Complete programming kernel v0.3 (released and production-verified)
 
 Released on 2026-07-29 through PR #48 as `main` commit `cea983d`, from branch
