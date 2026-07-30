@@ -1,13 +1,13 @@
 # Handoff
 
-## UPC orientation-tolerant scanning (local verified candidate, 2026-07-30)
+## UPC orientation-tolerant scanning (released and production-deployed, 2026-07-30)
 
 Greg confirmed that the released installed-iPhone startup fix works: the Home
 Screen app now opens the camera and scans a UPC. The remaining usability issue
 is label orientation: a sideways UPC can require rotating the phone or package.
 
-The scoped candidate is on branch `codex/upc-orientation-scanning`, based on
-`origin/main` commit `2430638`. It is not committed, pushed, or deployed.
+Released through PR #59 as exact `main` commit `195b3de`, from source commit
+`2f1cab7` on branch `codex/upc-orientation-scanning`.
 
 - `app/lib/nutrition/barcode-scanner.ts` enables ZXing's built-in `TRY_HARDER`
   hint while retaining the existing UPC/EAN-only formats. In the installed
@@ -29,12 +29,19 @@ all 75 routes. A controlled mobile-browser check at 390x844 and 320x844 showed
 the guide and instruction, 44px cancel control, and document width equal to the
 viewport. Its only console error/warning was the expected unauthenticated
 common-meal request on the temporary route. Cancel closed the preview. The
-temporary route, Playwright session/artifacts, server, and build output were
-removed; the temporary dependency junction is removed before handoff.
+temporary route, Playwright session/artifacts, server, build output, and
+dependency junction were removed.
 
-Beads bug `Fitness-Tracker-vig.2` remains in progress until this candidate is
-released and Greg confirms a sideways-label scan on the physical iPhone. The
-separate next feature is captured as `Fitness-Tracker-cyp`: rename the Query
+PR #59 exact-head CI run `30572365150` passed in 1m40s and its Vercel preview
+succeeded before the squash merge. Main CI run `30572507991` passed tests,
+strict TypeScript, lint, and build in 2m00s. GitHub deployment `5680565530` and
+the Vercel commit status both report exact main commit `195b3de` successfully
+deployed to the Production environment at
+`https://fitness-tracker-bczq2gput-gregs-projects-98860c8b.vercel.app`.
+
+Beads bug `Fitness-Tracker-vig.2` remains in progress until Greg confirms a
+sideways-label scan on the physical iPhone. The separate next feature is
+captured as `Fitness-Tracker-cyp`: rename the Query
 destination to Coach, expose the existing V2 conversation there, preserve
 `/query` compatibility, and avoid a second chat state.
 
