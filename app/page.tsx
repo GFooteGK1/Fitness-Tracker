@@ -67,13 +67,13 @@ export default function Home() {
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="text-2xl mb-3">🔍</div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            AI-Powered Insights
+            AI Coach
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Ask natural language questions about your fitness data and get intelligent insights.
+            Ask questions, discuss your program, and get feedback grounded in your training data.
           </p>
-          <a href="/query" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
-            Query Your Data →
+          <a href="/coach" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+            Talk to Coach →
           </a>
         </div>
       </div>

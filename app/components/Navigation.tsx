@@ -57,10 +57,10 @@ export default function Navigation() {
                 Food Progress
               </Link>
               <Link
-                href="/query"
+                href="/coach"
                 className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
-                Query
+                Coach
               </Link>
               <Link
                 href="/leaderboards"
@@ -132,11 +132,11 @@ export default function Navigation() {
               Food
             </Link>
             <Link
-              href="/query"
+              href="/coach"
               className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
             >
-              <span className="text-lg mb-1">🔍</span>
-              Query
+              <span className="text-lg mb-1">💬</span>
+              Coach
             </Link>
           </div>
         </div>

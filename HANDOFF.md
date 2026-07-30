@@ -1,5 +1,44 @@
 # Handoff
 
+## Coach canonical V2 destination (local verified candidate, 2026-07-30)
+
+The next product step is implemented locally on branch
+`codex/coach-v2-destination`, based on final released `main` commit `dbdff29`.
+It is not committed, pushed, or deployed. Beads feature `Fitness-Tracker-cyp`
+is claimed and remains in progress pending release approval.
+
+- Primary desktop and mobile navigation now says **Coach** and targets
+  `/coach`; the mobile icon changes from search to conversation.
+- `/coach` re-exports the existing V2 client component, so there is one
+  conversation implementation and one chat-state owner. The full-height Coach
+  surface hides the global navigation just as `/v2` does.
+- `/query` is now a server-side compatibility redirect to `/coach`; `/v2`
+  remains a deliberate compatibility alias to the same client component.
+- Home and Program CTAs now direct athletes to Coach, and the conversation
+  header is labeled Coach. No API, model, database, auth, or persistence
+  boundary changed.
+- The architecture map records `/coach` as canonical, `/query` as a redirect,
+  and `/v2` as the compatibility alias. Route, navigation, conditional-layout,
+  and shared-V2 regressions cover the change.
+
+Verification on Node 24.13.1: focused route/navigation/V2 coverage passed 8
+files / 94 tests; final full Vitest passed all 198 files and 2,233 tests with 7
+intentional environment-gated skips; strict TypeScript, lint with no warnings or
+errors, and `git diff --check` passed. The clean placeholder-backed production
+build compiled, type-checked, generated 76 static pages, and included `/coach`,
+`/query`, and `/v2`. An authenticated controlled-browser pass rendered the
+existing conversation at 390x844 and 320x844 with the Coach heading, chat log,
+message input, no global-navigation duplication, no horizontal overflow, and
+zero console errors or warnings. `/query` resolved to `/coach`; direct `/v2`
+still rendered the Coach conversation. Browser mocks, artifacts, server, build
+output, and the temporary dependency junction are removed before handoff.
+
+Team pass: `@frontend-lead` set the canonical navigation and mobile layout;
+`@software-engineer` reused the existing V2 client without duplicating state;
+`@reviewer` checked compatibility, auth/layout, accessibility, and regression
+risk; and `@verifier` ran focused/full tests, static/build gates, and responsive
+browser proof. No subagents were used because Greg did not request delegation.
+
 ## UPC orientation-tolerant scanning (released and production-deployed, 2026-07-30)
 
 Greg confirmed that the released installed-iPhone startup fix works: the Home
@@ -1522,7 +1561,8 @@ In progress on 2026-06-03:
 - `app/api/export/route.ts` now converts exported meal date ranges with `localDateToUTCStart/End`, validates optional `tzOffset`, and passes the offset into CSV/PDF row grouping.
 - `app/lib/export-utils.ts` now derives meal export dates and daily summary grouping through an explicit offset-aware formatter instead of server/runtime UTC dates.
 - `app/lib/timezone-utils.ts` now documents the raw `Date#getTimezoneOffset()` sign convention correctly and calculates UTC boundaries using `Date.UTC` so results do not depend on the server runtime timezone.
-- `app/query/page.tsx` uses the shared `getTimezoneOffset()` helper.
+- The legacy Query client used the shared `getTimezoneOffset()` helper; it is
+  now retired behind the `/query` compatibility redirect to `/coach`.
 - `app/program/page.tsx` uses `parseDateString()` for display parsing.
 
 Latest timezone-hardening verification:
@@ -1630,8 +1670,9 @@ Result: all passed. Focused test slice: 3 files, 69 tests passed. Production bui
   are versioned through the RPC; proposal rows and sessions are created in one
   transaction; acceptance refreshes canonical state.
 - The accepted Program view reads the immutable stored week intent rather than
-  recomputing it from the current policy. V2 remains the discussion/explanation
-  surface; Program owns the persistent plan and review state.
+  recomputing it from the current policy. `/coach` is now the canonical
+  discussion/explanation surface, with `/v2` retained as a compatibility alias;
+  Program owns the persistent plan and review state.
 - ADR-0003 records the authority boundary: Supabase is canonical for athlete and
   programming state; code owns doctrine and deterministic numeric policy; the
   model explains and proposes; an explicit atomic acceptance transition owns

@@ -59,6 +59,7 @@ vi.mock('@/app/lib/imageUtils', () => ({
 }))
 
 import V2Page from '@/app/v2/page'
+import CoachPage from '@/app/coach/page'
 
 type FetchHandler = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
@@ -152,12 +153,12 @@ afterEach(() => {
 
 describe('V2Page', () => {
   describe('layout', () => {
-    it('renders the SociusFit header', async () => {
+    it('exposes the V2 conversation as Coach', async () => {
       await act(async () => {
-        render(<V2Page />)
+        render(<CoachPage />)
       })
 
-      expect(screen.getByText('SociusFit')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Coach' })).toBeInTheDocument()
     })
 
     it('renders the accessible chat area with empty state', async () => {

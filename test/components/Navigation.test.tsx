@@ -30,8 +30,9 @@ describe('Navigation', () => {
       '📋WODs',
       '📝Log',
       '🍽️Food',
-      '🔍Query',
+      '💬Coach',
     ])
+    expect(mobileLinks[5]).toHaveAttribute('href', '/coach')
     expect(within(mobileNavigation).queryByRole('link', { name: 'Board' })).not.toBeInTheDocument()
     expect(within(mobileNavigation).queryByRole('link', { name: 'PRs' })).not.toBeInTheDocument()
   })
@@ -39,6 +40,7 @@ describe('Navigation', () => {
   it('retains leaderboard and PR access in desktop navigation', () => {
     render(<Navigation />)
 
+    expect(screen.getAllByRole('link', { name: 'Coach' })[0]).toHaveAttribute('href', '/coach')
     expect(screen.getByRole('link', { name: 'Leaderboards' })).toHaveAttribute('href', '/leaderboards')
     expect(screen.getAllByRole('link', { name: 'PRs' })).toHaveLength(1)
   })

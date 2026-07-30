@@ -675,7 +675,7 @@ export default function V2Page() {
 
       {/* HEADER */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">SociusFit</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Coach</h1>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMessages([])}

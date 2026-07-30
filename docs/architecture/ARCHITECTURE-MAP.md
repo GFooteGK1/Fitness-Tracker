@@ -225,7 +225,8 @@ Adherence Tracking:
 ```
 Workout System:
 ├─ Log Workout Page (`app/log/page.tsx`)
-├─ Query Workouts Page (`app/query/page.tsx`)
+├─ Coach Conversation (`app/coach/page.tsx`, shared V2 client)
+├─ Legacy Query Redirect (`app/query/page.tsx` → `/coach`)
 ├─ Workout APIs:
 │  ├─ Parse Workout (`app/api/parse-workout/route.ts`)
 │  ├─ OCR Workout (`app/api/ocr-workout/route.ts`)
@@ -587,8 +588,11 @@ continuation, a lower-stress replacement, or a safety pause, but it never edits
 future prescriptions. Any multi-session adjustment still requires a separately
 generated and explicitly accepted replacement plan.
 
-`/program` is the durable review surface; `/v2` remains the conversational
-surface for questions and explanation. The versioned planning kernel emits
+`/program` is the durable review surface; `/coach` is the canonical
+conversational surface for questions and explanation. `/v2` remains a
+compatibility alias to the same client component, and `/query` redirects to
+`/coach`; none of these entry points creates a second chat-state owner. The
+versioned planning kernel emits
 domain-specific session roles, timed blocks, equipment-supported movement
 choices, working ranges, effort, rest, stop, substitutions, and progression.
 Saved strength assessments add labeled percentage and rounded load ranges only
