@@ -89,6 +89,7 @@ async function startZxingDecoder(
     BarcodeFormat.UPC_A,
     BarcodeFormat.UPC_E,
   ])
+  hints.set(DecodeHintType.TRY_HARDER, true)
   const reader = new BrowserMultiFormatOneDReader(hints, {
     delayBetweenScanAttempts: SCAN_INTERVAL_MS,
     delayBetweenScanSuccess: 500,
