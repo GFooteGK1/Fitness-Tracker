@@ -203,6 +203,53 @@ describe('FastMealLogger', () => {
     expect(screen.queryByLabelText('Barcode camera preview')).not.toBeInTheDocument()
   })
 
+  it('mounts the preview before requesting camera permission', async () => {
+    const stopTrack = vi.fn()
+    const stopDecoder = vi.fn()
+    const stream = { getTracks: () => [{ stop: stopTrack }] }
+    let previewPresentAtRequest = false
+    const getUserMedia = vi.fn(async () => {
+      previewPresentAtRequest = screen.queryByLabelText('Barcode camera preview') !== null
+      return stream
+    })
+    barcodeScannerMocks.startBarcodeDecoder.mockResolvedValue(stopDecoder)
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ meals: [] })))
+    render(<FastMealLogger />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+
+    await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(1))
+    expect(previewPresentAtRequest).toBe(true)
+    await waitFor(() => expect(barcodeScannerMocks.startBarcodeDecoder).toHaveBeenCalled())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel scan' }))
+    expect(stopDecoder).toHaveBeenCalledTimes(1)
+    expect(stopTrack).toHaveBeenCalledTimes(1)
+  })
+
+  it('discards a camera stream that resolves after the preview is canceled', async () => {
+    const stopTrack = vi.fn()
+    const stream = { getTracks: () => [{ stop: stopTrack }] }
+    let resolveCamera: ((value: typeof stream) => void) | undefined
+    const getUserMedia = vi.fn(() => new Promise<typeof stream>(resolve => {
+      resolveCamera = resolve
+    }))
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ meals: [] })))
+    render(<FastMealLogger />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+    await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel scan' }))
+
+    await act(async () => resolveCamera?.(stream))
+
+    await waitFor(() => expect(stopTrack).toHaveBeenCalledTimes(1))
+    expect(barcodeScannerMocks.startBarcodeDecoder).not.toHaveBeenCalled()
+    expect(screen.queryByLabelText('Barcode camera preview')).not.toBeInTheDocument()
+  })
+
   it('looks up a detected barcode and releases the camera', async () => {
     const stopTrack = vi.fn()
     const stopDecoder = vi.fn()

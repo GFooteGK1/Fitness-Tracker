@@ -1,5 +1,42 @@
 # Handoff
 
+## Installed iOS UPC preview lifecycle fix (local candidate, 2026-07-30)
+
+Greg's signed-in physical-iPhone canary isolated a follow-up to the released UPC
+decoder work: scanning succeeds when the site is opened directly in Safari, but
+the installed Home Screen app grants camera permission, briefly activates the
+camera indicator, and then reports `Barcode camera preview could not start.`
+That exact copy occurs before either native or ZXing decoding. `FastMealLogger`
+requested `getUserMedia()` first, conditionally mounted the `<video>` only after
+permission resolved, and then polled the ref for ten timer ticks. Installed mode
+can resume/render slowly enough to exhaust that local timeout.
+
+Branch `codex/fix-ios-pwa-upc-preview` is a local candidate based on `origin/main`
+at `e1c55fb`; it is not committed, pushed, deployed, or production-verified
+yet. The scoped change mounts the preview and yields through the next
+paint before requesting permission. A request generation now makes cancel and
+unmount authoritative: any camera stream returned after cancellation is stopped
+and never reaches the decoder. The native/ZXing decoder seam, rear-camera
+constraints, barcode lookup, manual entry, and no-frame-persistence boundary are
+unchanged.
+
+Verification: the new ordering regression failed against the released
+implementation and passes after the fix. Focused scanner/nutrition regression
+passed 5 files / 31 tests; strict TypeScript and lint passed with no errors or
+warnings. The full suite passed 191 files / 2,229 tests, with 5 files / 7 tests
+intentionally environment-gated, and the placeholder-backed production build
+compiled, type-checked, and generated all 75 routes. A temporary 360px mobile
+Playwright route with a controlled camera
+proved the preview existed when `getUserMedia()` ran, reached `Scanning...` and
+`Point the camera at the barcode.`, had 360px document/viewport width with no
+overflow, and returned to `Scan UPC` on cancel. Its only console error/warning
+was the expected unauthenticated common-meal request on the temporary route.
+The route, browser artifacts/session, dev server, `.next`, and temporary
+dependency junction were removed. Beads bug `Fitness-Tracker-vig.1` is in
+progress. Remaining release gates are commit/push/CI/deployment approval and
+then a repeat Home Screen scan on Greg's iPhone as the only proof of the
+original installed-WebKit timing path.
+
 ## Production legacy-object containment + UPC runtime fallback fix (2026-07-30)
 
 Released through PR #55 as `main` commit `71f7cba`, from source commit

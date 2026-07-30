@@ -19,6 +19,10 @@ interface FastMealLoggerProps {
 
 const BARCODE_DECODER_ERROR_MESSAGE = 'Barcode recognition could not start. Enter the code manually.'
 
+function waitForNextPaint(): Promise<void> {
+  return new Promise(resolve => window.requestAnimationFrame(() => resolve()))
+}
+
 function requestId(): string {
   if (typeof globalThis.crypto?.randomUUID === 'function') {
     return globalThis.crypto.randomUUID()
@@ -68,6 +72,7 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
   const streamRef = useRef<MediaStream | null>(null)
   const decoderStopRef = useRef<null | (() => void)>(null)
   const scannerActiveRef = useRef(false)
+  const scannerRequestRef = useRef(0)
   const commonRequestIdsRef = useRef(new Map<string, string>())
   const foodRequestIdRef = useRef<string | null>(null)
 
@@ -91,6 +96,7 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
   }, [])
 
   const stopScanner = useCallback(() => {
+    scannerRequestRef.current += 1
     scannerActiveRef.current = false
     decoderStopRef.current?.()
     decoderStopRef.current = null
@@ -149,9 +155,29 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
       return
     }
 
+    const requestId = scannerRequestRef.current + 1
+    scannerRequestRef.current = requestId
+    scannerActiveRef.current = true
+    const requestIsActive = () => (
+      scannerActiveRef.current && scannerRequestRef.current === requestId
+    )
+
     setScannerStarting(true)
+    setScannerOpen(true)
     setLookupStatus('Starting camera...')
     try {
+      // Render the preview before opening the permission prompt. Installed iOS
+      // apps can resume more slowly than Safari after the prompt closes.
+      await waitForNextPaint()
+      if (!requestIsActive()) return
+
+      const video = videoRef.current
+      if (!video) {
+        stopScanner()
+        showError('Barcode camera preview could not start. Enter the code manually.')
+        return
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
@@ -160,31 +186,23 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
         },
         audio: false,
       })
-      streamRef.current = stream
-      setScannerOpen(true)
-      scannerActiveRef.current = true
-      let video = videoRef.current
-      for (let attempt = 0; !video && attempt < 10; attempt += 1) {
-        await new Promise<void>(resolve => window.setTimeout(resolve, 0))
-        video = videoRef.current
-      }
-      if (!video) {
-        stopScanner()
-        showError('Barcode camera preview could not start. Enter the code manually.')
+      if (!requestIsActive()) {
+        for (const track of stream.getTracks()) track.stop()
         return
       }
+      streamRef.current = stream
 
       const stopDecoder = await startBarcodeDecoder(stream, video, code => {
-        if (!scannerActiveRef.current) return
+        if (!requestIsActive()) return
         setBarcodeInput(code)
         stopScanner()
         void lookupBarcode(code)
       }, () => {
-        if (!scannerActiveRef.current) return
+        if (!requestIsActive()) return
         stopScanner()
         showError(BARCODE_DECODER_ERROR_MESSAGE)
       })
-      if (!scannerActiveRef.current) {
+      if (!requestIsActive()) {
         stopDecoder()
         return
       }
@@ -192,6 +210,7 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
       setScannerStarting(false)
       setLookupStatus('Point the camera at the barcode.')
     } catch (error) {
+      if (!requestIsActive()) return
       stopScanner()
       const cameraError = error instanceof DOMException ? error.name : ''
       if (cameraError === 'NotAllowedError') {
