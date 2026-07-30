@@ -2,10 +2,10 @@
 
 ## Production legacy-object containment + UPC runtime fallback fix (2026-07-30)
 
-Completed on branch `codex/fix-prod-db-security-upc` in isolated worktree
-`C:\Users\foote\.codex\worktrees\fitness-tracker-db-security`. Production
-database changes are live and verified; repository changes remain uncommitted
-and no application deployment occurred.
+Released through PR #55 as `main` commit `71f7cba`, from source commit
+`6a94858` on branch `codex/fix-prod-db-security-upc` in isolated worktree
+`C:\Users\foote\.codex\worktrees\fitness-tracker-db-security`. The production
+database containment and matching application release are live and verified.
 
 - Production migration `20260730151344_secure_legacy_database_objects.sql`
   preserves all 28 WHOOP backup rows, enables and forces RLS, removes PUBLIC,
@@ -24,7 +24,7 @@ and no application deployment occurred.
 - Beads issues `Fitness-Tracker-vt7` and `Fitness-Tracker-68e` are closed.
   `Fitness-Tracker-k50` remains open only for its other pre-existing advisor
   warnings and product/admin decisions.
-- The UPC runtime inconsistency is fixed locally. Native frame failures remain
+- The UPC runtime inconsistency is released. Native frame failures remain
   retryable, but three consecutive failures stop the native loop and hand the
   already-open stream to the existing lazy ZXing decoder exactly once. A
   successful native frame resets the error count. Detection, cancellation,
@@ -33,6 +33,12 @@ and no application deployment occurred.
   reports that barcode recognition could not start while preserving manual UPC
   and label entry. It no longer mislabels this path as camera-access failure.
 - Beads issue `Fitness-Tracker-c0g` is closed under the existing UPC epic.
+- PR #55 exact-head CI run `30559375920` passed tests, strict TypeScript, lint,
+  and build in 2m07s; its Vercel preview succeeded. The PR was squash-merged to
+  `main` as `71f7cba`.
+- Main CI run `30559590947` passed the same four gates in 1m58s. GitHub
+  deployment `5678113303` and the Vercel commit status both report exact main
+  commit `71f7cba` successfully deployed to Production.
 
 Verification: focused migration regression 1 file / 6 tests, focused WHOOP
 regression 25 files / 280 tests, focused scanner/component regression 2 files /
@@ -64,8 +70,10 @@ because Greg did not request delegation.
 
 Next boundaries: the temporary history-normalized runner migration fetched
 during preflight was removed; reconcile this security branch after the
-canonical v0.5 migration enters source control. Repository changes remain
-uncommitted and the UPC application fix is not deployed.
+canonical v0.5 migration enters source control. The deployment-specific URL is
+protected by Vercel SSO, so no browser login was attempted and Greg's work
+Vercel identity was not connected. The remaining product canary is one signed-
+in UPC scan on Greg's phone after the release.
 
 ## Adaptive coach execution feedback (released and production-deployed)
 

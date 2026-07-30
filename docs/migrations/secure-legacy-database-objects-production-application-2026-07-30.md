@@ -83,7 +83,19 @@ OAuth, retries, and error handling.
 
 ## Release boundary
 
-The database containment is live. The migration, documented copy, verifier,
-regression test, and this evidence record remain local and uncommitted on
-branch `codex/fix-prod-db-security-upc`. No application commit, push, pull
-request, Vercel deployment, credential change, or data deletion occurred.
+The database containment and matching source release are live.
+
+- Source commit `6a94858` passed exact-head CI run `30559375920` and its Vercel
+  preview, then PR #55 was squash-merged to `main` as `71f7cba`.
+- Main CI run `30559590947` passed tests, strict TypeScript, lint, and build in
+  1m58s.
+- GitHub deployment `5678113303` reports environment `Production`, exact SHA
+  `71f7cba9aac8bbf924e52281ebea257ff1013ad7`, and state `success`. The Vercel
+  commit status independently reports `Deployment has completed` for the same
+  SHA.
+- The deployment-specific URL redirects unauthenticated requests through
+  Vercel SSO. No login was attempted, so Greg's work Vercel identity was not
+  connected. This limits the final canary to deployment and CI readback rather
+  than an authenticated application interaction.
+
+No credential change or data deletion occurred during the source release.
