@@ -4,8 +4,8 @@ This directory contains SQL migration scripts for the SociusFit database schema.
 
 ## Current Schema Status
 
-**Last Verified:** July 29, 2026
-**Status:** Production-applied migrations, including complete-programming v0.3 compatibility, are live and verified
+**Last Verified:** July 30, 2026
+**Status:** Production-applied migrations through legacy-object security containment are live and verified
 
 The February WHOOP v2 verification below remains historical context. On July 26,
 the personal-records and view-template migrations were applied to the production
@@ -122,6 +122,17 @@ canonical SQL is mirrored exactly at
 It was applied twice and rollback-verified in production on July 29, 2026;
 see `coach-execution-feedback-production-application-2026-07-29.md`.
 
+### `secure-legacy-database-objects-migration.sql`
+Containment migration for three historical WHOOP backup tables and the unused
+`get_meals_around_workout` helper. It preserves every table and row, removes
+anonymous and authenticated Data API privileges, forces RLS with no user
+policies, retains service-role maintenance access, repairs the helper against
+the current structured `meals.items` schema, and limits its execution to the
+service role. The canonical SQL is mirrored exactly at
+`../../supabase/migrations/20260730151344_secure_legacy_database_objects.sql`.
+It was applied twice and rollback-verified in production on July 30, 2026; see
+`secure-legacy-database-objects-production-application-2026-07-30.md`.
+
 ## Verification Scripts
 
 ### `verify-whoop-schema.sql`
@@ -195,6 +206,13 @@ Rollback-only structural, grant, idempotency, source-meal ownership, and
 two-user RLS verification for the nutrition fast-log migration. It requires two
 existing auth users and rolls back every catalog and meal fixture.
 
+### `verify-secure-legacy-database-objects.sql`
+Rollback-only structural and privilege verification for the legacy-object
+containment migration. Apply the forward migration twice first. The verifier
+checks forced RLS, absence of Data API user privileges, retained service-role
+maintenance access, invoker and search-path function hardening, executable SQL,
+and unchanged backup-table row counts.
+
 ## Migration History
 
 ### Phase 1: Base Schema (January 2026)
@@ -256,4 +274,4 @@ database.
 
 ---
 
-**Last Updated:** July 29, 2026
+**Last Updated:** July 30, 2026

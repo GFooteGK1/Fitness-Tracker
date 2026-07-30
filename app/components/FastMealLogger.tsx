@@ -17,6 +17,8 @@ interface FastMealLoggerProps {
   onError?: (error: string) => void
 }
 
+const BARCODE_DECODER_ERROR_MESSAGE = 'Barcode recognition could not start. Enter the code manually.'
+
 function requestId(): string {
   if (typeof globalThis.crypto?.randomUUID === 'function') {
     return globalThis.crypto.randomUUID()
@@ -177,6 +179,10 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
         setBarcodeInput(code)
         stopScanner()
         void lookupBarcode(code)
+      }, () => {
+        if (!scannerActiveRef.current) return
+        stopScanner()
+        showError(BARCODE_DECODER_ERROR_MESSAGE)
       })
       if (!scannerActiveRef.current) {
         stopDecoder()
@@ -194,6 +200,8 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
         showError('No camera was found. Enter the barcode manually.')
       } else if (cameraError === 'NotReadableError') {
         showError('The camera is already in use. Close the other camera app and try again.')
+      } else if (error instanceof Error && error.name === 'BarcodeDecoderError') {
+        showError(BARCODE_DECODER_ERROR_MESSAGE)
       } else {
         showError('Camera access was unavailable. Enter the barcode manually.')
       }

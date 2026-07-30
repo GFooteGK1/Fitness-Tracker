@@ -11,9 +11,18 @@ interface BarcodeDetectorConstructor {
 }
 
 type ScannerStop = () => void
+type ScannerErrorHandler = (error: BarcodeDecoderError) => void
 
 const SCAN_INTERVAL_MS = 250
+const MAX_CONSECUTIVE_NATIVE_ERRORS = 3
 const BARCODE_FORMAT_NAMES = ['ean_8', 'ean_13', 'upc_a', 'upc_e']
+
+export class BarcodeDecoderError extends Error {
+  constructor() {
+    super('Barcode recognition could not start.')
+    this.name = 'BarcodeDecoderError'
+  }
+}
 
 function nativeBarcodeDetector(): BarcodeDetectorConstructor | undefined {
   return (globalThis as typeof globalThis & {
@@ -26,9 +35,11 @@ async function startNativeDecoder(
   stream: MediaStream,
   video: HTMLVideoElement,
   onDetected: (value: string) => void,
+  onPersistentError: (error: unknown) => void,
 ): Promise<ScannerStop> {
   const detector = new Detector({ formats: BARCODE_FORMAT_NAMES })
   let active = true
+  let consecutiveErrors = 0
   let timer: ReturnType<typeof setTimeout> | null = null
 
   video.srcObject = stream
@@ -38,13 +49,19 @@ async function startNativeDecoder(
     if (!active) return
     try {
       const result = (await detector.detect(video))[0]
+      consecutiveErrors = 0
       if (result?.rawValue) {
         active = false
         onDetected(result.rawValue)
         return
       }
-    } catch {
-      // Individual frames often fail while the camera focuses. Keep scanning.
+    } catch (error) {
+      consecutiveErrors += 1
+      if (consecutiveErrors >= MAX_CONSECUTIVE_NATIVE_ERRORS) {
+        active = false
+        onPersistentError(error)
+        return
+      }
     }
     if (active) timer = setTimeout(() => void scan(), SCAN_INTERVAL_MS)
   }
@@ -89,22 +106,80 @@ async function startZxingDecoder(
  * Starts UPC/EAN decoding for an already-authorized camera stream.
  *
  * The native detector is preferred when available. Its implementation is
- * still inconsistent across mobile browsers, so construction failures fall
- * back to a lazily loaded ZXing decoder.
+ * still inconsistent across mobile browsers, so setup failures and repeated
+ * frame failures fall back to a lazily loaded ZXing decoder.
  */
 export async function startBarcodeDecoder(
   stream: MediaStream,
   video: HTMLVideoElement,
   onDetected: (value: string) => void,
+  onError: ScannerErrorHandler = () => {},
 ): Promise<ScannerStop> {
+  let activeStop: ScannerStop | null = null
+  let stopped = false
+  let detected = false
+  let fallbackStarting = false
+
+  const stop = () => {
+    if (stopped) return
+    stopped = true
+    activeStop?.()
+    activeStop = null
+  }
+
+  const handleDetected = (value: string) => {
+    if (stopped || detected) return
+    detected = true
+    activeStop?.()
+    activeStop = null
+    onDetected(value)
+  }
+
+  const reportRuntimeError = () => {
+    if (stopped || detected) return
+    stopped = true
+    activeStop?.()
+    activeStop = null
+    onError(new BarcodeDecoderError())
+  }
+
+  const startRuntimeFallback = async () => {
+    if (stopped || detected || fallbackStarting) return
+    fallbackStarting = true
+    try {
+      const fallbackStop = await startZxingDecoder(stream, video, handleDetected)
+      if (stopped || detected) {
+        fallbackStop()
+        return
+      }
+      activeStop = fallbackStop
+    } catch {
+      reportRuntimeError()
+    }
+  }
+
   const Detector = nativeBarcodeDetector()
   if (Detector) {
     try {
-      return await startNativeDecoder(Detector, stream, video, onDetected)
+      activeStop = await startNativeDecoder(
+        Detector,
+        stream,
+        video,
+        handleDetected,
+        () => void startRuntimeFallback(),
+      )
+      return stop
     } catch {
       // Partially implemented native APIs can reject supported format names.
     }
   }
 
-  return startZxingDecoder(stream, video, onDetected)
+  try {
+    const fallbackStop = await startZxingDecoder(stream, video, handleDetected)
+    if (stopped || detected) fallbackStop()
+    else activeStop = fallbackStop
+    return stop
+  } catch {
+    throw new BarcodeDecoderError()
+  }
 }

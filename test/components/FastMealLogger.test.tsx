@@ -192,6 +192,7 @@ describe('FastMealLogger', () => {
       stream,
       expect.any(HTMLVideoElement),
       expect.any(Function),
+      expect.any(Function),
     ))
     expect(screen.getByLabelText('Barcode camera preview')).toBeInTheDocument()
     expect(screen.getByText('Point the camera at the barcode.')).toBeInTheDocument()
@@ -267,5 +268,56 @@ describe('FastMealLogger', () => {
     expect(await screen.findByText(message)).toBeInTheDocument()
     expect(onError).toHaveBeenCalledWith(message)
     expect(screen.getByRole('button', { name: 'Scan UPC' })).toBeEnabled()
+  })
+
+  it('keeps the manual fallback available when barcode recognition cannot start', async () => {
+    const stopTrack = vi.fn()
+    const stream = { getTracks: () => [{ stop: stopTrack }] }
+    const decoderError = new Error('Barcode recognition could not start.')
+    decoderError.name = 'BarcodeDecoderError'
+    barcodeScannerMocks.startBarcodeDecoder.mockRejectedValue(decoderError)
+    vi.stubGlobal('navigator', {
+      mediaDevices: { getUserMedia: vi.fn().mockResolvedValue(stream) },
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ meals: [] })))
+    const onError = vi.fn()
+    render(<FastMealLogger onError={onError} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+
+    const message = 'Barcode recognition could not start. Enter the code manually.'
+    expect(await screen.findByText(message)).toBeInTheDocument()
+    expect(onError).toHaveBeenCalledWith(message)
+    expect(stopTrack).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Scan UPC' })).toBeEnabled()
+    expect(screen.getByLabelText('UPC or EAN barcode')).toBeInTheDocument()
+  })
+
+  it('closes the camera when both decoders fail after scanning starts', async () => {
+    const stopTrack = vi.fn()
+    const stopDecoder = vi.fn()
+    const stream = { getTracks: () => [{ stop: stopTrack }] }
+    let onDecoderError: (() => void) | undefined
+    barcodeScannerMocks.startBarcodeDecoder.mockImplementation(async (_stream, _video, _onDetected, onError) => {
+      onDecoderError = onError
+      return stopDecoder
+    })
+    vi.stubGlobal('navigator', {
+      mediaDevices: { getUserMedia: vi.fn().mockResolvedValue(stream) },
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ meals: [] })))
+    const onError = vi.fn()
+    render(<FastMealLogger onError={onError} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+    await waitFor(() => expect(onDecoderError).toBeTypeOf('function'))
+    await act(async () => onDecoderError?.())
+
+    const message = 'Barcode recognition could not start. Enter the code manually.'
+    expect(screen.getByText(message)).toBeInTheDocument()
+    expect(onError).toHaveBeenCalledWith(message)
+    expect(stopDecoder).toHaveBeenCalledTimes(1)
+    expect(stopTrack).toHaveBeenCalledTimes(1)
+    expect(screen.queryByLabelText('Barcode camera preview')).not.toBeInTheDocument()
   })
 })
