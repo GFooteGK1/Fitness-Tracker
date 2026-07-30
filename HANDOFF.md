@@ -1,5 +1,72 @@
 # Handoff
 
+## Production legacy-object containment + UPC runtime fallback fix (2026-07-30)
+
+Completed on branch `codex/fix-prod-db-security-upc` in isolated worktree
+`C:\Users\foote\.codex\worktrees\fitness-tracker-db-security`. Production
+database changes are live and verified; repository changes remain uncommitted
+and no application deployment occurred.
+
+- Production migration `20260730151344_secure_legacy_database_objects.sql`
+  preserves all 28 WHOOP backup rows, enables and forces RLS, removes PUBLIC,
+  `anon`, and `authenticated` privileges, and retains service-role maintenance
+  CRUD. Security Advisor's three RLS-disabled ERRORs are cleared.
+- `get_meals_around_workout(uuid, integer)` keeps its legacy signature, derives
+  labels from `meals.items`, runs as SECURITY INVOKER with an empty search path,
+  and is executable only by `service_role`. The prior SQLSTATE `42703` lint
+  error is cleared.
+- The migration applied twice. Its rollback-only verifier passed, and
+  independent postflight confirmed row counts `10 / 10 / 8`, forced RLS, zero
+  user policies, no `anon`/authenticated CRUD or helper execution, retained
+  service-role access, aligned migration history, and an up-to-date final dry
+  run. Durable evidence is in
+  `docs/migrations/secure-legacy-database-objects-production-application-2026-07-30.md`.
+- Beads issues `Fitness-Tracker-vt7` and `Fitness-Tracker-68e` are closed.
+  `Fitness-Tracker-k50` remains open only for its other pre-existing advisor
+  warnings and product/admin decisions.
+- The UPC runtime inconsistency is fixed locally. Native frame failures remain
+  retryable, but three consecutive failures stop the native loop and hand the
+  already-open stream to the existing lazy ZXing decoder exactly once. A
+  successful native frame resets the error count. Detection, cancellation,
+  unmount, and a late fallback startup all retain one authoritative stop path.
+- If native and ZXing decoding both fail, the scanner closes the camera and
+  reports that barcode recognition could not start while preserving manual UPC
+  and label entry. It no longer mislabels this path as camera-access failure.
+- Beads issue `Fitness-Tracker-c0g` is closed under the existing UPC epic.
+
+Verification: focused migration regression 1 file / 6 tests, focused WHOOP
+regression 25 files / 280 tests, focused scanner/component regression 2 files /
+15 tests, and the nutrition regression 5 files / 28 tests passed. Strict
+TypeScript and lint with no warnings/errors passed. The final release gate also
+passed all 191 runnable test files and 2,227 tests, with 5 files and 7
+intentionally environment-gated tests skipped. A clean placeholder-backed
+Next.js production build compiled, type-checked, and generated all 75 routes.
+The only test warning was the pre-existing transitive Node `punycode`
+deprecation. At 390x844, Chromium with a
+virtual 1280x720 camera and an injected native detector that rejected every
+frame made exactly three native attempts, loaded both ZXing chunks, kept the
+same stream live and playing, and had no horizontal overflow. Cancel removed
+the preview, ended the camera track, and restored `Scan UPC`. The only browser
+console error/warning came from the intentionally unauthenticated temporary
+route's common-meal request, not the scanner. The temporary route was not
+retained. In addition,
+documented/canonical migration SHA-256 matched; migration dry-run/apply/direct
+reapply/verifier/lint/advisor/postflight/history checks passed; `git diff
+--check` passed after the final documentation update. Temporary routes,
+browser sessions/artifacts, server, build output, Supabase link files, and
+dependency junction were removed. Team pass: `@software-engineer` implemented
+the bounded migration and UPC lifecycle fix; `@reviewer` checked callers,
+grants, signature, RLS, repeatability, camera privacy, async handoff races,
+duplicate detection, cleanup, and manual fallback; `@verifier` performed live
+production database readback plus unit, static, and mobile-browser proof;
+`@debugger` isolated the UPC browser-dependent failure. No subagents were used
+because Greg did not request delegation.
+
+Next boundaries: the temporary history-normalized runner migration fetched
+during preflight was removed; reconcile this security branch after the
+canonical v0.5 migration enters source control. Repository changes remain
+uncommitted and the UPC application fix is not deployed.
+
 ## Adaptive coach execution feedback (released and production-deployed)
 
 Released on 2026-07-29 through PR #53 as `main` commit `43211d4`, from source
