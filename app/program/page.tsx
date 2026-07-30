@@ -288,10 +288,10 @@ export default function ProgramPage() {
             {context.activeProgram && !replacingPlan && (
               <div className="flex flex-wrap gap-3">
                 <a
-                  href="/v2"
+                  href="/coach"
                   className="inline-flex min-h-11 items-center rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-800 hover:border-blue-500 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                 >
-                  Discuss this plan with Socius
+                  Discuss this plan with Coach
                 </a>
                 <button
                   type="button"
