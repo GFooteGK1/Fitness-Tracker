@@ -208,7 +208,7 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
       }
       decoderStopRef.current = stopDecoder
       setScannerStarting(false)
-      setLookupStatus('Point the camera at the barcode.')
+      setLookupStatus('Center the barcode — upright or sideways.')
     } catch (error) {
       if (!requestIsActive()) return
       stopScanner()
@@ -383,7 +383,13 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
 
         {scannerOpen && (
           <div className="mt-3 rounded-lg bg-black p-2">
-            <video ref={videoRef} aria-label="Barcode camera preview" autoPlay playsInline muted className="max-h-64 w-full rounded object-cover" />
+            <div className="relative overflow-hidden rounded">
+              <video ref={videoRef} aria-label="Barcode camera preview" autoPlay playsInline muted className="max-h-64 w-full object-cover" />
+              <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-1/2 max-w-48 -translate-x-1/2 -translate-y-1/2 rounded-xl border-2 border-white/90 shadow-[0_0_0_999px_rgba(0,0,0,0.18)]">
+                <span className="absolute left-4 right-4 top-1/2 h-0.5 -translate-y-1/2 bg-white/70" />
+                <span className="absolute bottom-4 left-1/2 top-4 w-0.5 -translate-x-1/2 bg-white/70" />
+              </div>
+            </div>
             <button type="button" onClick={stopScanner} className="mt-2 min-h-11 w-full rounded bg-white px-3 font-medium text-gray-900">
               Cancel scan
             </button>

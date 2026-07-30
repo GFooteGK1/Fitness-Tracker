@@ -24,7 +24,10 @@ vi.mock('@zxing/library', () => ({
     UPC_A: 'UPC_A',
     UPC_E: 'UPC_E',
   },
-  DecodeHintType: { POSSIBLE_FORMATS: 'POSSIBLE_FORMATS' },
+  DecodeHintType: {
+    POSSIBLE_FORMATS: 'POSSIBLE_FORMATS',
+    TRY_HARDER: 'TRY_HARDER',
+  },
 }))
 
 import { startBarcodeDecoder } from '@/app/lib/nutrition/barcode-scanner'
@@ -63,7 +66,7 @@ describe('startBarcodeDecoder', () => {
     stop()
   })
 
-  it('lazily falls back to ZXing for UPC and EAN formats', async () => {
+  it('lazily falls back to ZXing with rotated-frame retry for UPC and EAN formats', async () => {
     vi.stubGlobal('BarcodeDetector', undefined)
     const stream = {} as MediaStream
     const video = document.createElement('video')
@@ -79,6 +82,7 @@ describe('startBarcodeDecoder', () => {
     expect(zxingMocks.decodeFromStream).toHaveBeenCalledWith(stream, video, expect.any(Function))
     const [hints, options] = zxingMocks.constructorArgs[0]
     expect(hints.get('POSSIBLE_FORMATS')).toEqual(['EAN_8', 'EAN_13', 'UPC_A', 'UPC_E'])
+    expect(hints.get('TRY_HARDER')).toBe(true)
     expect(options).toEqual({ delayBetweenScanAttempts: 250, delayBetweenScanSuccess: 500 })
     callback?.({ getText: () => '012345678905' })
     expect(onDetected).toHaveBeenCalledWith('012345678905')

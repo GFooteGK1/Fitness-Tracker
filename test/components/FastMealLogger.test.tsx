@@ -195,7 +195,7 @@ describe('FastMealLogger', () => {
       expect.any(Function),
     ))
     expect(screen.getByLabelText('Barcode camera preview')).toBeInTheDocument()
-    expect(screen.getByText('Point the camera at the barcode.')).toBeInTheDocument()
+    expect(screen.getByText('Center the barcode — upright or sideways.')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel scan' }))
     expect(stopDecoder).toHaveBeenCalledTimes(1)

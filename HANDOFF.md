@@ -1,5 +1,50 @@
 # Handoff
 
+## UPC orientation-tolerant scanning (local verified candidate, 2026-07-30)
+
+Greg confirmed that the released installed-iPhone startup fix works: the Home
+Screen app now opens the camera and scans a UPC. The remaining usability issue
+is label orientation: a sideways UPC can require rotating the phone or package.
+
+The scoped candidate is on branch `codex/upc-orientation-scanning`, based on
+`origin/main` commit `2430638`. It is not committed, pushed, or deployed.
+
+- `app/lib/nutrition/barcode-scanner.ts` enables ZXing's built-in `TRY_HARDER`
+  hint while retaining the existing UPC/EAN-only formats. In the installed
+  `@zxing/library` 0.23.0 implementation, this first tries the normal frame and
+  then retries a supported luminance source rotated 90 degrees.
+- `FastMealLogger` adds a centered square guide with horizontal and vertical
+  scan lines and changes the ready instruction to `Center the barcode — upright
+  or sideways.` Camera startup, native-to-ZXing fallback, cancel/unmount cleanup,
+  lookup, manual entry, and the no-frame-persistence boundary are unchanged.
+- Regression coverage verifies the rotation hint and the mobile instruction.
+  The red tests failed against the released code and pass with the candidate.
+
+Verification on Node 24.13.1: focused scanner/component passed 2 files / 17
+tests; related nutrition/API regression passed 6 files / 35 tests; strict
+TypeScript and lint passed with no errors or warnings; the full suite passed all
+191 runnable files / 2,229 tests with the existing environment-gated skips; and
+the placeholder-backed production build compiled, type-checked, and generated
+all 75 routes. A controlled mobile-browser check at 390x844 and 320x844 showed
+the guide and instruction, 44px cancel control, and document width equal to the
+viewport. Its only console error/warning was the expected unauthenticated
+common-meal request on the temporary route. Cancel closed the preview. The
+temporary route, Playwright session/artifacts, server, and build output were
+removed; the temporary dependency junction is removed before handoff.
+
+Beads bug `Fitness-Tracker-vig.2` remains in progress until this candidate is
+released and Greg confirms a sideways-label scan on the physical iPhone. The
+separate next feature is captured as `Fitness-Tracker-cyp`: rename the Query
+destination to Coach, expose the existing V2 conversation there, preserve
+`/query` compatibility, and avoid a second chat state.
+
+Team pass: `@frontend-lead` set the orientation-neutral guide and mobile copy;
+`@software-engineer` used the existing ZXing capability without a dependency or
+camera-loop change; `@reviewer` checked CPU cost, camera lifecycle, privacy,
+accessibility, and regression risk; and `@verifier` ran focused/full tests,
+static/build gates, and the responsive browser proof. No subagents were used
+because Greg did not request delegation.
+
 ## Installed iOS UPC preview lifecycle fix (released and production-deployed, 2026-07-30)
 
 Greg's signed-in physical-iPhone canary isolated a follow-up to the released UPC
@@ -31,15 +76,15 @@ proved the preview existed when `getUserMedia()` ran, reached `Scanning...` and
 overflow, and returned to `Scan UPC` on cancel. Its only console error/warning
 was the expected unauthenticated common-meal request on the temporary route.
 The route, browser artifacts/session, dev server, `.next`, and temporary
-dependency junction were removed. Beads bug `Fitness-Tracker-vig.1` is in
-progress pending the physical canary. PR #57 exact-head CI run `30566343904`
+dependency junction were removed. Beads bug `Fitness-Tracker-vig.1` is closed
+after Greg confirmed the installed Home Screen app scans successfully. PR #57 exact-head CI run `30566343904`
 passed in 2m02s and its Vercel preview succeeded before the squash merge. Main
 CI run `30566535623` passed tests, strict TypeScript, lint, and build in 1m47s.
 GitHub deployment `5679443191` and the Vercel commit status both report exact
 main commit `9e4e84b` successfully deployed to the Production environment at
-`https://fitness-tracker-81xbntjsb-gregs-projects-98860c8b.vercel.app`. The only
-remaining product proof is a repeat Home Screen scan on Greg's iPhone; no work-
-account or Vercel SSO login was attempted.
+`https://fitness-tracker-81xbntjsb-gregs-projects-98860c8b.vercel.app`. The Home
+Screen product proof subsequently passed on Greg's iPhone; no work-account or
+Vercel SSO login was attempted.
 
 Team pass: `@debugger` used the device-specific copy to isolate the pre-decoder
 mount race; `@frontend-lead` and `@software-engineer` kept the interaction change
@@ -121,8 +166,8 @@ Next boundaries: the temporary history-normalized runner migration fetched
 during preflight was removed; reconcile this security branch after the
 canonical v0.5 migration enters source control. The deployment-specific URL is
 protected by Vercel SSO, so no browser login was attempted and Greg's work
-Vercel identity was not connected. The remaining product canary is one signed-
-in UPC scan on Greg's phone after the release.
+Vercel identity was not connected. Greg subsequently confirmed a signed-in UPC
+scan on his phone; orientation tolerance is tracked separately above.
 
 ## Adaptive coach execution feedback (released and production-deployed)
 
@@ -268,8 +313,8 @@ Verification on Node 24:
 - The deployment-specific production URL redirects unauthenticated requests to
   Vercel SSO, so no work-account login was attempted. The repository homepage
   alias `fitness-tracker-eta-lilac.vercel.app` is stale and returns Vercel
-  `DEPLOYMENT_NOT_FOUND`; it is not release evidence. Physical camera behavior
-  is not yet verified on Greg's signed-in phone and remains the product canary.
+  `DEPLOYMENT_NOT_FOUND`; it is not release evidence. Greg subsequently
+  confirmed physical camera scanning on his signed-in phone.
 
 Team pass: frontend implementation led the camera and user-feedback changes;
 the reviewer checked async start/cancel races, decoder and media cleanup,
