@@ -1,6 +1,6 @@
 # Handoff
 
-## Installed iOS UPC preview lifecycle fix (local candidate, 2026-07-30)
+## Installed iOS UPC preview lifecycle fix (released and production-deployed, 2026-07-30)
 
 Greg's signed-in physical-iPhone canary isolated a follow-up to the released UPC
 decoder work: scanning succeeds when the site is opened directly in Safari, but
@@ -11,14 +11,13 @@ requested `getUserMedia()` first, conditionally mounted the `<video>` only after
 permission resolved, and then polled the ref for ten timer ticks. Installed mode
 can resume/render slowly enough to exhaust that local timeout.
 
-Branch `codex/fix-ios-pwa-upc-preview` is a local candidate based on `origin/main`
-at `e1c55fb`; it is not committed, pushed, deployed, or production-verified
-yet. The scoped change mounts the preview and yields through the next
-paint before requesting permission. A request generation now makes cancel and
-unmount authoritative: any camera stream returned after cancellation is stopped
-and never reaches the decoder. The native/ZXing decoder seam, rear-camera
-constraints, barcode lookup, manual entry, and no-frame-persistence boundary are
-unchanged.
+Released through PR #57 as `main` commit `9e4e84b`, from source commit `12d0405`
+on branch `codex/fix-ios-pwa-upc-preview`. The scoped change mounts the preview
+and yields through the next paint before requesting permission. A request
+generation now makes cancel and unmount authoritative: any camera stream
+returned after cancellation is stopped and never reaches the decoder. The
+native/ZXing decoder seam, rear-camera constraints, barcode lookup, manual entry,
+and no-frame-persistence boundary are unchanged.
 
 Verification: the new ordering regression failed against the released
 implementation and passes after the fix. Focused scanner/nutrition regression
@@ -33,9 +32,22 @@ overflow, and returned to `Scan UPC` on cancel. Its only console error/warning
 was the expected unauthenticated common-meal request on the temporary route.
 The route, browser artifacts/session, dev server, `.next`, and temporary
 dependency junction were removed. Beads bug `Fitness-Tracker-vig.1` is in
-progress. Remaining release gates are commit/push/CI/deployment approval and
-then a repeat Home Screen scan on Greg's iPhone as the only proof of the
-original installed-WebKit timing path.
+progress pending the physical canary. PR #57 exact-head CI run `30566343904`
+passed in 2m02s and its Vercel preview succeeded before the squash merge. Main
+CI run `30566535623` passed tests, strict TypeScript, lint, and build in 1m47s.
+GitHub deployment `5679443191` and the Vercel commit status both report exact
+main commit `9e4e84b` successfully deployed to the Production environment at
+`https://fitness-tracker-81xbntjsb-gregs-projects-98860c8b.vercel.app`. The only
+remaining product proof is a repeat Home Screen scan on Greg's iPhone; no work-
+account or Vercel SSO login was attempted.
+
+Team pass: `@debugger` used the device-specific copy to isolate the pre-decoder
+mount race; `@frontend-lead` and `@software-engineer` kept the interaction change
+inside the existing scanner lifecycle; `@reviewer` checked permission, cancel,
+late-stream, privacy, and regression risks; and `@verifier` ran focused/full
+tests, static/build gates, controlled mobile-browser proof, exact-head CI, and
+exact-commit production readback. No subagents were used because Greg did not
+request delegation.
 
 ## Production legacy-object containment + UPC runtime fallback fix (2026-07-30)
 
