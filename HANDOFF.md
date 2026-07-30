@@ -1,11 +1,10 @@
 # Handoff
 
-## Coach canonical V2 destination (local verified candidate, 2026-07-30)
+## Coach canonical V2 destination (released and production-deployed, 2026-07-30)
 
-The next product step is implemented locally on branch
-`codex/coach-v2-destination`, based on final released `main` commit `dbdff29`.
-It is not committed, pushed, or deployed. Beads feature `Fitness-Tracker-cyp`
-is claimed and remains in progress pending release approval.
+Released through PR #61 as exact `main` commit `76652da`, from source commit
+`0c8a339` on branch `codex/coach-v2-destination`. Beads feature
+`Fitness-Tracker-cyp` is closed.
 
 - Primary desktop and mobile navigation now says **Coach** and targets
   `/coach`; the mobile icon changes from search to conversation.
@@ -32,6 +31,14 @@ message input, no global-navigation duplication, no horizontal overflow, and
 zero console errors or warnings. `/query` resolved to `/coach`; direct `/v2`
 still rendered the Coach conversation. Browser mocks, artifacts, server, build
 output, and the temporary dependency junction are removed before handoff.
+
+PR #61 exact-head CI run `30574862569` passed in 1m38s and its Vercel preview
+succeeded before the squash merge. Main CI run `30575003453` passed tests,
+strict TypeScript, lint, and build in 1m51s. GitHub deployment `5681027693` and
+the Vercel commit status both report exact main commit `76652da` successfully
+deployed to the Production environment at
+`https://fitness-tracker-ejyq12am3-gregs-projects-98860c8b.vercel.app`. No
+Vercel login was attempted, so Greg's work Vercel identity was not connected.
 
 Team pass: `@frontend-lead` set the canonical navigation and mobile layout;
 `@software-engineer` reused the existing V2 client without duplicating state;
