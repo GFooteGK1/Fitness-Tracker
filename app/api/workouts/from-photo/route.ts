@@ -16,6 +16,8 @@ import { complete } from '@/app/lib/llm/client'
 import { apiError } from '@/app/lib/api-response'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024   // 10 MB
+type SupportedMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+const SUPPORTED_MEDIA_TYPES: SupportedMediaType[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,16 +35,17 @@ export async function POST(request: NextRequest) {
       return apiError('No photo provided', 400)
     }
     if (photo.size > MAX_FILE_SIZE) {
-      return apiError(`Photo too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024} MB.`, 400)
+      return apiError(`Photo too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024} MB.`, 413)
     }
 
     // Convert to base64 for the Vision API
     const buffer = Buffer.from(await photo.arrayBuffer())
     const base64 = buffer.toString('base64')
-    const rawType = photo.type || 'image/jpeg'
-    const mediaType = (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(rawType)
-      ? rawType
-      : 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+    const rawType = photo.type.toLowerCase()
+    if (!SUPPORTED_MEDIA_TYPES.includes(rawType as SupportedMediaType)) {
+      return apiError('Unsupported photo type. Use JPEG, PNG, GIF, or WebP.', 415)
+    }
+    const mediaType = rawType as SupportedMediaType
 
     // Ask the vision model to extract the workout
     const llmResult = await complete({
@@ -59,7 +62,8 @@ export async function POST(request: NextRequest) {
             }
           ]
         }
-      ]
+      ],
+      timeoutMs: 35_000,
     })
 
     const text = llmResult.text.trim()
@@ -71,10 +75,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ workoutText: text, isWorkout: true })
 
   } catch (error) {
-    console.error('Error in workouts/from-photo:', error)
-    return apiError(
-      error instanceof Error ? error.message : 'Failed to process workout photo',
-      500
-    )
+    console.error('Workout photo processing failed', {
+      errorType: error instanceof Error ? error.name : 'UnknownError',
+    })
+    return apiError('Workout photo processing is temporarily unavailable. Please try again.', 500)
   }
 }

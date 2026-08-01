@@ -40,9 +40,9 @@ function mockLlmText(text: string) {
   })
 }
 
-function photoRequest(): NextRequest {
+function photoRequest(type = 'image/jpeg', size = 2000): NextRequest {
   const form = new FormData()
-  form.set('photo', new Blob([new Uint8Array(2000)], { type: 'image/jpeg' }), 'w.jpg')
+  form.set('photo', new Blob([new Uint8Array(size)], { type }), 'photo')
   return new NextRequest('http://localhost:3000/api/workouts/from-photo', {
     method: 'POST',
     body: form,
@@ -72,6 +72,7 @@ describe('POST /api/workouts/from-photo', () => {
     expect(data.isWorkout).toBe(true)
     expect(data.workoutText).toContain('21-15-9')
     expect(vi.mocked(complete).mock.calls[0][0].purpose).toBe('vision')
+    expect(vi.mocked(complete).mock.calls[0][0].timeoutMs).toBe(35_000)
   })
 
   it('treats the NOT_WORKOUT sentinel as no workout', async () => {
@@ -85,4 +86,24 @@ describe('POST /api/workouts/from-photo', () => {
     expect(data.isWorkout).toBe(false)
     expect(data.workoutText).toBeNull()
   })
+
+  it('rejects unsupported image bytes instead of relabeling them as JPEG', async () => {
+    vi.mocked(createServerClient).mockResolvedValue(authedSupabase() as any)
+
+    const response = await POST(photoRequest('image/heic'))
+    const data = await response.json()
+
+    expect(response.status).toBe(415)
+    expect(data.error).toMatch(/unsupported photo type/i)
+    expect(complete).not.toHaveBeenCalled()
+  })
+
+  it('returns 413 before model work for an oversized image', async () => {
+    vi.mocked(createServerClient).mockResolvedValue(authedSupabase() as any)
+
+    const response = await POST(photoRequest('image/jpeg', 10 * 1024 * 1024 + 1))
+
+    expect(response.status).toBe(413)
+    expect(complete).not.toHaveBeenCalled()
+})
 })

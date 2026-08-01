@@ -39,6 +39,10 @@ vi.mock('@/app/lib/auth/supabase-client', () => ({
   })),
 }))
 
+vi.mock('@/app/lib/imageUtils', () => ({
+  prepareImageUpload: vi.fn(async (file: File) => file),
+}))
+
 import V2Page from '@/app/v2/page'
 
 function jsonResponse(body: unknown, ok = true) {

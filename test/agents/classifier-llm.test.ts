@@ -30,6 +30,7 @@ describe('classifyInput (LLM path via seam)', () => {
     expect(result.input_type).toBe('meal_log')
     expect(result.domains).toContain('nutritionist')
     expect(vi.mocked(complete).mock.calls[0][0].purpose).toBe('fast')
+    expect(vi.mocked(complete).mock.calls[0][0].timeoutMs).toBe(8_000)
   })
 
   it('falls back to keyword classification when the seam call throws', async () => {

@@ -32,6 +32,7 @@ async function classifyWithLLM(
     maxTokens: 256,
     temperature: 0,
     reasoningEffort: 'low',
+    timeoutMs: 8_000,
   })
 
   return parseClassificationResult(result.text)

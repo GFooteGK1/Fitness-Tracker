@@ -10,6 +10,7 @@ import {
 } from '@/app/lib/nutrition/barcode'
 import { startBarcodeDecoder } from '@/app/lib/nutrition/barcode-scanner'
 import type { CommonMeal } from '@/app/lib/nutrition/fast-log'
+import { fetchWithTimeout, RequestTimeoutError } from '@/app/lib/client/fetch-with-timeout'
 
 interface FastMealLoggerProps {
   selectedDate?: Date
@@ -126,10 +127,11 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
     }
 
     setLookingUp(true)
+    setBarcodeInput(parsed.value)
     setLookupStatus('Looking up product…')
     setDraft(null)
     try {
-      const response = await fetch(`/api/foods/barcode?code=${encodeURIComponent(parsed.value)}`)
+      const response = await fetchWithTimeout(`/api/foods/barcode?code=${encodeURIComponent(parsed.value)}`, {}, 12_000)
       const result = await response.json()
       if (!response.ok) {
         setBarcodeInput(parsed.value)
@@ -142,8 +144,10 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
       setLookupStatus(result.origin === 'catalog'
         ? 'Loaded your reviewed food. Confirm the serving before logging.'
         : 'Product found. Verify these values against the package label.')
-    } catch {
-      showError('Barcode lookup failed. Enter the label manually.')
+    } catch (error) {
+      showError(error instanceof RequestTimeoutError
+        ? 'Barcode lookup timed out. Retry or enter the label manually.'
+        : 'Barcode lookup failed. Retry or enter the label manually.')
     } finally {
       setLookingUp(false)
     }

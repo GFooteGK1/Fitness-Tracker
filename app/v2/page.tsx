@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/app/lib/auth/supabase-client'
 import type { AgentRequest, AgentResponse } from '@/app/lib/agents/types'
 import { getLocalDate, getTimezoneOffset, getMealTimestamp } from '@/app/lib/timezone-utils'
+import { fetchWithTimeout } from '@/app/lib/client/fetch-with-timeout'
+import { prepareImageUpload } from '@/app/lib/imageUtils'
 
 // ============================================================
 // TYPES
@@ -437,11 +439,11 @@ export default function V2Page() {
         tz_offset: -getTimezoneOffset()
       }
 
-      const response = await fetch('/api/agent/process', {
+      const response = await fetchWithTimeout('/api/agent/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request)
-      })
+      }, 50_000)
 
       if (!response.ok) {
         let errorMessage = 'Failed to process message'
@@ -473,6 +475,7 @@ export default function V2Page() {
       }
     } catch (error) {
       console.error('Error:', error)
+      setInputValue(current => current || userMsg.content)
       setMessages(m => [...m, {
         id: String(Date.now() + 1),
         role: 'system',
@@ -556,14 +559,15 @@ export default function V2Page() {
     }])
 
     try {
+      const normalizedFile = await prepareImageUpload(file)
       if (mode === 'meal') {
         // ── Meal path ──────────────────────────────────────────────────
         // /api/meals/upload analyzes with Claude Vision and saves the meal to DB.
         // Display the analysis inline and invite portion refinements via follow-up chat.
         const formData = new FormData()
-        formData.append('photo', file)
+        formData.append('photo', normalizedFile)
         formData.append('timestamp', getMealTimestamp())
-        const uploadResponse = await fetch('/api/meals/upload', { method: 'POST', body: formData })
+        const uploadResponse = await fetchWithTimeout('/api/meals/upload', { method: 'POST', body: formData }, 60_000)
         const uploadData = await uploadResponse.json()
 
         if (!uploadResponse.ok) {
@@ -596,9 +600,12 @@ export default function V2Page() {
         // Extract workout text from the photo via Claude Vision, then send
         // the extracted text to the Trainer agent as a standard workout log.
         const formData = new FormData()
-        formData.append('photo', file)
-        const extractRes = await fetch('/api/workouts/from-photo', { method: 'POST', body: formData })
-        if (!extractRes.ok) throw new Error('Workout extraction failed')
+        formData.append('photo', normalizedFile)
+        const extractRes = await fetchWithTimeout('/api/workouts/from-photo', { method: 'POST', body: formData }, 45_000)
+        if (!extractRes.ok) {
+          const errorData = await extractRes.json().catch(() => null)
+          throw new Error(errorData?.error || 'Workout extraction failed. Please try another photo.')
+        }
         const { workoutText, isWorkout } = await extractRes.json()
 
         if (!isWorkout || !workoutText) {
@@ -611,7 +618,7 @@ export default function V2Page() {
           return
         }
 
-        const agentRes = await fetch('/api/agent/process', {
+        const agentRes = await fetchWithTimeout('/api/agent/process', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -621,7 +628,7 @@ export default function V2Page() {
             // Agent requests use the negated convention: local time = UTC + tz_offset.
             tz_offset: -getTimezoneOffset()
           } satisfies AgentRequest)
-        })
+        }, 50_000)
         if (!agentRes.ok) throw new Error('Failed to process workout')
         const agentData: AgentResponse = await agentRes.json()
 
@@ -639,7 +646,9 @@ export default function V2Page() {
       setMessages(m => [...m, {
         id: String(Date.now() + 1),
         role: 'system',
-        content: 'Sorry, I encountered an error processing the photo. Please try again.',
+        content: error instanceof Error
+          ? error.message
+          : 'Sorry, I encountered an error processing the photo. Please try again.',
         time: now
       }])
     } finally {
@@ -736,8 +745,8 @@ export default function V2Page() {
       {/* INPUT BAR */}
       <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
         {/* Hidden file inputs — gallery (no capture) and camera (rear lens) */}
-        <input ref={galleryInputRef} type="file" accept="image/*" onChange={handlePhotoSelected} className="hidden" />
-        <input ref={cameraInputRef}  type="file" accept="image/*" capture="environment" onChange={handlePhotoSelected} className="hidden" />
+        <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onChange={handlePhotoSelected} className="hidden" />
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelected} className="hidden" />
 
         <div className="max-w-2xl mx-auto">
           {isRecording ? (

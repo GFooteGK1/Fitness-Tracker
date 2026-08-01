@@ -56,10 +56,12 @@ vi.mock('@/app/lib/imageUtils', () => ({
     compressionRatio: 4,
     finalQuality: 0.8,
   }),
+  prepareImageUpload: vi.fn(async (file: File) => file),
 }))
 
 import V2Page from '@/app/v2/page'
 import CoachPage from '@/app/coach/page'
+import { prepareImageUpload } from '@/app/lib/imageUtils'
 
 type FetchHandler = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
@@ -353,6 +355,24 @@ describe('V2Page', () => {
     })
   })
 
+
+  describe('photo input', () => {
+    it('normalizes gallery photos before upload', async () => {
+      await act(async () => {
+        render(<V2Page />)
+      })
+
+      const file = new File(['photo'], 'meal.png', { type: 'image/png' })
+      const galleryInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement
+
+      await act(async () => {
+        fireEvent.change(galleryInput, { target: { files: [file] } })
+      })
+
+      await waitFor(() => expect(prepareImageUpload).toHaveBeenCalledWith(file))
+      expect(screen.getByText('📷 Meal photo')).toBeInTheDocument()
+    })
+  })
   describe('conversation controls', () => {
     it('clears visible messages when New Chat is clicked', async () => {
       const now = new Date().toISOString()
