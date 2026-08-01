@@ -15,6 +15,13 @@ describe('barcode nutrition normalization', () => {
     expect(parseBarcode('0034000470693')?.lookupKey).toBe('0034000470693')
   })
 
+  it('recovers a manually omitted leading zero from an otherwise valid UPC-A', () => {
+    expect(parseBarcode('34000470693')).toEqual({
+      value: '034000470693',
+      lookupKey: '0034000470693',
+    })
+  })
+
   it('rejects non-digits, unsupported lengths, and bad GTIN check digits', () => {
     expect(parseBarcode('not-a-code')).toBeNull()
     expect(parseBarcode('12345')).toBeNull()

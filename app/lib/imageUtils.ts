@@ -11,6 +11,9 @@ export interface ImageCompressionResult {
   finalQuality: number;
 }
 
+const OUTPUT_MIME_TYPE = 'image/jpeg';
+const HEIC_TYPES = new Set(['image/heic', 'image/heif']);
+
 /**
  * Compress an image to under 4.5MB using canvas with dynamic quality adjustment
  * @param file - The image file to compress
@@ -31,7 +34,7 @@ export async function compressImage(
       
       img.onload = () => {
         try {
-          const result = compressImageFromElement(img, file.type, maxSizeMB, maxDimension);
+          const result = compressImageFromElement(img, OUTPUT_MIME_TYPE, maxSizeMB, maxDimension);
           const originalSizeMB = file.size / (1024 * 1024);
           
           resolve({
@@ -44,7 +47,11 @@ export async function compressImage(
         }
       };
       
-      img.onerror = () => reject(new Error('Failed to load image'));
+      img.onerror = () => reject(new Error(
+        HEIC_TYPES.has(file.type.toLowerCase())
+          ? 'This device could not convert the HEIC photo. Retake it with the camera or choose a JPEG/PNG image.'
+          : 'This image could not be opened. Choose a JPEG, PNG, or WebP image.'
+      ));
       img.src = e.target?.result as string;
     };
     
@@ -96,17 +103,12 @@ function compressImageFromElement(
   let compressed = canvas.toDataURL(mimeType || 'image/jpeg', quality);
   let estimatedSizeMB = estimateBase64SizeMB(compressed);
   
-  console.log(`Initial compression: ${estimatedSizeMB.toFixed(2)}MB at quality ${quality}`);
-  
   // Iteratively reduce quality until under target size
   while (estimatedSizeMB > maxSizeMB && quality > 0.3) {
     quality -= 0.1;
     compressed = canvas.toDataURL(mimeType || 'image/jpeg', quality);
     estimatedSizeMB = estimateBase64SizeMB(compressed);
-    console.log(`Retry compression: ${estimatedSizeMB.toFixed(2)}MB at quality ${quality.toFixed(1)}`);
   }
-  
-  console.log(`Final compressed size: ${estimatedSizeMB.toFixed(2)}MB at quality ${quality.toFixed(1)}`);
   
   return {
     compressedDataUrl: compressed,
@@ -131,8 +133,26 @@ function estimateBase64SizeMB(base64String: string): number {
  * @returns True if supported format
  */
 export function isSupportedImageFormat(file: File): boolean {
-  const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+  const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'];
   return supportedTypes.includes(file.type.toLowerCase());
+}
+
+/** Normalizes a camera/gallery image to a bounded JPEG before upload. */
+export async function prepareImageUpload(file: File, maxSizeMB = 4.5): Promise<File> {
+  if (!isSupportedImageFormat(file)) {
+    throw new Error('Unsupported image type. Choose a JPEG, PNG, WebP, or HEIC photo.');
+  }
+
+  const { compressedDataUrl } = await compressImage(file, maxSizeMB);
+  const separator = compressedDataUrl.indexOf(',');
+  if (separator < 0) throw new Error('Image conversion failed. Please choose another photo.');
+
+  const binary = atob(compressedDataUrl.slice(separator + 1));
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+
+  const baseName = file.name.replace(/\.[^.]+$/, '') || 'photo';
+  return new File([bytes], `${baseName}.jpg`, { type: OUTPUT_MIME_TYPE });
 }
 
 /**

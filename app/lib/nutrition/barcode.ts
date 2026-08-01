@@ -78,7 +78,10 @@ function openFoodFactsLookupKey(value: string): string {
 }
 
 export function parseBarcode(input: string): ParsedBarcode | null {
-  const value = input.trim().replace(/[\s-]+/g, '')
+  const rawValue = input.trim().replace(/[\s-]+/g, '')
+  // Recover a manually omitted leading zero only when the resulting UPC-A
+  // still passes its checksum.
+  const value = /^\d{11}$/.test(rawValue) ? `0${rawValue}` : rawValue
   if (!/^\d+$/.test(value) || /^0+$/.test(value) || ![7, 8, 12, 13, 14].includes(value.length)) {
     return null
   }

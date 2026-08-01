@@ -285,7 +285,7 @@ describe('FastMealLogger', () => {
       onDetected?.('012345678905')
     })
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/foods/barcode?code=012345678905'))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/foods/barcode?code=012345678905', expect.objectContaining({ signal: expect.any(AbortSignal) })))
     expect(await screen.findByDisplayValue('Detected product')).toBeInTheDocument()
     expect(stopDecoder).toHaveBeenCalledTimes(1)
     expect(stopTrack).toHaveBeenCalledTimes(1)

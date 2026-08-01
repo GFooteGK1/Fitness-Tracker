@@ -1,5 +1,16 @@
 # Handoff
 
+## Wave 1 reliability candidate (local, not deployed, 2026-08-01)
+
+Branch `codex/wave1-reliability` contains the first implementation slice for the canonical reliability backlog: bounded Coach/classifier/agent requests with retry draft recovery; shared bounded-JPEG normalization for Coach meal/workout photos; strict workout-photo media/size handling; retained and timeout-bounded UPC lookup with leading-zero recovery and redacted request tracing.
+
+Verification passed: 8 focused files / 46 tests; full Vitest 194 files / 2,238 tests with 5 files / 7 tests intentionally skipped; strict TypeScript; lint without warnings/errors; `git diff --check`; and a placeholder-backed production build with Serwist and all 76 pages.
+
+Before release: review the diff, run authenticated personal-project canaries for Coach questions, camera/gallery workout photos, and both scanned and typed UPCs on Greg's installed iPhone. Wave 1 remains open until those canaries pass. The exact UPC production failure still needs a failing code plus request ID. No production, database, dependency, or deployment state was changed.
+
+The canonical backlog and implementation evidence are in `ObsidianVault/SociusFit Repository Review.md`. Waves 2–4 remain open.
+
+
 ## Coach canonical V2 destination (released and production-deployed, 2026-07-30)
 
 Released through PR #61 as exact `main` commit `76652da`, from source commit

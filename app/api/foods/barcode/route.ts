@@ -41,16 +41,18 @@ function catalogDraft(row: Record<string, unknown>): FoodCatalogDraft {
 }
 
 export async function GET(request: NextRequest) {
+  const requestId = request.headers.get('x-vercel-id') || crypto.randomUUID()
+  const headers = { ...NO_STORE_HEADERS, 'x-request-id': requestId }
   const supabase = await createServerClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE_HEADERS })
+    return NextResponse.json({ error: 'Unauthorized', requestId }, { status: 401, headers })
   }
 
   const code = new URL(request.url).searchParams.get('code') || ''
   const parsed = parseBarcode(code)
   if (!parsed) {
-    return NextResponse.json({ error: 'Enter a valid UPC or EAN barcode' }, { status: 400, headers: NO_STORE_HEADERS })
+    return NextResponse.json({ error: 'Enter a valid UPC or EAN barcode', requestId }, { status: 400, headers })
   }
 
   const { data: saved, error: catalogError } = await supabase
@@ -63,11 +65,15 @@ export async function GET(request: NextRequest) {
     .maybeSingle()
 
   if (catalogError) {
-    console.error('Food catalog lookup failed:', catalogError)
-    return NextResponse.json({ error: 'Food catalog is temporarily unavailable' }, { status: 500, headers: NO_STORE_HEADERS })
+    console.error('Food catalog lookup failed', {
+      requestId,
+      stage: 'catalog',
+      errorCode: catalogError.code,
+    })
+    return NextResponse.json({ error: 'Food catalog is temporarily unavailable', requestId }, { status: 500, headers })
   }
   if (saved) {
-    return NextResponse.json({ food: catalogDraft(saved), origin: 'catalog' }, { headers: NO_STORE_HEADERS })
+    return NextResponse.json({ food: catalogDraft(saved), origin: 'catalog' }, { headers })
   }
 
   try {
@@ -76,14 +82,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         error: 'Product not found. You can enter the nutrition label manually.',
         barcode: parsed.value,
-      }, { status: 404, headers: NO_STORE_HEADERS })
+        requestId,
+      }, { status: 404, headers })
     }
-    return NextResponse.json({ food, origin: 'open_food_facts' }, { headers: NO_STORE_HEADERS })
+    return NextResponse.json({ food, origin: 'open_food_facts' }, { headers })
   } catch (error) {
-    console.error('Open Food Facts lookup failed:', error)
+    console.error('Barcode provider lookup failed', {
+      requestId,
+      errorType: error instanceof Error ? error.name : 'UnknownError',
+    })
     return NextResponse.json({
       error: 'Barcode lookup is temporarily unavailable. You can enter the label manually.',
       barcode: parsed.value,
-    }, { status: 502, headers: NO_STORE_HEADERS })
+      requestId,
+    }, { status: 502, headers })
   }
 }

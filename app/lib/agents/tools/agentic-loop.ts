@@ -19,6 +19,14 @@ import { executeToolCall, type ToolResult } from './executor'
 
 const MAX_TOOL_ROUNDS = 3
 const TIMEOUT_MS = 30_000
+const TOTAL_TIMEOUT_MS = 40_000
+
+export class AgentDeadlineError extends Error {
+  constructor() {
+    super('The coaching request exceeded its processing deadline.')
+    this.name = 'AgentDeadlineError'
+  }
+}
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -63,8 +71,12 @@ export async function callAgentWithTools(
   let messages: LlmMessage[] = [{ role: 'user', content: userInput }]
   const allToolCalls: ToolCallRecord[] = []
   const totalTokens = { input: 0, output: 0 }
+  const deadline = Date.now() + TOTAL_TIMEOUT_MS
 
   for (let round = 0; round < maxRounds; round++) {
+    const remainingMs = deadline - Date.now()
+    if (remainingMs <= 0) throw new AgentDeadlineError()
+
     const result = await complete({
       purpose: 'agent',
       maxTokens: 4096,
@@ -72,7 +84,7 @@ export async function callAgentWithTools(
       system: systemPrompt,
       messages,
       tools: tools.length > 0 ? tools : undefined,
-      timeoutMs: TIMEOUT_MS
+      timeoutMs: Math.min(TIMEOUT_MS, remainingMs)
     })
 
     totalTokens.input += result.usage.input

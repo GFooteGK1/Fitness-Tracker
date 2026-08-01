@@ -88,6 +88,8 @@ describe('agentic-loop provider selection', () => {
     )
     expect(anthropicAppend).not.toHaveBeenCalled()
     expect(vi.mocked(complete).mock.calls[1][0].messages).toBe(continuedMessages)
+    expect(vi.mocked(complete).mock.calls[0][0].timeoutMs).toBe(30_000)
+    expect(vi.mocked(complete).mock.calls[1][0].timeoutMs).toBeLessThanOrEqual(30_000)
     expect(result).toEqual({
       text: 'You have not logged any meals today.',
       toolCalls: [{
