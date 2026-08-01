@@ -1,12 +1,36 @@
 # Handoff
 
-## Wave 1 reliability candidate (local, not deployed, 2026-08-01)
+## Wave 1 core reliability release (production-deployed, 2026-08-01)
 
-Branch `codex/wave1-reliability` contains the first implementation slice for the canonical reliability backlog: bounded Coach/classifier/agent requests with retry draft recovery; shared bounded-JPEG normalization for Coach meal/workout photos; strict workout-photo media/size handling; retained and timeout-bounded UPC lookup with leading-zero recovery and redacted request tracing.
+Released through PR #63 as exact `main` commit `f4717a4`, from source commit
+`1a0724d` on branch `codex/wave1-reliability`. The release contains the first
+implementation slice for the canonical reliability backlog: bounded
+Coach/classifier/agent requests with retry draft recovery; shared bounded-JPEG
+normalization for Coach meal/workout photos; strict workout-photo media/size
+handling; retained and timeout-bounded UPC lookup with leading-zero recovery
+and redacted request tracing.
 
-Verification passed: 8 focused files / 46 tests; full Vitest 194 files / 2,238 tests with 5 files / 7 tests intentionally skipped; strict TypeScript; lint without warnings/errors; `git diff --check`; and a placeholder-backed production build with Serwist and all 76 pages.
+Independent review found no release-blocking correctness, auth, database,
+privacy, React, or mobile-accessibility regression. Local verification passed:
+8 focused files / 43 tests; full Vitest 194 files / 2,238 tests with 5 files /
+7 tests intentionally skipped; strict TypeScript; lint without warnings/errors;
+`git diff --check`; and a placeholder-backed production build with Serwist and
+all 76 pages.
 
-Before release: review the diff, run authenticated personal-project canaries for Coach questions, camera/gallery workout photos, and both scanned and typed UPCs on Greg's installed iPhone. Wave 1 remains open until those canaries pass. The exact UPC production failure still needs a failing code plus request ID. No production, database, dependency, or deployment state was changed.
+PR exact-head CI run `30722347481` passed in 1m58s and its Vercel preview
+succeeded before the squash merge. Main CI run `30722500160` passed tests,
+strict TypeScript, lint, and build in 2m00s. GitHub deployment `5709066945`
+and the Vercel commit status both report exact main commit `f4717a4`
+successfully deployed to Production at
+`https://fitness-tracker-il3ickif8-gregs-projects-98860c8b.vercel.app`.
+The deployment URL redirects unauthenticated requests through Vercel SSO, and
+the Vercel connector is authenticated to a different scope, so no account
+connection or protected runtime-log access was attempted.
+
+Wave 1 remains open only for Greg's authenticated installed-iPhone canaries:
+one Coach question, one camera workout photo, one gallery workout photo, and
+scanned plus typed UPC `197870138954`. Record the returned request ID if a UPC
+lookup fails. No database, dependency, or environment-variable state changed.
 
 The canonical backlog and implementation evidence are in `ObsidianVault/SociusFit Repository Review.md`. Waves 2–4 remain open.
 
