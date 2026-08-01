@@ -38,6 +38,7 @@ describe('startBarcodeDecoder', () => {
     zxingMocks.decodeFromStream.mockReset()
     zxingMocks.stop.mockReset()
     zxingMocks.decodeFromStream.mockResolvedValue({ stop: zxingMocks.stop })
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
   })
 
   afterEach(() => {
@@ -79,6 +80,11 @@ describe('startBarcodeDecoder', () => {
 
     const stop = await startBarcodeDecoder(stream, video, onDetected)
 
+    expect(video.srcObject).toBe(stream)
+    expect(video.play).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(video.play).mock.invocationCallOrder[0]).toBeLessThan(
+      zxingMocks.decodeFromStream.mock.invocationCallOrder[0],
+    )
     expect(zxingMocks.decodeFromStream).toHaveBeenCalledWith(stream, video, expect.any(Function))
     const [hints, options] = zxingMocks.constructorArgs[0]
     expect(hints.get('POSSIBLE_FORMATS')).toEqual(['EAN_8', 'EAN_13', 'UPC_A', 'UPC_E'])

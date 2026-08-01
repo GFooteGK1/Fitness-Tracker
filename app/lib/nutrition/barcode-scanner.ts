@@ -42,9 +42,6 @@ async function startNativeDecoder(
   let consecutiveErrors = 0
   let timer: ReturnType<typeof setTimeout> | null = null
 
-  video.srcObject = stream
-  await video.play()
-
   const scan = async () => {
     if (!active) return
     try {
@@ -116,6 +113,16 @@ export async function startBarcodeDecoder(
   onDetected: (value: string) => void,
   onError: ScannerErrorHandler = () => {},
 ): Promise<ScannerStop> {
+  // Start the preview before loading either decoder. The ZXing fallback is
+  // loaded lazily, and installed iOS can otherwise show a black video element
+  // while those chunks load even though the camera stream is already active.
+  video.srcObject = stream
+  try {
+    await video.play()
+  } catch {
+    throw new BarcodeDecoderError()
+  }
+
   let activeStop: ScannerStop | null = null
   let stopped = false
   let detected = false
