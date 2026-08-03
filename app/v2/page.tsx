@@ -562,7 +562,7 @@ export default function V2Page() {
       const normalizedFile = await prepareImageUpload(file)
       if (mode === 'meal') {
         // ── Meal path ──────────────────────────────────────────────────
-        // /api/meals/upload analyzes with Claude Vision and saves the meal to DB.
+        // /api/meals/upload uses the provider-neutral vision seam and saves the meal to DB.
         // Display the analysis inline and invite portion refinements via follow-up chat.
         const formData = new FormData()
         formData.append('photo', normalizedFile)

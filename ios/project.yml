@@ -1,0 +1,73 @@
+name: SociusFitAutoMeals
+
+options:
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "26.1"
+  generateEmptyDirectories: true
+  minimumXcodeGenVersion: "2.46.0"
+
+settings:
+  base:
+    CURRENT_PROJECT_VERSION: 1
+    DEVELOPMENT_TEAM: ""
+    MARKETING_VERSION: 0.1.0
+    SWIFT_VERSION: 6.0
+
+targets:
+  SociusFitAutoMeals:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Shared
+    info:
+      path: Supporting/App-Info.plist
+      properties:
+        CFBundleDisplayName: SociusFit Auto Meals
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSPhotoLibraryUsageDescription: SociusFit checks new photos on your device so likely meal photos can be prepared for your review.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations: {}
+    settings:
+      base:
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: NO
+        PRODUCT_BUNDLE_IDENTIFIER: com.sociusfit.automeals
+        TARGETED_DEVICE_FAMILY: 1
+    dependencies:
+      - target: SociusFitAutoMealsBackgroundUpload
+        embed: true
+
+  SociusFitAutoMealsBackgroundUpload:
+    type: extensionkit-extension
+    platform: iOS
+    sources:
+      - path: BackgroundUpload
+      - path: Shared
+    info:
+      path: Supporting/BackgroundUpload-Info.plist
+      properties:
+        BackgroundUploadURLBase: https://example.invalid
+        CFBundleDisplayName: SociusFit Background Upload
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        EXAppExtensionAttributes:
+          EXExtensionPointIdentifier: com.apple.photos.background-upload
+    settings:
+      base:
+        APPLICATION_EXTENSION_API_ONLY: YES
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: NO
+        PRODUCT_BUNDLE_IDENTIFIER: com.sociusfit.automeals.background-upload
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: 1
+
+schemes:
+  SociusFitAutoMeals:
+    build:
+      targets:
+        SociusFitAutoMeals: all
+        SociusFitAutoMealsBackgroundUpload: all

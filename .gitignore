@@ -53,3 +53,8 @@ public/workbox-*.js.map
 # Eval harness — downloaded datasets / production photos (never commit)
 scripts/eval/data/
 scripts/eval/manifest.*.json
+
+# Native iOS — XcodeGen and SwiftPM output
+/ios/*.xcodeproj/
+/ios/.build/
+/ios/DerivedData/
