@@ -1,0 +1,52 @@
+name: iOS Native Compile
+
+on:
+  pull_request:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-compile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-compile-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    runs-on: macos-26
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Select Xcode 26.5
+        run: sudo xcode-select --switch /Applications/Xcode_26.5.app/Contents/Developer
+
+      - name: Install pinned XcodeGen
+        env:
+          XCODEGEN_URL: https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+        run: |
+          curl --fail --location --silent --show-error "$XCODEGEN_URL" --output /tmp/xcodegen.zip
+          echo "$XCODEGEN_SHA256  /tmp/xcodegen.zip" | shasum --algorithm 256 --check
+          unzip -q /tmp/xcodegen.zip -d /tmp/xcodegen
+          echo "/tmp/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Run deterministic core tests
+        run: swift test --package-path ios
+
+      - name: Generate Xcode project
+        run: /tmp/xcodegen/bin/xcodegen generate --spec ios/project.yml --project ios
+
+      - name: Compile unsigned app and extension
+        run: |
+          xcodebuild \
+            -project ios/SociusFitAutoMeals.xcodeproj \
+            -scheme SociusFitAutoMeals \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build

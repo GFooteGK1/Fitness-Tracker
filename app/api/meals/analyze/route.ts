@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { complete } from '@/app/lib/llm/client'
-import { extractJson } from '@/app/lib/llm/json'
 import { resolveAnalysisUrl } from '@/app/lib/photo-url'
-import { NutritionalAnalysis, FoodItem, MacroTotals } from '@/app/lib/types/food-tracking'
-import { validateMealData, calculateTotalMacros } from '@/app/lib/macro-validation'
+import { NutritionalAnalysis } from '@/app/lib/types/food-tracking'
+import { validateMealData } from '@/app/lib/macro-validation'
+import {
+  analyzeMealPhoto,
+  type MealPhotoMediaType,
+} from '@/app/lib/nutrition/meal-photo-analysis'
 import { 
   categorizeError, 
   retryWithBackoff, 
@@ -15,37 +17,6 @@ import {
 
 // AI analysis timeout: 15 seconds as per requirements
 const AI_TIMEOUT_MS = 15000
-
-// Structured prompt for Claude API
-const NUTRITION_ANALYSIS_PROMPT = `Analyze this meal photo and extract nutritional information. Return JSON with:
-{
-  "meal_items": [
-    {
-      "food": "specific food name",
-      "portion": "estimated portion with units",
-      "protein": number,
-      "carbs": number,
-      "fat": number,
-      "calories": number
-    }
-  ],
-  "total_macros": {
-    "protein": total_protein,
-    "carbs": total_carbs,
-    "fat": total_fat,
-    "calories": total_calories
-  },
-  "confidence": 0.0-1.0
-}
-
-Guidelines:
-- Identify all visible food items
-- Estimate portions in standard units (oz, cups, grams)
-- Use USDA nutritional data for calculations
-- Flag unusual combinations or unclear items
-- Return confidence score based on image clarity
-- Ensure all numbers are valid decimals
-- Include only foods that are clearly visible`
 
 export async function POST(request: NextRequest) {
   const context: ErrorContext = {
@@ -78,10 +49,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-
-    context.mealId = mealId
-    context.photoUrl = photoUrl
-    context.userId = user.id
 
     // Verify meal exists and belongs to authenticated user
     const { data: mealData, error: mealError } = await supabase
@@ -125,7 +92,7 @@ export async function POST(request: NextRequest) {
           })
 
           // Create AI analysis promise (uses the DB-stored URL, never the client's)
-          const analysisPromise = analyzePhotoWithClaude(analysisUrl)
+          const analysisPromise = analyzePhoto(analysisUrl)
 
           // Race between analysis and timeout
           return await Promise.race([analysisPromise, timeoutPromise])
@@ -160,36 +127,6 @@ export async function POST(request: NextRequest) {
           shouldRetry: errorResult.shouldRetry,
           retryAfter: errorResult.retryAfter,
           fallbackAction: errorResult.fallbackAction
-        },
-        { status: 500 }
-      )
-    }
-
-    // Validate and process the AI response
-    const validationResult = validateNutritionalData(nutritionalData)
-    if (!validationResult.isValid) {
-      const error = new Error(`Invalid AI response: ${validationResult.errors.join(', ')}`)
-      logError(error, context)
-      
-      // Flag meal for manual review
-      await supabase
-        .from('meals')
-        .update({ 
-          needs_review: true,
-          ai_confidence: nutritionalData.confidence || null
-        })
-        .eq('id', mealId)
-        .eq('user_id', user.id)
-
-      return NextResponse.json(
-        { 
-          error: 'AI analysis returned invalid data format. Your meal has been flagged for review.',
-          details: validationResult.errors,
-          mealId,
-          analysisStatus: 'failed',
-          shouldRetry: true,
-          retryAfter: 30,
-          fallbackAction: 'flag_for_manual_review'
         },
         { status: 500 }
       )
@@ -299,7 +236,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function analyzePhotoWithClaude(photoUrl: string): Promise<NutritionalAnalysis> {
+async function analyzePhoto(photoUrl: string): Promise<NutritionalAnalysis> {
   // Fetch the image data
   const imageResponse = await fetch(photoUrl)
   if (!imageResponse.ok) {
@@ -310,79 +247,21 @@ async function analyzePhotoWithClaude(photoUrl: string): Promise<NutritionalAnal
   const imageBase64 = Buffer.from(imageBuffer).toString('base64')
   
   // Determine image type from URL or default to jpeg
-  const imageType = photoUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg'
-
-  const llmResult = await complete({
-    purpose: 'vision',
-    maxTokens: 1000,
-    temperature: 0,
-    reasoningEffort: 'low',
-    messages: [
-      {
-        role: 'user',
-        content: [
-          { type: 'image', mediaType: imageType, base64: imageBase64 },
-          { type: 'text', text: NUTRITION_ANALYSIS_PROMPT },
-        ],
-      },
-    ],
+  const imageType: MealPhotoMediaType =
+    photoUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg'
+  const analysis = await analyzeMealPhoto({
+    base64Image: imageBase64,
+    mediaType: imageType,
   })
 
-  // Parse JSON response
-  const nutritionalData = extractJson<NutritionalAnalysis>(llmResult.text)
-  if (!nutritionalData) {
-    console.error('Failed to parse AI response:', llmResult.text)
-    throw new Error('Invalid JSON in Claude response')
+  return {
+    meal_items: analysis.items,
+    total_macros: {
+      protein: analysis.total_protein,
+      carbs: analysis.total_carbs,
+      fat: analysis.total_fat,
+      calories: analysis.total_calories,
+    },
+    confidence: analysis.confidence,
   }
-  return nutritionalData
-}
-
-function validateNutritionalData(data: any): { isValid: boolean; errors: string[] } {
-  const errors: string[] = []
-
-  // Check top-level structure
-  if (!data || typeof data !== 'object') {
-    errors.push('Response is not an object')
-    return { isValid: false, errors }
-  }
-
-  // Check meal_items array
-  if (!Array.isArray(data.meal_items)) {
-    errors.push('meal_items is not an array')
-  } else {
-    data.meal_items.forEach((item: any, index: number) => {
-      if (!item.food || typeof item.food !== 'string') {
-        errors.push(`Item ${index}: missing or invalid food name`)
-      }
-      if (!item.portion || typeof item.portion !== 'string') {
-        errors.push(`Item ${index}: missing or invalid portion`)
-      }
-      
-      const numericFields = ['protein', 'carbs', 'fat', 'calories']
-      numericFields.forEach(field => {
-        if (typeof item[field] !== 'number' || isNaN(item[field]) || item[field] < 0) {
-          errors.push(`Item ${index}: invalid ${field} value`)
-        }
-      })
-    })
-  }
-
-  // Check total_macros object
-  if (!data.total_macros || typeof data.total_macros !== 'object') {
-    errors.push('total_macros is not an object')
-  } else {
-    const macroFields = ['protein', 'carbs', 'fat', 'calories']
-    macroFields.forEach(field => {
-      if (typeof data.total_macros[field] !== 'number' || isNaN(data.total_macros[field]) || data.total_macros[field] < 0) {
-        errors.push(`total_macros: invalid ${field} value`)
-      }
-    })
-  }
-
-  // Check confidence score
-  if (typeof data.confidence !== 'number' || isNaN(data.confidence) || data.confidence < 0 || data.confidence > 1) {
-    errors.push('Invalid confidence score (must be 0.0-1.0)')
-  }
-
-  return { isValid: errors.length === 0, errors }
 }

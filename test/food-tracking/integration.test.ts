@@ -462,14 +462,8 @@ describe('Food Tracking Integration Tests', () => {
       expect(dailyData.dailyTotals.calories).toBe(411)
     })
 
-    it('flags meal for review when AI confidence is low', async () => {
-      const lowConfidenceMeal = makeMealRow({
-        needs_review: true,
-        ai_confidence: '0.45',
-        items: [],
-      })
-
-      const mockSb = createMockSupabase({ mealsInsertData: lowConfidenceMeal })
+    it('rejects an empty model payload without creating a meal', async () => {
+      const mockSb = createMockSupabase()
       vi.mocked(createServerClient).mockResolvedValue(mockSb as any)
 
       mockAnthropicCreate.mockResolvedValue({
@@ -484,10 +478,9 @@ describe('Food Tracking Integration Tests', () => {
       const res = await uploadMeal(req)
       const data = await res.json()
 
-      // Meal still saved but analysis status should reflect failure
-      expect(res.status).toBe(200)
+      expect(res.status).toBe(422)
       expect(data.analysisStatus).toBe('failed')
-      expect(data.mealId).toBe(TEST_MEAL_ID)
+      expect(mockSb.from).not.toHaveBeenCalled()
     })
 
     it('returns 401 for unauthenticated upload', async () => {

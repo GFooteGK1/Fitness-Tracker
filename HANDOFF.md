@@ -1,5 +1,143 @@
 # Handoff
 
+## Automatic meal photos Phase 1 cloud build scaffold (prepared locally, 2026-08-02)
+
+Greg enrolled in the Apple Developer Program and approved the cloud-Mac plus
+TestFlight direction because he has an iPhone but no Mac. The Build iOS Apps
+plugin was suggested again but was not installed, so this pass used official
+Apple, GitHub runner-image, and XcodeGen sources.
+
+The credential-free native compile slice is prepared locally on
+`codex/automatic-meal-photos-phase0` and has not been committed, pushed, signed,
+uploaded, or run on GitHub yet:
+
+- ADR-0005 records the minimal companion boundary: the existing web app remains
+  primary; native code owns Photos authorization, extension enable/disable,
+  on-device filtering, and review-first ingestion only.
+- `ios/project.yml` defines a generated iOS 26.1 SwiftUI app plus an
+  ExtensionKit background-upload target. The host can request full read-write
+  access and enable or disable the extension.
+- The extension is deliberately inert and returns `.completed`; it cannot
+  discover, inspect, download, classify, or upload a photo in this slice.
+- `ios/Shared` adds a Codable deterministic candidate ledger with content-hash
+  dedupe, persistent-token storage, stable device+hash idempotency, bounded
+  retry, and fail-closed exhaustion. Five Swift Testing cases cover it.
+- `.github/workflows/ios-compile.yml` is pull-request/manual only, read-only,
+  secret-free, unsigned, and non-deploying. It selects Xcode 26.5 on GitHub's
+  `macos-26` image, verifies the pinned XcodeGen 2.46.0 SHA-256, runs the Swift
+  tests, generates the project, and compiles for a generic iOS Simulator.
+- `ios/README.md` contains the full automation contract and signing boundary.
+  The architecture map records that nothing native is active in production.
+
+Local evidence: both YAML files parse through the repository's installed
+`js-yaml`; `git diff --check` passes; targeted searches confirm that no signing
+credential, certificate, API key, production endpoint, asset discovery, or
+network upload exists. This Linux host has no Swift/Xcode toolchain, so the
+native source remains an untrusted draft until the exact branch is published
+and the macOS workflow passes. Do not configure signing or App Store Connect
+secrets before that compile gate.
+
+Next authority boundary: Greg must explicitly authorize publishing the current
+public branch so the secret-free GitHub macOS workflow can run. If it passes,
+the next separately approved step is registered bundle IDs + App Group and an
+encrypted App Store Connect/TestFlight signing workflow. Never ask Greg to send
+Apple passwords, verification codes, private keys, or certificates in chat.
+
+## Automatic meal photos Phase 1: native feasibility spike (PARTIAL, 2026-08-02)
+
+The throwaway spike lives outside the repository at
+`.tmp/openclaw-spikes/automatic-meal-photo-ios/`; it did not add production
+native code, dependencies, schema, storage, credentials, or deployment state.
+
+Apple's current PhotoKit documentation confirms the intended product path:
+
+- the host app requests full read-write Photos authorization once and then
+  explicitly enables the background resource-upload extension;
+- the extension can use `fetchPersistentChanges(since:)` plus an App Group
+  token to discover new library assets while the app is not open;
+- download-only jobs make an iCloud-backed resource locally available for
+  on-device food classification before any upload job is created;
+- selected `PHAssetResource` values can then become system-managed upload jobs;
+  scheduling remains controlled by iOS and is unavailable in Simulator;
+- iOS 26.1 uses `PHBackgroundResourceUploadExtension`; iOS 27+ uses the async
+  `PHBackgroundResourceUploadJobExtension`.
+
+The runnable state model passes 7/7 tests for full-permission fail-closed
+behavior, non-food privacy, invalid classifier output, content-hash dedupe,
+write-ahead persistence, retry/restart with a stable idempotency key, bounded
+failure, capture ordering, and metadata minimization. A raw loopback HTTP probe
+passes 2/2 tests for Apple's documented `OPTIONS` capability response and
+interim `104 Upload Resumption Supported` followed by final `201` sequence.
+
+The overall verdict is **PARTIAL**. This Linux host has Node 24 but no Swift,
+Xcode, or iOS device runner, and Apple requires physical-device testing. There
+is also an unresolved upload boundary: the current Next.js Web `Response`
+rejects status 104 and Vercel does not document arbitrary 1xx passthrough. Do
+not assume the existing meal upload route can terminate Apple's resumable
+protocol. On physical hardware, first test whether Apple's documented `501`
+non-resumable preflight is accepted; if not, the design needs a narrow upload
+gateway that controls the raw HTTP response before forwarding a private object
+to the existing backend. A new gateway or provider is a separate architecture,
+security, cost, and approval decision.
+
+Next proof must run from Xcode on a physical iPhone and cover extension
+enable/disable, persistent changes, download-only classification, App Group
+state, scoped authentication/revocation, offline/restart, iCloud-only assets,
+latency/battery, non-food non-upload, and the real server handshake. Keep
+automatic canonical meal writes disabled; the first connected pilot remains
+review-first.
+
+## Automatic meal photos Phase 0: strict shared analysis boundary (implemented locally, 2026-08-02)
+
+Greg approved starting the automatic meal-photo QPlan after the Codex
+Bubblewrap/AppArmor repair passed. Work is on clean feature branch
+`codex/automatic-meal-photos-phase0`, based on `origin/main` commit
+`d64a065`. The branch is intentionally uncommitted and unpublished pending
+Greg's next release instruction.
+
+- `app/lib/nutrition/meal-photo-analysis.ts` now owns the provider-neutral
+  vision prompt, JSON extraction, item count and string bounds, finite
+  non-negative per-item and total macro bounds, confidence bounds, and canonical
+  total recomputation from individually validated items.
+- Both `/api/meals/upload` and the older `/api/meals/analyze` path use that
+  shared boundary. Model-supplied totals are validated but never persisted as
+  authority; the app recomputes totals from validated items.
+- The upload route rejects malformed, empty, non-finite, negative, or
+  out-of-range analysis before opening the `meals` table. Provider failures
+  also fail before a meal write. Valid low-confidence output remains
+  review-gated.
+- Meal-photo logs now contain a request ID, stage, safe error code/type, item
+  count, and review state only. Raw model output, filenames, stable user IDs,
+  database messages, and nutrition values were removed from this route's logs.
+- Regression coverage proves canonical recomputation, rejection before table
+  access, low-confidence review, provider failure behavior, and that private
+  model text is not logged. The legacy integration assertion that `{}` should
+  create an empty meal was corrected to the fail-closed contract.
+- The architecture map records the shared boundary. No schema, migration,
+  dependency, credential, environment, storage, cron, native iOS, or production
+  state changed.
+
+Verification on Node 24:
+
+- Focused final regression: 5 files / 48 tests passed.
+- Broader meal-photo/refine regression earlier in the pass: 6 files / 56 tests
+  passed.
+- Full Vitest: 196 files and 2,257 tests passed; 5 files / 7 tests were the
+  existing environment-gated skips.
+- Strict TypeScript with incremental output disabled, lint with no warnings or
+  errors, and `git diff --check` passed.
+- The first build compiled and type-checked but correctly stopped during
+  prerender because the clean shell lacked public Supabase variables. The
+  established placeholder-backed rerun completed the Serwist production build
+  and generated all 76 routes, including both meal-photo APIs, without
+  contacting production.
+
+Review/verification were separate passes in the main thread; no subagents were
+used because Greg did not request delegation. Beads could not be updated because
+`bd` is unavailable. Remaining product work is the physical-device iOS spike,
+private ingestion queue/storage design, and review-first native pilot from the
+approved QPlan; those are not part of this Phase 0 branch.
+
 ## Wave 1 core reliability release (production-deployed, 2026-08-01)
 
 Released through PR #63 as exact `main` commit `f4717a4`, from source commit

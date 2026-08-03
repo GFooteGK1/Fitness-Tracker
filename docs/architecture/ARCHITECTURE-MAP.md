@@ -193,10 +193,32 @@ Adherence Tracking:
 └─ adherence-calculator.ts (`app/lib/adherence-calculator.ts`)
 ```
 
+### **Native Automatic Meal Photos (local compile harness; not deployed):**
+```
+Apple Camera
+  └─ PhotoKit background-upload extension (`ios/BackgroundUpload`)
+       ├─ full read-write authorization + enable/disable host UI (`ios/App`)
+       ├─ deterministic pending/processed ledger (`ios/Shared`)
+       ├─ future on-device food gate (not implemented)
+       └─ future private review-first ingestion endpoint (not implemented)
+```
+
+ADR-0005 owns this boundary. The current native target is deliberately inert:
+the extension returns `.completed` without discovering, downloading,
+classifying, or uploading a photo. A credential-free GitHub macOS workflow
+generates the project from `ios/project.yml`, runs the pure ledger tests, and
+compiles the app and extension without signing. App Store Connect, TestFlight,
+App Groups, device credentials, server ingestion, and automatic meal creation
+remain outside the active runtime.
+
 ### **Utility Libraries:**
 - **Storage** (`app/lib/storage.ts`) - File management
 - **Meal Storage** (`app/lib/meal-storage.ts`) - Meal data persistence
 - **Macro Validation** (`app/lib/macro-validation.ts`) - Nutrition validation
+- **Meal Photo Analysis** (`app/lib/nutrition/meal-photo-analysis.ts`) -
+  provider-neutral vision prompt plus one bounded parser that validates every
+  item, total, and confidence value and recomputes canonical totals before the
+  upload or analyze route can persist nutrition data
 - **Offline Queue** (`app/lib/offline-queue.ts`) - Offline support
 
 ### **Dependencies:**
@@ -361,7 +383,7 @@ User → Form Component → AuthContext.updateProfile() → API Route → Supaba
 
 ### **Food Tracking Flow:**
 ```
-User → Camera → Upload API → AI Analysis → Meal Storage → Progress Views
+User → Camera → Upload API → Strict Shared Photo Analysis → Meal Storage → Progress Views
 ```
 
 ### **Workout Tracking Flow:**
