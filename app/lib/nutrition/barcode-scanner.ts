@@ -17,7 +17,6 @@ type ScannerErrorHandler = (error: BarcodeDecoderError) => void
 const SCAN_INTERVAL_MS = 250
 const MAX_CONSECUTIVE_NATIVE_ERRORS = 3
 const NATIVE_NO_RESULT_TIMEOUT_MS = 3_000
-const VIDEO_READY_TIMEOUT_MS = 4_000
 const BARCODE_FORMAT_NAMES = ['ean_8', 'ean_13', 'upc_a', 'upc_e']
 
 export class BarcodeDecoderError extends Error {
@@ -49,45 +48,8 @@ async function nativeDetectorSupportsRequestedFormats(
   }
 }
 
-function waitForVideoFrame(video: HTMLVideoElement): Promise<void> {
-  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
-    return Promise.resolve()
-  }
-
-  return new Promise((resolve, reject) => {
-    let settled = false
-    const cleanup = () => {
-      video.removeEventListener('loadedmetadata', check)
-      video.removeEventListener('canplay', check)
-      video.removeEventListener('playing', check)
-      clearTimeout(timeout)
-    }
-    const finish = (error?: Error) => {
-      if (settled) return
-      settled = true
-      cleanup()
-      if (error) reject(error)
-      else resolve()
-    }
-    const check = () => {
-      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
-        finish()
-      }
-    }
-    const timeout = setTimeout(() => {
-      finish(new BarcodeDecoderError())
-    }, VIDEO_READY_TIMEOUT_MS)
-
-    video.addEventListener('loadedmetadata', check)
-    video.addEventListener('canplay', check)
-    video.addEventListener('playing', check)
-    check()
-  })
-}
-
 async function startNativeDecoder(
   Detector: BarcodeDetectorConstructor,
-  stream: MediaStream,
   video: HTMLVideoElement,
   onDetected: (value: string) => void,
   onPersistentError: (error: unknown) => void,
@@ -161,6 +123,69 @@ async function startZxingDecoder(
   }
 }
 
+async function createZxingImageReader() {
+  const [{ BrowserMultiFormatOneDReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all([
+    import('@zxing/browser'),
+    import('@zxing/library'),
+  ])
+  const hints = new Map()
+  hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+    BarcodeFormat.EAN_8,
+    BarcodeFormat.EAN_13,
+    BarcodeFormat.UPC_A,
+    BarcodeFormat.UPC_E,
+  ])
+  hints.set(DecodeHintType.TRY_HARDER, true)
+  return new BrowserMultiFormatOneDReader(hints)
+}
+
+/**
+ * Decodes a barcode photo without uploading or retaining the image.
+ *
+ * The photo path is the reliable iPhone fallback for browsers and installed
+ * Home Screen apps whose live MediaStream preview is inconsistent.
+ */
+export async function decodeBarcodeImage(file: Blob): Promise<string | null> {
+  const imageUrl = URL.createObjectURL(file)
+  try {
+    const image = new Image()
+    image.decoding = 'async'
+    const loaded = new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve()
+      image.onerror = () => reject(new BarcodeDecoderError())
+    })
+    image.src = imageUrl
+    await loaded
+
+    const reader = await createZxingImageReader()
+    try {
+      const result = await reader.decodeFromImageElement(image)
+      return result.getText() || null
+    } catch {
+      // A scaled canvas gives the decoder a second bounded attempt for large
+      // iPhone photos without retaining or sending the original image.
+    }
+
+    const maxDimension = 2_000
+    const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+    const context = canvas.getContext('2d')
+    if (!context) return null
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+    try {
+      const result = reader.decodeFromCanvas(canvas)
+      return result.getText() || null
+    } catch {
+      return null
+    }
+  } finally {
+    URL.revokeObjectURL(imageUrl)
+  }
+}
+
 /**
  * Starts UPC/EAN decoding for an already-authorized camera stream.
  *
@@ -174,19 +199,6 @@ export async function startBarcodeDecoder(
   onDetected: (value: string) => void,
   onError: ScannerErrorHandler = () => {},
 ): Promise<ScannerStop> {
-  // Start the preview before loading either decoder. The ZXing fallback is
-  // loaded lazily, and installed iOS can otherwise show a black video element
-  // while those chunks load even though the camera stream is already active.
-  video.srcObject = stream
-  video.muted = true
-  video.playsInline = true
-  try {
-    await video.play()
-    await waitForVideoFrame(video)
-  } catch {
-    throw new BarcodeDecoderError()
-  }
-
   let activeStop: ScannerStop | null = null
   let stopped = false
   let detected = false
@@ -218,6 +230,8 @@ export async function startBarcodeDecoder(
   const startRuntimeFallback = async () => {
     if (stopped || detected || fallbackStarting) return
     fallbackStarting = true
+    activeStop?.()
+    activeStop = null
     try {
       const fallbackStop = await startZxingDecoder(stream, video, handleDetected)
       if (stopped || detected) {
@@ -233,9 +247,15 @@ export async function startBarcodeDecoder(
   const Detector = nativeBarcodeDetector()
   if (Detector && await nativeDetectorSupportsRequestedFormats(Detector)) {
     try {
+      // Native detection reads our preview directly. ZXing owns the video
+      // element on its path, so the two implementations do not both attach
+      // and play the same iOS media element.
+      video.srcObject = stream
+      video.muted = true
+      video.playsInline = true
+      await video.play()
       activeStop = await startNativeDecoder(
         Detector,
-        stream,
         video,
         handleDetected,
         () => void startRuntimeFallback(),

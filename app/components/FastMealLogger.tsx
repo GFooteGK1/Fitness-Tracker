@@ -8,7 +8,7 @@ import {
   scaleNutrition,
   type FoodCatalogDraft,
 } from '@/app/lib/nutrition/barcode'
-import { startBarcodeDecoder } from '@/app/lib/nutrition/barcode-scanner'
+import { decodeBarcodeImage, startBarcodeDecoder } from '@/app/lib/nutrition/barcode-scanner'
 import type { CommonMeal } from '@/app/lib/nutrition/fast-log'
 import { fetchWithTimeout, RequestTimeoutError } from '@/app/lib/client/fetch-with-timeout'
 
@@ -69,7 +69,9 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
   const [loggingFood, setLoggingFood] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [scannerStarting, setScannerStarting] = useState(false)
+  const [barcodePhotoDecoding, setBarcodePhotoDecoding] = useState(false)
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const barcodePhotoInputRef = useRef<HTMLInputElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const decoderStopRef = useRef<null | (() => void)>(null)
   const scannerActiveRef = useRef(false)
@@ -231,6 +233,27 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
     }
   }, [lookupBarcode, showError, stopScanner])
 
+  const handleBarcodePhoto = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    setBarcodePhotoDecoding(true)
+    setLookupStatus('Reading barcode photo...')
+    try {
+      const code = await decodeBarcodeImage(file)
+      if (!code) {
+        showError('Barcode not found in photo. Try a closer, well-lit photo or enter the code manually.')
+        return
+      }
+      await lookupBarcode(code)
+    } catch {
+      showError('Barcode photo could not be read. Try again or enter the code manually.')
+    } finally {
+      setBarcodePhotoDecoding(false)
+    }
+  }, [lookupBarcode, showError])
+
   const logCommonMeal = async (meal: CommonMeal) => {
     const retryRequestId = commonRequestIdsRef.current.get(meal.sourceMealId) || requestId()
     commonRequestIdsRef.current.set(meal.sourceMealId, retryRequestId)
@@ -361,6 +384,14 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
           </label>
           <button
             type="button"
+            onClick={() => barcodePhotoInputRef.current?.click()}
+            disabled={barcodePhotoDecoding || scannerOpen}
+            className="min-h-12 rounded-lg bg-blue-600 px-4 font-semibold text-white hover:bg-blue-700 disabled:bg-gray-400"
+          >
+            {barcodePhotoDecoding ? 'Reading photo...' : 'Scan UPC'}
+          </button>
+          <button
+            type="button"
             onClick={() => void lookupBarcode(barcodeInput)}
             disabled={lookingUp || !barcodeInput.trim()}
             className="min-h-12 rounded-lg bg-blue-600 px-4 font-semibold text-white hover:bg-blue-700 disabled:bg-gray-400"
@@ -370,12 +401,26 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
           <button
             type="button"
             onClick={() => void startScanner()}
-            disabled={scannerStarting || scannerOpen}
-            className="min-h-12 rounded-lg border-2 border-blue-600 px-4 font-semibold text-blue-700 disabled:border-gray-400 disabled:text-gray-400 dark:text-blue-300"
+            disabled={scannerStarting || scannerOpen || barcodePhotoDecoding}
+            className="min-h-12 rounded-lg border-2 border-gray-400 px-4 font-semibold text-gray-700 disabled:border-gray-300 disabled:text-gray-400 dark:border-gray-600 dark:text-gray-200"
           >
-            {scannerStarting ? 'Starting...' : scannerOpen ? 'Scanning...' : 'Scan UPC'}
+            {scannerStarting ? 'Starting...' : scannerOpen ? 'Scanning...' : 'Live scan'}
           </button>
         </div>
+
+        <input
+          ref={barcodePhotoInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          aria-label="Barcode photo"
+          onChange={event => void handleBarcodePhoto(event)}
+          style={{ display: 'none' }}
+        />
+
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Scan UPC takes one photo and reads it on this device. Live scan keeps the camera open when supported.
+        </p>
 
         <button
           type="button"
@@ -387,8 +432,8 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
 
         {scannerOpen && (
           <div className="mt-3 rounded-lg bg-black p-2">
-            <div className="relative overflow-hidden rounded">
-              <video ref={videoRef} aria-label="Barcode camera preview" autoPlay playsInline muted className="max-h-64 w-full object-cover" />
+            <div className="relative aspect-video min-h-48 overflow-hidden rounded bg-black">
+              <video ref={videoRef} aria-label="Barcode camera preview" autoPlay playsInline muted className="h-full min-h-48 w-full object-cover" />
               <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-1/2 max-w-48 -translate-x-1/2 -translate-y-1/2 rounded-xl border-2 border-white/90 shadow-[0_0_0_999px_rgba(0,0,0,0.18)]">
                 <span className="absolute left-4 right-4 top-1/2 h-0.5 -translate-y-1/2 bg-white/70" />
                 <span className="absolute bottom-4 left-1/2 top-4 w-0.5 -translate-x-1/2 bg-white/70" />

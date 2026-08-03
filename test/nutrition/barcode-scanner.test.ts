@@ -2,18 +2,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const zxingMocks = vi.hoisted(() => ({
-  constructorArgs: [] as Array<[Map<unknown, unknown>, Record<string, number>]>,
+  constructorArgs: [] as Array<[Map<unknown, unknown>, Record<string, number> | undefined]>,
   decodeFromStream: vi.fn(),
+  decodeFromImageElement: vi.fn(),
+  decodeFromCanvas: vi.fn(),
   stop: vi.fn(),
 }))
 
 vi.mock('@zxing/browser', () => ({
   BrowserMultiFormatOneDReader: class BrowserMultiFormatOneDReader {
-    constructor(hints: Map<unknown, unknown>, options: Record<string, number>) {
+    constructor(hints: Map<unknown, unknown>, options?: Record<string, number>) {
       zxingMocks.constructorArgs.push([hints, options])
     }
 
     decodeFromStream = zxingMocks.decodeFromStream
+    decodeFromImageElement = zxingMocks.decodeFromImageElement
+    decodeFromCanvas = zxingMocks.decodeFromCanvas
   },
 }))
 
@@ -30,7 +34,7 @@ vi.mock('@zxing/library', () => ({
   },
 }))
 
-import { startBarcodeDecoder } from '@/app/lib/nutrition/barcode-scanner'
+import { decodeBarcodeImage, startBarcodeDecoder } from '@/app/lib/nutrition/barcode-scanner'
 
 function createReadyVideo(): HTMLVideoElement {
   const video = document.createElement('video')
@@ -46,6 +50,8 @@ describe('startBarcodeDecoder', () => {
   beforeEach(() => {
     zxingMocks.constructorArgs.length = 0
     zxingMocks.decodeFromStream.mockReset()
+    zxingMocks.decodeFromImageElement.mockReset()
+    zxingMocks.decodeFromCanvas.mockReset()
     zxingMocks.stop.mockReset()
     zxingMocks.decodeFromStream.mockResolvedValue({ stop: zxingMocks.stop })
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
@@ -77,7 +83,7 @@ describe('startBarcodeDecoder', () => {
     stop()
   })
 
-  it('lazily falls back to ZXing with rotated-frame retry for UPC and EAN formats', async () => {
+  it('lets ZXing own the live preview when native detection is unavailable', async () => {
     vi.stubGlobal('BarcodeDetector', undefined)
     const stream = {} as MediaStream
     const video = createReadyVideo()
@@ -90,11 +96,6 @@ describe('startBarcodeDecoder', () => {
 
     const stop = await startBarcodeDecoder(stream, video, onDetected)
 
-    expect(video.srcObject).toBe(stream)
-    expect(video.play).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(video.play).mock.invocationCallOrder[0]).toBeLessThan(
-      zxingMocks.decodeFromStream.mock.invocationCallOrder[0],
-    )
     expect(zxingMocks.decodeFromStream).toHaveBeenCalledWith(stream, video, expect.any(Function))
     const [hints, options] = zxingMocks.constructorArgs[0]
     expect(hints.get('POSSIBLE_FORMATS')).toEqual(['EAN_8', 'EAN_13', 'UPC_A', 'UPC_E'])
@@ -107,29 +108,28 @@ describe('startBarcodeDecoder', () => {
     expect(zxingMocks.stop).toHaveBeenCalledTimes(1)
   })
 
-  it('waits for actual video metadata before starting the decoder', async () => {
-    vi.stubGlobal('BarcodeDetector', undefined)
-    const video = document.createElement('video')
-    Object.defineProperties(video, {
-      readyState: { configurable: true, value: 0, writable: true },
-      videoWidth: { configurable: true, value: 0, writable: true },
-      videoHeight: { configurable: true, value: 0, writable: true },
+  it('decodes a captured barcode image in memory and revokes its object URL', async () => {
+    const createObjectURL = vi.fn(() => 'blob:barcode-photo')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+    vi.stubGlobal('Image', class FakeImage {
+      naturalWidth = 1200
+      naturalHeight = 800
+      decoding = ''
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      set src(_value: string) {
+        queueMicrotask(() => this.onload?.())
+      }
     })
-    vi.spyOn(video, 'play').mockResolvedValue()
-    const startPromise = startBarcodeDecoder({} as MediaStream, video, vi.fn())
+    zxingMocks.decodeFromImageElement.mockResolvedValue({ getText: () => '012345678905' })
 
-    await Promise.resolve()
-    expect(zxingMocks.decodeFromStream).not.toHaveBeenCalled()
+    await expect(decodeBarcodeImage(new Blob(['barcode'], { type: 'image/jpeg' }))).resolves.toBe('012345678905')
 
-    Object.defineProperties(video, {
-      readyState: { configurable: true, value: 4, writable: true },
-      videoWidth: { configurable: true, value: 1280, writable: true },
-      videoHeight: { configurable: true, value: 720, writable: true },
-    })
-    video.dispatchEvent(new Event('playing'))
-    await startPromise
-
-    expect(zxingMocks.decodeFromStream).toHaveBeenCalledTimes(1)
+    expect(createObjectURL).toHaveBeenCalledTimes(1)
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:barcode-photo')
+    expect(zxingMocks.decodeFromImageElement).toHaveBeenCalledTimes(1)
+    expect(zxingMocks.decodeFromCanvas).not.toHaveBeenCalled()
   })
 
   it('keeps native scanning after an isolated frame failure', async () => {
