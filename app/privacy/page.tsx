@@ -14,7 +14,7 @@ export default function PrivacyPage() {
 
         <div className="prose prose-blue max-w-none">
           <p className="text-sm text-gray-500 mb-6">
-            Last updated: January 25, 2026
+            Last updated: August 3, 2026
           </p>
 
           <section className="mb-8">
@@ -37,6 +37,7 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 text-gray-700 mb-4 space-y-2">
               <li>Workout logs and exercise data</li>
               <li>Nutrition tracking and meal photos</li>
+              <li>Voice recordings submitted for meal transcription</li>
               <li>Progress metrics and personal records</li>
             </ul>
 
@@ -90,6 +91,11 @@ export default function PrivacyPage() {
               We use Anthropic&apos;s Claude AI to parse workout descriptions, analyze meal photos, and generate fitness insights. Your data is sent to Anthropic&apos;s API for processing but is not used to train their models.
             </p>
 
+            <h3 className="text-lg font-medium text-gray-900 mb-3">OpenAI</h3>
+            <p className="text-gray-700 mb-4">
+              When voice fallback is used for meal entry, the recording is sent to OpenAI&apos;s transcription API to produce text. SociusFit does not store the audio recording; the resulting meal text is saved only when you submit it for meal analysis.
+            </p>
+
             <h3 className="text-lg font-medium text-gray-900 mb-3">Supabase</h3>
             <p className="text-gray-700 mb-4">
               We use Supabase for database hosting and authentication. Supabase is SOC 2 Type II certified and complies with GDPR.
@@ -124,7 +130,7 @@ export default function PrivacyPage() {
           <section className="mb-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Data Sharing</h2>
             <p className="text-gray-700 mb-4">
-              We do not sell, rent, or share your personal data with third parties for marketing purposes. Your data is only shared with the third-party services mentioned above (Anthropic, Supabase, Vercel, WHOOP) to provide our services.
+              We do not sell, rent, or share your personal data with third parties for marketing purposes. Your data is only shared with the third-party services mentioned above (Anthropic, OpenAI, Supabase, Vercel, WHOOP) to provide our services.
             </p>
           </section>
 

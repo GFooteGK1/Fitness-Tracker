@@ -70,6 +70,48 @@ export function getMealTimestamp(selectedDate?: Date, now: Date = new Date()): U
   ).toISOString()
 }
 
+/**
+ * Converts a local calendar date and clock time to a UTC timestamp using the
+ * agent timezone convention: local time = UTC + tzOffset.
+ *
+ * The agent client sends the negated Date#getTimezoneOffset() value (for
+ * example, -300 for CDT), so converting local time back to UTC subtracts the
+ * supplied offset.
+ */
+export function localDateTimeToUTC(
+  dateStr: DateString,
+  timeStr: string,
+  tzOffset: TimezoneOffset
+): UTCTimestamp {
+  const dateParts = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const timeParts = timeStr.match(/^(\d{1,2}):(\d{2})$/)
+
+  if (!dateParts || !timeParts || !isValidTimezoneOffset(tzOffset)) {
+    throw new RangeError('Invalid local date, time, or timezone offset')
+  }
+
+  const year = Number(dateParts[1])
+  const monthIndex = Number(dateParts[2]) - 1
+  const day = Number(dateParts[3])
+  const hour = Number(timeParts[1])
+  const minute = Number(timeParts[2])
+
+  if (hour > 23 || minute > 59) {
+    throw new RangeError('Invalid local date, time, or timezone offset')
+  }
+
+  const localDate = new Date(Date.UTC(year, monthIndex, day, hour, minute))
+  if (
+    localDate.getUTCFullYear() !== year
+    || localDate.getUTCMonth() !== monthIndex
+    || localDate.getUTCDate() !== day
+  ) {
+    throw new RangeError('Invalid local date, time, or timezone offset')
+  }
+
+  return new Date(localDate.getTime() - tzOffset * 60000).toISOString()
+}
+
 function parseDateParts(dateStr: DateString): { year: number; monthIndex: number; day: number } {
   const [year, month, day] = dateStr.split('-').map(Number)
   return { year, monthIndex: month - 1, day }

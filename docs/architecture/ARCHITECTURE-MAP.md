@@ -228,8 +228,9 @@ remain outside the active runtime.
   LLM or mutable common-meal template is involved
 - Barcode/label facts are review-gated and stored in private
   `food_catalog_entries`; logged meal items retain immutable macro snapshots
-- Native UPC/EAN scanning is progressively enhanced with manual barcode and
-  manual-label fallbacks
+- iPhone UPC/EAN capture uses an in-memory native photo path with local ZXing
+  decoding; live scanning is progressive enhancement, with manual barcode and
+  manual-label fallbacks always available
 - **Database Tables**: `meals`, `food_catalog_entries`, `daily_targets`, `daily_summaries`
 - **Types**: `app/lib/types/food-tracking.ts`
 

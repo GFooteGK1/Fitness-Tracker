@@ -24,6 +24,7 @@ import {
   formatUTCAsLocalDate,
   formatUTCAsLocalDateWithOffset,
   getMealTimestamp,
+  localDateTimeToUTC,
 } from '@/app/lib/timezone-utils'
 
 describe('getLocalDate', () => {
@@ -169,6 +170,21 @@ describe('getMealTimestamp', () => {
     expect(result.getMinutes()).toBe(30)
     expect(result.getSeconds()).toBe(45)
     expect(result.getMilliseconds()).toBe(123)
+  })
+})
+
+describe('localDateTimeToUTC', () => {
+  it('converts a CDT local meal time to UTC using the agent offset convention', () => {
+    expect(localDateTimeToUTC('2026-08-03', '14:30', -300)).toBe('2026-08-03T19:30:00.000Z')
+  })
+
+  it('handles a local date crossing midnight in UTC', () => {
+    expect(localDateTimeToUTC('2026-08-03', '00:15', 840)).toBe('2026-08-02T10:15:00.000Z')
+  })
+
+  it('rejects invalid date and time values', () => {
+    expect(() => localDateTimeToUTC('2026-02-30', '12:00', -300)).toThrow(RangeError)
+    expect(() => localDateTimeToUTC('2026-08-03', '24:00', -300)).toThrow(RangeError)
   })
 })
 

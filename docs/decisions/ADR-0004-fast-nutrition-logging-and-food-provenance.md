@@ -46,11 +46,13 @@ catalog before the public service. Open Food Facts is attributed in the review
 UI. A product is never logged directly from a provider response: the athlete
 must review the serving and macros first.
 
-The client uses the native Barcode Detection API when it is available and asks
-only for UPC/EAN formats. Manual barcode entry and full manual-label entry are
-always present, so unsupported browsers and provider misses do not block
-logging. A camera-scanner dependency is deferred until real browser coverage
-shows that the native-plus-manual path is insufficient.
+The primary iPhone path uses the native camera/photo capture control and decodes
+the resulting image locally with the existing UPC/EAN-only ZXing reader. The
+image is held in memory for the bounded decode attempt, then released; it is
+never uploaded or retained. A live camera scanner remains a progressive
+enhancement, but it must not block the capture path. Manual barcode entry and
+full manual-label entry are always present, so unsupported browsers, camera
+failures, and provider misses do not block logging.
 
 ### Application code computes every logged value
 

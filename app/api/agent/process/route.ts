@@ -219,7 +219,7 @@ function createNutritionistCaller(
     try {
       const tzOffset = (request as AgentRequest).tz_offset ?? 0
       const ctx = await buildNutritionistContext(userId, tzOffset)
-      const response = await callNutritionistAgent(ctx, content, supabase, userId)
+      const response = await callNutritionistAgent(ctx, content, supabase, userId, tzOffset)
 
       // Check if tools already handled persistence
       const toolPersistedMeal = response._toolCalls?.find(

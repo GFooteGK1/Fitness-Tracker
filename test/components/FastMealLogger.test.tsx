@@ -6,6 +6,7 @@ import '@testing-library/jest-dom'
 
 const barcodeScannerMocks = vi.hoisted(() => ({
   startBarcodeDecoder: vi.fn(),
+  decodeBarcodeImage: vi.fn(),
 }))
 
 vi.mock('@/app/lib/nutrition/barcode-scanner', () => barcodeScannerMocks)
@@ -36,6 +37,7 @@ describe('FastMealLogger', () => {
   beforeEach(() => {
     vi.stubGlobal('crypto', { randomUUID: vi.fn(() => requestId) })
     barcodeScannerMocks.startBarcodeDecoder.mockReset()
+    barcodeScannerMocks.decodeBarcodeImage.mockReset()
   })
 
   afterEach(() => {
@@ -163,7 +165,43 @@ describe('FastMealLogger', () => {
     })
   })
 
-  it('opens the camera when native barcode detection is unavailable', async () => {
+  it('uses the native barcode photo capture path before the live scanner', async () => {
+    barcodeScannerMocks.decodeBarcodeImage.mockResolvedValue('012345678905')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.startsWith('/api/meals/common')) return jsonResponse({ meals: [] })
+      if (url.startsWith('/api/foods/barcode')) {
+        return jsonResponse({
+          origin: 'provider',
+          food: {
+            ...manualDraftForTest,
+            name: 'Captured product',
+            barcode: '012345678905',
+          },
+        })
+      }
+      return jsonResponse({})
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('navigator', {})
+    render(<FastMealLogger />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+    const input = screen.getByLabelText('Barcode photo')
+    const file = new File(['barcode'], 'barcode.jpg', { type: 'image/jpeg' })
+    expect(input).toHaveAttribute('capture', 'environment')
+    fireEvent.change(input, { target: { files: [file] } })
+
+    await waitFor(() => expect(barcodeScannerMocks.decodeBarcodeImage).toHaveBeenCalledWith(file))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/foods/barcode?code=012345678905',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    ))
+    expect(await screen.findByDisplayValue('Captured product')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Live scan' })).toBeEnabled()
+  })
+
+  it('opens the live camera when requested', async () => {
     const stopTrack = vi.fn()
     const stopDecoder = vi.fn()
     const stream = {
@@ -177,7 +215,7 @@ describe('FastMealLogger', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ meals: [] })))
     render(<FastMealLogger />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Live scan' }))
 
     await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(1))
     expect(getUserMedia).toHaveBeenCalledWith({
@@ -203,7 +241,7 @@ describe('FastMealLogger', () => {
     expect(screen.queryByLabelText('Barcode camera preview')).not.toBeInTheDocument()
   })
 
-  it('mounts the preview before requesting camera permission', async () => {
+  it('mounts the live preview before requesting camera permission', async () => {
     const stopTrack = vi.fn()
     const stopDecoder = vi.fn()
     const stream = { getTracks: () => [{ stop: stopTrack }] }
@@ -217,7 +255,7 @@ describe('FastMealLogger', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ meals: [] })))
     render(<FastMealLogger />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Live scan' }))
 
     await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(1))
     expect(previewPresentAtRequest).toBe(true)
@@ -239,7 +277,7 @@ describe('FastMealLogger', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ meals: [] })))
     render(<FastMealLogger />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Live scan' }))
     await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(1))
     fireEvent.click(screen.getByRole('button', { name: 'Cancel scan' }))
 
@@ -279,7 +317,7 @@ describe('FastMealLogger', () => {
     vi.stubGlobal('fetch', fetchMock)
     render(<FastMealLogger />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Live scan' }))
     await waitFor(() => expect(onDetected).toBeTypeOf('function'))
     await act(async () => {
       onDetected?.('012345678905')
@@ -296,7 +334,7 @@ describe('FastMealLogger', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ meals: [] })))
     render(<FastMealLogger />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Live scan' }))
 
     expect(await screen.findByText('Camera barcode scanning is not supported here. Enter the code manually.')).toBeInTheDocument()
     expect(screen.getByLabelText('UPC or EAN barcode')).toBeInTheDocument()
@@ -309,12 +347,12 @@ describe('FastMealLogger', () => {
     const onError = vi.fn()
     render(<FastMealLogger onError={onError} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Live scan' }))
 
     const message = 'Camera permission was denied. Allow camera access in browser settings and try again.'
     expect(await screen.findByText(message)).toBeInTheDocument()
     expect(onError).toHaveBeenCalledWith(message)
-    expect(screen.getByRole('button', { name: 'Scan UPC' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Live scan' })).toBeEnabled()
   })
 
   it('keeps the manual fallback available when barcode recognition cannot start', async () => {
@@ -330,13 +368,13 @@ describe('FastMealLogger', () => {
     const onError = vi.fn()
     render(<FastMealLogger onError={onError} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Live scan' }))
 
     const message = 'Barcode recognition could not start. Enter the code manually.'
     expect(await screen.findByText(message)).toBeInTheDocument()
     expect(onError).toHaveBeenCalledWith(message)
     expect(stopTrack).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('button', { name: 'Scan UPC' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Live scan' })).toBeEnabled()
     expect(screen.getByLabelText('UPC or EAN barcode')).toBeInTheDocument()
   })
 
@@ -356,7 +394,7 @@ describe('FastMealLogger', () => {
     const onError = vi.fn()
     render(<FastMealLogger onError={onError} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Scan UPC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Live scan' }))
     await waitFor(() => expect(onDecoderError).toBeTypeOf('function'))
     await act(async () => onDecoderError?.())
 

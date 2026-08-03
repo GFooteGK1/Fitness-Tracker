@@ -12,6 +12,7 @@ import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
 import { getCoachReference } from '@/app/lib/coach/reference'
 import { deriveStrengthAssessment } from '@/app/lib/coach/policy'
 import type { LoadUnit, SupportedRepMax } from '@/app/lib/coach/types'
+import { localDateTimeToUTC } from '@/app/lib/timezone-utils'
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -21,13 +22,19 @@ export interface ToolResult {
   error?: string
 }
 
+export interface ToolExecutionContext {
+  /** Agent convention: local time = UTC + tzOffset. */
+  tzOffset?: number
+}
+
 // ─── Main Dispatcher ───────────────────────────────────────────────────
 
 export async function executeToolCall(
   toolName: string,
   toolInput: Record<string, unknown>,
   userId: string,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  context?: ToolExecutionContext
 ): Promise<ToolResult> {
   try {
     switch (toolName) {
@@ -50,7 +57,7 @@ export async function executeToolCall(
       case 'update_workout':
         return await executeUpdateWorkout(toolInput, userId, supabase)
       case 'log_meal':
-        return await executeLogMeal(toolInput, userId, supabase)
+        return await executeLogMeal(toolInput, userId, supabase, context?.tzOffset ?? 0)
       case 'query_meals':
         return await executeQueryMeals(toolInput, userId, supabase)
       case 'update_meal':
@@ -509,7 +516,8 @@ export function normalizeMealTiming(timing: string | undefined): string {
 async function executeLogMeal(
   input: Record<string, unknown>,
   userId: string,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  tzOffset: number
 ): Promise<ToolResult> {
   const mealDate = input.meal_date as string
   const items = input.items as Array<{
@@ -521,14 +529,14 @@ async function executeLogMeal(
     return { success: false, error: 'meal_date and items are required' }
   }
 
-  // Construct timestamp from date + optional time.
-  // Validate and normalize meal_time to HH:MM format, then append UTC suffix.
+  // Construct the stored UTC timestamp from the user's local date and time.
   const rawTime = (input.meal_time as string) ?? '12:00'
-  const timeParts = rawTime.match(/^(\d{1,2}):(\d{2})/)
-  const mealTime = timeParts
-    ? `${timeParts[1].padStart(2, '0')}:${timeParts[2]}`
-    : '12:00'
-  const mealTimestamp = `${mealDate}T${mealTime}:00Z`
+  let mealTimestamp: string
+  try {
+    mealTimestamp = localDateTimeToUTC(mealDate, rawTime, tzOffset)
+  } catch {
+    return { success: false, error: 'Invalid meal date or time' }
+  }
 
   // Calculate totals from items
   const totals = items.reduce(

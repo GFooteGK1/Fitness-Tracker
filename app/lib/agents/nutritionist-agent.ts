@@ -41,7 +41,8 @@ export async function callNutritionistAgent(
   ctx: NutritionistContext,
   userInput: string,
   supabase?: SupabaseClient,
-  userId?: string
+  userId?: string,
+  tzOffset = 0
 ): Promise<NutritionistResponseWithTools> {
   const systemPrompt = buildNutritionistPrompt(ctx)
 
@@ -53,6 +54,7 @@ export async function callNutritionistAgent(
       tools: NUTRITIONIST_TOOLS,
       userId,
       supabase,
+      tzOffset,
       maxRounds: 3
     })
 
