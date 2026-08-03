@@ -34,13 +34,13 @@ jobs:
           curl --fail --location --silent --show-error "$XCODEGEN_URL" --output /tmp/xcodegen.zip
           echo "$XCODEGEN_SHA256  /tmp/xcodegen.zip" | shasum --algorithm 256 --check
           unzip -q /tmp/xcodegen.zip -d /tmp/xcodegen
-          echo "/tmp/xcodegen/bin" >> "$GITHUB_PATH"
+          echo "/tmp/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"
 
       - name: Run deterministic core tests
         run: swift test --package-path ios
 
       - name: Generate Xcode project
-        run: /tmp/xcodegen/bin/xcodegen generate --spec ios/project.yml --project ios
+        run: /tmp/xcodegen/xcodegen/bin/xcodegen generate --spec ios/project.yml --project ios
 
       - name: Compile unsigned app and extension
         run: |
