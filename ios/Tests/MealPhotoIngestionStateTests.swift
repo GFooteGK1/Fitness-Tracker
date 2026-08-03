@@ -15,11 +15,14 @@ private func candidate(hash: String = "hash-1") -> MealPhotoCandidate {
 func duplicateContentIsRejected() {
     var ledger = MealPhotoIngestionLedger()
 
-    #expect(ledger.prepare(candidate()))
-    #expect(!ledger.prepare(candidate()))
+    let firstPreparation = ledger.prepare(candidate())
+    let duplicatePreparation = ledger.prepare(candidate())
+    #expect(firstPreparation)
+    #expect(!duplicatePreparation)
 
     ledger.markUploaded(contentHash: "hash-1")
-    #expect(!ledger.prepare(candidate()))
+    let processedPreparation = ledger.prepare(candidate())
+    #expect(!processedPreparation)
 }
 
 @Test("A successful upload removes pending state")
@@ -38,12 +41,13 @@ func retryExhaustionFailsClosed() {
     var ledger = MealPhotoIngestionLedger()
     ledger.prepare(candidate())
 
-    #expect(ledger.recordUploadFailure(contentHash: "hash-1", maximumAttempts: 3) == nil)
-    #expect(ledger.recordUploadFailure(contentHash: "hash-1", maximumAttempts: 3) == nil)
-    #expect(
-        ledger.recordUploadFailure(contentHash: "hash-1", maximumAttempts: 3)
-            == .uploadFailedClosed
-    )
+    let firstFailure = ledger.recordUploadFailure(contentHash: "hash-1", maximumAttempts: 3)
+    let secondFailure = ledger.recordUploadFailure(contentHash: "hash-1", maximumAttempts: 3)
+    let finalFailure = ledger.recordUploadFailure(contentHash: "hash-1", maximumAttempts: 3)
+
+    #expect(firstFailure == nil)
+    #expect(secondFailure == nil)
+    #expect(finalFailure == .uploadFailedClosed)
     #expect(ledger.pendingByHash["hash-1"] == nil)
 }
 
