@@ -32,6 +32,16 @@ vi.mock('@zxing/library', () => ({
 
 import { startBarcodeDecoder } from '@/app/lib/nutrition/barcode-scanner'
 
+function createReadyVideo(): HTMLVideoElement {
+  const video = document.createElement('video')
+  Object.defineProperties(video, {
+    readyState: { configurable: true, value: 4 },
+    videoWidth: { configurable: true, value: 1280 },
+    videoHeight: { configurable: true, value: 720 },
+  })
+  return video
+}
+
 describe('startBarcodeDecoder', () => {
   beforeEach(() => {
     zxingMocks.constructorArgs.length = 0
@@ -53,7 +63,7 @@ describe('startBarcodeDecoder', () => {
       return { detect }
     })
     vi.stubGlobal('BarcodeDetector', Detector)
-    const video = document.createElement('video')
+    const video = createReadyVideo()
     vi.spyOn(video, 'play').mockResolvedValue()
     const stream = {} as MediaStream
     const onDetected = vi.fn()
@@ -70,7 +80,7 @@ describe('startBarcodeDecoder', () => {
   it('lazily falls back to ZXing with rotated-frame retry for UPC and EAN formats', async () => {
     vi.stubGlobal('BarcodeDetector', undefined)
     const stream = {} as MediaStream
-    const video = document.createElement('video')
+    const video = createReadyVideo()
     const onDetected = vi.fn()
     let callback: ((result?: { getText(): string }) => void) | undefined
     zxingMocks.decodeFromStream.mockImplementation(async (_stream, _video, next) => {
@@ -97,6 +107,31 @@ describe('startBarcodeDecoder', () => {
     expect(zxingMocks.stop).toHaveBeenCalledTimes(1)
   })
 
+  it('waits for actual video metadata before starting the decoder', async () => {
+    vi.stubGlobal('BarcodeDetector', undefined)
+    const video = document.createElement('video')
+    Object.defineProperties(video, {
+      readyState: { configurable: true, value: 0, writable: true },
+      videoWidth: { configurable: true, value: 0, writable: true },
+      videoHeight: { configurable: true, value: 0, writable: true },
+    })
+    vi.spyOn(video, 'play').mockResolvedValue()
+    const startPromise = startBarcodeDecoder({} as MediaStream, video, vi.fn())
+
+    await Promise.resolve()
+    expect(zxingMocks.decodeFromStream).not.toHaveBeenCalled()
+
+    Object.defineProperties(video, {
+      readyState: { configurable: true, value: 4, writable: true },
+      videoWidth: { configurable: true, value: 1280, writable: true },
+      videoHeight: { configurable: true, value: 720, writable: true },
+    })
+    video.dispatchEvent(new Event('playing'))
+    await startPromise
+
+    expect(zxingMocks.decodeFromStream).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps native scanning after an isolated frame failure', async () => {
     vi.useFakeTimers()
     const detect = vi.fn()
@@ -107,7 +142,7 @@ describe('startBarcodeDecoder', () => {
       return { detect }
     })
     vi.stubGlobal('BarcodeDetector', Detector)
-    const video = document.createElement('video')
+    const video = createReadyVideo()
     vi.spyOn(video, 'play').mockResolvedValue()
     const onDetected = vi.fn()
 
@@ -126,7 +161,7 @@ describe('startBarcodeDecoder', () => {
       return { detect }
     })
     vi.stubGlobal('BarcodeDetector', Detector)
-    const video = document.createElement('video')
+    const video = createReadyVideo()
     vi.spyOn(video, 'play').mockResolvedValue()
     const stream = {} as MediaStream
     const onDetected = vi.fn()
@@ -158,7 +193,7 @@ describe('startBarcodeDecoder', () => {
       return { detect }
     })
     vi.stubGlobal('BarcodeDetector', Detector)
-    const video = document.createElement('video')
+    const video = createReadyVideo()
     vi.spyOn(video, 'play').mockResolvedValue()
     const onDetected = vi.fn()
     let finishFallback: ((controls: { stop: typeof zxingMocks.stop }) => void) | undefined
@@ -186,7 +221,7 @@ describe('startBarcodeDecoder', () => {
       return { detect }
     })
     vi.stubGlobal('BarcodeDetector', Detector)
-    const video = document.createElement('video')
+    const video = createReadyVideo()
     vi.spyOn(video, 'play').mockResolvedValue()
     const onError = vi.fn()
     zxingMocks.decodeFromStream.mockRejectedValue(new Error('ZXing failed'))

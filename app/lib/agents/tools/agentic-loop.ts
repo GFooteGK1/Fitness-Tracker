@@ -51,6 +51,8 @@ export interface AgenticCallOptions {
   tools: LlmToolDef[]
   userId: string
   supabase: SupabaseClient
+  /** Agent convention: local time = UTC + tzOffset. */
+  tzOffset?: number
   maxRounds?: number
 }
 
@@ -65,6 +67,7 @@ export async function callAgentWithTools(
     tools,
     userId,
     supabase,
+    tzOffset,
     maxRounds = MAX_TOOL_ROUNDS
   } = options
 
@@ -102,7 +105,8 @@ export async function callAgentWithTools(
         call.name,
         call.input as Record<string, unknown>,
         userId,
-        supabase
+        supabase,
+        { tzOffset }
       )
       allToolCalls.push({
         name: call.name,

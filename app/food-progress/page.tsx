@@ -43,6 +43,7 @@ function FoodProgressContent() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [targets, setTargets] = useState<DailyTargets | null>(null)
   const [showExport, setShowExport] = useState(false)
+  const [mealInputError, setMealInputError] = useState<string | null>(null)
 
   // Sync tab state from URL search params (works reliably in production)
   React.useEffect(() => {
@@ -99,11 +100,13 @@ function FoodProgressContent() {
 
   const handleAddMeal = () => {
     // Use the camera view which has full refinement flow
+    setMealInputError(null)
     setCurrentView('camera')
   }
 
   const handlePhotoUploadComplete = (response: MealUploadResponse) => {
     // After successful upload, return to daily view and refresh data
+    setMealInputError(null)
     setCurrentView('daily')
     // The DailyProgressView will automatically refresh when it mounts
   }
@@ -115,8 +118,8 @@ function FoodProgressContent() {
   }
 
   const handleCameraError = (error: string) => {
-    console.error('Camera error:', error)
-    // You could show a toast notification here
+    console.error('Meal input error:', error)
+    setMealInputError(error)
   }
 
   const handleBackToDaily = () => {
@@ -337,6 +340,11 @@ function FoodProgressContent() {
         {currentView === 'camera' && (
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">Add New Meal</h2>
+            {mealInputError && (
+              <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+                {mealInputError}
+              </div>
+            )}
             <Suspense fallback={<ComponentLoader>Meal Input</ComponentLoader>}>
               <MealInputEnhanced
                 selectedDate={selectedDate}

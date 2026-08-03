@@ -15,6 +15,7 @@ type ScannerErrorHandler = (error: BarcodeDecoderError) => void
 
 const SCAN_INTERVAL_MS = 250
 const MAX_CONSECUTIVE_NATIVE_ERRORS = 3
+const VIDEO_READY_TIMEOUT_MS = 4_000
 const BARCODE_FORMAT_NAMES = ['ean_8', 'ean_13', 'upc_a', 'upc_e']
 
 export class BarcodeDecoderError extends Error {
@@ -28,6 +29,42 @@ function nativeBarcodeDetector(): BarcodeDetectorConstructor | undefined {
   return (globalThis as typeof globalThis & {
     BarcodeDetector?: BarcodeDetectorConstructor
   }).BarcodeDetector
+}
+
+function waitForVideoFrame(video: HTMLVideoElement): Promise<void> {
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
+    return Promise.resolve()
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const cleanup = () => {
+      video.removeEventListener('loadedmetadata', check)
+      video.removeEventListener('canplay', check)
+      video.removeEventListener('playing', check)
+      clearTimeout(timeout)
+    }
+    const finish = (error?: Error) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      if (error) reject(error)
+      else resolve()
+    }
+    const check = () => {
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
+        finish()
+      }
+    }
+    const timeout = setTimeout(() => {
+      finish(new BarcodeDecoderError())
+    }, VIDEO_READY_TIMEOUT_MS)
+
+    video.addEventListener('loadedmetadata', check)
+    video.addEventListener('canplay', check)
+    video.addEventListener('playing', check)
+    check()
+  })
 }
 
 async function startNativeDecoder(
@@ -117,8 +154,11 @@ export async function startBarcodeDecoder(
   // loaded lazily, and installed iOS can otherwise show a black video element
   // while those chunks load even though the camera stream is already active.
   video.srcObject = stream
+  video.muted = true
+  video.playsInline = true
   try {
     await video.play()
+    await waitForVideoFrame(video)
   } catch {
     throw new BarcodeDecoderError()
   }
