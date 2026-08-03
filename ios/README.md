@@ -25,6 +25,21 @@ The GitHub workflow pins XcodeGen 2.46.0 and verifies its published SHA-256
 before execution. Generated `.xcodeproj`, SwiftPM output, and derived data are
 ignored.
 
+## Cloud compile evidence
+
+Draft PR #66 proved the credential-free boundary on source commit `d9e9105`:
+
+- all five deterministic Swift tests passed;
+- XcodeGen 2.46.0 generated the project after its release SHA-256 passed;
+- Xcode 26.5 compiled the unsigned host app and ExtensionKit target for a
+  generic iOS Simulator;
+- no signing, secret, App Store Connect, TestFlight, photo, or production API
+  access occurred.
+
+Two first-run failures were corrected in scope: mutating ledger operations now
+execute before Swift Testing `#expect` assertions, and the workflow uses the
+archive's verified `xcodegen/bin/xcodegen` path.
+
 ## Compile-only automation contract
 
 ```yaml

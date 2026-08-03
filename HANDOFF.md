@@ -1,15 +1,15 @@
 # Handoff
 
-## Automatic meal photos Phase 1 cloud build scaffold (prepared locally, 2026-08-02)
+## Automatic meal photos Phase 1 cloud build scaffold (draft PR cloud-verified, 2026-08-02)
 
 Greg enrolled in the Apple Developer Program and approved the cloud-Mac plus
 TestFlight direction because he has an iPhone but no Mac. The Build iOS Apps
 plugin was suggested again but was not installed, so this pass used official
 Apple, GitHub runner-image, and XcodeGen sources.
 
-The credential-free native compile slice is prepared locally on
-`codex/automatic-meal-photos-phase0` and has not been committed, pushed, signed,
-uploaded, or run on GitHub yet:
+The credential-free native compile slice is published on
+`codex/automatic-meal-photos-phase0` in draft PR #66. It has not been signed,
+uploaded to TestFlight, merged, or deployed to production:
 
 - ADR-0005 records the minimal companion boundary: the existing web app remains
   primary; native code owns Photos authorization, extension enable/disable,
@@ -32,16 +32,20 @@ uploaded, or run on GitHub yet:
 Local evidence: both YAML files parse through the repository's installed
 `js-yaml`; `git diff --check` passes; targeted searches confirm that no signing
 credential, certificate, API key, production endpoint, asset discovery, or
-network upload exists. This Linux host has no Swift/Xcode toolchain, so the
-native source remains an untrusted draft until the exact branch is published
-and the macOS workflow passes. Do not configure signing or App Store Connect
-secrets before that compile gate.
+network upload exists. The exact server candidate passed 48 focused tests,
+strict TypeScript, and lint before publication.
 
-Next authority boundary: Greg must explicitly authorize publishing the current
-public branch so the secret-free GitHub macOS workflow can run. If it passes,
-the next separately approved step is registered bundle IDs + App Group and an
-encrypted App Store Connect/TestFlight signing workflow. Never ask Greg to send
-Apple passwords, verification codes, private keys, or certificates in chat.
+The first cloud runs exposed two narrow draft issues. Swift Testing does not
+allow a mutating method directly inside `#expect`, fixed in `2abde94`; the
+verified XcodeGen zip nests its binary under `xcodegen/bin`, fixed in `d9e9105`.
+On `d9e9105`, the native workflow passed its five Swift tests, Xcode generation,
+and unsigned app + extension compile in 1m23s. Standard CI passed tests,
+TypeScript, lint, and build in 2m07s; the Vercel preview also succeeded.
+
+Next authority boundary: registered bundle IDs + App Group and an encrypted
+App Store Connect/TestFlight signing workflow require Greg's separate approval.
+Never ask Greg to send Apple passwords, verification codes, private keys, or
+certificates in chat.
 
 ## Automatic meal photos Phase 1: native feasibility spike (PARTIAL, 2026-08-02)
 
