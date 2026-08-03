@@ -154,6 +154,50 @@ describe('startBarcodeDecoder', () => {
     stop()
   })
 
+  it('falls back to ZXing when native detection returns no UPC/EAN result', async () => {
+    vi.useFakeTimers()
+    const detect = vi.fn().mockResolvedValue([])
+    const Detector = vi.fn(function Detector() {
+      return { detect }
+    })
+    vi.stubGlobal('BarcodeDetector', Detector)
+    const video = createReadyVideo()
+    vi.spyOn(video, 'play').mockResolvedValue()
+    const onDetected = vi.fn()
+    let callback: ((result?: { getText(): string }) => void) | undefined
+    zxingMocks.decodeFromStream.mockImplementation(async (_stream, _video, next) => {
+      callback = next
+      return { stop: zxingMocks.stop }
+    })
+
+    const stop = await startBarcodeDecoder({} as MediaStream, video, onDetected)
+    await vi.advanceTimersByTimeAsync(3_000)
+
+    expect(detect).toHaveBeenCalled()
+    expect(zxingMocks.decodeFromStream).toHaveBeenCalledTimes(1)
+    callback?.({ getText: () => '012345678905' })
+    expect(onDetected).toHaveBeenCalledWith('012345678905')
+    stop()
+  })
+
+  it('skips native detection when no requested UPC/EAN format is supported', async () => {
+    const detect = vi.fn().mockResolvedValue([])
+    const Detector = Object.assign(vi.fn(function Detector() {
+      return { detect }
+    }), {
+      getSupportedFormats: vi.fn().mockResolvedValue(['qr_code']),
+    })
+    vi.stubGlobal('BarcodeDetector', Detector)
+    const video = createReadyVideo()
+    vi.spyOn(video, 'play').mockResolvedValue()
+    zxingMocks.decodeFromStream.mockResolvedValue({ stop: zxingMocks.stop })
+
+    await startBarcodeDecoder({} as MediaStream, video, vi.fn())
+
+    expect(Detector).not.toHaveBeenCalled()
+    expect(zxingMocks.decodeFromStream).toHaveBeenCalledTimes(1)
+  })
+
   it('falls back once to ZXing after repeated native frame failures', async () => {
     vi.useFakeTimers()
     const detect = vi.fn().mockRejectedValue(new DOMException('Unsupported frame', 'NotSupportedError'))

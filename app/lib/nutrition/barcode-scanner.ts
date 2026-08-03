@@ -8,6 +8,7 @@ interface BarcodeDetectorInstance {
 
 interface BarcodeDetectorConstructor {
   new(options: { formats: string[] }): BarcodeDetectorInstance
+  getSupportedFormats?: () => Promise<string[]>
 }
 
 type ScannerStop = () => void
@@ -15,6 +16,7 @@ type ScannerErrorHandler = (error: BarcodeDecoderError) => void
 
 const SCAN_INTERVAL_MS = 250
 const MAX_CONSECUTIVE_NATIVE_ERRORS = 3
+const NATIVE_NO_RESULT_TIMEOUT_MS = 3_000
 const VIDEO_READY_TIMEOUT_MS = 4_000
 const BARCODE_FORMAT_NAMES = ['ean_8', 'ean_13', 'upc_a', 'upc_e']
 
@@ -29,6 +31,22 @@ function nativeBarcodeDetector(): BarcodeDetectorConstructor | undefined {
   return (globalThis as typeof globalThis & {
     BarcodeDetector?: BarcodeDetectorConstructor
   }).BarcodeDetector
+}
+
+async function nativeDetectorSupportsRequestedFormats(
+  Detector: BarcodeDetectorConstructor,
+): Promise<boolean> {
+  if (typeof Detector.getSupportedFormats !== 'function') return true
+
+  try {
+    const supportedFormats = await Detector.getSupportedFormats()
+    return BARCODE_FORMAT_NAMES.some(format => supportedFormats.includes(format))
+  } catch {
+    // Keep the detector as a candidate when the optional capability probe is
+    // unavailable. The bounded no-result fallback below still protects this
+    // path from a detector that never recognizes a UPC/EAN.
+    return true
+  }
 }
 
 function waitForVideoFrame(video: HTMLVideoElement): Promise<void> {
@@ -78,6 +96,7 @@ async function startNativeDecoder(
   let active = true
   let consecutiveErrors = 0
   let timer: ReturnType<typeof setTimeout> | null = null
+  const startedAt = Date.now()
 
   const scan = async () => {
     if (!active) return
@@ -87,6 +106,11 @@ async function startNativeDecoder(
       if (result?.rawValue) {
         active = false
         onDetected(result.rawValue)
+        return
+      }
+      if (Date.now() - startedAt >= NATIVE_NO_RESULT_TIMEOUT_MS) {
+        active = false
+        onPersistentError(new Error('Native barcode detector returned no UPC/EAN result.'))
         return
       }
     } catch (error) {
@@ -207,7 +231,7 @@ export async function startBarcodeDecoder(
   }
 
   const Detector = nativeBarcodeDetector()
-  if (Detector) {
+  if (Detector && await nativeDetectorSupportsRequestedFormats(Detector)) {
     try {
       activeStop = await startNativeDecoder(
         Detector,
