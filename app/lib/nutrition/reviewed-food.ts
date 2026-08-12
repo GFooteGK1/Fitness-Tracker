@@ -1,10 +1,21 @@
 import type { MacroTotals } from '@/app/lib/types/food-tracking'
-import {
-  parseBarcode,
-  type FoodCatalogDraft,
-  type FoodDataSource,
-  type NutritionBasis,
-} from './barcode'
+
+export type NutritionBasis = 'per_serving' | 'per_100g'
+
+export interface FoodCatalogDraft {
+  catalogEntryId?: string
+  name: string
+  brand: string
+  source: 'manual_label'
+  sourceKey: string
+  servingAmount: number
+  servingUnit: string
+  servingLabel: string
+  nutritionBasis: NutritionBasis
+  nutrition: MacroTotals
+  sourceNutrition: MacroTotals
+  sourcePayload: Record<string, unknown>
+}
 
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -55,7 +66,6 @@ export function parseReviewedFoodRequest(raw: unknown): ReviewedFoodRequest | nu
   const servings = boundedNumber(root.servings, 20, true)
   const name = boundedText(food.name, 160)
   const brand = boundedText(food.brand, 160, false)
-  const source = food.source as FoodDataSource
   const servingAmount = boundedNumber(food.servingAmount, 100000, true)
   const servingUnit = boundedText(food.servingUnit, 24)
   const servingLabel = boundedText(food.servingLabel, 120)
@@ -65,7 +75,7 @@ export function parseReviewedFoodRequest(raw: unknown): ReviewedFoodRequest | nu
   const sourcePayload = object(food.sourcePayload) || {}
 
   if (!requestId || !UUID_PATTERN.test(requestId) || !timestamp || !Number.isFinite(Date.parse(timestamp)) ||
-    servings === null || !name || brand === null || !['open_food_facts', 'manual_label'].includes(source) ||
+    servings === null || !name || brand === null || food.source !== 'manual_label' ||
     servingAmount === null || !servingUnit || !servingLabel ||
     !['per_serving', 'per_100g'].includes(nutritionBasis) || !nutrition || !sourceNutrition) {
     return null
@@ -73,17 +83,8 @@ export function parseReviewedFoodRequest(raw: unknown): ReviewedFoodRequest | nu
 
   if (JSON.stringify(sourcePayload).length > 32768) return null
 
-  const barcode = typeof food.barcode === 'string' && food.barcode.trim()
-    ? parseBarcode(food.barcode)
-    : null
-  if (food.barcode && !barcode) return null
-  if (source === 'open_food_facts' && !barcode) return null
-
   const suppliedSourceKey = boundedText(food.sourceKey, 160, false)
-  const sourceKey = source === 'open_food_facts'
-    ? barcode!.lookupKey
-    : suppliedSourceKey || barcode?.lookupKey || `manual:${requestId}`
-  const sourceRef = boundedText(food.sourceRef, 200, false) || barcode?.value
+  const sourceKey = suppliedSourceKey || `manual:${requestId}`
 
   return {
     requestId,
@@ -95,11 +96,8 @@ export function parseReviewedFoodRequest(raw: unknown): ReviewedFoodRequest | nu
         : undefined,
       name,
       brand,
-      barcode: barcode?.value,
-      barcodeLookupKey: barcode?.lookupKey,
-      source,
+      source: 'manual_label',
       sourceKey,
-      sourceRef,
       servingAmount,
       servingUnit,
       servingLabel,
@@ -108,6 +106,19 @@ export function parseReviewedFoodRequest(raw: unknown): ReviewedFoodRequest | nu
       sourceNutrition,
       sourcePayload,
     },
+  }
+}
+
+function rounded(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
+export function scaleNutrition(nutrition: MacroTotals, servings: number): MacroTotals {
+  return {
+    protein: rounded(nutrition.protein * servings),
+    carbs: rounded(nutrition.carbs * servings),
+    fat: rounded(nutrition.fat * servings),
+    calories: rounded(nutrition.calories * servings),
   }
 }
 
