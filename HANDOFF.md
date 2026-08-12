@@ -36,10 +36,11 @@ Local verification on Windows:
 - `npm run test:ios-probe`: 3/3 passed.
 - `node --check` passed for the server and its tests.
 - `git diff --check` passed.
-- Swift/Xcode remain unavailable on this host. Unsigned workflow run
-  `31636251067` passed 10 Swift tests and XcodeGen, then proved that the two
-  upload-job APIs require iOS 26.4. The approved correction raises only this
-  harness's deployment target from 26.1 to 26.4. A fresh compile is pending.
+- Swift/Xcode remain unavailable on this host. Initial unsigned workflow run
+  `31636251067` proved that two upload-job APIs require iOS 26.4. After the
+  approved target correction, run `31637024156` passed all 10 Swift tests,
+  verified pinned XcodeGen, generated the project, and compiled the unsigned
+  app plus extension on Xcode 26.5 at commit `6453f20`.
 - No signing or physical-device execution has occurred.
 
 The committed `BackgroundUploadURLBase` remains
@@ -48,17 +49,16 @@ reachable from an iPhone. This is deliberate: creating Apple identifiers,
 configuring signing, choosing or exposing a TLS endpoint, and uploading to
 TestFlight remain separate approval gates.
 
-Next physical-device proof, after those gates are approved:
+Next physical-device proof, after the remaining gates are approved:
 
-1. Obtain current unsigned Swift/Xcode compile evidence for the iOS 26.4 fix.
-2. Configure one private disposable TLS endpoint with the exact loopback
+1. Configure one private disposable TLS endpoint with the exact loopback
    semantics. Do not point the extension at `/api/meals/upload`.
-3. Install a development-signed build, authorize full read-write Photos access,
+2. Install a development-signed build, authorize full read-write Photos access,
    enable the extension, and wait for its baseline log.
-4. Capture one disposable photo with the host closed or locked. Preserve the
+3. Capture one disposable photo with the host closed or locked. Preserve the
    exact OPTIONS/POST receipts, scheduling latency, job state/error, and
    `x-probe-request-id`.
-5. Add HTTP `104` support only if this `501` canary proves non-resumable
+4. Add HTTP `104` support only if this `501` canary proves non-resumable
    upload does not complete. A raw gateway/provider remains human-gated.
 
 The bead stays in progress until physical-device evidence determines whether
