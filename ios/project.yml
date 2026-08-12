@@ -51,6 +51,8 @@ targets:
       path: Supporting/BackgroundUpload-Info.plist
       properties:
         BackgroundUploadURLBase: https://example.invalid
+        # Fail-closed placeholder. Never point this at /api/meals/upload.
+        # A private HTTPS probe endpoint is a separate approval gate.
         CFBundleDisplayName: SociusFit Background Upload
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)

@@ -16,7 +16,7 @@ struct AutoMealPhotoSetupView: View {
 
                 Section("Privacy") {
                     Text(
-                        "This harness does not inspect or upload photos yet. The finished feature will classify on-device and upload only high-confidence food candidates."
+                        "This probe stays disabled until a private HTTPS test endpoint is configured. It baselines the library first, then uploads at most one newly captured photo per extension run. Use disposable test photos only."
                     )
                 }
 

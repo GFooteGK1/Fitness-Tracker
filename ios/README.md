@@ -1,10 +1,52 @@
 # SociusFit Auto Meal Photos — native harness
 
 This directory contains the minimal native boundary approved in ADR-0005. The
-current slice is intentionally **compile-only and upload-disabled**. It proves
-that the host app can request full Photos authorization and enable the PhotoKit
-background-upload extension. The extension returns `.completed` without
-discovering, classifying, downloading, or uploading any asset.
+current slice is a fail-closed physical-device protocol probe. With the
+committed `https://example.invalid` configuration, it cannot upload a photo.
+After a separate approval supplies a private HTTPS test endpoint, the extension
+baselines PhotoKit persistent changes and registers at most one newly inserted
+original photo resource per invocation. Use disposable test photos only.
+
+The probe does not classify food, store photo bytes, analyze nutrition, create a
+canonical meal, or call `/api/meals/upload`. Its token stays in the extension's
+private defaults for this bounded test. App Group state belongs to the later
+product implementation.
+
+## OPTIONS 501 protocol probe
+
+The standalone Node server implements only Apple's documented non-resumable
+path:
+
+- `OPTIONS /probe/photo` returns `501` with no `Upload-Limit`;
+- `POST /probe/photo` discards the request body and returns `201`;
+- receipts contain only protocol header fields, byte count, path, status, and a
+  random request ID;
+- the CLI binds to `127.0.0.1`, so it does not expose an endpoint.
+
+```bash
+npm run test:ios-probe
+npm run probe:ios-upload
+```
+
+The loopback CLI proves the HTTP contract only. A physical iPhone requires a
+separately approved private TLS endpoint with the same behavior.
+
+After signing and that endpoint are approved, run this canary:
+
+1. Record the source commit, iPhone model, iOS version, install type, network,
+   and iCloud Photos state.
+2. Install a development-signed build and start with the extension disabled.
+3. Grant full read-write Photos access and enable the extension once.
+4. Wait for the `ProtocolProbe` baseline log before taking a disposable photo.
+5. Close or lock the host, take one photo, and record scheduling latency.
+6. Capture the exact `OPTIONS` receipt, any `POST` receipt, and the final
+   PhotoKit job state plus `x-probe-request-id`.
+7. Disable the extension and prove that another disposable photo creates no
+   server receipt.
+
+Do not add HTTP `104` support yet. It is required only if the physical-device
+`501` canary proves that PhotoKit rejects or cannot complete a non-resumable
+upload. Stop and request approval before selecting or exposing a raw gateway.
 
 ## Generate and build on macOS
 

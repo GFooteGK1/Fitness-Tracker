@@ -202,9 +202,13 @@ Apple Camera
        └─ future private review-first ingestion endpoint (not implemented)
 ```
 
-ADR-0005 owns this boundary. The current native target is deliberately inert:
-the extension returns `.completed` without discovering, downloading,
-classifying, or uploading a photo. A credential-free GitHub macOS workflow
+ADR-0005 owns this boundary. The current native target contains a fail-closed
+physical-device protocol probe. Its committed upload URL is
+`https://example.invalid`, so it cannot upload in repository configuration.
+With a separately approved private HTTPS endpoint, it baselines persistent
+changes, selects at most the newest inserted image, and registers one PhotoKit
+upload job. The disposable endpoint contract answers `OPTIONS` with `501`,
+discards the POST body, and never creates a meal. A credential-free GitHub macOS workflow
 generates the project from `ios/project.yml`, runs the pure ledger tests, and
 compiles the app and extension without signing. App Store Connect, TestFlight,
 App Groups, device credentials, server ingestion, and automatic meal creation

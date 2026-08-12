@@ -1,5 +1,69 @@
 # Handoff
 
+
+## Automatic meal photos physical-device protocol probe (local, 2026-08-12)
+
+Work continues on bead `Fitness-Tracker-1vo.1` in
+`C:\Dev\Personal\repos\Fitness-Tracker\.worktrees\auto-meal-photos-probe`
+on `codex/auto-meal-photos-probe`, based on `origin/main` commit
+`caec73b94e7824e3de87a154fdce2bd8000461eb`. The dirty primary checkout on
+`codex/remove-upc-feature` remains untouched.
+
+
+Greg's canary device is an iPhone 16 Pro running iOS 26.6. The existing iOS
+26.1 deployment target and `PHBackgroundResourceUploadExtension` path apply;
+do not add the iOS 27 async protocol for this canary.
+This pass implements only the first, non-resumable protocol canary:
+
+- `ios/BackgroundUpload/BackgroundUploadExtension.swift` now acknowledges
+  finished probe jobs, stores a private persistent-change baseline, selects at
+  most the newest inserted image, registers one original-photo upload job, and
+  fails closed on missing configuration, token expiry, job limits, termination,
+  or other errors.
+- `ios/Shared/PhysicalDeviceProtocolProbe.swift` validates an approved HTTPS
+  base URL, rejects the committed `example.invalid` placeholder, and owns the
+  deterministic first-run/newest-photo planner.
+- `scripts/ios-photo-upload-probe/server.mjs` is a loopback-only raw Node
+  contract server. `OPTIONS /probe/photo` returns `501` without
+  `Upload-Limit`; POST bytes are discarded and receive `201`. Safe receipts
+  exclude authorization, cookies, filenames, identifiers, and body content.
+- `/api/meals/upload` is neither called nor exposed. No meal, photo object,
+  nutrition result, database row, or production state is created.
+
+Local verification on Windows:
+
+- `npm run test:ios-probe`: 3/3 passed.
+- `node --check` passed for the server and its tests.
+- `git diff --check` passed.
+- Swift/Xcode remain unavailable on this host. No native compile, signing, or
+  physical-device execution has occurred for this delta.
+
+The committed `BackgroundUploadURLBase` remains
+`https://example.invalid`. The CLI binds only to `127.0.0.1` and is not
+reachable from an iPhone. This is deliberate: creating Apple identifiers,
+configuring signing, triggering the existing macOS workflow, choosing or
+exposing a TLS endpoint, and uploading to TestFlight remain separate approval
+gates.
+
+Next physical-device proof, after those gates are approved:
+
+1. Obtain current unsigned Swift/Xcode compile evidence for this exact commit.
+2. Record the iPhone model and iOS version before deciding whether the retained
+   iOS 26.1 `PHBackgroundResourceUploadExtension` probe needs an iOS 27 async
+   compatibility target.
+3. Configure one private disposable TLS endpoint with the exact loopback
+   semantics. Do not point the extension at `/api/meals/upload`.
+4. Install a development-signed build, authorize full read-write Photos access,
+   enable the extension, and wait for its baseline log.
+5. Capture one disposable photo with the host closed or locked. Preserve the
+   exact OPTIONS/POST receipts, scheduling latency, job state/error, and
+   `x-probe-request-id`.
+6. Add HTTP `104` support only if this `501` canary proves non-resumable
+   upload does not complete. A raw gateway/provider remains human-gated.
+
+The bead stays in progress until physical-device evidence determines whether
+`104` is required. No App Group or download-only production behavior was
+added in this minimal probe.
 ## Automatic meal photos Phase 1 cloud build scaffold (draft PR cloud-verified, 2026-08-02)
 
 Greg enrolled in the Apple Developer Program and approved the cloud-Mac plus
