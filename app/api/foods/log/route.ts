@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { scaleNutrition, type FoodCatalogDraft } from '@/app/lib/nutrition/barcode'
-import { lookupOpenFoodFactsProduct } from '@/app/lib/nutrition/open-food-facts'
-import { buildFoodCorrections, parseReviewedFoodRequest } from '@/app/lib/nutrition/reviewed-food'
+import { buildFoodCorrections, parseReviewedFoodRequest, scaleNutrition } from '@/app/lib/nutrition/reviewed-food'
 
 export async function POST(request: NextRequest) {
   const supabase = await createServerClient()
@@ -17,9 +15,7 @@ export async function POST(request: NextRequest) {
   }
 
   const input = parseReviewedFoodRequest(raw)
-  if (!input) {
-    return NextResponse.json({ error: 'Review the product, serving, and macro values before logging' }, { status: 400 })
-  }
+  if (!input) return NextResponse.json({ error: 'Review the food, serving, and macro values before logging' }, { status: 400 })
 
   const { data: existingRequest, error: existingError } = await supabase
     .from('meals')
@@ -31,28 +27,11 @@ export async function POST(request: NextRequest) {
     console.error('Fast-log idempotency check failed:', existingError)
     return NextResponse.json({ error: 'Failed to verify meal request' }, { status: 500 })
   }
-  if (existingRequest) {
-    return NextResponse.json({ success: true, mealId: existingRequest.id, reusedRequest: true })
-  }
+  if (existingRequest) return NextResponse.json({ success: true, mealId: existingRequest.id, reusedRequest: true })
 
-  let sourceDraft: FoodCatalogDraft = input.food
-  if (input.food.source === 'open_food_facts') {
-    try {
-      const providerDraft = await lookupOpenFoodFactsProduct(input.food.barcode || '')
-      if (!providerDraft) {
-        return NextResponse.json({ error: 'The source product is no longer available. Enter the label manually.' }, { status: 409 })
-      }
-      sourceDraft = providerDraft
-    } catch (error) {
-      console.error('Unable to verify food source:', error)
-      return NextResponse.json({ error: 'Could not verify the product source. Try manual label entry.' }, { status: 502 })
-    }
-  } else if (input.food.catalogEntryId) {
-    // A saved manual label has no public provider to re-read. Preserve its
-    // original nutrition snapshot while recording this review as corrections.
-    sourceDraft = { ...input.food, nutrition: input.food.sourceNutrition }
-  }
-
+  const sourceDraft = input.food.catalogEntryId
+    ? { ...input.food, nutrition: input.food.sourceNutrition }
+    : input.food
   const corrections = buildFoodCorrections(sourceDraft, input.food)
   const now = new Date().toISOString()
   const { data: catalogEntry, error: catalogError } = await supabase
@@ -61,11 +40,11 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       name: input.food.name,
       brand: input.food.brand || null,
-      barcode: input.food.barcode || null,
-      barcode_lookup_key: input.food.barcodeLookupKey || null,
-      source: sourceDraft.source,
+      barcode: null,
+      barcode_lookup_key: null,
+      source: 'manual_label',
       source_key: sourceDraft.sourceKey,
-      source_ref: sourceDraft.sourceRef || null,
+      source_ref: null,
       serving_amount: input.food.servingAmount,
       serving_unit: input.food.servingUnit,
       serving_label: input.food.servingLabel,
@@ -77,7 +56,7 @@ export async function POST(request: NextRequest) {
       source_nutrition: sourceDraft.nutrition,
       corrections,
       source_payload: sourceDraft.sourcePayload,
-      source_fetched_at: sourceDraft.source === 'open_food_facts' ? now : null,
+      source_fetched_at: null,
       user_verified_at: now,
       last_used_at: now,
     }, { onConflict: 'user_id,source,source_key' })
@@ -85,22 +64,19 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (catalogError || !catalogEntry) {
-    console.error('Failed to save food catalog entry:', catalogError)
+    console.error('Failed to save reviewed food:', catalogError)
     return NextResponse.json({ error: 'Failed to save reviewed food' }, { status: 500 })
   }
 
   const totals = scaleNutrition(input.food.nutrition, input.servings)
-  const portion = input.servings === 1
-    ? input.food.servingLabel
-    : `${input.servings} × ${input.food.servingLabel}`
+  const portion = input.servings === 1 ? input.food.servingLabel : `${input.servings} × ${input.food.servingLabel}`
   const item = {
     food: input.food.brand ? `${input.food.brand} ${input.food.name}` : input.food.name,
     portion,
     ...totals,
     nutritionSource: {
       catalogEntryId: catalogEntry.id,
-      source: sourceDraft.source,
-      barcode: input.food.barcode,
+      source: 'manual_label',
       nutritionBasis: input.food.nutritionBasis,
       servingAmount: input.food.servingAmount,
       servingUnit: input.food.servingUnit,
@@ -120,9 +96,9 @@ export async function POST(request: NextRequest) {
       total_fat: totals.fat,
       total_calories: totals.calories,
       needs_review: false,
-      manual_override: sourceDraft.source === 'manual_label' || Object.keys(corrections).length > 0,
+      manual_override: true,
       reviewed_at: now,
-      entry_method: sourceDraft.source === 'open_food_facts' ? 'barcode' : 'manual_label',
+      entry_method: 'manual_label',
       log_request_id: input.requestId,
     })
     .select('id')

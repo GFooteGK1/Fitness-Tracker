@@ -177,8 +177,7 @@ Meal Management:
 └─ /api/meals/cleanup - Photo cleanup
 
 Reviewed Food Facts:
-├─ /api/foods/barcode - Private catalog first, then bounded Open Food Facts v3 lookup
-└─ /api/foods/log - Review-gated catalog upsert and deterministic meal log
+└─ /api/foods/log - Manual-label catalog upsert and deterministic meal log
 ```
 
 ### **Supporting Systems:**
@@ -226,11 +225,8 @@ remain outside the active runtime.
 - Meal images are analyzed in-request and discarded; `photo_url` remains null
 - Common meals are derived from exact non-review-pending `meals` snapshots; no
   LLM or mutable common-meal template is involved
-- Barcode/label facts are review-gated and stored in private
+- Manual nutrition-label facts are review-gated and stored in private
   `food_catalog_entries`; logged meal items retain immutable macro snapshots
-- iPhone UPC/EAN capture uses an in-memory native photo path with local ZXing
-  decoding; live scanning is progressive enhancement, with manual barcode and
-  manual-label fallbacks always available
 - **Database Tables**: `meals`, `food_catalog_entries`, `daily_targets`, `daily_summaries`
 - **Types**: `app/lib/types/food-tracking.ts`
 
