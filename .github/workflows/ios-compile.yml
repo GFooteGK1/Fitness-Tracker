@@ -5,6 +5,9 @@ on:
     paths:
       - "ios/**"
       - ".github/workflows/ios-compile.yml"
+      - ".github/workflows/ios-testflight.yml"
+      - "scripts/ios-signing/**"
+      - "package.json"
   workflow_dispatch:
 
 permissions:
@@ -38,6 +41,9 @@ jobs:
 
       - name: Run deterministic core tests
         run: swift test --package-path ios
+
+      - name: Validate signing workflow contract
+        run: npm run test:ios-signing
 
       - name: Generate Xcode project
         run: /tmp/xcodegen/xcodegen/bin/xcodegen generate --spec ios/project.yml --project ios

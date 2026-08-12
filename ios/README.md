@@ -40,7 +40,9 @@ After signing and that endpoint are approved, run this canary:
 
 1. Record the source commit, iPhone model, iOS version, install type, network,
    and iCloud Photos state.
-2. Install a development-signed build and start with the extension disabled.
+2. Install the internal TestFlight build and start with the extension disabled.
+   iOS 26.6 uses normal PhotoKit scheduling; Resource Upload Test Mode requires
+   iOS 27 plus an Xcode-run development-signed build and does not apply here.
 3. Grant full read-write Photos access and enable the extension once.
 4. Wait for the `ProtocolProbe` baseline log before taking a disposable photo.
 5. Close or lock the host, take one photo, and record scheduling latency.
@@ -66,6 +68,7 @@ xcodebuild \
   CODE_SIGNING_ALLOWED=NO \
   build
 swift test --package-path ios
+npm run test:ios-signing
 ```
 
 The GitHub workflow pins XcodeGen 2.46.0 and verifies its published SHA-256
@@ -83,6 +86,11 @@ Draft PR #66 proved the credential-free boundary on source commit `d9e9105`:
 - no signing, secret, App Store Connect, TestFlight, photo, or production API
   access occurred.
 
+The current probe compile run `31637024156` passed all 10 Swift tests, pinned
+XcodeGen generation, and the unsigned app plus extension compile on Xcode 26.5
+at source commit `6453f20`. That run did not test signing, archiving, export, or
+App Store Connect upload.
+
 Two first-run failures were corrected in scope: mutating ledger operations now
 execute before Swift Testing `#expect` assertions, and the workflow uses the
 archive's verified `xcodegen/bin/xcodegen` path.
@@ -97,8 +105,8 @@ input_sources: Reviewed repository source and pinned XcodeGen release artifact.
 scope: ios/** and an ephemeral generated Xcode project on a GitHub macOS runner.
 allowed_actions: Read source, verify tool checksum, generate project, compile unsigned code, run pure state tests.
 disallowed_actions: Signing, App Store Connect access, TestFlight upload, secret access, production API calls, photo access, deployment.
-human_placement: Greg approves the later signing/TestFlight workflow and supplies credentials directly to GitHub secrets.
-quality_threshold: Tool checksum passes; Swift tests pass; unsigned app and extension compile; every warning is reviewed, including the expected iOS 27 deprecation of the iOS 26.1 protocol.
+human_placement: This workflow remains credential-free; the separate TestFlight environment owns any later signing approval and secrets.
+quality_threshold: Tool checksum passes; Swift tests pass; unsigned app and extension compile; every warning is reviewed, including the expected iOS 27 deprecation of the iOS 26.4 protocol.
 retry_budget: One normal GitHub Actions rerun for an infrastructure-only failure.
 stop_condition: Any checksum, generation, test, or compile failure.
 failure_route: Failing GitHub check with command output; no fallback publication.
@@ -110,13 +118,36 @@ representation_policy: No external representation or user communication.
 rollback_or_correction_path: Revert the workflow/native scaffold; no runtime or user data exists.
 ```
 
-## Signing boundary — not configured
+## Manual TestFlight workflow — prepared, not dispatched
+
+`.github/workflows/ios-testflight.yml` is a manual-only internal probe upload.
+It accepts only `codex/auto-meal-photos-probe` plus the exact confirmation text,
+uses read-only repository permission, and waits on the protected `TestFlight`
+GitHub environment. It runs the credential-free checks before decoding secrets,
+validates an Apple Distribution identity and separate host/extension App Store
+Connect profiles, signs through an ephemeral keychain, verifies the embedded
+probe URL, exports one IPA, validates it, uploads it with a team App Store
+Connect API key, and removes signing material in an unconditional cleanup step.
+No IPA or signing artifact is retained as a GitHub artifact.
+
+The committed endpoint remains `https://example.invalid`. A private HTTPS base
+URL can be injected only through the `PROBE_UPLOAD_BASE_URL` environment secret.
+The workflow rejects `example.invalid`, `/api/meals/upload`, URL credentials,
+queries, and fragments. The value is embedded in the signed extension and must
+be a short-lived capability URL, not a durable authentication boundary.
+
+The GitHub `TestFlight` environment exists with `GFooteGK1` as required reviewer
+and a branch policy limited to `codex/auto-meal-photos-probe`. It currently has
+no variables or secrets. The workflow has not been dispatched.
+
+Follow `ios/APPLE-PORTAL-CHECKLIST.md` for the exact identifiers, profile names,
+team API key, secure GitHub values, internal tester group, and revocation steps.
 
 Do not commit Apple private keys, certificates, provisioning profiles, issuer
-IDs, key IDs, or App Store Connect credentials. Signing requires registered app
-and extension identifiers, an App Group, TestFlight configuration, and encrypted
-GitHub secrets. Those changes happen only after the unsigned cloud build passes
-and Greg approves the exact credential workflow.
+IDs, key IDs, endpoint capability URLs, or App Store Connect credentials. Do not
+create an App Group for this minimal canary unless Apple proves a managed
+capability or entitlement requires one. The later product path still expects
+shared App Group state.
 
 Official PhotoKit source:
 https://developer.apple.com/documentation/photokit/uploading-asset-resources-in-the-background

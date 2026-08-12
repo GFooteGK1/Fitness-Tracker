@@ -46,14 +46,18 @@ from model output to validated nutrition. Automatic canonical creation remains
 disabled until representative physical-device and food-photo evaluation data
 support a calibrated high-confidence lane.
 
-### Use a cloud Mac without granting signing authority yet
+### Separate credential-free compilation from approved manual signing
 
-The native project is generated from a reviewed XcodeGen specification and
-compiled on a GitHub-hosted macOS runner. The first workflow is credential-free:
-it has read-only repository permission, performs no signing or upload, and uses
-no secrets. App Store Connect credentials, signing certificates, registered
-bundle identifiers, App Groups, TestFlight submission, and any upload gateway
-are separate human-before-action steps.
+The native project is generated from a reviewed XcodeGen specification. Pull
+requests use a credential-free macOS workflow with read-only repository access.
+A separate manual workflow may sign and upload one internal TestFlight probe only
+after a required GitHub environment approval and exact confirmation phrase.
+
+Apple portal resources and signing secrets remain human-managed and outside the
+repository. The canary uses explicit host and extension App IDs with separate App
+Store Connect profiles. It does not create an App Group unless Apple proves a
+managed capability requires one. The upload endpoint and production state remain
+separate approval boundaries.
 
 ### Treat Apple's upload protocol as unresolved
 
@@ -72,5 +76,5 @@ separate architecture, security, cost, and approval decision.
   through TestFlight on Greg's iPhone after signing is configured.
 - The app must disable the extension and revoke its device credential on signout.
 - Limited or denied Photos access fails closed and cannot upload.
-- The iOS 26.1 protocol is deprecated on iOS 27; the compatibility boundary
+- The iOS 26.4 protocol is deprecated on iOS 27; the compatibility boundary
   must be rechecked when the deployment target moves.

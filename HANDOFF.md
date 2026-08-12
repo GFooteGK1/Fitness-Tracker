@@ -1,7 +1,7 @@
 # Handoff
 
 
-## Automatic meal photos physical-device protocol probe (local, 2026-08-12)
+## Automatic meal photos physical-device protocol probe (manual signing prepared, 2026-08-12)
 
 Work continues on bead `Fitness-Tracker-1vo.1` in
 `C:\Dev\Personal\repos\Fitness-Tracker\.worktrees\auto-meal-photos-probe`
@@ -41,25 +41,40 @@ Local verification on Windows:
   approved target correction, run `31637024156` passed all 10 Swift tests,
   verified pinned XcodeGen, generated the project, and compiled the unsigned
   app plus extension on Xcode 26.5 at commit `6453f20`.
-- No signing or physical-device execution has occurred.
+- No signed archive, App Store Connect upload, TestFlight build, endpoint deploy,
+  or physical-device execution has occurred.
+- `.github/workflows/ios-testflight.yml` now defines a manual-only signing and
+  internal TestFlight upload path. It requires the protected `TestFlight`
+  environment and exact confirmation text `UPLOAD TESTFLIGHT PROBE`.
+- GitHub environment `TestFlight` exists with `GFooteGK1` as required reviewer
+  and an exact branch policy for `codex/auto-meal-photos-probe`. Administrator
+  bypass is disabled. Readback showed no environment variables or secrets. The
+  workflow has not been dispatched.
+- `ios/APPLE-PORTAL-CHECKLIST.md` is the source of truth for the two explicit
+  App IDs, profiles, app record, team API key, secure GitHub values, tester
+  group, export-compliance response, and later credential revocation.
 
 The committed `BackgroundUploadURLBase` remains
 `https://example.invalid`. The CLI binds only to `127.0.0.1` and is not
-reachable from an iPhone. This is deliberate: creating Apple identifiers,
-configuring signing, choosing or exposing a TLS endpoint, and uploading to
-TestFlight remain separate approval gates.
+reachable from an iPhone. This is deliberate. Apple portal writes, secret
+entry, endpoint choice/exposure, workflow dispatch, and TestFlight upload remain
+separate approval gates. The canary does not create an App Group unless Apple
+proves a managed capability requires one.
 
 Next physical-device proof, after the remaining gates are approved:
 
-1. Configure one private disposable TLS endpoint with the exact loopback
+1. Complete `ios/APPLE-PORTAL-CHECKLIST.md` and enter its variables and secrets
+   directly in the protected GitHub environment. Never put credentials in chat.
+2. Configure one private disposable TLS endpoint with the exact loopback
    semantics. Do not point the extension at `/api/meals/upload`.
-2. Install a development-signed build, authorize full read-write Photos access,
-   enable the extension, and wait for its baseline log.
-3. Capture one disposable photo with the host closed or locked. Preserve the
-   exact OPTIONS/POST receipts, scheduling latency, job state/error, and
-   `x-probe-request-id`.
-4. Add HTTP `104` support only if this `501` canary proves non-resumable
-   upload does not complete. A raw gateway/provider remains human-gated.
+3. Manually dispatch the workflow and approve the protected job. Confirm one
+   internal TestFlight build passes validation before assigning Greg as tester.
+4. On iPhone 16 Pro / iOS 26.6, authorize full read-write Photos access, enable
+   the extension, wait for its baseline log, then capture one disposable photo
+   with the host closed or locked. Preserve OPTIONS/POST receipts, scheduling
+   latency, job state/error, and `x-probe-request-id`.
+5. Add HTTP `104` support only if this `501` canary proves non-resumable upload
+   does not complete. A raw gateway/provider remains human-gated.
 
 The bead stays in progress until physical-device evidence determines whether
 `104` is required. No App Group or download-only production behavior was

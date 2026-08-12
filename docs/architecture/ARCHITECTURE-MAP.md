@@ -208,11 +208,14 @@ physical-device protocol probe. Its committed upload URL is
 With a separately approved private HTTPS endpoint, it baselines persistent
 changes, selects at most the newest inserted image, and registers one PhotoKit
 upload job. The disposable endpoint contract answers `OPTIONS` with `501`,
-discards the POST body, and never creates a meal. A credential-free GitHub macOS workflow
-generates the project from `ios/project.yml`, runs the pure ledger tests, and
-compiles the app and extension without signing. App Store Connect, TestFlight,
-App Groups, device credentials, server ingestion, and automatic meal creation
-remain outside the active runtime.
+discards the POST body, and never creates a meal. A credential-free GitHub macOS
+workflow generates the project from `ios/project.yml`, runs the pure ledger and
+signing-contract tests, and compiles the app and extension without signing. A
+separate manual-only workflow can sign and upload one internal TestFlight build
+after approval in the protected `TestFlight` environment. Apple portal records,
+signing material, the upload endpoint, workflow dispatch, device credentials,
+server ingestion, and automatic meal creation remain outside the active runtime.
+The canary does not use an App Group unless Apple proves one is required.
 
 ### **Utility Libraries:**
 - **Storage** (`app/lib/storage.ts`) - File management

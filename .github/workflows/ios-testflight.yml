@@ -1,0 +1,370 @@
+name: iOS TestFlight Probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type UPLOAD TESTFLIGHT PROBE to continue.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-testflight-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    name: Validate, sign, and upload probe
+    runs-on: macos-26
+    timeout-minutes: 30
+    environment: TestFlight
+    env:
+      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+      APP_STORE_CONNECT_KEY_ID: ${{ vars.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ vars.APP_STORE_CONNECT_ISSUER_ID }}
+      HOST_PROFILE_NAME: ${{ vars.HOST_PROVISIONING_PROFILE_NAME }}
+      EXTENSION_PROFILE_NAME: ${{ vars.EXTENSION_PROVISIONING_PROFILE_NAME }}
+      HOST_BUNDLE_ID: com.sociusfit.automeals
+      EXTENSION_BUNDLE_ID: com.sociusfit.automeals.background-upload
+      SIGNING_DIR: ${{ runner.temp }}/sociusfit-signing
+      KEYCHAIN_PATH: ${{ runner.temp }}/sociusfit-signing.keychain-db
+      ARCHIVE_PATH: ${{ runner.temp }}/SociusFitAutoMeals.xcarchive
+      EXPORT_PATH: ${{ runner.temp }}/sociusfit-export
+      EXPORT_OPTIONS_PATH: ${{ runner.temp }}/sociusfit-export-options.plist
+
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@v7
+
+      - name: Confirm branch and deliberate upload
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/codex/auto-meal-photos-probe" ]]; then
+            echo "::error::TestFlight uploads are restricted to codex/auto-meal-photos-probe."
+            exit 1
+          fi
+          if [[ "$CONFIRMATION" != "UPLOAD TESTFLIGHT PROBE" ]]; then
+            echo "::error::The confirmation text did not match."
+            exit 1
+          fi
+
+      - name: Select Xcode 26.5
+        run: sudo xcode-select --switch /Applications/Xcode_26.5.app/Contents/Developer
+
+      - name: Install pinned XcodeGen
+        env:
+          XCODEGEN_URL: https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error "$XCODEGEN_URL" --output "$RUNNER_TEMP/xcodegen.zip"
+          echo "$XCODEGEN_SHA256  $RUNNER_TEMP/xcodegen.zip" | shasum --algorithm 256 --check
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen"
+          echo "$RUNNER_TEMP/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Run credential-free checks
+        run: |
+          set -euo pipefail
+          npm run test:ios-probe
+          npm run test:ios-signing
+          swift test --package-path ios
+          "$RUNNER_TEMP/xcodegen/xcodegen/bin/xcodegen" generate --spec ios/project.yml --project ios
+
+      - name: Validate signing configuration
+        env:
+          PROBE_UPLOAD_BASE_URL: ${{ secrets.PROBE_UPLOAD_BASE_URL }}
+        run: |
+          set -euo pipefail
+          required_values=(
+            APPLE_TEAM_ID
+            APP_STORE_CONNECT_KEY_ID
+            APP_STORE_CONNECT_ISSUER_ID
+            HOST_PROFILE_NAME
+            EXTENSION_PROFILE_NAME
+            PROBE_UPLOAD_BASE_URL
+          )
+          for name in "${required_values[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::$name is not configured in the TestFlight environment."
+              exit 1
+            fi
+          done
+
+          case "$PROBE_UPLOAD_BASE_URL" in
+            https://*) ;;
+            *)
+              echo "::error::PROBE_UPLOAD_BASE_URL must use HTTPS."
+              exit 1
+              ;;
+          esac
+
+          if [[ "$PROBE_UPLOAD_BASE_URL" == *"example.invalid"* ||
+                "$PROBE_UPLOAD_BASE_URL" == *"/api/meals/upload"* ||
+                "$PROBE_UPLOAD_BASE_URL" == *"?"* ||
+                "$PROBE_UPLOAD_BASE_URL" == *"#"* ||
+                "$PROBE_UPLOAD_BASE_URL" == *"@"* ]]; then
+            echo "::error::PROBE_UPLOAD_BASE_URL failed the fail-closed endpoint policy."
+            exit 1
+          fi
+
+      - name: Install ephemeral signing assets
+        env:
+          APPLE_DISTRIBUTION_P12_BASE64: ${{ secrets.APPLE_DISTRIBUTION_P12_BASE64 }}
+          APPLE_DISTRIBUTION_P12_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_P12_PASSWORD }}
+          HOST_PROVISIONING_PROFILE_BASE64: ${{ secrets.HOST_PROVISIONING_PROFILE_BASE64 }}
+          EXTENSION_PROVISIONING_PROFILE_BASE64: ${{ secrets.EXTENSION_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          required_secrets=(
+            APPLE_DISTRIBUTION_P12_BASE64
+            APPLE_DISTRIBUTION_P12_PASSWORD
+            HOST_PROVISIONING_PROFILE_BASE64
+            EXTENSION_PROVISIONING_PROFILE_BASE64
+          )
+          for name in "${required_secrets[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::$name is not configured in the TestFlight environment."
+              exit 1
+            fi
+          done
+
+          mkdir -p "$SIGNING_DIR"
+          certificate_path="$SIGNING_DIR/distribution.p12"
+          host_profile_path="$SIGNING_DIR/host.mobileprovision"
+          extension_profile_path="$SIGNING_DIR/extension.mobileprovision"
+          printf '%s' "$APPLE_DISTRIBUTION_P12_BASE64" | openssl base64 -d -A -out "$certificate_path"
+          printf '%s' "$HOST_PROVISIONING_PROFILE_BASE64" | openssl base64 -d -A -out "$host_profile_path"
+          printf '%s' "$EXTENSION_PROVISIONING_PROFILE_BASE64" | openssl base64 -d -A -out "$extension_profile_path"
+          test -s "$certificate_path"
+          test -s "$host_profile_path"
+          test -s "$extension_profile_path"
+
+          keychain_password="$(openssl rand -hex 32)"
+          security create-keychain -p "$keychain_password" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$keychain_password" "$KEYCHAIN_PATH"
+          security import "$certificate_path" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$APPLE_DISTRIBUTION_P12_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$keychain_password" \
+            "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+
+          identity_count="$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -c 'Apple Distribution' || true)"
+          if [[ "$identity_count" -ne 1 ]]; then
+            echo "::error::Expected exactly one Apple Distribution identity; found $identity_count."
+            exit 1
+          fi
+          if ! security find-certificate -c 'Apple Distribution' -p "$KEYCHAIN_PATH" \
+            | openssl x509 -noout -checkend 0; then
+            echo "::error::The Apple Distribution certificate is expired or unreadable."
+            exit 1
+          fi
+
+          profile_install_dir="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$profile_install_dir"
+
+          install_profile() {
+            local source_path="$1"
+            local expected_name="$2"
+            local expected_bundle_id="$3"
+            local label="$4"
+            local plist_path="$SIGNING_DIR/$label.plist"
+
+            security cms -D -i "$source_path" > "$plist_path"
+            local profile_uuid
+            local profile_name
+            local profile_team
+            local profile_app_id
+            local get_task_allow
+            local beta_reports_active
+            profile_uuid="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$plist_path")"
+            profile_name="$(/usr/libexec/PlistBuddy -c 'Print :Name' "$plist_path")"
+            profile_team="$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$plist_path")"
+            profile_app_id="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$plist_path")"
+            get_task_allow="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:get-task-allow' "$plist_path")"
+            beta_reports_active="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:beta-reports-active' "$plist_path")"
+
+            if [[ "$profile_name" != "$expected_name" ||
+                  "$profile_team" != "$APPLE_TEAM_ID" ||
+                  "$profile_app_id" != "$APPLE_TEAM_ID.$expected_bundle_id" ||
+                  "$get_task_allow" != "false" ||
+                  "$beta_reports_active" != "true" ]]; then
+              echo "::error::$label provisioning profile does not match the approved App Store Connect contract."
+              exit 1
+            fi
+
+            if /usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' "$plist_path" >/dev/null 2>&1 ||
+               /usr/libexec/PlistBuddy -c 'Print :ProvisionsAllDevices' "$plist_path" >/dev/null 2>&1; then
+              echo "::error::$label provisioning profile is not an App Store Connect distribution profile."
+              exit 1
+            fi
+
+            local installed_path="$profile_install_dir/$profile_uuid.mobileprovision"
+            cp "$source_path" "$installed_path"
+            echo "$installed_path" >> "$SIGNING_DIR/installed-profiles.txt"
+            printf '%s' "$installed_path"
+          }
+
+          installed_host_profile="$(install_profile "$host_profile_path" "$HOST_PROFILE_NAME" "$HOST_BUNDLE_ID" host)"
+          echo "INSTALLED_HOST_PROFILE=$installed_host_profile" >> "$GITHUB_ENV"
+          installed_extension_profile="$(install_profile "$extension_profile_path" "$EXTENSION_PROFILE_NAME" "$EXTENSION_BUNDLE_ID" extension)"
+          echo "INSTALLED_EXTENSION_PROFILE=$installed_extension_profile" >> "$GITHUB_ENV"
+
+      - name: Archive signed probe
+        env:
+          PROBE_UPLOAD_BASE_URL: ${{ secrets.PROBE_UPLOAD_BASE_URL }}
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project ios/SociusFitAutoMeals.xcodeproj \
+            -scheme SociusFitAutoMeals \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$ARCHIVE_PATH" \
+            APPLE_TEAM_ID="$APPLE_TEAM_ID" \
+            HOST_PROVISIONING_PROFILE_SPECIFIER="$HOST_PROFILE_NAME" \
+            EXTENSION_PROVISIONING_PROFILE_SPECIFIER="$EXTENSION_PROFILE_NAME" \
+            BACKGROUND_UPLOAD_URL_BASE="$PROBE_UPLOAD_BASE_URL" \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH" \
+            archive
+
+          app_path="$ARCHIVE_PATH/Products/Applications/SociusFitAutoMeals.app"
+          test -d "$app_path"
+          codesign --verify --deep --strict "$app_path"
+
+          extension_info_list="$SIGNING_DIR/extension-info-plists.txt"
+          find "$app_path" -path '*.appex/Info.plist' -type f > "$extension_info_list"
+          extension_info_count="$(wc -l < "$extension_info_list" | tr -d '[:space:]')"
+          if [[ "$extension_info_count" -ne 1 ]]; then
+            echo "::error::Expected exactly one embedded extension Info.plist."
+            exit 1
+          fi
+          extension_info_plist="$(sed -n '1p' "$extension_info_list")"
+          embedded_probe_base="$(/usr/libexec/PlistBuddy -c 'Print :BackgroundUploadURLBase' "$extension_info_plist")"
+          if [[ "$embedded_probe_base" != "$PROBE_UPLOAD_BASE_URL" ]]; then
+            echo "::error::The signed extension does not contain the approved probe base URL."
+            exit 1
+          fi
+
+      - name: Export signed IPA
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import plistlib
+
+          options = {
+              "destination": "export",
+              "manageAppVersionAndBuildNumber": False,
+              "method": "app-store-connect",
+              "provisioningProfiles": {
+                  os.environ["HOST_BUNDLE_ID"]: os.environ["HOST_PROFILE_NAME"],
+                  os.environ["EXTENSION_BUNDLE_ID"]: os.environ["EXTENSION_PROFILE_NAME"],
+              },
+              "signingStyle": "manual",
+              "stripSwiftSymbols": True,
+              "teamID": os.environ["APPLE_TEAM_ID"],
+              "uploadSymbols": True,
+          }
+          with open(os.environ["EXPORT_OPTIONS_PATH"], "wb") as output:
+              plistlib.dump(options, output)
+          PY
+
+          xcodebuild \
+            -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportPath "$EXPORT_PATH" \
+            -exportOptionsPlist "$EXPORT_OPTIONS_PATH"
+
+      - name: Install App Store Connect upload key
+        env:
+          APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$APP_STORE_CONNECT_API_KEY_P8_BASE64" ]]; then
+            echo "::error::APP_STORE_CONNECT_API_KEY_P8_BASE64 is not configured in the TestFlight environment."
+            exit 1
+          fi
+          api_key_dir="$RUNNER_TEMP/private_keys"
+          api_key_path="$api_key_dir/AuthKey_$APP_STORE_CONNECT_KEY_ID.p8"
+          mkdir -p "$api_key_dir"
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_P8_BASE64" | openssl base64 -d -A -out "$api_key_path"
+          chmod 600 "$api_key_path"
+          test -s "$api_key_path"
+
+      - name: Validate and upload to App Store Connect
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          ipa_files=("$EXPORT_PATH"/*.ipa)
+          if [[ "${#ipa_files[@]}" -ne 1 ]]; then
+            echo "::error::Expected exactly one exported IPA."
+            exit 1
+          fi
+          ipa_path="${ipa_files[0]}"
+
+          cd "$RUNNER_TEMP"
+          xcrun altool \
+            --validate-app \
+            -f "$ipa_path" \
+            -t ios \
+            --apiKey "$APP_STORE_CONNECT_KEY_ID" \
+            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+          xcrun altool \
+            --upload-app \
+            -f "$ipa_path" \
+            -t ios \
+            --apiKey "$APP_STORE_CONNECT_KEY_ID" \
+            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          set -euo pipefail
+          installed_profile_manifest="$SIGNING_DIR/installed-profiles.txt"
+          if [[ -f "$installed_profile_manifest" ]]; then
+            while IFS= read -r installed_profile; do
+              case "$installed_profile" in
+                "$HOME/Library/MobileDevice/Provisioning Profiles/"*.mobileprovision)
+                  rm -f -- "$installed_profile"
+                  ;;
+                *)
+                  echo "::error::Refusing to remove an unexpected provisioning-profile path."
+                  exit 1
+                  ;;
+              esac
+            done < "$installed_profile_manifest"
+          fi
+          security delete-keychain "$KEYCHAIN_PATH" >/dev/null 2>&1 || true
+
+          cleanup_paths=(
+            "$SIGNING_DIR"
+            "$ARCHIVE_PATH"
+            "$EXPORT_PATH"
+            "$EXPORT_OPTIONS_PATH"
+            "$RUNNER_TEMP/private_keys"
+            "$RUNNER_TEMP/xcodegen"
+            "$RUNNER_TEMP/xcodegen.zip"
+          )
+          for path in "${cleanup_paths[@]}"; do
+            case "$path" in
+              "$RUNNER_TEMP"/*) rm -rf -- "$path" ;;
+              *)
+                echo "::error::Refusing to clean a path outside RUNNER_TEMP."
+                exit 1
+                ;;
+            esac
+          done
