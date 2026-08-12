@@ -7,6 +7,11 @@ After a separate approval supplies a private HTTPS test endpoint, the extension
 baselines PhotoKit persistent changes and registers at most one newly inserted
 original photo resource per invocation. Use disposable test photos only.
 
+The harness requires iOS 26.4 because the upload-job creation and response
+header APIs used by this probe became available in that release. Greg's iPhone
+16 Pro on iOS 26.6 satisfies this minimum.
+
+
 The probe does not classify food, store photo bytes, analyze nutrition, create a
 canonical meal, or call `/api/meals/upload`. Its token stays in the extension's
 private defaults for this bounded test. App Group state belongs to the later

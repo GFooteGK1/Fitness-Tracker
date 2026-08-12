@@ -10,9 +10,10 @@ on `codex/auto-meal-photos-probe`, based on `origin/main` commit
 `codex/remove-upc-feature` remains untouched.
 
 
-Greg's canary device is an iPhone 16 Pro running iOS 26.6. The existing iOS
-26.1 deployment target and `PHBackgroundResourceUploadExtension` path apply;
-do not add the iOS 27 async protocol for this canary.
+Greg's canary device is an iPhone 16 Pro running iOS 26.6. The iOS 26.4
+deployment target and `PHBackgroundResourceUploadExtension` path apply. Do not
+add the iOS 27 async protocol for this canary.
+
 This pass implements only the first, non-resumable protocol canary:
 
 - `ios/BackgroundUpload/BackgroundUploadExtension.swift` now acknowledges
@@ -35,30 +36,29 @@ Local verification on Windows:
 - `npm run test:ios-probe`: 3/3 passed.
 - `node --check` passed for the server and its tests.
 - `git diff --check` passed.
-- Swift/Xcode remain unavailable on this host. No native compile, signing, or
-  physical-device execution has occurred for this delta.
+- Swift/Xcode remain unavailable on this host. Unsigned workflow run
+  `31636251067` passed 10 Swift tests and XcodeGen, then proved that the two
+  upload-job APIs require iOS 26.4. The approved correction raises only this
+  harness's deployment target from 26.1 to 26.4. A fresh compile is pending.
+- No signing or physical-device execution has occurred.
 
 The committed `BackgroundUploadURLBase` remains
 `https://example.invalid`. The CLI binds only to `127.0.0.1` and is not
 reachable from an iPhone. This is deliberate: creating Apple identifiers,
-configuring signing, triggering the existing macOS workflow, choosing or
-exposing a TLS endpoint, and uploading to TestFlight remain separate approval
-gates.
+configuring signing, choosing or exposing a TLS endpoint, and uploading to
+TestFlight remain separate approval gates.
 
 Next physical-device proof, after those gates are approved:
 
-1. Obtain current unsigned Swift/Xcode compile evidence for this exact commit.
-2. Record the iPhone model and iOS version before deciding whether the retained
-   iOS 26.1 `PHBackgroundResourceUploadExtension` probe needs an iOS 27 async
-   compatibility target.
-3. Configure one private disposable TLS endpoint with the exact loopback
+1. Obtain current unsigned Swift/Xcode compile evidence for the iOS 26.4 fix.
+2. Configure one private disposable TLS endpoint with the exact loopback
    semantics. Do not point the extension at `/api/meals/upload`.
-4. Install a development-signed build, authorize full read-write Photos access,
+3. Install a development-signed build, authorize full read-write Photos access,
    enable the extension, and wait for its baseline log.
-5. Capture one disposable photo with the host closed or locked. Preserve the
+4. Capture one disposable photo with the host closed or locked. Preserve the
    exact OPTIONS/POST receipts, scheduling latency, job state/error, and
    `x-probe-request-id`.
-6. Add HTTP `104` support only if this `501` canary proves non-resumable
+5. Add HTTP `104` support only if this `501` canary proves non-resumable
    upload does not complete. A raw gateway/provider remains human-gated.
 
 The bead stays in progress until physical-device evidence determines whether

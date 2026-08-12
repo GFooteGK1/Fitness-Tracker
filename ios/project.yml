@@ -3,7 +3,7 @@ name: SociusFitAutoMeals
 options:
   createIntermediateGroups: true
   deploymentTarget:
-    iOS: "26.1"
+    iOS: "26.4"
   generateEmptyDirectories: true
   minimumXcodeGenVersion: "2.46.0"
 
