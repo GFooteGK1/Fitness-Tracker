@@ -29,13 +29,20 @@ jobs:
       EXTENSION_PROFILE_NAME: ${{ vars.EXTENSION_PROVISIONING_PROFILE_NAME }}
       HOST_BUNDLE_ID: com.sociusfit.automeals
       EXTENSION_BUNDLE_ID: com.sociusfit.automeals.background-upload
-      SIGNING_DIR: ${{ runner.temp }}/sociusfit-signing
-      KEYCHAIN_PATH: ${{ runner.temp }}/sociusfit-signing.keychain-db
-      ARCHIVE_PATH: ${{ runner.temp }}/SociusFitAutoMeals.xcarchive
-      EXPORT_PATH: ${{ runner.temp }}/sociusfit-export
-      EXPORT_OPTIONS_PATH: ${{ runner.temp }}/sociusfit-export-options.plist
+
 
     steps:
+      - name: Initialize ephemeral paths
+        run: |
+          set -euo pipefail
+          {
+            echo "SIGNING_DIR=$RUNNER_TEMP/sociusfit-signing"
+            echo "KEYCHAIN_PATH=$RUNNER_TEMP/sociusfit-signing.keychain-db"
+            echo "ARCHIVE_PATH=$RUNNER_TEMP/SociusFitAutoMeals.xcarchive"
+            echo "EXPORT_PATH=$RUNNER_TEMP/sociusfit-export"
+            echo "EXPORT_OPTIONS_PATH=$RUNNER_TEMP/sociusfit-export-options.plist"
+          } >> "$GITHUB_ENV"
+
       - name: Check out reviewed source
         uses: actions/checkout@v7
 

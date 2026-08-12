@@ -32,6 +32,7 @@ test('TestFlight workflow is manual, branch-bound, and read-only', () => {
 test('secrets are scoped to signing, archive, and upload steps', () => {
   const jobHeader = workflow.slice(workflow.indexOf('jobs:'), workflow.indexOf('    steps:'))
   assert.doesNotMatch(jobHeader, /secrets\./)
+  assert.doesNotMatch(jobHeader, /\$\{\{\s*runner\./)
 
   const requiredSecrets = [
     'APPLE_DISTRIBUTION_P12_BASE64',
