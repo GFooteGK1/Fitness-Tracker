@@ -79,9 +79,28 @@ test('probe endpoint remains fail-closed and cleanup is unconditional', () => {
   assert.doesNotMatch(workflow, /vercel/i)
 })
 
-test('XcodeGen project uses manual per-target profiles and a placeholder URL', () => {
+test('XcodeGen project uses Release distribution signing per target', () => {
+  const projectSettings = project.slice(
+    project.indexOf('settings:'),
+    project.indexOf('targets:')
+  )
+  const hostTarget = project.slice(
+    project.indexOf('  SociusFitAutoMeals:'),
+    project.indexOf('  SociusFitAutoMealsBackgroundUpload:')
+  )
+  const extensionTarget = project.slice(
+    project.indexOf('  SociusFitAutoMealsBackgroundUpload:'),
+    project.indexOf('schemes:')
+  )
+
   assert.match(project, /DEVELOPMENT_TEAM: \$\(APPLE_TEAM_ID\)/)
-  assert.match(project, /CODE_SIGN_IDENTITY: Apple Distribution/)
+  assert.doesNotMatch(projectSettings, /CODE_SIGN_IDENTITY/)
+  for (const target of [hostTarget, extensionTarget]) {
+    assert.match(
+      target,
+      /configs:\r?\n\s+Release:\r?\n\s+CODE_SIGN_IDENTITY: Apple Distribution/
+    )
+  }
   assert.match(project, /CODE_SIGN_STYLE: Manual/g)
   assert.match(project, /PROVISIONING_PROFILE_SPECIFIER: \$\(HOST_PROVISIONING_PROFILE_SPECIFIER\)/)
   assert.match(project, /PROVISIONING_PROFILE_SPECIFIER: \$\(EXTENSION_PROVISIONING_PROFILE_SPECIFIER\)/)

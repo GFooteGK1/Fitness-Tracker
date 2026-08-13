@@ -1,6 +1,51 @@
 # Handoff
 
 
+## Automatic meal photos TestFlight signing correction (local verified, 2026-08-13)
+
+Current objective: correct only the Release signing identity selected by
+XcodeGen. The physical-device probe remains Fitness-Tracker-1vo.1. Another
+TestFlight dispatch is a separate approval gate.
+
+State:
+- Work remains in the clean auto-meal-photos-probe worktree on
+  codex/auto-meal-photos-probe. Starting and remote head: 73f0cdad.
+- TestFlight run 31733527366 validated the distribution certificate and both
+  profiles, then failed before export or upload because the host requested
+  iOS Development. Ephemeral signing cleanup passed.
+- XcodeGen 2.46.0 injects iPhone Developer at the application target level,
+  which outranked the former project-level Apple Distribution setting.
+
+Files changed:
+- ios/project.yml removes the project-level identity and sets Apple
+  Distribution only for Release on both native targets. Debug retains
+  development signing behavior.
+- scripts/ios-signing/workflow.node-test.mjs rejects project-level identity
+  and requires Release distribution identity in both target sections.
+- This handoff section supersedes stale endpoint and dispatch state below.
+
+Verification:
+- npm run test:ios-signing passed 6/6.
+- npm run test:ios-probe passed 3/3.
+- npm test passed with exit code 0.
+- ios/project.yml parsed through js-yaml.
+- git diff --check passed.
+- Xcode is unavailable on Windows. The next proof is the secret-free iOS
+  Native Compile workflow on macOS with Xcode 26.5.
+
+No profile, certificate, secret, endpoint, Worker, Apple identifier, workflow
+definition, product code, meal path, 104 support, or production state changed.
+Do not replace signing assets based on this failure.
+
+Next actions: commit and push this scoped correction; dispatch and verify one
+unsigned native compile; update the bead and stop for fresh approval before
+any TestFlight rerun.
+
+Required reading: AGENTS.md, this section, Fitness-Tracker-1vo.1,
+ios/project.yml, scripts/ios-signing/workflow.node-test.mjs, and
+.github/workflows/ios-testflight.yml.
+
+
 ## Automatic meal photos physical-device protocol probe (manual signing prepared, 2026-08-12)
 
 Work continues on bead `Fitness-Tracker-1vo.1` in

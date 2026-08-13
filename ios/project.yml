@@ -12,7 +12,6 @@ settings:
     APPLE_TEAM_ID: ""
     BACKGROUND_UPLOAD_URL_BASE: https://example.invalid
     CURRENT_PROJECT_VERSION: 1
-    CODE_SIGN_IDENTITY: Apple Distribution
     DEVELOPMENT_TEAM: $(APPLE_TEAM_ID)
     EXTENSION_PROVISIONING_PROFILE_SPECIFIER: ""
     HOST_PROVISIONING_PROFILE_SPECIFIER: ""
@@ -46,6 +45,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.sociusfit.automeals
         PROVISIONING_PROFILE_SPECIFIER: $(HOST_PROVISIONING_PROFILE_SPECIFIER)
         TARGETED_DEVICE_FAMILY: 1
+      configs:
+        Release:
+          CODE_SIGN_IDENTITY: Apple Distribution
     dependencies:
       - target: SociusFitAutoMealsBackgroundUpload
         embed: true
@@ -76,6 +78,9 @@ targets:
         PROVISIONING_PROFILE_SPECIFIER: $(EXTENSION_PROVISIONING_PROFILE_SPECIFIER)
         SKIP_INSTALL: YES
         TARGETED_DEVICE_FAMILY: 1
+      configs:
+        Release:
+          CODE_SIGN_IDENTITY: Apple Distribution
 
 schemes:
   SociusFitAutoMeals:
