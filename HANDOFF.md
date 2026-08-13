@@ -40,6 +40,10 @@ Local verification on Windows:
   `*.node-test.mjs` suffix while their package scripts still run them directly.
   The full local Vitest command passes 195 files and 2,238 tests; five files
   and seven environment-gated tests remain skipped.
+- Exact PR head `186747238d4787f3834def8c7458951ce22c2128` passed CI run
+  `31720291870`, unsigned iOS compile run `31720291824`, and the Vercel preview.
+  Greg approved squash merge on 2026-08-13. GitHub is the live authority for
+  the final merge commit and post-merge checks.
 - `node --check` passed for the server and its tests.
 - `git diff --check` passed.
 - Swift/Xcode remain unavailable on this host. Initial unsigned workflow run
@@ -82,11 +86,12 @@ requires one.
 
 Next physical-device proof, after the remaining gates are approved:
 
-1. Review draft PR #69, `Add PhotoKit physical-device upload probe`, from
-   `codex/auto-meal-photos-probe` to `main`:
-   `https://github.com/GFooteGK1/Fitness-Tracker/pull/69`. Merge only with
-   separate approval. GitHub requires the workflow on the default branch for
-   normal manual dispatch.
+1. Verify PR #69, `Add PhotoKit physical-device upload probe`, live at
+   `https://github.com/GFooteGK1/Fitness-Tracker/pull/69`. If it is still open,
+   squash-merge only the approved exact head above after green checks. If it is
+   already merged, use its merge commit plus main CI/Vercel readback as release
+   proof and do not repeat the delivery. GitHub requires the workflow on the
+   default branch for normal manual dispatch.
 2. With separate endpoint approval, configure one private disposable TLS
    endpoint with the exact loopback semantics and set `PROBE_UPLOAD_BASE_URL`.
    Do not point the extension at `/api/meals/upload`.
