@@ -1,5 +1,113 @@
 # Handoff
 
+
+## Automatic meal photos physical-device protocol probe (manual signing prepared, 2026-08-12)
+
+Work continues on bead `Fitness-Tracker-1vo.1` in
+`C:\Dev\Personal\repos\Fitness-Tracker\.worktrees\auto-meal-photos-probe`
+on `codex/auto-meal-photos-probe`, based on `origin/main` commit
+`caec73b94e7824e3de87a154fdce2bd8000461eb`. The dirty primary checkout on
+`codex/remove-upc-feature` remains untouched.
+
+
+Greg's canary device is an iPhone 16 Pro running iOS 26.6. The iOS 26.4
+deployment target and `PHBackgroundResourceUploadExtension` path apply. Do not
+add the iOS 27 async protocol for this canary.
+
+This pass implements only the first, non-resumable protocol canary:
+
+- `ios/BackgroundUpload/BackgroundUploadExtension.swift` now acknowledges
+  finished probe jobs, stores a private persistent-change baseline, selects at
+  most the newest inserted image, registers one original-photo upload job, and
+  fails closed on missing configuration, token expiry, job limits, termination,
+  or other errors.
+- `ios/Shared/PhysicalDeviceProtocolProbe.swift` validates an approved HTTPS
+  base URL, rejects the committed `example.invalid` placeholder, and owns the
+  deterministic first-run/newest-photo planner.
+- `scripts/ios-photo-upload-probe/server.mjs` is a loopback-only raw Node
+  contract server. `OPTIONS /probe/photo` returns `501` without
+  `Upload-Limit`; POST bytes are discarded and receive `201`. Safe receipts
+  exclude authorization, cookies, filenames, identifiers, and body content.
+- `/api/meals/upload` is neither called nor exposed. No meal, photo object,
+  nutrition result, database row, or production state is created.
+
+Local verification on Windows:
+
+- `npm run test:ios-probe`: 3/3 passed.
+- `npm run test:ios-signing`: 6/6 passed.
+- PR #69 initially failed CI because Vitest discovered the two Node built-in
+  test files and reported `No test suite found`. Those files now use the
+  `*.node-test.mjs` suffix while their package scripts still run them directly.
+  The full local Vitest command passes 195 files and 2,238 tests; five files
+  and seven environment-gated tests remain skipped.
+- Exact PR head `186747238d4787f3834def8c7458951ce22c2128` passed CI run
+  `31720291870`, unsigned iOS compile run `31720291824`, and the Vercel preview.
+  Greg approved squash merge on 2026-08-13. GitHub is the live authority for
+  the final merge commit and post-merge checks.
+- `node --check` passed for the server and its tests.
+- `git diff --check` passed.
+- Swift/Xcode remain unavailable on this host. Initial unsigned workflow run
+  `31636251067` proved that two upload-job APIs require iOS 26.4. After the
+  approved target correction, run `31637024156` passed all 10 Swift tests,
+  verified pinned XcodeGen, generated the project, and compiled the unsigned
+  app plus extension on Xcode 26.5 at commit `6453f20`.
+- No signed archive, App Store Connect upload, TestFlight build, endpoint deploy,
+  or physical-device execution has occurred.
+- `.github/workflows/ios-testflight.yml` now defines a manual-only signing and
+  internal TestFlight upload path. It requires the protected `TestFlight`
+  environment and exact confirmation text `UPLOAD TESTFLIGHT PROBE`.
+- GitHub environment `TestFlight` exists with `GFooteGK1` as required reviewer
+  and an exact branch policy for `codex/auto-meal-photos-probe`. Administrator
+  bypass is disabled. Readback on 2026-08-12 confirmed five non-secret signing
+  variables and five encrypted secrets, including the securely entered `.p12`
+  password. `PROBE_UPLOAD_BASE_URL` remains unset, so the workflow stays
+  fail-closed. The workflow has not been dispatched.
+- Apple portal setup now includes both explicit App IDs, one Apple Distribution
+  certificate, two matching App Store Connect profiles, the host app record,
+  and team API key `S6U27WS3JR`. Local verification confirmed Team ID
+  `YLVWRLGQX3`, exact application identifiers, distribution flags, the embedded
+  certificate, and expiration on 2027-08-12. Secret values were not printed or
+  committed. No App Group was created.
+- Read-only App Store Connect API verification on 2026-08-13 found exactly one
+  `Physical Device Probe` group for `SociusFit Auto Meals Probe` / bundle ID
+  `com.sociusfit.automeals`. It is internal, automatic build access is off, no
+  public link is enabled, and one tester is present. The tester state is
+  `NOT_INVITED`, as expected before the first TestFlight build exists.
+- `ios/APPLE-PORTAL-CHECKLIST.md` is the source of truth for the two explicit
+  App IDs, profiles, app record, team API key, secure GitHub values, tester
+  group, export-compliance response, and later credential revocation.
+
+The committed `BackgroundUploadURLBase` remains
+`https://example.invalid`. The CLI binds only to `127.0.0.1` and is not
+reachable from an iPhone. This is deliberate. Endpoint choice/exposure,
+workflow dispatch, and TestFlight upload remain separate approval gates. The
+canary does not create an App Group unless Apple proves a managed capability
+requires one.
+
+Next physical-device proof, after the remaining gates are approved:
+
+1. Verify PR #69, `Add PhotoKit physical-device upload probe`, live at
+   `https://github.com/GFooteGK1/Fitness-Tracker/pull/69`. If it is still open,
+   squash-merge only the approved exact head above after green checks. If it is
+   already merged, use its merge commit plus main CI/Vercel readback as release
+   proof and do not repeat the delivery. GitHub requires the workflow on the
+   default branch for normal manual dispatch.
+2. With separate endpoint approval, configure one private disposable TLS
+   endpoint with the exact loopback semantics and set `PROBE_UPLOAD_BASE_URL`.
+   Do not point the extension at `/api/meals/upload`.
+3. Manually dispatch the workflow and approve the protected job. Confirm one
+   internal TestFlight build passes validation before assigning the build to the
+   already verified `Physical Device Probe` group.
+4. On iPhone 16 Pro / iOS 26.6, authorize full read-write Photos access, enable
+   the extension, wait for its baseline log, then capture one disposable photo
+   with the host closed or locked. Preserve OPTIONS/POST receipts, scheduling
+   latency, job state/error, and `x-probe-request-id`.
+5. Add HTTP `104` support only if this `501` canary proves non-resumable upload
+   does not complete. A raw gateway/provider remains human-gated.
+
+The bead stays in progress until physical-device evidence determines whether
+`104` is required. No App Group or download-only production behavior was
+added in this minimal probe.
 ## Automatic meal photos Phase 1 cloud build scaffold (draft PR cloud-verified, 2026-08-02)
 
 Greg enrolled in the Apple Developer Program and approved the cloud-Mac plus

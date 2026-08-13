@@ -11,6 +11,9 @@
     "start": "next start",
     "lint": "next lint",
     "migrate": "node scripts/migrate-data.js",
+    "probe:ios-upload": "node scripts/ios-photo-upload-probe/server.mjs",
+    "test:ios-probe": "node --test scripts/ios-photo-upload-probe/server.node-test.mjs",
+    "test:ios-signing": "node --test scripts/ios-signing/workflow.node-test.mjs",
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui"
