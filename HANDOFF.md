@@ -48,27 +48,43 @@ Local verification on Windows:
   environment and exact confirmation text `UPLOAD TESTFLIGHT PROBE`.
 - GitHub environment `TestFlight` exists with `GFooteGK1` as required reviewer
   and an exact branch policy for `codex/auto-meal-photos-probe`. Administrator
-  bypass is disabled. Readback showed no environment variables or secrets. The
-  workflow has not been dispatched.
+  bypass is disabled. Readback on 2026-08-12 confirmed five non-secret signing
+  variables and five encrypted secrets, including the securely entered `.p12`
+  password. `PROBE_UPLOAD_BASE_URL` remains unset, so the workflow stays
+  fail-closed. The workflow has not been dispatched.
+- Apple portal setup now includes both explicit App IDs, one Apple Distribution
+  certificate, two matching App Store Connect profiles, the host app record,
+  and team API key `S6U27WS3JR`. Local verification confirmed Team ID
+  `YLVWRLGQX3`, exact application identifiers, distribution flags, the embedded
+  certificate, and expiration on 2027-08-12. Secret values were not printed or
+  committed. No App Group was created.
+- Read-only App Store Connect API verification on 2026-08-13 found exactly one
+  `Physical Device Probe` group for `SociusFit Auto Meals Probe` / bundle ID
+  `com.sociusfit.automeals`. It is internal, automatic build access is off, no
+  public link is enabled, and one tester is present. The tester state is
+  `NOT_INVITED`, as expected before the first TestFlight build exists.
 - `ios/APPLE-PORTAL-CHECKLIST.md` is the source of truth for the two explicit
   App IDs, profiles, app record, team API key, secure GitHub values, tester
   group, export-compliance response, and later credential revocation.
 
 The committed `BackgroundUploadURLBase` remains
 `https://example.invalid`. The CLI binds only to `127.0.0.1` and is not
-reachable from an iPhone. This is deliberate. Apple portal writes, secret
-entry, endpoint choice/exposure, workflow dispatch, and TestFlight upload remain
-separate approval gates. The canary does not create an App Group unless Apple
-proves a managed capability requires one.
+reachable from an iPhone. This is deliberate. Endpoint choice/exposure,
+workflow dispatch, and TestFlight upload remain separate approval gates. The
+canary does not create an App Group unless Apple proves a managed capability
+requires one.
 
 Next physical-device proof, after the remaining gates are approved:
 
-1. Complete `ios/APPLE-PORTAL-CHECKLIST.md` and enter its variables and secrets
-   directly in the protected GitHub environment. Never put credentials in chat.
-2. Configure one private disposable TLS endpoint with the exact loopback
-   semantics. Do not point the extension at `/api/meals/upload`.
+1. With explicit delivery approval, commit the current handoff update and open
+   a pull request from `codex/auto-meal-photos-probe` to `main`. No PR exists.
+   GitHub requires the workflow on the default branch for normal manual dispatch.
+2. With separate endpoint approval, configure one private disposable TLS
+   endpoint with the exact loopback semantics and set `PROBE_UPLOAD_BASE_URL`.
+   Do not point the extension at `/api/meals/upload`.
 3. Manually dispatch the workflow and approve the protected job. Confirm one
-   internal TestFlight build passes validation before assigning Greg as tester.
+   internal TestFlight build passes validation before assigning the build to the
+   already verified `Physical Device Probe` group.
 4. On iPhone 16 Pro / iOS 26.6, authorize full read-write Photos access, enable
    the extension, wait for its baseline log, then capture one disposable photo
    with the host closed or locked. Preserve OPTIONS/POST receipts, scheduling
