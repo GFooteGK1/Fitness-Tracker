@@ -34,6 +34,12 @@ This pass implements only the first, non-resumable protocol canary:
 Local verification on Windows:
 
 - `npm run test:ios-probe`: 3/3 passed.
+- `npm run test:ios-signing`: 6/6 passed.
+- PR #69 initially failed CI because Vitest discovered the two Node built-in
+  test files and reported `No test suite found`. Those files now use the
+  `*.node-test.mjs` suffix while their package scripts still run them directly.
+  The full local Vitest command passes 195 files and 2,238 tests; five files
+  and seven environment-gated tests remain skipped.
 - `node --check` passed for the server and its tests.
 - `git diff --check` passed.
 - Swift/Xcode remain unavailable on this host. Initial unsigned workflow run
