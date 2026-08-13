@@ -76,9 +76,11 @@ requires one.
 
 Next physical-device proof, after the remaining gates are approved:
 
-1. With explicit delivery approval, commit the current handoff update and open
-   a pull request from `codex/auto-meal-photos-probe` to `main`. No PR exists.
-   GitHub requires the workflow on the default branch for normal manual dispatch.
+1. Review draft PR #69, `Add PhotoKit physical-device upload probe`, from
+   `codex/auto-meal-photos-probe` to `main`:
+   `https://github.com/GFooteGK1/Fitness-Tracker/pull/69`. Merge only with
+   separate approval. GitHub requires the workflow on the default branch for
+   normal manual dispatch.
 2. With separate endpoint approval, configure one private disposable TLS
    endpoint with the exact loopback semantics and set `PROBE_UPLOAD_BASE_URL`.
    Do not point the extension at `/api/meals/upload`.
