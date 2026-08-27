@@ -1,10 +1,11 @@
 # SociusFit Auto Meal Photos — native harness
 
 This directory contains the minimal native boundary approved in ADR-0005. The
-current slice is a fail-closed physical-device protocol probe. With the
-committed `https://example.invalid` configuration, it cannot upload a photo.
-After a separate approval supplies a private HTTPS test endpoint, the extension
-baselines PhotoKit persistent changes and registers at most one newly inserted
+current slice is the Build 4 fail-closed physical-device protocol probe. With
+the committed `https://example.invalid` configuration, it cannot upload a
+photo. The protected TestFlight workflow may inject only the separately approved
+private probe URL. The host records the current PhotoKit change token before it
+enables the extension, and the extension registers at most one newly inserted
 original photo resource per invocation. Use disposable test photos only.
 
 The harness requires iOS 26.4 because the upload-job creation and response
@@ -13,9 +14,10 @@ header APIs used by this probe became available in that release. Greg's iPhone
 
 
 The probe does not classify food, store photo bytes, analyze nutrition, create a
-canonical meal, or call `/api/meals/upload`. Its token stays in the extension's
-private defaults for this bounded test. App Group state belongs to the later
-product implementation.
+canonical meal, or call `/api/meals/upload`. Build 4 uses only
+`group.com.sociusfit.automeals` to share the PhotoKit baseline and a bounded
+latest diagnostic snapshot. The shared state excludes filenames, asset
+identifiers, location, photo bytes, endpoint URLs, and nutrition data.
 
 ## OPTIONS 501 protocol probe
 
@@ -40,16 +42,19 @@ After signing and that endpoint are approved, run this canary:
 
 1. Record the source commit, iPhone model, iOS version, install type, network,
    and iCloud Photos state.
-2. Install the internal TestFlight build and start with the extension disabled.
+2. Install Build 4 from the internal TestFlight group and open it.
    iOS 26.6 uses normal PhotoKit scheduling; Resource Upload Test Mode requires
    iOS 27 plus an Xcode-run development-signed build and does not apply here.
-3. Grant full read-write Photos access and enable the extension once.
-4. Wait for the `ProtocolProbe` baseline log before taking a disposable photo.
-5. Close or lock the host, take one photo, and record scheduling latency.
-6. Capture the exact `OPTIONS` receipt, any `POST` receipt, and the final
-   PhotoKit job state plus `x-probe-request-id`.
-7. Disable the extension and prove that another disposable photo creates no
-   server receipt.
+3. Grant full read-write Photos access if needed.
+4. Tap **Prepare Fresh Canary**. Confirm the phase is **Ready for capture**, the
+   baseline is **Ready**, and the invocation count is zero.
+5. Close or lock the host, take exactly one new disposable photo, and record the
+   time.
+6. Reopen the app later, tap **Refresh Diagnostics**, and record the phase,
+   invocation count, resource result, job registration, job state, receipt, and
+   sanitized error.
+7. Compare the app evidence with the exact `OPTIONS` and any `POST` receipt.
+8. Disable the extension. Prove another disposable photo creates no receipt.
 
 Do not add HTTP `104` support yet. It is required only if the physical-device
 `501` canary proves that PhotoKit rejects or cannot complete a non-resumable
@@ -136,18 +141,19 @@ The workflow rejects `example.invalid`, `/api/meals/upload`, URL credentials,
 queries, and fragments. The value is embedded in the signed extension and must
 be a short-lived capability URL, not a durable authentication boundary.
 
-The GitHub `TestFlight` environment exists with `GFooteGK1` as required reviewer
-and a branch policy limited to `codex/auto-meal-photos-probe`. It currently has
-no variables or secrets. The workflow has not been dispatched.
+The GitHub `TestFlight` environment uses `GFooteGK1` as required reviewer
+and limits deployment to `codex/auto-meal-photos-probe`. Build 3 proved this
+protected signing and upload path. Build 4 requires regenerated host and
+extension profiles that both contain the approved App Group entitlement.
 
 Follow `ios/APPLE-PORTAL-CHECKLIST.md` for the exact identifiers, profile names,
 team API key, secure GitHub values, internal tester group, and revocation steps.
 
 Do not commit Apple private keys, certificates, provisioning profiles, issuer
 IDs, key IDs, endpoint capability URLs, or App Store Connect credentials. Do not
-create an App Group for this minimal canary unless Apple proves a managed
-capability or entitlement requires one. The later product path still expects
-shared App Group state.
+add another App Group or shared container. Build 4 is limited to
+`group.com.sociusfit.automeals`, the shared PhotoKit baseline, and the bounded
+diagnostic snapshot defined by ADR-0006.
 
 Official PhotoKit source:
 https://developer.apple.com/documentation/photokit/uploading-asset-resources-in-the-background

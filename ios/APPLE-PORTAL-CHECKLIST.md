@@ -27,11 +27,17 @@ IDs with these exact bundle IDs:
 | SociusFit Auto Meals Probe | `com.sociusfit.automeals` |
 | SociusFit Auto Meals Background Upload | `com.sociusfit.automeals.background-upload` |
 
-Do not create an App Group for this canary. The probe stores its token in the
-extension's private defaults, and the host does not read it. If Apple requires a
-managed capability or entitlement for the Photos background-upload extension,
-record its exact portal name and stop before generating profiles. The project
-must match that capability before profiles are created.
+### 2a. Register and associate the diagnostic App Group
+
+In **Identifiers**, add one App Group:
+
+| Description | Identifier |
+|---|---|
+| SociusFit Auto Meals Probe Diagnostics | `group.com.sociusfit.automeals` |
+
+Edit both explicit App IDs above. Enable **App Groups**, select only
+`group.com.sociusfit.automeals`, save, and confirm the capability appears on
+both identifiers. Do not select another App Group or managed capability.
 
 ## 3. Create one Apple Distribution certificate
 
@@ -48,10 +54,10 @@ must match that capability before profiles are created.
 Keep the private key, `.p12`, and its password outside the repository. Do not
 use an online converter or a shared file-transfer site.
 
-## 4. Create two App Store Connect provisioning profiles
+## 4. Regenerate two App Store Connect provisioning profiles
 
-Create **App Store Connect** distribution profiles after all required
-capabilities are final:
+Regenerate both **App Store Connect** distribution profiles after the App Group
+association is saved:
 
 | Profile name | Explicit App ID | Certificate |
 |---|---|---|
@@ -60,6 +66,10 @@ capabilities are final:
 
 Download both `.mobileprovision` files. Do not create development, Ad Hoc, or
 Enterprise profiles for the TestFlight workflow.
+
+Decode each profile locally and verify
+`Entitlements:com.apple.security.application-groups:0` equals
+`group.com.sociusfit.automeals`. Stop if either profile omits it.
 
 ## 5. Create the App Store Connect app record
 
@@ -95,9 +105,10 @@ that Greg is the required reviewer and only
 `codex/auto-meal-photos-probe` can deploy.
 
 The environment and exact branch policy are already created. Administrator
-bypass is disabled. Greg can approve his own manually dispatched job. Current
-readback shows no variables or secrets, so the workflow cannot sign or upload
-until the remaining checklist values are entered directly in GitHub.
+bypass is disabled. Greg can approve his own manually dispatched job. Build 3
+proved the protected workflow path. Before Build 4, confirm the existing values
+remain and replace only `HOST_PROVISIONING_PROFILE_BASE64` and
+`EXTENSION_PROVISIONING_PROFILE_BASE64` with the regenerated profiles.
 
 Add these environment variables:
 
@@ -142,8 +153,9 @@ in the signed extension. Then:
 3. Enter `UPLOAD TESTFLIGHT PROBE` exactly.
 4. Review the exact commit before approving the `TestFlight` environment job.
 5. Wait for Apple to process the upload.
-6. Answer export-compliance questions accurately. The current probe uses only
-   system HTTPS and no custom cryptography, but Greg owns the legal declaration.
+6. Verify Apple reads `ITSAppUsesNonExemptEncryption=false` from the host
+   Info.plist. Greg confirmed this probe uses system HTTPS and no non-exempt
+   encryption. Stop if Apple still requests a different declaration.
 7. Add the processed build to `Physical Device Probe` and install it through
    TestFlight on the iPhone 16 Pro running iOS 26.6.
 

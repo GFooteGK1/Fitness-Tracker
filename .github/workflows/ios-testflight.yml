@@ -27,6 +27,7 @@ jobs:
       APP_STORE_CONNECT_ISSUER_ID: ${{ vars.APP_STORE_CONNECT_ISSUER_ID }}
       HOST_PROFILE_NAME: ${{ vars.HOST_PROVISIONING_PROFILE_NAME }}
       EXTENSION_PROFILE_NAME: ${{ vars.EXTENSION_PROVISIONING_PROFILE_NAME }}
+      APP_GROUP_ID: group.com.sociusfit.automeals
       HOST_BUNDLE_ID: com.sociusfit.automeals
       EXTENSION_BUNDLE_ID: com.sociusfit.automeals.background-upload
 
@@ -194,18 +195,24 @@ jobs:
             local profile_name
             local profile_team
             local profile_app_id
+            local profile_app_group
+            local profile_extra_app_group
             local get_task_allow
             local beta_reports_active
             profile_uuid="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$plist_path")"
             profile_name="$(/usr/libexec/PlistBuddy -c 'Print :Name' "$plist_path")"
             profile_team="$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$plist_path")"
             profile_app_id="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$plist_path")"
+            profile_app_group="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.security.application-groups:0' "$plist_path" 2>/dev/null || true)"
+            profile_extra_app_group="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.security.application-groups:1' "$plist_path" 2>/dev/null || true)"
             get_task_allow="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:get-task-allow' "$plist_path")"
             beta_reports_active="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:beta-reports-active' "$plist_path")"
 
             if [[ "$profile_name" != "$expected_name" ||
                   "$profile_team" != "$APPLE_TEAM_ID" ||
                   "$profile_app_id" != "$APPLE_TEAM_ID.$expected_bundle_id" ||
+                  "$profile_app_group" != "$APP_GROUP_ID" ||
+                  -n "$profile_extra_app_group" ||
                   "$get_task_allow" != "false" ||
                   "$beta_reports_active" != "true" ]]; then
               echo "::error::$label provisioning profile does not match the approved App Store Connect contract."
@@ -251,6 +258,7 @@ jobs:
           app_path="$ARCHIVE_PATH/Products/Applications/SociusFitAutoMeals.app"
           test -d "$app_path"
           codesign --verify --deep --strict "$app_path"
+          test -f "$app_path/PrivacyInfo.xcprivacy"
 
           extension_info_list="$SIGNING_DIR/extension-info-plists.txt"
           find "$app_path" -path '*.appex/Info.plist' -type f > "$extension_info_list"
@@ -260,9 +268,28 @@ jobs:
             exit 1
           fi
           extension_info_plist="$(sed -n '1p' "$extension_info_list")"
+          extension_path="$(dirname "$extension_info_plist")"
+          test -f "$extension_path/PrivacyInfo.xcprivacy"
           embedded_probe_base="$(/usr/libexec/PlistBuddy -c 'Print :BackgroundUploadURLBase' "$extension_info_plist")"
           if [[ "$embedded_probe_base" != "$PROBE_UPLOAD_BASE_URL" ]]; then
             echo "::error::The signed extension does not contain the approved probe base URL."
+            exit 1
+          fi
+
+          host_entitlements="$SIGNING_DIR/signed-host-entitlements.plist"
+          extension_entitlements="$SIGNING_DIR/signed-extension-entitlements.plist"
+          codesign -d --entitlements :- "$app_path" > "$host_entitlements"
+          codesign -d --entitlements :- "$extension_path" > "$extension_entitlements"
+
+          signed_host_app_group="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.application-groups:0' "$host_entitlements" 2>/dev/null || true)"
+          if [[ "$signed_host_app_group" != "$APP_GROUP_ID" ]]; then
+            echo "::error::signed host app is missing the approved App Group"
+            exit 1
+          fi
+
+          signed_extension_app_group="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.application-groups:0' "$extension_entitlements" 2>/dev/null || true)"
+          if [[ "$signed_extension_app_group" != "$APP_GROUP_ID" ]]; then
+            echo "::error::signed extension is missing the approved App Group"
             exit 1
           fi
 

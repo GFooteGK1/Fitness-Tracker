@@ -9,6 +9,22 @@ const workflow = await readFile(
   'utf8'
 )
 const project = await readFile(`${repositoryRoot}/ios/project.yml`, 'utf8')
+const hostEntitlements = await readFile(
+  `${repositoryRoot}/ios/Supporting/App.entitlements`,
+  'utf8'
+)
+const extensionEntitlements = await readFile(
+  `${repositoryRoot}/ios/Supporting/BackgroundUpload.entitlements`,
+  'utf8'
+)
+const hostPrivacyManifest = await readFile(
+  `${repositoryRoot}/ios/Supporting/App/PrivacyInfo.xcprivacy`,
+  'utf8'
+)
+const extensionPrivacyManifest = await readFile(
+  `${repositoryRoot}/ios/Supporting/BackgroundUpload/PrivacyInfo.xcprivacy`,
+  'utf8'
+)
 const appIconManifest = await readFile(
   `${repositoryRoot}/ios/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json`,
   'utf8'
@@ -106,9 +122,39 @@ test('XcodeGen project uses Release distribution signing per target', () => {
   assert.match(project, /PROVISIONING_PROFILE_SPECIFIER: \$\(EXTENSION_PROVISIONING_PROFILE_SPECIFIER\)/)
   assert.match(project, /BackgroundUploadURLBase: \$\(BACKGROUND_UPLOAD_URL_BASE\)/)
   assert.match(project, /BACKGROUND_UPLOAD_URL_BASE: https:\/\/example\.invalid/)
+  assert.match(project, /APP_GROUP_ID: group\.com\.sociusfit\.automeals/)
+  assert.match(project, /CODE_SIGN_ENTITLEMENTS: Supporting\/App\.entitlements/)
+  assert.match(project, /CODE_SIGN_ENTITLEMENTS: Supporting\/BackgroundUpload\.entitlements/)
+  assert.match(project, /Supporting\/App\/PrivacyInfo\.xcprivacy/)
+  assert.match(project, /Supporting\/BackgroundUpload\/PrivacyInfo\.xcprivacy/)
+  assert.match(project, /ITSAppUsesNonExemptEncryption: false/)
   assert.match(project, /UILaunchScreen: \{\}/)
   assert.match(project, /ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon/)
-  assert.doesNotMatch(project, /com\.apple\.security\.application-groups/)
+})
+
+test('both native targets share only the approved diagnostic App Group', () => {
+  for (const entitlements of [hostEntitlements, extensionEntitlements]) {
+    assert.match(entitlements, /<key>com\.apple\.security\.application-groups<\/key>/)
+    assert.match(entitlements, /<string>group\.com\.sociusfit\.automeals<\/string>/)
+    assert.equal(
+      (entitlements.match(/<string>group\./g) ?? []).length,
+      1,
+      'each target must contain exactly one App Group identifier'
+    )
+  }
+  assert.match(workflow, /APP_GROUP_ID: group\.com\.sociusfit\.automeals/)
+  assert.match(workflow, /com\.apple\.security\.application-groups/)
+  assert.match(workflow, /profile_extra_app_group/)
+  assert.match(workflow, /signed host app is missing the approved App Group/)
+  assert.match(workflow, /signed extension is missing the approved App Group/)
+})
+
+test('both executables declare the App Group UserDefaults privacy reason', () => {
+  for (const manifest of [hostPrivacyManifest, extensionPrivacyManifest]) {
+    assert.match(manifest, /NSPrivacyAccessedAPICategoryUserDefaults/)
+    assert.match(manifest, /<string>1C8F\.1<\/string>/)
+    assert.match(manifest, /<key>NSPrivacyTracking<\/key>\s*<false\/>/)
+  }
 })
 
 test('probe-only App Store icon is an opaque 1024-pixel PNG', () => {

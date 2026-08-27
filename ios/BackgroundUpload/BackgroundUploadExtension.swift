@@ -9,32 +9,55 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
         subsystem: Bundle.main.bundleIdentifier ?? "SociusFitAutoMealsBackgroundUpload",
         category: "ProtocolProbe"
     )
-    private let tokenStore = ProtocolProbeChangeTokenStore()
+    private let sharedStore = ProtocolProbeSharedStore()
     private let terminationLock = NSLock()
     private var terminationRequested = false
 
     required init() {}
 
     func process() -> PHBackgroundResourceUploadProcessingResult {
+        guard let sharedStore else {
+            logger.error("Protocol probe App Group is unavailable")
+            return .failure
+        }
+
         do {
-            try acknowledgeFinishedJobs()
+            let hasBaselineToken = sharedStore.loadPersistentChangeTokenData() != nil
+            try sharedStore.updateDiagnostics {
+                $0.beginInvocation(hasBaselineToken: hasBaselineToken, at: Date())
+            }
+
+            if try acknowledgeFinishedJobs(using: sharedStore) {
+                return .completed
+            }
 
             guard !isTerminationRequested else {
+                try sharedStore.updateDiagnostics {
+                    $0.mark(phase: .terminationRequested, at: Date())
+                }
                 return .processing
             }
 
             guard let configuration = probeConfiguration() else {
+                try sharedStore.updateDiagnostics {
+                    $0.mark(phase: .configurationError, at: Date())
+                }
                 logger.notice("Probe endpoint is not configured; no photo can be uploaded")
                 return .completed
             }
 
             let library = PHPhotoLibrary.shared()
-            guard let previousToken = tokenStore.load() else {
-                try tokenStore.save(library.currentChangeToken)
-                logger.notice("Protocol probe baseline established; capture one disposable photo next")
+            guard let tokenData = sharedStore.loadPersistentChangeTokenData() else {
+                try saveToken(library.currentChangeToken, to: sharedStore)
+                try sharedStore.updateDiagnostics {
+                    $0.mark(phase: .baselineEstablished, at: Date())
+                    $0.hasBaselineToken = true
+                }
+                logger.notice("Protocol probe baseline established; prepare a fresh canary in the host app")
                 return .completed
             }
 
+            let previousToken = try unarchiveToken(from: tokenData)
             let changes = try library.fetchPersistentChanges(since: previousToken)
             var insertedAssetIdentifiers = Set<String>()
             var nextToken = previousToken
@@ -53,13 +76,35 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
 
             switch action {
             case .establishBaseline:
+                try saveToken(nextToken, to: sharedStore)
+                try sharedStore.updateDiagnostics {
+                    $0.mark(phase: .baselineEstablished, at: Date())
+                    $0.hasBaselineToken = true
+                }
                 return .completed
+
             case .noUpload:
-                try tokenStore.save(nextToken)
+                try saveToken(nextToken, to: sharedStore)
+                try sharedStore.updateDiagnostics {
+                    $0.mark(
+                        phase: .noInsertedPhotos,
+                        at: Date(),
+                        insertedPhotoCount: insertedAssets.count
+                    )
+                }
                 return .completed
+
             case .enqueue(let localIdentifier):
                 guard let resource = originalPhotoResource(for: localIdentifier) else {
-                    try tokenStore.save(nextToken)
+                    try saveToken(nextToken, to: sharedStore)
+                    try sharedStore.updateDiagnostics {
+                        $0.mark(
+                            phase: .resourceUnavailable,
+                            at: Date(),
+                            insertedPhotoCount: insertedAssets.count,
+                            originalResourceAvailable: false
+                        )
+                    }
                     logger.notice("Newest inserted asset has no original photo resource; skipped locally")
                     return .completed
                 }
@@ -77,19 +122,45 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
                 }
 
                 // Advance only after registration so relaunch cannot duplicate this change.
-                try tokenStore.save(nextToken)
+                try saveToken(nextToken, to: sharedStore)
+                try sharedStore.updateDiagnostics {
+                    $0.mark(
+                        phase: .jobRegistered,
+                        at: Date(),
+                        insertedPhotoCount: insertedAssets.count,
+                        originalResourceAvailable: true,
+                        jobRegistered: true
+                    )
+                }
                 logger.notice("Registered one disposable-photo protocol probe job")
                 return .processing
             }
         } catch PHPhotosError.persistentChangeTokenExpired {
-            tokenStore.remove()
-            logger.notice("Persistent change token expired; discarded it and will rebaseline")
+            sharedStore.removePersistentChangeTokenData()
+            try? sharedStore.updateDiagnostics {
+                $0.mark(phase: .tokenExpired, at: Date())
+                $0.hasBaselineToken = false
+            }
+            logger.notice("Persistent change token expired; prepare a fresh canary in the host app")
             return .processing
         } catch PHPhotosError.limitExceeded {
+            try? sharedStore.updateDiagnostics {
+                $0.mark(phase: .jobLimitReached, at: Date())
+            }
             logger.notice("PhotoKit upload-job limit reached; waiting for another invocation")
             return .processing
         } catch {
-            logger.error("Protocol probe failed closed: \(String(describing: error), privacy: .public)")
+            let nsError = error as NSError
+            try? sharedStore.updateDiagnostics {
+                $0.recordFailure(
+                    domain: nsError.domain,
+                    code: nsError.code,
+                    at: Date()
+                )
+            }
+            logger.error(
+                "Protocol probe failed closed domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)"
+            )
             return .failure
         }
     }
@@ -97,6 +168,9 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
     func notifyTermination() {
         terminationLock.withLock {
             terminationRequested = true
+        }
+        try? sharedStore?.updateDiagnostics {
+            $0.mark(phase: .terminationRequested, at: Date())
         }
     }
 
@@ -154,17 +228,34 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
             .first { $0.type == .photo }
     }
 
-    private func acknowledgeFinishedJobs() throws {
+    private func acknowledgeFinishedJobs(
+        using sharedStore: ProtocolProbeSharedStore
+    ) throws -> Bool {
         let finishedJobs = PHAssetResourceUploadJob.fetchJobs(action: .acknowledge, options: nil)
         guard finishedJobs.count > 0 else {
-            return
+            return false
         }
 
         for index in 0..<finishedJobs.count {
             let job = finishedJobs.object(at: index)
-            let requestID = job.responseHeaderFields?["x-probe-request-id"] ?? "missing"
+            let jobError: NSError?
+            if let error = job.error {
+                jobError = error as NSError
+            } else {
+                jobError = nil
+            }
+
+            try sharedStore.updateDiagnostics {
+                $0.recordJobResult(
+                    state: String(describing: job.state),
+                    requestID: job.responseHeaderFields?["x-probe-request-id"],
+                    errorDomain: jobError?.domain,
+                    errorCode: jobError?.code,
+                    at: Date()
+                )
+            }
             logger.notice(
-                "Acknowledging protocol probe job state=\(String(describing: job.state), privacy: .public) request=\(requestID, privacy: .public)"
+                "Observed one protocol probe job result state=\(String(describing: job.state), privacy: .public)"
             )
         }
 
@@ -174,42 +265,27 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
                 PHAssetResourceUploadJobChangeRequest(for: job)?.acknowledge()
             }
         }
-    }
-}
-
-private final class ProtocolProbeChangeTokenStore {
-    private let defaults: UserDefaults
-    private let key = "ProtocolProbe.PersistentChangeToken"
-
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
+        return true
     }
 
-    func load() -> PHPersistentChangeToken? {
-        guard let data = defaults.data(forKey: key) else {
-            return nil
+    private func unarchiveToken(from data: Data) throws -> PHPersistentChangeToken {
+        guard let token = try NSKeyedUnarchiver.unarchivedObject(
+            ofClass: PHPersistentChangeToken.self,
+            from: data
+        ) else {
+            throw NSError(domain: "SociusFit.ProtocolProbe.ChangeToken", code: 1)
         }
-
-        do {
-            return try NSKeyedUnarchiver.unarchivedObject(
-                ofClass: PHPersistentChangeToken.self,
-                from: data
-            )
-        } catch {
-            defaults.removeObject(forKey: key)
-            return nil
-        }
+        return token
     }
 
-    func save(_ token: PHPersistentChangeToken) throws {
+    private func saveToken(
+        _ token: PHPersistentChangeToken,
+        to sharedStore: ProtocolProbeSharedStore
+    ) throws {
         let data = try NSKeyedArchiver.archivedData(
             withRootObject: token,
             requiringSecureCoding: true
         )
-        defaults.set(data, forKey: key)
-    }
-
-    func remove() {
-        defaults.removeObject(forKey: key)
+        sharedStore.savePersistentChangeTokenData(data)
     }
 }

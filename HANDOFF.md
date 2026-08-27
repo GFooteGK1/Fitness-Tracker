@@ -1,5 +1,156 @@
 # Handoff
 
+## Automatic meal photos Build 4 diagnostic candidate (2026-08-27)
+
+Current objective: release one internal TestFlight Build 4 that makes the iOS
+26.6 physical-device probe observable. Keep HTTP 104, canonical meal creation,
+nutrition ingestion, endpoint selection, tester notification, and production
+state unchanged.
+
+Implemented in the clean `auto-meal-photos-probe` worktree:
+
+- The host archives `PHPhotoLibrary.currentChangeToken` before it enables the
+  background extension. This removes the Build 3 first-invocation baseline race.
+- The host and extension share only `group.com.sociusfit.automeals`.
+- Shared state contains the persistent token and one bounded diagnostic
+  snapshot. It excludes filenames, asset identifiers, location, photo bytes,
+  endpoint URLs, and nutrition data.
+- The host shows the extension phase, invocation count, baseline, inserted-photo
+  count, resource result, job registration, job result, random probe receipt,
+  and sanitized error domain/code.
+- Both targets declare the App Group entitlement and the `1C8F.1` UserDefaults
+  privacy reason. The host declares `ITSAppUsesNonExemptEncryption=false`.
+- The protected workflow rejects profiles and signed archives that omit the
+  approved App Group. ADR-0006 records the shared diagnostic boundary.
+
+Local verification: signing contract 8/8 passed, OPTIONS 501 transport 3/3
+passed, XcodeGen YAML parsed, all four entitlement/privacy plists parsed, and
+`git diff --check` passed.
+
+External steps still required: register and associate the App Group, regenerate
+both App Store Connect profiles, replace only the two profile secrets, compile
+the exact commit on macOS, and upload one protected Build 4.
+
+Stop boundary: do not add HTTP 104, connect `/api/meals/upload`, expose another
+endpoint, select a gateway, notify testers, or change production state.
+
+
+## Automatic meal photos build 3 assigned and baseline captured (2026-08-14)
+
+Current objective: install build 3 from TestFlight on Greg's iPhone 16 Pro
+running iOS 26.6, record the first screen, and proceed through the physical
+canary one controlled step at a time.
+
+Verified state:
+- App Store Connect accepted Greg's export-compliance answer:
+  usesNonExemptEncryption=false.
+- Build 3 is VALID, unexpired, minimum iOS 26.4, and IN_BETA_TESTING.
+- The approved association returned HTTP 204. Physical Device Probe contains
+  exactly one assigned build, version 3.
+- The group contains one internal tester, but Apple still reports
+  testerState=NOT_INVITED and zero individually assigned builds. No separate
+  notification was sent.
+- Cloudflare observability shows six historical structured probe receipts
+  through baseline cutover 2026-08-14T00:44:33.002Z and zero new receipts
+  immediately after the cutover. The private capability URL remains omitted.
+
+Next actions:
+1. Open TestFlight on the approved iPhone using the App Store Connect Apple
+   Account. Accept/install SociusFit Auto Meals Probe build 3 if visible.
+2. Launch the app and report the first screen before granting Photos access.
+3. If the app or invitation is absent, stop and obtain fresh approval before
+   sending a tester invitation or notification.
+
+Do not take a canary photo yet. Keep HTTP 104, product code, endpoint,
+identifiers, profiles, canonical meals, and production state unchanged.
+
+## Automatic meal photos portal action required (2026-08-13)
+
+Current objective: Greg must complete the build 3 export-compliance answer in
+App Store Connect. After that, read back READY_FOR_BETA_TESTING, assign the
+build to Physical Device Probe, and run the iPhone canary.
+
+Verified state:
+- Greg confirmed that the probe uses no non-exempt encryption and approved
+  usesNonExemptEncryption=false for build 3.
+- The exact guarded API PATCH was rejected before any write with HTTP 403:
+  the current App Store Connect API key does not allow this request.
+- The authenticated Apple portal browser connection failed twice before page
+  interaction because the Windows sandbox helper returned
+  helper_unknown_error. No portal click occurred.
+- Independent readback still shows usesNonExemptEncryption=null,
+  internalBuildState/externalBuildState=MISSING_EXPORT_COMPLIANCE, and zero
+  assigned builds in Physical Device Probe.
+
+Next action: in App Store Connect, open Apps > SociusFit Auto Meals Probe >
+TestFlight > iOS build 3, choose Manage or Provide Export Compliance
+Information, and answer consistently that the probe uses only Apple
+OS-provided encryption and no non-exempt encryption. After Greg reports done,
+verify false plus READY_FOR_BETA_TESTING before the already approved exact
+group association. Keep HTTP 104, code, endpoint, identifiers, profiles,
+canonical meals, and production state unchanged.
+
+## Automatic meal photos export-compliance gate (2026-08-13)
+
+Current objective: clear only the build 3 export-compliance gate after Greg
+confirms the declaration, then assign the build and run the physical-device
+canary. Fitness-Tracker-1vo.1 remains in progress.
+
+Verified state:
+- Greg approved assigning build 3 to Physical Device Probe.
+- The first guarded assignment command timed out. Independent readback proved
+  it made no change.
+- A second guarded association returned Apple HTTP 422
+  ENTITY_UNPROCESSABLE: Build is not assignable. Build is not in an
+  internally testable state.
+- App Store Connect readback shows build 3 processingState VALID but
+  internalBuildState and externalBuildState MISSING_EXPORT_COMPLIANCE.
+  usesNonExemptEncryption is null.
+- Physical Device Probe still has zero assigned builds. No tester notification
+  or device installation occurred.
+- Native probe inspection found no CryptoKit, CommonCrypto, SecKey, or CCCrypt
+  usage. The probe uses only the HTTPS upload path. Apple documents
+  OS-provided HTTPS as typically exempt, but Greg must own the compliance
+  declaration.
+
+Stop boundary: do not set the export-compliance answer without Greg explicitly
+confirming that this probe uses no non-exempt encryption and approving
+usesNonExemptEncryption=false for build 3. After that write, read back
+READY_FOR_BETA_TESTING before retrying the exact group association. Keep HTTP
+104, product code, endpoint, identifiers, profiles, canonical meals, and
+production state unchanged.
+
+## Automatic meal photos TestFlight build 3 uploaded and valid (2026-08-13)
+
+Current objective: assign and install the verified TestFlight probe only after
+fresh approval, then run the physical-device canary on Greg's iPhone 16 Pro
+running iOS 26.6. Fitness-Tracker-1vo.1 remains in progress until device
+evidence determines whether HTTP 104 support is required.
+
+Verified release evidence:
+- Exact source is codex/auto-meal-photos-probe at
+  d3ac5d1ea71d7d381320f745d8f63c172ed33916.
+- iOS TestFlight Probe run 31736132004, job 94568101631, and protected
+  deployment 5894671994 completed successfully as run/build number 3.
+- The first environment approval request returned HTTP 422 because the
+  environment ID was sent with the wrong JSON type. It made no state change.
+  A typed JSON retry approved the exact pending deployment.
+- The private endpoint preflight returned OPTIONS 501 without Upload-Limit
+  and POST 201. The capability URL was not recorded here.
+- Source guards, tests, signing validation, ephemeral signing installation,
+  signed archive, IPA export, App Store Connect validation, upload, and
+  unconditional signing cleanup all passed.
+- Delivery UUID: 0bac3b2d-fdf2-4b78-b7f3-a63c84db066c.
+- App Store Connect readback shows build 3 as VALID, unexpired, with minimum
+  iOS 26.4. The Physical Device Probe group has zero assigned builds, and
+  build 3 is not assigned.
+
+Stop boundary: no tester assignment, device installation, HTTP 104 support,
+endpoint change, Apple identifier/profile change, canonical meal write, or
+production-state change occurred. The next separate approval is to assign
+build 3 to Physical Device Probe and install it on the approved device. Run
+the OPTIONS 501 canary before deciding whether a resumable HTTP 104 path is
+needed.
 
 ## Automatic meal photos TestFlight signing correction (local verified, 2026-08-13)
 

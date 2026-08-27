@@ -202,7 +202,8 @@ Apple Camera
        └─ future private review-first ingestion endpoint (not implemented)
 ```
 
-ADR-0005 owns this boundary. The current native target contains a fail-closed
+ADR-0005 owns the product boundary; ADR-0006 owns the diagnostic App Group. The
+current native target contains a fail-closed
 physical-device protocol probe. Its committed upload URL is
 `https://example.invalid`, so it cannot upload in repository configuration.
 With a separately approved private HTTPS endpoint, it baselines persistent
@@ -215,7 +216,10 @@ separate manual-only workflow can sign and upload one internal TestFlight build
 after approval in the protected `TestFlight` environment. Apple portal records,
 signing material, the upload endpoint, workflow dispatch, device credentials,
 server ingestion, and automatic meal creation remain outside the active runtime.
-The canary does not use an App Group unless Apple proves one is required.
+Build 4 uses only `group.com.sociusfit.automeals` to share the PhotoKit
+persistent-change baseline and a latest diagnostic snapshot between the host and
+extension. The snapshot excludes filenames, asset identifiers, location, photo
+bytes, endpoint URLs, and nutrition data.
 
 ### **Utility Libraries:**
 - **Storage** (`app/lib/storage.ts`) - File management
