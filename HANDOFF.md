@@ -1,5 +1,134 @@
 # Handoff
 
+## Build 4 run 4 stopped after archive; privacy-resource fix ready (2026-08-30)
+
+Greg explicitly approved sending both verified provisioning profiles to the
+protected GitHub `TestFlight` environment, updating the two profile-name
+variables, and dispatching one protected Build 4 workflow. Readback confirmed
+only those four values changed. The exact profile names are `SociusFit Auto
+Meals App Store Build 4` and `SociusFit Auto Meals Bckgrnd Upld Bld 4 Corrt`.
+
+TestFlight workflow run `33327368115`, job `99299791169`, run/build number 4,
+and deployment `6169683024` used exact SHA
+`68464ab5f5d5449cf71db8426138429bc3d4c598`. Branch and confirmation gates,
+credential-free tests, signing validation, profile installation, compilation,
+and code signing passed. Xcode reported `ARCHIVE SUCCEEDED`. The workflow then
+failed before IPA export, App Store Connect validation, or upload. Unconditional
+signing cleanup passed.
+
+Root cause: XcodeGen ignored the two target-level `resources:` blocks because
+its target contract accepts resource files through `sources` entries with
+`buildPhase: resources`. The archive therefore lacked both
+`PrivacyInfo.xcprivacy` files, and the first post-archive manifest assertion
+failed silently under `set -e`.
+
+The local fix moves both privacy-manifest paths into each target's `sources`
+list with `buildPhase: resources`. The signing contract test now requires that
+exact form and rejects target-level `resources:` blocks. Local verification:
+`npm run test:ios-signing` passed 8/8, `npm run test:ios-probe` passed 3/3,
+`ios/project.yml` parsed through `js-yaml`, and `git diff --check` passed.
+Reviewer pass found no signing, privacy, endpoint, tester-notification, or
+product-scope expansion.
+
+Next actions: commit and push only `ios/project.yml`,
+`scripts/ios-signing/workflow.node-test.mjs`, and this handoff; run and verify
+one secret-free iOS Native Compile on macOS; then obtain fresh approval before
+dispatching or approving a second protected TestFlight workflow. Keep HTTP 104,
+Worker, endpoint, `/api/meals/upload`, tester notification, and production state
+unchanged.
+
+## Corrected profiles verified; GitHub transfer approval required (2026-08-30)
+
+The existing Build 4 host profile and Greg's corrected extension profile both
+pass local CMS/plist verification. They contain the exact bundle application
+identifiers, Team ID `YLVWRLGQX3`, exactly one shared App Group
+`group.com.sociusfit.automeals`, `get-task-allow=false`,
+`beta-reports-active=true`, no provisioned devices, and expiration on
+2027-08-12. Exact embedded names are `SociusFit Auto Meals App Store Build 4`
+and `SociusFit Auto Meals Bckgrnd Upld Bld 4 Corrt`.
+
+The attempt to replace the protected GitHub profile values was rejected before
+process creation because explicit approval for transmitting the complete
+provisioning-profile payloads to GitHub secrets was not sufficiently clear.
+No GitHub variable, secret, workflow, deployment approval, TestFlight build,
+tester state, endpoint, or production state changed.
+
+Required next approval: Greg must explicitly authorize sending both complete
+`.mobileprovision` payloads to `HOST_PROVISIONING_PROFILE_BASE64` and
+`EXTENSION_PROVISIONING_PROFILE_BASE64` in repository
+`GFooteGK1/Fitness-Tracker`, protected environment `TestFlight`; updating only
+the two matching profile-name variables; and then dispatching the already
+scoped protected Build 4 workflow. All decoded temporary plist files were
+removed.
+
+## Build 4 extension profile correction required (2026-08-30)
+
+Greg supplied both downloaded Build 4 profiles. Local CMS/plist inspection
+proved the host profile is correct. It contains the exact application
+identifier `YLVWRLGQX3.com.sociusfit.automeals`, the shared App Group
+`group.com.sociusfit.automeals`, distribution-safe flags, and TestFlight beta
+reporting.
+
+The extension profile is not usable. Its application identifier is correct,
+but it contains the separate unused App Group
+`group.com.sociusfit.automeals.background-upload` instead of the required
+shared group. The release stopped before any GitHub variable, GitHub secret,
+workflow, deployment approval, TestFlight build, or tester state changed.
+
+Manual correction:
+
+1. Edit App ID `com.sociusfit.automeals.background-upload`.
+2. In App Groups, select only `group.com.sociusfit.automeals`; deselect
+   `group.com.sociusfit.automeals.background-upload`; save and confirm.
+3. Generate a fresh App Store Connect distribution profile for the extension
+   with a new unique name, for example `SociusFit Auto Meals Background Upload
+   Build 4 Corrected`, and download it.
+4. Provide only the new local `.mobileprovision` path. The host profile does
+   not need to be recreated.
+
+All decoded temporary plist files were removed. Preserve the existing HTTP 104,
+Worker, endpoint, tester-notification, meal-API, and production stop boundary.
+
+## Build 4 App Group registered; manual profiles required (2026-08-30)
+
+Current objective: generate two fresh App Store provisioning profiles that
+contain `group.com.sociusfit.automeals`, then release the already-approved
+protected internal TestFlight Build 4.
+
+Verified live Apple state:
+
+- `APP_GROUPS` is enabled on exact bundle IDs `com.sociusfit.automeals` and
+  `com.sociusfit.automeals.background-upload`.
+- Adding the capability invalidated the two Build 3 provisioning profiles, as
+  expected. Both old profiles still reference the same unexpired Apple
+  Distribution certificate, which expires 2027-08-12.
+- The team App Store Connect API key can read provisioning state but cannot
+  create profiles. Apple rejected the first profile POST with HTTP 403 before
+  any write.
+- Independent readback found zero profiles named `SociusFit Auto Meals App
+  Store Build 4` and zero named `SociusFit Auto Meals Background Upload App
+  Store Build 4`. There is no partial profile to repair or delete.
+- All temporary verifier scripts and the empty temporary profile directory were
+  removed. No credential or profile content was printed or committed.
+
+Manual blocker:
+
+1. Create and download an App Store Connect distribution profile named
+   `SociusFit Auto Meals App Store Build 4` for
+   `com.sociusfit.automeals` using the existing Apple Distribution certificate.
+2. Create and download an App Store Connect distribution profile named
+   `SociusFit Auto Meals Background Upload App Store Build 4` for
+   `com.sociusfit.automeals.background-upload` using the same certificate.
+3. Provide only the two downloaded local `.mobileprovision` paths. Do not paste
+   profile contents into chat.
+
+After the files are available, inspect both entitlements for the one exact App
+Group, replace the protected GitHub profile secrets and profile-name variables,
+dispatch one approved TestFlight run, approve only its exact pending
+deployment, and verify App Store Connect processing. Do not add HTTP 104,
+change the Worker or endpoint, notify testers, connect `/api/meals/upload`, or
+change product/production meal state.
+
 ## Automatic meal photos Build 4 diagnostic candidate (2026-08-27)
 
 Current objective: release one internal TestFlight Build 4 that makes the iOS

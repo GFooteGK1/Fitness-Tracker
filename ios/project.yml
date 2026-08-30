@@ -27,8 +27,8 @@ targets:
       - path: App
       - path: Shared
       - path: Resources
-    resources:
       - path: Supporting/App/PrivacyInfo.xcprivacy
+        buildPhase: resources
     info:
       path: Supporting/App-Info.plist
       properties:
@@ -63,8 +63,8 @@ targets:
     sources:
       - path: BackgroundUpload
       - path: Shared
-    resources:
       - path: Supporting/BackgroundUpload/PrivacyInfo.xcprivacy
+        buildPhase: resources
     info:
       path: Supporting/BackgroundUpload-Info.plist
       properties:

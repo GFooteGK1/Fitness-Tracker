@@ -125,8 +125,16 @@ test('XcodeGen project uses Release distribution signing per target', () => {
   assert.match(project, /APP_GROUP_ID: group\.com\.sociusfit\.automeals/)
   assert.match(project, /CODE_SIGN_ENTITLEMENTS: Supporting\/App\.entitlements/)
   assert.match(project, /CODE_SIGN_ENTITLEMENTS: Supporting\/BackgroundUpload\.entitlements/)
-  assert.match(project, /Supporting\/App\/PrivacyInfo\.xcprivacy/)
-  assert.match(project, /Supporting\/BackgroundUpload\/PrivacyInfo\.xcprivacy/)
+  assert.match(
+    hostTarget,
+    /- path: Supporting\/App\/PrivacyInfo\.xcprivacy\r?\n\s+buildPhase: resources/
+  )
+  assert.match(
+    extensionTarget,
+    /- path: Supporting\/BackgroundUpload\/PrivacyInfo\.xcprivacy\r?\n\s+buildPhase: resources/
+  )
+  assert.doesNotMatch(hostTarget, /^\s{4}resources:/m)
+  assert.doesNotMatch(extensionTarget, /^\s{4}resources:/m)
   assert.match(project, /ITSAppUsesNonExemptEncryption: false/)
   assert.match(project, /UILaunchScreen: \{\}/)
   assert.match(project, /ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon/)
