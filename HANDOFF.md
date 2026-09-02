@@ -145,12 +145,14 @@ was unavailable; and signed-in browser control failed before the SQL editor
 opened. Local disposable PostgreSQL-compatible verification remains green. Do
 not attempt credential extraction to bypass those tool limits.
 
-Greg authorized commit and push on 2026-09-01. This candidate is published only
-to `codex/adaptive-programming-layered-storage`; the authorization does not
-include merge or deployment. Bead `.11` remains in progress for application
-deployment and an authenticated synthetic athlete A/athlete B canary. The
-evidence matrix, canary protocol, and
-data-preserving rollback are in
+Greg authorized commit and push, then separately authorized merge and production
+deployment on 2026-09-01. Promote the exact candidate on
+`codex/adaptive-programming-layered-storage` through its pull request only after
+the required CI and Vercel preview checks pass. GitHub and Vercel are the
+authoritative final merge and deployment status surfaces. Bead `.11` remains in
+progress after deployment until an authenticated synthetic athlete A/athlete B
+canary proves the full workflow and cross-athlete isolation. The evidence
+matrix, canary protocol, and data-preserving rollback are in
 `docs/coach/adaptive-coach-release-readiness-2026-09-01.md`. Bead `.12` is
 closed.
 
