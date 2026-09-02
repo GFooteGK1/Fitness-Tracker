@@ -3,17 +3,24 @@ import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
 import { validateCoachSessionCheckinInput } from '@/app/lib/coach/execution-feedback'
+import { validateAtomicSessionCompletionInput } from '@/app/lib/coach/session-completion'
 
 interface SessionResultRequest {
+  contractVersion?: unknown
   idempotencyKey?: unknown
   feedback?: unknown
+  performedWork?: unknown
+  observations?: unknown
 }
 
 interface SessionResultRpcRow {
   prescribed_session_id: string
   session_status: 'completed' | 'skipped'
   checkin_id: string
+  workout_id?: string | null
+  observation_group_ids?: string[]
   occurred_at: string
+  replayed?: boolean
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -36,23 +43,50 @@ export async function POST(
     const idempotencyKey = validIdempotencyKey(body.idempotencyKey)
     if (!idempotencyKey) return apiError('A valid idempotency key is required', 400)
 
-    const validation = validateCoachSessionCheckinInput(body.feedback)
-    if (!validation.ok) {
-      return NextResponse.json(
-        { error: 'Invalid session check-in', details: validation.errors },
-        { status: 400 }
-      )
+    const atomicRequested = body.contractVersion !== undefined
+      || body.performedWork !== undefined
+      || body.observations !== undefined
+    let rpcName = 'record_coach_session_result'
+    let rpcArgs: Record<string, unknown>
+
+    if (atomicRequested) {
+      const validation = validateAtomicSessionCompletionInput(body)
+      if (!validation.ok) {
+        return NextResponse.json(
+          { error: 'Invalid atomic session result', details: validation.errors },
+          { status: 400 }
+        )
+      }
+      const { occurredAt, ...responses } = validation.value.feedback
+      rpcName = 'record_coach_session_result_v2'
+      rpcArgs = {
+        p_session_id: id,
+        p_status: validation.value.status,
+        p_feedback: { schemaVersion: 1, ...responses },
+        p_occurred_at: occurredAt,
+        p_idempotency_key: idempotencyKey,
+        p_performed_work: validation.value.performedWork,
+        p_observations: validation.value.observations
+      }
+    } else {
+      const validation = validateCoachSessionCheckinInput(body.feedback)
+      if (!validation.ok) {
+        return NextResponse.json(
+          { error: 'Invalid session check-in', details: validation.errors },
+          { status: 400 }
+        )
+      }
+      const { occurredAt, ...responses } = validation.value
+      rpcArgs = {
+        p_session_id: id,
+        p_status: responses.outcome === 'skipped' ? 'skipped' : 'completed',
+        p_responses: { schemaVersion: 1, ...responses },
+        p_occurred_at: occurredAt,
+        p_idempotency_key: idempotencyKey
+      }
     }
 
-    const { occurredAt, ...responses } = validation.value
-    const sessionStatus = responses.outcome === 'skipped' ? 'skipped' : 'completed'
-    const { data, error } = await supabase.rpc('record_coach_session_result', {
-      p_session_id: id,
-      p_status: sessionStatus,
-      p_responses: { schemaVersion: 1, ...responses },
-      p_occurred_at: occurredAt,
-      p_idempotency_key: idempotencyKey
-    })
+    const { data, error } = await supabase.rpc(rpcName, rpcArgs)
 
     if (error) {
       console.error('Coach session result RPC failed:', { code: error.code })
@@ -60,6 +94,7 @@ export async function POST(
       if (error.code === '40001') return apiError('The active plan changed; refresh and try again', 409)
       if (error.code === '22023') return apiError('Session result conflicts with an existing request', 409)
       if (error.code === '55000') return apiError('This session can no longer be changed', 409)
+      if (error.code === '23505') return apiError('Session result conflicts with an existing request', 409)
       return apiError('Unable to save session result', 503)
     }
 

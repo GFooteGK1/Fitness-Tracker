@@ -9,7 +9,7 @@ import type {
 } from '@/app/lib/coach/types'
 import type { CompleteCoachPlanningInput } from '@/app/lib/coach/complete-intake'
 import type { CompleteProgrammingPlanDraft } from '@/app/lib/coach/complete-program'
-import type { CoachSessionCheckinInput } from '@/app/lib/coach/execution-feedback'
+import type { AtomicSessionCompletionInput } from '@/app/lib/coach/session-completion'
 import {
   MOVEMENT_EQUIPMENT_IDS,
   type MovementEquipmentId
@@ -20,6 +20,7 @@ import {
   ProposalPreview,
   StrengthAssessmentPanel
 } from './coach-program-components'
+import { CoachTrustCenter } from './coach-trust-center'
 
 interface ProposalResponse {
   proposalId: string
@@ -206,7 +207,7 @@ export default function ProgramPage() {
 
   const recordSessionResult = async (
     sessionId: string,
-    feedback: CoachSessionCheckinInput
+    completion: AtomicSessionCompletionInput
   ): Promise<string | null> => {
     setSavingSessionId(sessionId)
     setStatus(null)
@@ -219,17 +220,24 @@ export default function ProgramPage() {
       const response = await fetch(`/api/coach/sessions/${sessionId}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idempotencyKey, feedback })
+        body: JSON.stringify({ idempotencyKey, ...completion })
       })
       const body = await response.json()
-      if (!response.ok) return errorMessage(body, 'Unable to save session feedback')
+      if (!response.ok) return errorMessage(body, 'Unable to save session result')
 
       setContext(body.context as CoachRuntimeContext)
       sessionResultKeys.current.delete(sessionId)
-      setStatus('Session feedback saved.')
+      const workoutId = typeof body.result?.workout_id === 'string'
+        ? body.result.workout_id
+        : null
+      setStatus(workoutId
+        ? `Session saved once. Canonical workout ${workoutId} is linked.`
+        : 'Skipped session saved. No workout was created.')
       return null
     } catch {
-      return 'Unable to save session feedback'
+      return typeof navigator !== 'undefined' && navigator.onLine === false
+        ? 'You appear to be offline. Your entry is still here. Retry will reuse the same save key.'
+        : 'The save response was interrupted. Your entry is still here. Retry will reuse the same save key.'
     } finally {
       setSavingSessionId(null)
     }
@@ -277,10 +285,14 @@ export default function ProgramPage() {
           </section>
         ) : context ? (
           <>
+            <CoachTrustCenter onPlanChanged={loadCoachState} />
+
             {context.activeProgram && (
               <ActiveProgramView
                 program={context.activeProgram}
                 onRecordSessionResult={recordSessionResult}
+                onEditFailedSessionResult={sessionId => sessionResultKeys.current.delete(sessionId)}
+                onRefreshPlan={loadCoachState}
                 savingSessionId={savingSessionId}
               />
             )}

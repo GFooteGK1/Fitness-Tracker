@@ -2,6 +2,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { COACH_REFERENCE_MANIFEST } from './reference'
 import { COMPLETE_PROGRAMMING_POLICY_VERSION } from './programming-policy'
 import {
+  ADAPTIVE_ASSESSMENT_CATALOG_VERSION,
+  findAssessmentDefinition,
+  type EvidenceSemanticRole,
+  type PerformanceMetricId
+} from './adaptive-programming-contracts'
+import { MOVEMENT_CATALOG } from './movement-catalog'
+import {
   buildCoachWeeklyReview,
   validateCoachSessionCheckinInput,
   type CoachExecutionSession,
@@ -11,6 +18,7 @@ import type {
   ActiveCoachProgramSummary,
   CoachMemorySummary,
   CoachRuntimeContext,
+  CoachScheduledMeasurementSummary,
   CoachStrengthAssessmentSummary,
   EightWeekIntent,
   EightWeekRole,
@@ -45,9 +53,14 @@ interface CoachMemoryRow {
   memory_key: string
   kind: string
   content: unknown
+  provenance: unknown
   confidence: number | string
   confirmed_at: string
   version: number | string
+  effective_from: string | null
+  effective_until: string | null
+  review_after: string | null
+  last_reviewed_at: string | null
 }
 
 interface TrainingProgramRow {
@@ -74,6 +87,8 @@ interface PrescribedSessionRow {
   scheduled_date: string | null
   prescription: unknown
   status: string
+  completion_contract_version: number | string | null
+  completed_workout_id: string | null
 }
 
 interface CoachCheckinRow {
@@ -112,9 +127,10 @@ export async function fetchCoachRuntimeContext(
       .limit(MAX_ASSESSMENTS),
     supabase
       .from('coach_memories')
-      .select('id, memory_key, kind, content, confidence, confirmed_at, version')
+      .select('id, memory_key, kind, content, provenance, confidence, confirmed_at, version, effective_from, effective_until, review_after, last_reviewed_at')
       .eq('user_id', userId)
       .eq('status', 'confirmed')
+      .lte('confirmed_at', referenceDate.toISOString())
       .order('confirmed_at', { ascending: false })
       .limit(MAX_MEMORIES),
     supabase
@@ -137,7 +153,7 @@ export async function fetchCoachRuntimeContext(
   const memories = memoryResult.error
     ? []
     : ((memoryResult.data ?? []) as CoachMemoryRow[])
-      .map(normalizeMemory)
+      .map(row => normalizeMemory(row, referenceDate))
       .filter((memory): memory is CoachMemorySummary => memory !== null)
 
   const program = !programResult.error && programResult.data
@@ -188,7 +204,7 @@ async function fetchActiveProgram(
       .limit(1),
     supabase
       .from('prescribed_sessions')
-      .select('id, week_number, session_index, scheduled_date, prescription, status')
+      .select('id, week_number, session_index, scheduled_date, prescription, status, completion_contract_version, completed_workout_id')
       .eq('plan_version_id', program.active_plan_version_id)
       .eq('user_id', userId)
       .order('week_number', { ascending: true })
@@ -219,9 +235,13 @@ async function fetchActiveProgram(
   const currentWeekRole: EightWeekRole | null = currentWeek === null
     ? null
     : weeks.find(week => week.week === currentWeek)?.role ?? null
-  const sessions = ((sessionResult.data ?? []) as PrescribedSessionRow[])
+  const normalizedSessions = ((sessionResult.data ?? []) as PrescribedSessionRow[])
     .map(normalizeSession)
     .filter((session): session is ActiveCoachProgramSummary['upcomingSessions'][number] => session !== null)
+  const sessions = assignScheduledMeasurements(
+    normalizedSessions,
+    normalizeScheduledMeasurements(version.intent)
+  )
   const sessionCheckins = ((checkinResult.data ?? []) as CoachCheckinRow[])
     .map(normalizeSessionCheckin)
     .filter((checkin): checkin is CoachSessionCheckinSummary => checkin !== null)
@@ -293,6 +313,148 @@ function normalizeWeeks(value: unknown): EightWeekIntent[] {
     : []
 }
 
+function normalizeScheduledMeasurements(value: unknown): CoachScheduledMeasurementSummary[] {
+  if (!isRecord(value) || !isRecord(value.adaptive_programming)) return []
+  const scheduled = value.adaptive_programming.scheduledAssessments
+  if (!Array.isArray(scheduled)) return []
+  const seen = new Set<string>()
+
+  return scheduled.flatMap((item): CoachScheduledMeasurementSummary[] => {
+    if (
+      !isRecord(item)
+      || typeof item.id !== 'string'
+      || !Number.isInteger(item.weekNumber)
+      || Number(item.weekNumber) < 1
+      || Number(item.weekNumber) > 8
+      || typeof item.scheduledOn !== 'string'
+      || !isIsoDate(item.scheduledOn)
+      || !isRecord(item.assessmentDefinition)
+      || typeof item.assessmentDefinition.id !== 'string'
+      || typeof item.assessmentDefinition.version !== 'string'
+      || item.assessmentDefinition.catalogVersion !== ADAPTIVE_ASSESSMENT_CATALOG_VERSION
+      || !isRecord(item.protocol)
+      || typeof item.protocol.id !== 'string'
+      || typeof item.protocol.version !== 'string'
+      || typeof item.metricId !== 'string'
+      || typeof item.semanticRole !== 'string'
+    ) return []
+
+    const definition = findAssessmentDefinition(
+      item.assessmentDefinition.id,
+      item.assessmentDefinition.version
+    )
+    if (seen.has(item.id)) return []
+    if (
+      !definition
+      || definition.protocol.id !== item.protocol.id
+      || definition.protocol.version !== item.protocol.version
+      || definition.primaryMetricId !== item.metricId
+      || !definition.allowedSemanticRoles.includes(item.semanticRole as EvidenceSemanticRole)
+    ) return []
+    seen.add(item.id)
+
+    return [{
+      id: item.id,
+      weekNumber: Number(item.weekNumber),
+      scheduledOn: item.scheduledOn,
+      assessmentDefinition: {
+        id: definition.id,
+        version: definition.version
+      },
+      protocol: {
+        id: definition.protocol.id,
+        version: definition.protocol.version
+      },
+      metricId: definition.primaryMetricId as PerformanceMetricId,
+      semanticRole: item.semanticRole as EvidenceSemanticRole
+    }]
+  })
+}
+
+function assignScheduledMeasurements(
+  sessions: ActiveCoachProgramSummary['upcomingSessions'],
+  measurements: readonly CoachScheduledMeasurementSummary[]
+): ActiveCoachProgramSummary['upcomingSessions'] {
+  const assignments = new Map<string, CoachScheduledMeasurementSummary[]>()
+
+  for (const measurement of measurements) {
+    const candidates = sessions
+      .filter(session => session.weekNumber === measurement.weekNumber)
+      .sort((left, right) => {
+        const leftCompatibility = sessionMeasurementCompatibility(
+          left, measurement.assessmentDefinition.id
+        )
+        const rightCompatibility = sessionMeasurementCompatibility(
+          right, measurement.assessmentDefinition.id
+        )
+        if (leftCompatibility !== rightCompatibility) return rightCompatibility - leftCompatibility
+        const leftDistance = dateDistance(left.scheduledDate, measurement.scheduledOn)
+        const rightDistance = dateDistance(right.scheduledDate, measurement.scheduledOn)
+        return leftDistance - rightDistance || left.sessionIndex - right.sessionIndex
+      })
+    const session = candidates[0]
+    if (!session) continue
+    assignments.set(session.id, [
+      ...(assignments.get(session.id) ?? []),
+      measurement
+    ])
+  }
+
+  return sessions.map(session => ({
+    ...session,
+    scheduledMeasurements: assignments.get(session.id) ?? []
+  }))
+}
+
+function sessionMeasurementCompatibility(
+  session: ActiveCoachProgramSummary['upcomingSessions'][number],
+  assessmentDefinitionId: string
+): number {
+  if (assessmentDefinitionId === 'readiness.self_report') return 1
+  const blocks = Array.isArray(session.prescription.blocks)
+    ? session.prescription.blocks
+    : []
+  const movementIds = blocks.flatMap(block => {
+    if (!isRecord(block) || !Array.isArray(block.exercises)) return []
+    return block.exercises.flatMap(exercise => (
+      isRecord(exercise) && typeof exercise.movementId === 'string'
+        ? [exercise.movementId]
+        : []
+    ))
+  })
+  const movements = movementIds.flatMap(id => {
+    const movement = MOVEMENT_CATALOG.find(item => item.id === id)
+    return movement ? [movement] : []
+  })
+
+  if (assessmentDefinitionId.startsWith('strength.')) {
+    return movements.some(movement => movement.patterns.some(pattern => (
+      ['squat', 'hinge', 'horizontal_push', 'vertical_push'].includes(pattern)
+    ))) ? 1 : 0
+  }
+  if (assessmentDefinitionId === 'jump.height') {
+    return movements.some(movement => movement.patterns.includes('jump')) ? 1 : 0
+  }
+  if (assessmentDefinitionId === 'sprint.time') {
+    return movements.some(movement => movement.patterns.includes('sprint')) ? 1 : 0
+  }
+  if (assessmentDefinitionId === 'run.time_trial') {
+    return movements.some(movement => movement.running) ? 1 : 0
+  }
+  return 0
+}
+
+function dateDistance(value: string | null, target: string): number {
+  if (!value || !isIsoDate(value)) return Number.MAX_SAFE_INTEGER
+  return Math.abs(Date.parse(`${value}T00:00:00Z`) - Date.parse(`${target}T00:00:00Z`))
+}
+
+function isIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const parsed = new Date(`${value}T00:00:00Z`)
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value)
+}
+
 function normalizeAssessment(row: StrengthAssessmentRow): CoachStrengthAssessmentSummary | null {
   const load = toFiniteNumber(row.load)
   const reps = toFiniteNumber(row.reps)
@@ -329,11 +491,30 @@ function normalizeAssessment(row: StrengthAssessmentRow): CoachStrengthAssessmen
   }
 }
 
-function normalizeMemory(row: CoachMemoryRow): CoachMemorySummary | null {
+function normalizeMemory(row: CoachMemoryRow, referenceDate: Date): CoachMemorySummary | null {
   const confidence = toFiniteNumber(row.confidence)
   const version = toFiniteNumber(row.version)
+  const confirmedAt = Date.parse(row.confirmed_at)
+  const effectiveFrom = Date.parse(row.effective_from ?? row.confirmed_at)
+  const effectiveUntil = row.effective_until
+    ? Date.parse(row.effective_until)
+    : Number.POSITIVE_INFINITY
+  const reviewAfter = row.review_after ? Date.parse(row.review_after) : null
+  const lastReviewedAt = row.last_reviewed_at ? Date.parse(row.last_reviewed_at) : null
+  const asOf = referenceDate.getTime()
 
-  if (!row.id || !row.memory_key || confidence === null || version === null) {
+  if (
+    !row.id
+    || !row.memory_key
+    || confidence === null
+    || version === null
+    || !Number.isFinite(confirmedAt)
+    || !Number.isFinite(effectiveFrom)
+    || confirmedAt > asOf
+    || effectiveFrom > asOf
+    || effectiveUntil <= asOf
+    || (reviewAfter !== null && reviewAfter <= asOf && (lastReviewedAt ?? -Infinity) < reviewAfter)
+  ) {
     return null
   }
 
@@ -342,9 +523,14 @@ function normalizeMemory(row: CoachMemoryRow): CoachMemorySummary | null {
     memoryKey: row.memory_key,
     kind: row.kind,
     content: isRecord(row.content) ? row.content : {},
+    provenance: isRecord(row.provenance) ? row.provenance : {},
     confidence,
     confirmedAt: row.confirmed_at,
-    version
+    version,
+    effectiveFrom: row.effective_from ?? row.confirmed_at,
+    effectiveUntil: row.effective_until,
+    reviewAfter: row.review_after,
+    lastReviewedAt: row.last_reviewed_at
   }
 }
 
@@ -353,6 +539,7 @@ function normalizeSession(
 ): ActiveCoachProgramSummary['upcomingSessions'][number] | null {
   const weekNumber = toFiniteNumber(row.week_number)
   const sessionIndex = toFiniteNumber(row.session_index)
+  const completionContractVersion = toFiniteNumber(row.completion_contract_version)
 
   if (
     !row.id
@@ -367,7 +554,9 @@ function normalizeSession(
     sessionIndex,
     scheduledDate: row.scheduled_date,
     prescription: isRecord(row.prescription) ? row.prescription : {},
-    status: row.status as 'planned' | 'completed' | 'skipped'
+    status: row.status as 'planned' | 'completed' | 'skipped',
+    completionContractVersion,
+    completedWorkoutId: row.completed_workout_id
   }
 }
 

@@ -6,6 +6,7 @@ import { validateCoachPlanningInput } from './planner'
 import {
   PROGRAMMING_KERNEL_VERSION,
   PROGRAMMING_SCHEMA_VERSION,
+  buildProgrammingGoalOutcome,
   validateProgrammingProfile,
   type ProgrammingConstraint,
   type ProgrammingProfile
@@ -111,14 +112,16 @@ export function buildProgrammingProfile(
       domain: input.primaryDomain,
       role: 'primary',
       allocation: 'lead',
-      athleteIntent: input.goal
+      athleteIntent: input.goal,
+      outcome: buildProgrammingGoalOutcome(input.primaryDomain, input.goal, input.startDate)
     },
     secondaryGoals: input.secondaryGoals.map((goal, index) => ({
       id: `goal:secondary:${index + 1}:${goal.domain}`,
       domain: goal.domain,
       role: 'secondary',
       allocation: goal.allocation,
-      athleteIntent: goal.athleteIntent
+      athleteIntent: goal.athleteIntent,
+      outcome: buildProgrammingGoalOutcome(goal.domain, goal.athleteIntent, input.startDate)
     })),
     trainingExperience: input.experience,
     startDate: input.startDate,

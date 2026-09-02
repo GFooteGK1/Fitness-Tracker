@@ -14,6 +14,7 @@ import type {
   CoachSessionCheckinSummary,
   CoachWeeklyReview
 } from '@/app/lib/coach/execution-feedback'
+import type { AtomicSessionCompletionInput } from '@/app/lib/coach/session-completion'
 import type { CompleteProgrammingPlanDraft } from '@/app/lib/coach/complete-program'
 import type {
   CompleteProgrammingDose,
@@ -27,6 +28,11 @@ import {
   type MovementEquipmentId
 } from '@/app/lib/coach/movement-catalog'
 import { getLocalDate, parseDateString } from '@/app/lib/timezone-utils'
+import {
+  selectTodaySession,
+  TodaySessionCard,
+  TodayTerminalCard
+} from './today-session-card'
 
 const FOCUS_OPTIONS: Array<{ value: CompleteCoachPlanningInput['primaryDomain']; label: string }> = [
   { value: 'strength', label: 'Strength' },
@@ -635,23 +641,36 @@ interface ActiveProgramViewProps {
   program: ActiveCoachProgramSummary
   onRecordSessionResult?: (
     sessionId: string,
-    feedback: CoachSessionCheckinInput
+    completion: AtomicSessionCompletionInput
   ) => Promise<string | null>
+  onEditFailedSessionResult?: (sessionId: string) => void
+  onRefreshPlan?: () => Promise<void>
   savingSessionId?: string | null
 }
 
 export function ActiveProgramView({
   program,
   onRecordSessionResult,
+  onEditFailedSessionResult = () => undefined,
+  onRefreshPlan = async () => undefined,
   savingSessionId = null
 }: ActiveProgramViewProps) {
-  const [openSessionId, setOpenSessionId] = useState<string | null>(null)
+  const todaySession = selectTodaySession(program)
+  const todayPrescription = todaySession && isCompletePrescription(todaySession.prescription)
+    ? todaySession.prescription
+    : null
+  const todayIsActionable = todaySession
+    && todaySession.status === 'planned'
+    && todayPrescription
+    && onRecordSessionResult
+  const todayIsTerminal = todaySession && todaySession.status !== 'planned'
   const visibleSessions = program.upcomingSessions
     .filter(session => (
       session.status === 'planned'
       || program.currentWeek === null
       || session.weekNumber >= program.currentWeek
     ))
+    .filter(session => !todayIsActionable && !todayIsTerminal || session.id !== todaySession?.id)
     .slice(0, 6)
 
   return (
@@ -666,6 +685,39 @@ export function ActiveProgramView({
         {formatDate(program.startDate)} to {formatDate(program.endDate)}
         {program.currentWeek ? ` · Week ${program.currentWeek}` : ''}
       </p>
+
+      <div className="mt-6">
+        {todayIsActionable && todayPrescription ? (
+          <TodaySessionCard
+            key={todaySession.id}
+            session={todaySession}
+            prescription={todayPrescription}
+            saving={savingSessionId === todaySession.id}
+            onSubmit={onRecordSessionResult}
+            onEditFailedEntry={onEditFailedSessionResult}
+            onRefreshPlan={onRefreshPlan}
+          >
+            <CompleteSessionCard prescription={todayPrescription} />
+          </TodaySessionCard>
+        ) : todayIsTerminal ? (
+          <TodayTerminalCard session={todaySession} />
+        ) : !todaySession ? (
+          <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Today</p>
+            <h2 className="mt-2 text-xl font-bold text-gray-950 dark:text-white">No session waiting</h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              Your accepted plan has no planned session to log right now.
+            </p>
+          </section>
+        ) : (
+          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/20">
+            <h2 className="text-xl font-bold text-gray-950 dark:text-white">Legacy session format</h2>
+            <p className="mt-2 text-sm text-gray-700 dark:text-gray-200">
+              Review this accepted session below. Atomic Today logging starts with the current prescription format.
+            </p>
+          </section>
+        )}
+      </div>
 
       {program.weeks.length > 0 && (
         <div className="mt-6">
@@ -692,7 +744,7 @@ export function ActiveProgramView({
 
       {visibleSessions.length > 0 && (
         <div className="mt-6">
-          <h3 className="font-semibold text-gray-900 dark:text-white">Session results and upcoming work</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-white">Plan sessions</h3>
           <ul className="mt-3 grid gap-3 sm:grid-cols-2">
             {visibleSessions.map(session => (
               <li key={session.id} className="rounded-xl bg-white p-4 dark:bg-gray-900">
@@ -728,28 +780,6 @@ export function ActiveProgramView({
                       item.prescribedSessionId === session.id
                     )) as CoachSessionCheckinSummary}
                   />
-                )}
-                {session.status === 'planned' && onRecordSessionResult && (
-                  openSessionId === session.id ? (
-                    <SessionCheckinForm
-                      sessionId={session.id}
-                      saving={savingSessionId === session.id}
-                      onCancel={() => setOpenSessionId(null)}
-                      onSubmit={async feedback => {
-                        const error = await onRecordSessionResult(session.id, feedback)
-                        if (!error) setOpenSessionId(null)
-                        return error
-                      }}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setOpenSessionId(session.id)}
-                      className="mt-4 min-h-11 w-full rounded-xl border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/30"
-                    >
-                      Log session result
-                    </button>
-                  )
                 )}
               </li>
             ))}
@@ -812,135 +842,6 @@ function SessionCheckinSummaryCard({ checkin }: { checkin: CoachSessionCheckinSu
       {checkin.pain !== 'none' ? ` · ${painLabel(checkin.pain)}` : ''}
       {checkin.note && <p className="mt-1">{checkin.note}</p>}
     </div>
-  )
-}
-
-function SessionCheckinForm({
-  sessionId,
-  saving,
-  onSubmit,
-  onCancel
-}: {
-  sessionId: string
-  saving: boolean
-  onSubmit: (feedback: CoachSessionCheckinInput) => Promise<string | null>
-  onCancel: () => void
-}) {
-  const [outcome, setOutcome] = useState<CoachSessionCheckinInput['outcome']>('as_planned')
-  const [sessionRpe, setSessionRpe] = useState('7')
-  const [energy, setEnergy] = useState<CoachSessionCheckinInput['energy']>('okay')
-  const [pain, setPain] = useState<CoachSessionCheckinInput['pain']>('none')
-  const [note, setNote] = useState('')
-  const [error, setError] = useState<string | null>(null)
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
-    setError(null)
-    const result = await onSubmit({
-      outcome,
-      sessionRpe: outcome === 'skipped' ? null : Number(sessionRpe),
-      energy,
-      pain,
-      note: note.trim() || null,
-      occurredAt: new Date().toISOString()
-    })
-    if (result) setError(result)
-  }
-
-  return (
-    <form
-      onSubmit={submit}
-      data-session-id={sessionId}
-      className="mt-4 space-y-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700"
-    >
-      <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
-        How did this session go?
-        <select
-          aria-label="How did this session go?"
-          value={outcome}
-          onChange={event => setOutcome(event.target.value as CoachSessionCheckinInput['outcome'])}
-          className={FIELD_CLASS}
-        >
-          <option value="as_planned">As planned</option>
-          <option value="modified">Modified</option>
-          <option value="stopped_early">Stopped early</option>
-          <option value="skipped">Skipped</option>
-        </select>
-      </label>
-      {outcome !== 'skipped' && (
-        <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
-          Session RPE
-          <input
-            aria-label="Session RPE"
-            type="number"
-            min="1"
-            max="10"
-            step="0.5"
-            required
-            value={sessionRpe}
-            onChange={event => setSessionRpe(event.target.value)}
-            className={FIELD_CLASS}
-          />
-        </label>
-      )}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
-          Energy
-          <select
-            aria-label="Energy"
-            value={energy}
-            onChange={event => setEnergy(event.target.value as CoachSessionCheckinInput['energy'])}
-            className={FIELD_CLASS}
-          >
-            <option value="low">Low</option>
-            <option value="okay">Okay</option>
-            <option value="high">High</option>
-          </select>
-        </label>
-        <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
-          Pain signal
-          <select
-            aria-label="Pain signal"
-            value={pain}
-            onChange={event => setPain(event.target.value as CoachSessionCheckinInput['pain'])}
-            className={FIELD_CLASS}
-          >
-            <option value="none">None</option>
-            <option value="mild">Mild</option>
-            <option value="concerning">Concerning</option>
-          </select>
-        </label>
-      </div>
-      <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
-        Session note (optional)
-        <textarea
-          aria-label="Session note"
-          value={note}
-          maxLength={500}
-          rows={2}
-          onChange={event => setNote(event.target.value)}
-          className={FIELD_CLASS}
-        />
-      </label>
-      {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="min-h-11 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          {saving ? 'Saving result…' : 'Save session result'}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={saving}
-          className="min-h-11 rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
   )
 }
 

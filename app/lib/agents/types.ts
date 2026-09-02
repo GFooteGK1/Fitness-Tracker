@@ -1,6 +1,7 @@
 // ─── Enums & Literal Types ───────────────────────────────────────────
 
 import type { CoachRuntimeContext } from '@/app/lib/coach/types'
+import type { CoachEvidenceContextPacket } from '@/app/lib/coach/evidence-context'
 
 /** How the user submitted input */
 export type InputMode = 'text' | 'voice' | 'photo' | 'file'
@@ -264,6 +265,7 @@ export interface SociusContext extends PassiveContext {
   data_availability: DataAvailability
   programming_context?: ProgrammingReadinessContext
   coach_context?: CoachRuntimeContext
+  coach_evidence_context?: CoachEvidenceContextPacket
 }
 
 // ─── Classifier Types ────────────────────────────────────────────────

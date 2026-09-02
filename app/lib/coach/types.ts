@@ -2,6 +2,10 @@ import type {
   CoachSessionCheckinSummary,
   CoachWeeklyReview
 } from './execution-feedback'
+import type {
+  EvidenceSemanticRole,
+  PerformanceMetricId
+} from './adaptive-programming-contracts'
 
 export const COACH_DOMAIN_IDS = [
   'assessment',
@@ -234,9 +238,24 @@ export interface CoachMemorySummary {
   memoryKey: string
   kind: string
   content: Record<string, unknown>
+  provenance: Record<string, unknown>
   confidence: number
   confirmedAt: string
   version: number
+  effectiveFrom: string
+  effectiveUntil: string | null
+  reviewAfter: string | null
+  lastReviewedAt: string | null
+}
+
+export interface CoachScheduledMeasurementSummary {
+  id: string
+  weekNumber: number
+  scheduledOn: string
+  assessmentDefinition: { id: string; version: string }
+  protocol: { id: string; version: string }
+  metricId: PerformanceMetricId
+  semanticRole: EvidenceSemanticRole
 }
 
 export interface ActiveCoachProgramSummary {
@@ -259,6 +278,10 @@ export interface ActiveCoachProgramSummary {
     scheduledDate: string | null
     prescription: Record<string, unknown>
     status: 'planned' | 'completed' | 'skipped'
+    completionContractVersion: number | null
+    completedWorkoutId: string | null
+    /** Empty for legacy plans without the adaptive-programming contract. */
+    scheduledMeasurements?: CoachScheduledMeasurementSummary[]
   }>
   sessionCheckins: CoachSessionCheckinSummary[]
   currentWeekReview: CoachWeeklyReview | null

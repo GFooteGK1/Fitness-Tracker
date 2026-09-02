@@ -101,6 +101,8 @@ describe('ProgramPage adaptive coach workflow', () => {
                 sessionIndex: 1,
                 scheduledDate: '2026-08-03',
                 status: 'planned',
+                completionContractVersion: null,
+                completedWorkoutId: null,
                 prescription: acceptedDraft.weeks[0].sessions[0]
               }],
               sessionCheckins: [],
@@ -157,7 +159,8 @@ describe('ProgramPage adaptive coach workflow', () => {
     })
     expect(screen.getByText('Strength · 8 weeks')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Eight-week intent' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Session results and upcoming work' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'How ready do you feel?' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Finish or skip session' })).toBeInTheDocument()
     expect(screen.getAllByText(/Specific preparation/).length).toBeGreaterThan(0)
 
     const initialProposalCall = vi.mocked(fetch).mock.calls.find(([requested]) => (
@@ -284,6 +287,8 @@ describe('ProgramPage adaptive coach workflow', () => {
         sessionIndex: 1,
         scheduledDate: '2026-07-27',
         status: 'planned',
+        completionContractVersion: null,
+        completedWorkoutId: null,
         prescription: legacyPrescription as unknown as Record<string, unknown>
       }],
       sessionCheckins: [],
@@ -322,6 +327,8 @@ describe('ProgramPage adaptive coach workflow', () => {
       sessionIndex: 1,
       scheduledDate: '2026-08-03',
       status: 'planned' as const,
+      completionContractVersion: null,
+      completedWorkoutId: null,
       prescription: acceptedDraft.weeks[0].sessions[0]
     }
     const activeProgram = {
@@ -362,7 +369,12 @@ describe('ProgramPage adaptive coach workflow', () => {
       ...emptyContext,
       activeProgram: {
         ...activeProgram,
-        upcomingSessions: [{ ...session, status: 'completed' as const }],
+        upcomingSessions: [{
+          ...session,
+          status: 'completed' as const,
+          completionContractVersion: 2,
+          completedWorkoutId: '33333333-3333-4333-8333-333333333333'
+        }],
         sessionCheckins: [{
           id: 'checkin-1',
           prescribedSessionId: session.id,
@@ -403,22 +415,27 @@ describe('ProgramPage adaptive coach workflow', () => {
         return response({ context: { ...emptyContext, activeProgram } })
       }
       if (url.endsWith(`/sessions/${session.id}/complete`)) {
-        return response({ context: completedContext })
+        return response({
+          result: { workout_id: '33333333-3333-4333-8333-333333333333', replayed: false },
+          context: completedContext
+        })
       }
       return response({ error: 'Unexpected request' }, false, 500)
     })
 
     await act(async () => render(<ProgramPage />))
-    fireEvent.click(await screen.findByRole('button', { name: 'Log session result' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Readiness 4' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish or skip session' }))
+    fireEvent.click(screen.getByLabelText('Confirm completed prescribed work'))
     fireEvent.change(screen.getByLabelText('Session RPE'), { target: { value: '7.5' } })
     fireEvent.change(screen.getByLabelText('Session note'), {
       target: { value: 'Strong and controlled.' }
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save session result' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save session once' }))
 
-    expect(await screen.findByText('Session feedback saved.')).toBeInTheDocument()
+    expect(await screen.findByText(/Session saved once\. Canonical workout/)).toBeInTheDocument()
     expect(screen.getByText('Continue the accepted plan')).toBeInTheDocument()
-    expect(screen.getByText('Completed')).toBeInTheDocument()
+    expect(screen.getByText('Canonical workout linked')).toBeInTheDocument()
 
     const resultCall = vi.mocked(fetch).mock.calls.find(([requested]) => (
       (typeof requested === 'string' ? requested : requested.toString())
@@ -426,13 +443,25 @@ describe('ProgramPage adaptive coach workflow', () => {
     ))
     expect(JSON.parse(String(resultCall?.[1]?.body))).toMatchObject({
       idempotencyKey: expect.stringMatching(/^coach-session:/),
+      contractVersion: 2,
+      performedWork: {
+        mode: 'as_prescribed',
+        workoutDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        inputText: null,
+        blocks: null,
+        totalDurationMinutes: null
+      },
       feedback: {
         outcome: 'as_planned',
         sessionRpe: 7.5,
         energy: 'okay',
         pain: 'none',
         note: 'Strong and controlled.'
-      }
+      },
+      observations: [expect.objectContaining({
+        kind: 'readiness_check',
+        metric: { metricId: 'readiness.score', value: 4, unit: 'score' }
+      })]
     })
   })
 })

@@ -565,6 +565,11 @@ System Tests:
 Adaptive Coach:
 |- Machine-readable doctrine (`app/lib/coach/reference.ts`)
 |- Complete-programming evidence and composition contract (`app/lib/coach/programming-reference.ts`)
+|- Generic adaptive goal, quality, assessment, protocol, observation, evidence,
+|  hypothesis, unit, and comparability contracts
+|  (`app/lib/coach/adaptive-programming-contracts.ts`)
+|- Immutable goal, quality-emphasis, hypothesis, assessment, and evaluation trace
+|  (`app/lib/coach/adaptive-plan.ts`)
 |- Legacy deterministic policy and planner v0.2 (`app/lib/coach/policy.ts`, `planner.ts`)
 |- Structured v0.3 intake and profile construction (`app/lib/coach/complete-intake.ts`)
 |- v0.3 profile, coverage, and prescription contracts (`app/lib/coach/programming-schema.ts`)
@@ -661,6 +666,151 @@ immutable replacement proposal against the current accepted version while that
 version remains active. A separate stale-base-checked acceptance transition
 supersedes it and updates program metadata atomically.
 
+### Approved layered evidence extension
+
+ADR-0006 defines the evidence and memory boundary for the adaptive coach. The
+versioned generic goal, quality, assessment, protocol, observation, evidence,
+hypothesis, unit, and comparability contracts live in
+`app/lib/coach/adaptive-programming-contracts.ts`. The existing
+`coach_memories`, `coach_strength_assessments`, `workouts`,
+`prescribed_sessions`, `coach_checkins`, plan-version, proposal, and WHOOP
+records remain canonical. The additive
+`docs/migrations/layered-adaptive-evidence-migration.sql` migration introduces
+versioned `measurement_imports`, append-only `performance_observation_groups`
+and `performance_observation_values`, owner-safe
+`performance_observation_links`, and effective/review timestamps on confirmed
+memory. Authenticated clients have owner-scoped read access only. The complete
+plan builder now attaches a versioned adaptive trace from each goal through its
+quality emphasis, hypothesis, assessment schedule, repeated expected signals,
+evaluation policy, and composed coverage requirements. Assessment catalog
+version 0.2.0 defines session RPE as a typed training signal with the
+`session-rpe-ten-point` protocol; it is evidence input, not a standalone plan
+decision.
+
+Completion contract v2 closes the canonical-workout gap. The authenticated
+session-completion route validates performed work and typed observations, then
+the `record_coach_session_result_v2` transaction creates or replays one workout,
+one check-in, one automatic session-RPE observation, any supplied observations,
+and the prescribed-session link. It commits the session terminal state last.
+Skipped sessions create no workout or performance evidence. Legacy completion
+remains readable and callable without fabricating historical workout links.
+
+The proposal route stores the trace in the immutable plan intent. Legacy v0.2
+and v0.3 session prescriptions remain unchanged. Completion contract v2 and
+the context selector implement the bounded write and purpose-specific read
+transitions. The deterministic adaptation evaluator adds evidence snapshots
+and review-gated replacement drafts.
+
+The Program page projects each accepted adaptive assessment schedule onto one
+compatible prescribed session without mutating the plan. Its mobile-first
+Today card collects advisory readiness, only the scheduled measurement, and a
+minimal terminal result. The client builds and validates completion contract v2
+before calling the atomic route. An interrupted save freezes the full request
+and idempotency key for exact replay; editing explicitly abandons that pending
+key. The server response replaces the client context and exposes the terminal
+canonical-workout link. The Qwik adapter adds the first reviewed external
+measurement-import path. The trust center makes confirmed memory, import review,
+quality progress, and adaptation explanations athlete-visible and correctable.
+
+`app/lib/coach/qwik-import.ts` supports only the fixture-backed
+`qwik-vbt-json-1.10` format. The browser reads, hashes, parses, and previews the
+file locally. `app/program/qwik-import-panel.tsx` owns the athlete-facing file
+picker and normalized preview inside the Program trust center. It sends only
+the sanitized normalized submission to the authenticated import route, which
+rejects raw-text and bar-path keys and uses `record_qwik_import_v1` to store an
+idempotent manifest plus normalized load, repetition, and per-repetition mean
+concentric velocity observations. Interrupted saves retain the exact request
+body and idempotency key. Every row starts pending review and unverified.
+Ambiguous or unmapped movements remain incomplete and non-comparable. Raw JSON,
+full vendor payloads, and bar-path arrays are never included in the supported
+upload flow; the Qwik raw-artifact policy is `user_retained_not_uploaded`. The
+original file remains with the athlete.
+The canonical barbell-bench definition is `evidence_only`: Qwik can map
+comparable bench observations to it, but adding the alias does not alter the
+versioned deterministic programming catalog or existing generated plans.
+
+`app/lib/coach/trust-center.ts` builds the bounded four-part trust read model.
+`app/api/coach/trust/route.ts` authenticates before parsing writes, rejects raw
+measurement keys recursively, and routes authority-changing actions through
+idempotent database transitions. `app/program/coach-trust-center.tsx` preserves
+the exact request and idempotency key after an interrupted save. The
+`coach_memory_review_events`, `measurement_import_review_events`, and
+`adaptation_proposal_review_events` tables retain append-only athlete decisions.
+Memory correction creates a new confirmed version. Withdrawal and rejection
+retain reason-bearing history. An explicit ambiguous Qwik selection may create
+one athlete-confirmed comparable replacement group; the original pending group
+is superseded and its old values are excluded. The UI keeps targets, estimates,
+proxies, training signals, and direct outcomes visually distinct.
+
+Adaptation proposal rationale now stores the evaluator's bounded explanation,
+confidence, included observation count, and exclusion reasons. A proposal is a
+draft. The existing acceptance RPC remains the only plan activation boundary,
+and response-loss retry can replay an already accepted proposal safely.
+
+Neither the contracts, storage tables, nor evaluation criteria can activate
+plans. The approved layers are:
+
+| Data owner | Write authority | Lifecycle and retention | Required provenance |
+| --- | --- | --- | --- |
+| Version-controlled doctrine and protocol policy | Reviewed application change | Retain every version referenced by stored data; supersede instead of rewriting | Policy, protocol, schema, and algorithm version or content hash |
+| Confirmed athlete facts and typed assessments in Supabase | Explicit authenticated athlete confirmation, including confirmation of an imported candidate | Create a new version for corrections; exclude superseded, withdrawn, or expired values from active use; retain history while the account and referencing decisions remain | Source, effective time, confirmation, status, fingerprint, and supersession link |
+| Canonical `workouts`, prescribed-session link, `coach_checkins`, and existing WHOOP tables | Authenticated logging, one atomic completion flow, or a reviewed integration | Retain for the account lifetime unless the athlete deletes it; make corrections explicit and invalidate dependent evidence; never create a competing workout or WHOOP store | Stable IDs, observed and captured time, input source, schema version, and idempotency key |
+| Append-only normalized performance observations and private source-import manifests | Validated logger or athlete-confirmed idempotent importer | Supersede or exclude instead of overwriting; retain normalized rows and manifests with the account; require a declared raw-artifact retention class and duration before production activation | Source record ID, content hash, unit, protocol and version, variation, comparability tags, status, and artifact retention class |
+| Deterministic derived evidence and disposable read models | Versioned application evaluator only | Retain evidence referenced by a decision; regenerate or evict unreferenced projections; invalidate on source correction | Observation IDs, window, sample count, exclusions, evaluator version, freshness, confidence, and content hash |
+| Immutable programming hypotheses, adaptation proposals, and plan versions | Deterministic policy proposes; explicit athlete acceptance RPC activates | Append-only for the account lifetime; replace rather than edit | Evidence IDs, policy version, rationale, decision time, and accepted plan version |
+
+Promotion is one-way and gated. Conversation or model inference can create a
+review candidate only. Stable facts require explicit confirmation. Measurements
+require explicit logging or athlete-confirmed import. Evidence requires compatible active
+observations and a deterministic evaluator. One session or readiness score cannot
+change block emphasis. Insufficient, stale, or incompatible evidence holds the
+plan and requests only the smallest measurement that can change the decision.
+Only explicit acceptance can activate a replacement plan.
+
+Coach retrieval is purpose-specific. Planning, session execution, adaptation
+review, and explanation each assemble a bounded structured packet with source,
+freshness, protocol, confidence, exclusions, and missingness. Arbitrary recent
+memory and vector similarity are not numeric authority.
+`app/lib/coach/evidence-context.ts` defines six deterministic read models:
+today session, weekly review, adaptation review, new planning, metric history,
+and general coaching. Each packet carries an as-of time, active-plan scope,
+selected memory and observation IDs, sample counts, source verification,
+protocol and comparability identity, algorithm version, hard limits, and
+explicit missingness. Expired or overdue memory, future-captured data,
+unverified observations, superseded imports, stale-plan sessions, and
+cross-user rows are excluded. Truncated or failed reads are never labeled
+complete.
+
+`app/lib/coach/adaptation-evaluator.ts` converts an adaptation-review packet
+into a versioned continue, progress, maintain, redirect, recover, hold, or pause
+decision. It canonicalizes units, counts distinct exposures instead of sets,
+keeps direct outcomes separate from proxies, estimates provisional variability,
+and requires repeated directional agreement. Its content-addressed snapshot
+records included and excluded observation IDs, protocol signatures, windows,
+sample and exposure counts, safety sources, confidence, and algorithm versions.
+The adaptation-review API may store that snapshot in a new immutable replacement
+draft, but the accepted plan remains unchanged until explicit acceptance.
+Raw vendor payloads, bar-path arrays, images, and video stay outside
+hot relational queries and model context; a private raw artifact is allowed
+only under a source-specific retention policy. Import manifests retain hashes
+and status after raw content expires. A source may instead declare that raw
+content is not uploaded. Qwik uses that policy and retains only normalized
+metrics, bounded provenance, and the source SHA-256 in Supabase.
+
+Corrections never rewrite history. A fact or observation is superseded or
+excluded, dependent evidence is invalidated, and a new evaluation or proposal is
+created. A plan rollback is a newly accepted replacement version. Code rollback
+does not reinterpret stored records under a different policy version. Import
+retries must match their source fingerprint or fail closed. All user-owned tables
+and private objects remain tenant-scoped; new tables require RLS, `FORCE ROW LEVEL
+SECURITY`, composite ownership constraints, least-privilege grants, and bounded
+idempotent transitions.
+
+APEX remains a proving example rather than a scoring ontology. APEX scoring
+tables, vendor-controlled programming decisions, chat history as source of
+truth, automatic memory promotion, duplicated WHOOP data, default video
+retention, medical diagnosis, and silent plan activation are non-goals.
+
 ### Critical invariants
 
 - Weeks 4 and 8 are review-led deloads within the initial eight-week horizon.
@@ -675,8 +825,13 @@ supersedes it and updates program metadata atomically.
 - A terminal prescribed-session result and its check-in are recorded atomically.
 - Weekly reviews are deterministic and do not spend LLM tokens.
 - Adaptation previews never invent numeric changes or mutate future sessions.
+- Structured facts, observations, evidence, and decisions never collapse into
+  one flexible memory or transcript store.
+- Performance evidence never changes block emphasis from one noisy session or
+  one readiness value.
 
 See `docs/decisions/ADR-0003-adaptive-coach-state-and-authority.md`.
+See `docs/decisions/ADR-0006-layered-adaptive-programming-evidence-and-memory.md`.
 The current deterministic numeric and selection ranges are recorded in
 `docs/coach/programming-policy-0.2.0.md`.
 The researched construction contract and v0.3 implementation boundary are

@@ -1,4 +1,8 @@
 import {
+  validateAdaptivePlanContract,
+  type AdaptivePlanContract
+} from './adaptive-plan'
+import {
   MOVEMENT_CATALOG,
   MOVEMENT_CATALOG_VERSION,
   MOVEMENT_EQUIPMENT_IDS,
@@ -73,6 +77,24 @@ export function validateCompleteProgrammingPlan(
     errors.push('Plan profile snapshot is malformed')
     return { ok: false, errors: unique(errors), warnings }
   }
+
+  if (value.adaptiveProgramming === undefined) {
+    warnings.push('Legacy complete v0.3 plan has no adaptive programming trace')
+  } else if (!isRecord(value.adaptiveProgramming)) {
+    errors.push('Adaptive programming trace must be an object')
+  } else {
+    try {
+      const adaptiveValidation = validateAdaptivePlanContract(
+        value.adaptiveProgramming as unknown as AdaptivePlanContract,
+        plan.profileSnapshot,
+        plan.weeks
+      )
+      errors.push(...adaptiveValidation.errors.map(error => `Adaptive plan: ${error}`))
+    } catch {
+      errors.push('Adaptive programming trace is malformed')
+    }
+  }
+
   if (plan.weeks.length !== 8) errors.push('Complete programming plans must contain exactly 8 weeks')
 
   const expectedWeeks = new Set(Array.from({ length: 8 }, (_, index) => index + 1))

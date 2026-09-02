@@ -95,6 +95,7 @@ export async function POST(request: Request) {
         format: proposal.format,
         horizon_weeks: 8,
         kernel_version: proposal.kernelVersion,
+        adaptive_programming: proposal.adaptiveProgramming,
         primary_domain: proposal.profileSnapshot.primaryGoal.domain,
         weeks: proposal.weeks.map(week => ({
           week: week.weekNumber,
@@ -116,6 +117,8 @@ export async function POST(request: Request) {
         reason: context.activeProgram ? 'replacement_program' : 'initial_program',
         generatedBy: 'planning_kernel',
         kernelVersion: proposal.kernelVersion,
+        adaptivePlanContractVersion: proposal.adaptiveProgramming.contractVersion,
+        automaticPlanActivation: proposal.adaptiveProgramming.evaluationPolicies.some(policy => policy.automaticPlanActivation),
         athleteReviewRequired: true
       },
       p_input_fingerprint: inputFingerprint,
