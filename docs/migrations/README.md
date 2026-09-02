@@ -4,8 +4,13 @@ This directory contains SQL migration scripts for the SociusFit database schema.
 
 ## Current Schema Status
 
-**Last Verified:** July 30, 2026
-**Status:** Production-applied migrations through legacy-object security containment are live and verified
+**Last Verified:** September 1, 2026
+**Status:** Production migration history is aligned through the layered adaptive-coach evidence and trust schema
+
+The four layered adaptive-coach migrations were applied to production on
+September 1, 2026. Migration history, a zero-change dry run, live table and
+index readback, generated types, and database lint confirm the additive schema
+is live. See `adaptive-coach-production-application-2026-09-01.md`.
 
 The February WHOOP v2 verification below remains historical context. On July 26,
 the personal-records and view-template migrations were applied to the production
@@ -122,6 +127,73 @@ canonical SQL is mirrored exactly at
 It was applied twice and rollback-verified in production on July 29, 2026;
 see `coach-execution-feedback-production-application-2026-07-29.md`.
 
+### `layered-adaptive-evidence-migration.sql`
+Additive persistence for versioned measurement-import manifests, generic
+performance observation groups and values, and derived-observation lineage.
+It extends confirmed coach memory with effective, expiry, and review times;
+links observations to canonical workouts with tenant-consistent foreign keys;
+keeps raw payloads in private retained object storage; and grants authenticated
+users read-only, owner-scoped access. The canonical SQL is mirrored exactly at
+`../../supabase/migrations/20260901152000_layered_adaptive_evidence.sql`.
+It was applied to production on September 1, 2026; see
+`adaptive-coach-production-application-2026-09-01.md`.
+
+### `atomic-coach-session-completion-migration.sql`
+Apply after `layered-adaptive-evidence-migration.sql`. This additive migration
+introduces completion contract v2 and the bounded
+`record_coach_session_result_v2` transition. A completed v2 session creates one
+canonical `workouts` row, one check-in, the session-RPE observation, any
+validated supplied observations, and the `completed_workout_id` link in one
+transaction. A skipped result creates no performed-work record. Identical
+idempotent retries return the original IDs; mismatched retries, stale plans,
+terminal sessions, and cross-user access fail closed. The legacy
+`record_coach_session_result` RPC remains available for existing clients and
+its rows stay explicitly unlinked.
+
+The canonical SQL is mirrored exactly at
+`../../supabase/migrations/20260901170000_atomic_coach_session_completion.sql`.
+It applied twice and passed the rollback verifier in a disposable local
+PostgreSQL-compatible database. See
+`atomic-coach-session-completion-verification-2026-09-01.md`. It was applied to
+production on September 1, 2026; see
+`adaptive-coach-production-application-2026-09-01.md`.
+
+### `qwik-vbt-import-migration.sql`
+Apply after `layered-adaptive-evidence-migration.sql`. This additive migration
+adds user-scoped import idempotency and the bounded `record_qwik_import_v1`
+transition. It records only normalized load, repetition, and per-repetition
+velocity evidence plus a SHA-256-backed import manifest. Every import begins
+`pending_review` and `unverified`; unresolved movement mappings remain
+incomplete and cannot support adaptation. Raw Qwik JSON, full vendor payloads,
+and bar-path arrays are not uploaded. The declared source policy is
+`user_retained_not_uploaded`.
+
+The canonical SQL is mirrored exactly at
+`../../supabase/migrations/20260901183000_qwik_vbt_import.sql`. It applied
+twice and passed the rollback verifier in a disposable local
+PostgreSQL-compatible database. See
+`qwik-vbt-import-verification-2026-09-01.md`. It was applied to production on
+September 1, 2026; see
+`adaptive-coach-production-application-2026-09-01.md`.
+### `coach-trust-review-migration.sql`
+Apply after `qwik-vbt-import-migration.sql`. This additive migration creates
+append-only, user-owned review histories for coach memory, measurement imports,
+and adaptation proposals. Its bounded RPCs reaffirm, correct, or withdraw a
+memory; confirm or reject a Qwik import; and reject a proposed plan without
+changing the accepted plan. Authenticated clients can read only their own
+history and cannot write event tables directly. Qwik confirmation converts an
+explicit athlete mapping into an athlete-confirmed comparable observation;
+unmapped evidence remains excluded. Raw Qwik JSON and bar-path arrays remain
+outside Supabase.
+
+The canonical SQL is mirrored exactly at
+`../../supabase/migrations/20260901220000_coach_trust_review.sql`. It applied
+twice and passed its rollback-only verifier in PGlite PostgreSQL 17.5. See
+`coach-trust-review-verification-2026-09-01.md`. It was applied to production on
+September 1, 2026; see
+`adaptive-coach-production-application-2026-09-01.md`.
+
+
 ### `secure-legacy-database-objects-migration.sql`
 Containment migration for three historical WHOOP backup tables and the unused
 `get_meals_around_workout` helper. It preserves every table and row, removes
@@ -201,6 +273,33 @@ removal of authenticated direct table writes. Apply the execution-feedback
 migration twice before running it. This verifier has not been run against
 production.
 
+### `verify-layered-adaptive-evidence-migration.sql`
+Rollback-only verification for import and source idempotency, canonical-workout
+and lineage ownership, memory lifecycle representation, forced RLS, and table
+privileges. Apply the base workout schema, coach-system migration, and layered
+adaptive evidence migration twice before running it. This verifier has not been
+run against production. See
+`layered-adaptive-evidence-verification-2026-09-01.md` for the disposable
+PostgreSQL-compatible apply-twice and rollback-verifier evidence.
+
+### `verify-qwik-vbt-import-migration.sql`
+Rollback-only verification for Qwik manifest and observation persistence,
+authenticated-only RPC execution, normalized-only storage, trust state,
+idempotent replay, duplicate detection, mismatched retry rejection, atomic
+failure, and cross-user isolation. Apply the layered evidence and Qwik
+migrations twice before running it. This verifier has not been run against
+production. See `qwik-vbt-import-verification-2026-09-01.md`.
+### `verify-coach-trust-review-migration.sql`
+Rollback-only verification for append-only review history, memory lifecycle,
+explicit Qwik mapping and rejection, proposal rejection, idempotency, grants,
+forced RLS, normalized-only storage, and cross-athlete isolation. Apply the base
+workout, coach-system, layered evidence, Qwik, and trust migrations first, with
+the trust migration applied twice. This verifier has not been run against
+production. See
+`coach-trust-review-verification-2026-09-01.md` for the disposable PostgreSQL
+apply-twice and rollback-verifier evidence.
+
+
 ### `verify-nutrition-fast-logging.sql`
 Rollback-only structural, grant, idempotency, source-meal ownership, and
 two-user RLS verification for the nutrition fast-log migration. It requires two
@@ -274,4 +373,4 @@ database.
 
 ---
 
-**Last Updated:** July 30, 2026
+**Last Updated:** September 1, 2026

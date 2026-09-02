@@ -16,12 +16,14 @@ function createCoachSupabaseMock(results: Record<string, MockResult>) {
       const query: Record<string, ReturnType<typeof vi.fn>> = {
         select: vi.fn(),
         eq: vi.fn(),
+        lte: vi.fn(),
         order: vi.fn(),
         limit: vi.fn()
       }
 
       query.select.mockReturnValue(query)
       query.eq.mockReturnValue(query)
+      query.lte.mockReturnValue(query)
       query.order.mockReturnValue(query)
       query.limit.mockResolvedValue(results[table] ?? { data: [], error: null })
       queries.set(table, query)
@@ -60,9 +62,27 @@ describe('fetchCoachRuntimeContext', () => {
           memory_key: 'primary_goal',
           kind: 'goal',
           content: { goal: 'Build strength without losing speed' },
+          provenance: { source: 'athlete' },
           confidence: '1',
           confirmed_at: '2026-07-26T12:00:00Z',
-          version: 1
+          version: 1,
+          effective_from: null,
+          effective_until: null,
+          review_after: null,
+          last_reviewed_at: null
+        }, {
+          id: 'memory-expired',
+          memory_key: 'temporary_constraint',
+          kind: 'constraint',
+          content: { note: 'No overhead work' },
+          provenance: { source: 'athlete' },
+          confidence: '1',
+          confirmed_at: '2026-07-26T12:00:00Z',
+          version: 1,
+          effective_from: null,
+          effective_until: '2026-08-01T00:00:00Z',
+          review_after: null,
+          last_reviewed_at: null
         }],
         error: null
       },
@@ -85,6 +105,23 @@ describe('fetchCoachRuntimeContext', () => {
           policy_version: '0.1.0',
           intent: {
             horizon_weeks: 8,
+            adaptive_programming: {
+              scheduledAssessments: [{
+                id: 'assessment:strength:week-4',
+                goalId: 'goal:strength',
+                hypothesisId: 'hypothesis:strength',
+                weekNumber: 4,
+                scheduledOn: '2026-08-17',
+                assessmentDefinition: {
+                  id: 'strength.repetition_max',
+                  version: '1.0.0',
+                  catalogVersion: '0.2.0'
+                },
+                protocol: { id: 'strength-repetition-max-standard', version: '1.0.0' },
+                metricId: 'strength.load',
+                semanticRole: 'direct_outcome'
+              }]
+            },
             weeks: getEightWeekIntent().map(week => week.week === 3
               ? { ...week, role: 'build' as const }
               : week)
@@ -103,7 +140,21 @@ describe('fetchCoachRuntimeContext', () => {
             intent: 'Produce repeatable force',
             dose: { source: 'validated_policy' }
           },
-          status: 'completed'
+          status: 'completed',
+          completion_contract_version: 2,
+          completed_workout_id: 'workout-1'
+        }, {
+          id: 'session-2',
+          week_number: 4,
+          session_index: 1,
+          scheduled_date: '2026-08-17',
+          prescription: {
+            domain: 'strength',
+            intent: 'Reassess repeatable strength'
+          },
+          status: 'planned',
+          completion_contract_version: null,
+          completed_workout_id: null
         }],
         error: null
       },
@@ -140,8 +191,10 @@ describe('fetchCoachRuntimeContext', () => {
     })
     expect(context.memories[0]).toMatchObject({
       memoryKey: 'primary_goal',
-      content: { goal: 'Build strength without losing speed' }
+      content: { goal: 'Build strength without losing speed' },
+      provenance: { source: 'athlete' }
     })
+    expect(context.memories).toHaveLength(1)
     expect(context.activeProgram).toMatchObject({
       id: 'program-1',
       planVersion: 2,
@@ -150,7 +203,20 @@ describe('fetchCoachRuntimeContext', () => {
       weeks: expect.arrayContaining([
         expect.objectContaining({ week: 4, role: 'deload_review', reviewRequired: true })
       ]),
-      upcomingSessions: [{ id: 'session-1', weekNumber: 3 }],
+      upcomingSessions: expect.arrayContaining([expect.objectContaining({
+          id: 'session-1',
+          weekNumber: 3,
+          completionContractVersion: 2,
+          completedWorkoutId: 'workout-1',
+          scheduledMeasurements: []
+        }), expect.objectContaining({
+          id: 'session-2',
+          weekNumber: 4,
+          scheduledMeasurements: [expect.objectContaining({
+            id: 'assessment:strength:week-4',
+            metricId: 'strength.load'
+          })]
+        })]),
       sessionCheckins: [{
         id: 'checkin-1',
         prescribedSessionId: 'session-1',

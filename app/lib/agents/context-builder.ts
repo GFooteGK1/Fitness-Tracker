@@ -12,6 +12,7 @@ import { fetchWorkoutForDate } from '@/app/lib/sheets/workout-fetcher'
 import { localDateToUTCStart, localDateToUTCEnd } from '@/app/lib/timezone-utils'
 import { fetchProgrammingReadinessContext } from './programming-context'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
+import { fetchCoachEvidenceContext } from '@/app/lib/coach/evidence-context'
 
 // ─── Passive Context Cache ────────────────────────────────────────────
 // Short-lived per-user cache for the 8-query passive context fetch.
@@ -353,7 +354,8 @@ export async function buildSociusContext(
     recentInsights,
     dataAvailability,
     programmingContext,
-    coachContext
+    coachContext,
+    coachEvidenceContext
   ] = await Promise.all([
     buildPassiveContext(userId, tzOffset),
     fetchThirtyDaySummary(supabase, userId),
@@ -362,6 +364,12 @@ export async function buildSociusContext(
     fetchProgrammingReadinessContext(supabase, userId, programmingDays),
     includeCoachContext
       ? fetchCoachRuntimeContext(supabase, userId)
+      : Promise.resolve(undefined),
+    includeCoachContext
+      ? fetchCoachEvidenceContext(supabase, userId, {
+        purpose: 'general_coaching',
+        asOf: new Date().toISOString()
+      }).catch(() => undefined)
       : Promise.resolve(undefined)
   ])
 
@@ -371,7 +379,8 @@ export async function buildSociusContext(
     recent_insights: recentInsights,
     data_availability: dataAvailability,
     programming_context: programmingContext,
-    ...(coachContext ? { coach_context: coachContext } : {})
+    ...(coachContext ? { coach_context: coachContext } : {}),
+    ...(coachEvidenceContext ? { coach_evidence_context: coachEvidenceContext } : {})
   }
 }
 

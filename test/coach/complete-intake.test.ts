@@ -45,6 +45,18 @@ describe('complete programming intake', () => {
       domain: 'aerobic',
       allocation: 'maintenance'
     })])
+    expect(profile.primaryGoal.outcome).toEqual({
+      statement: 'Build useful full-body strength',
+      kind: 'performance_outcome',
+      horizon: { startsOn: '2026-08-03', endsOn: '2026-09-27' },
+      target: null
+    })
+    expect(profile.secondaryGoals[0].outcome).toEqual({
+      statement: 'Keep an aerobic base',
+      kind: 'performance_outcome',
+      horizon: { startsOn: '2026-08-03', endsOn: '2026-09-27' },
+      target: null
+    })
   })
 
   it('requires resolved equipment and rejects duplicate or conflicting goals', () => {

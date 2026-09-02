@@ -1,5 +1,161 @@
 # Handoff
 
+## Layered adaptive programming evidence and memory (local implementation, 2026-09-01)
+
+Work is isolated in
+`C:\Dev\Personal\repos\Fitness-Tracker\.worktrees\adaptive-programming-layered-storage`
+on `codex/adaptive-programming-layered-storage`, based on commit
+`3f5524609279b4dc73fe9879b4e0aa370921e30e`. The dirty primary checkout was
+not changed by this implementation.
+
+Completed Beads in epic `Fitness-Tracker-lmm`:
+
+- `.1` defines typed doctrine, goal, hypothesis, assessment, observation,
+  comparability, evidence, and proposal contracts without APEX scoring tables.
+- `.2` adds tenant-scoped, append-only layered persistence with lifecycle,
+  provenance, RLS, idempotency, exact migration mirrors, and rollback-only
+  verification SQL.
+- `.3` stores adaptive goals and hypotheses in immutable plan intent while
+  preserving explicit acceptance as the only activation path.
+- `.4` records the durable architecture in ADR-0006 and the architecture map.
+- `.5` adds completion contract v2. One transaction creates or replays the
+  canonical workout, check-in, session-RPE observation, supplied evidence, and
+  prescribed-session link. Skips create no workout or performance evidence.
+- `.6` adds the fixture-backed Qwik JSON 1.10 adapter and normalized Supabase
+  persistence. The browser-compatible parser reads, hashes, normalizes, and
+  previews the selected file locally. The authenticated route accepts only the
+  sanitized normalized submission and calls the bounded
+  `record_qwik_import_v1` transaction. Source hashes, IDs, timing, original and
+  canonical load units, RPE, tags, rep velocity, eccentric, pause, range, and
+  bar-path presence/count provenance are retained. Raw JSON and bar-path arrays
+  are not sent in the supported upload flow. Imports remain pending review and
+  unverified; ambiguous movement mappings are incomplete and non-comparable.
+  Replays and duplicate hashes are no-ops, while mismatched key reuse and
+  partial conflicts fail atomically. Bench mapping is evidence-only so adding
+  the Qwik alias does not change deterministic program generation.
+- `.7` adds six purpose-specific evidence packets for today, weekly review,
+  adaptation review, new planning, metric history, and general coaching. The
+  selector excludes stale, expired, withdrawn, future, unverified,
+  cross-tenant, incompatible-protocol, and stale-plan data. It is bounded and
+  reports evidence IDs, sample counts, algorithm versions, missingness, and
+  truncation. Socius receives the bounded general-coaching packet for
+  programming-classified requests.
+- `.8` adds `adaptive-review-0.1.0` and an authenticated review endpoint. It
+  canonicalizes units, counts exposures instead of sets, reports best, average,
+  decay, consistency, provisional variability, direct versus proxy evidence,
+  included and excluded observation IDs, protocol signatures, confidence, and
+  a stable SHA-256 snapshot. One outlier or readiness value cannot change the
+  emphasis. Safety overrides progression. An eligible review can store an
+  immutable replacement draft only when the athlete supplies replacement setup;
+  acceptance remains a separate explicit transition.
+- `.9` adds the mobile-first Today logger to the active Program page. Accepted
+  assessment schedules project deterministically onto compatible sessions. The
+  logger captures advisory readiness, scheduled typed measurements, explicit
+  as-prescribed confirmation, minimal modified work, and terminal outcomes.
+  It submits completion contract v2 through the atomic route. Interrupted saves
+  retain the exact payload and idempotency key; editing explicitly abandons the
+  pending key. Completed state shows the canonical workout link, while skipped
+  state confirms that no workout or performed-session observation exists. The
+  mobile browser proof found and fixed one 43 px readiness target; final controls
+  meet the 44 px rule at 390 px with no overflow at 320 or 390 px.
+- `.10` adds the Program-page data trust center. Athletes can reaffirm, correct,
+  or withdraw versioned memories; confirm or reject normalized Qwik imports;
+  choose a supported movement for ambiguous sets; inspect separate evidence
+  roles and quality emphasis; and accept or reject an explained adaptation
+  proposal. Corrections supersede instead of overwriting. Reasons and review
+  decisions are append-only. The evaluator's actual rationale, confidence, and
+  exclusion reasons are stored with new adaptation proposals and displayed.
+  Interrupted writes retain the exact request and idempotency key. Proposal
+  acceptance can replay after a committed response is lost. Raw Qwik JSON and
+  bar-path arrays remain outside Supabase. The browser proof passed at desktop,
+  390 px, and 320 px with no trust-surface overflow, no sub-44 px controls, no
+  sub-16 px form text, correct keyboard order, reason-gated rejection, and
+  explicit Qwik mapping.
+
+- `.12` closes the missing athlete entry path for Qwik data. The Program trust
+  center now accepts a local Qwik JSON 1.10 export, parses and hashes it in the
+  browser, previews normalized sets, velocity readings, mapping state, bounded
+  issues, and the source-hash prefix, then requires an explicit **Save for
+  review** action. Interrupted imports keep the preview and reuse the exact
+  normalized request plus idempotency key. Raw JSON and bar-path arrays remain
+  local. The athlete retains the original export.
+
+
+
+Verification on this worktree:
+
+- Focused evidence-context and agent regression: 6 files, 113 tests passed.
+- Focused adaptation regression: 11 files, 77 tests passed.
+- Focused Today, atomic completion, runtime projection, page, and API regression:
+  6 files, 32 tests passed.
+- Focused Qwik parser, API, migration, catalog, and adaptive-contract regression:
+  5 files, 33 tests passed.
+- Full Vitest: 218 files passed, 5 skipped; 2,388 tests passed, 7 skipped.
+- TypeScript `--noEmit --incremental false`: passed.
+- Focused trust read-model, API, UI, migration, and Program-page regression:
+  5 files, 23 tests passed.
+- Focused Qwik entry, parser, API, trust-center, and Program-page regression:
+  5 files, 21 tests passed.
+- Next.js lint: passed with no warnings or errors.
+- Production build with non-secret build-only public Supabase placeholders:
+  compiled and generated all 78 routes.
+- All four canonical SQL files exactly match their timestamped Supabase migration
+  mirrors; `git diff --check` passed.
+- The atomic migration applied twice in PGlite PostgreSQL 18.3, and its
+  rollback-only verifier completed successfully.
+- The layered evidence and hardened Qwik migrations each applied twice in
+  PGlite PostgreSQL 18.3. The Qwik rollback verifier completed successfully,
+  including raw-artifact, grant, trust-state, idempotency, atomicity, and RLS
+  checks.
+- Isolated mobile browser proof passed at 320 x 844 and 390 x 844. It found no
+  horizontal overflow or sub-44 px Today controls. An injected interrupted save
+  reused the exact contract-v2 request body and idempotency key, captured
+  `readiness.score` and `strength.load`, then rendered the terminal canonical
+  workout link. Labels resolved, Tab order moved between adjacent readiness
+  controls, and Space activated the focused control. The deliberate
+  `ERR_CONNECTION_FAILED` was the only console error.
+- The trust migration applied twice in PGlite PostgreSQL 17.5. Its rollback-only
+  verifier completed successfully, including memory lifecycle, Qwik mapping and
+  rejection, proposal rejection, grants, idempotency, normalized-only storage,
+  and authenticated cross-athlete RLS isolation.
+- Trust-center Chromium proof passed at 1280, 390, and 320 px with exact
+  response-loss retries for trust memory and Qwik import writes. The actual Qwik
+  fixture produced a local preview; both captured requests excluded raw JSON and
+  bar-path arrays. Explicit mapping and reason-gated rejection worked. Only the
+  two deliberately injected network failures reached the console.
+
+Greg explicitly authorized the production database write on 2026-09-01. The
+isolated worktree was linked to `fitness-tracker`
+(`auolnfwetmfcwhtvakzy`), and the final dry run listed only the four layered
+adaptive-coach migrations with no seed or role change. All four migrations
+applied successfully.
+
+Production readback confirms all ten local and remote migration versions align
+through `20260901220000`; a new dry run is empty; database lint returned zero
+errors; the seven new tables, expected indexes, and bounded RPCs are live; and
+the seven new import/review tables had zero rows. No Qwik import, adaptation
+proposal, accepted plan, or other athlete workflow was written. The exact
+target, commands, missing-history reconciliation, readback, and verification
+boundaries are in
+`docs/migrations/adaptive-coach-production-application-2026-09-01.md`.
+
+Direct production execution of the four repeat-application and rollback-only SQL
+verifiers remains unverified. This host has no `psql`; Docker-backed schema dump
+was unavailable; and signed-in browser control failed before the SQL editor
+opened. Local disposable PostgreSQL-compatible verification remains green. Do
+not attempt credential extraction to bypass those tool limits.
+
+Greg authorized commit and push, then separately authorized merge and production
+deployment on 2026-09-01. Promote the exact candidate on
+`codex/adaptive-programming-layered-storage` through its pull request only after
+the required CI and Vercel preview checks pass. GitHub and Vercel are the
+authoritative final merge and deployment status surfaces. Bead `.11` remains in
+progress after deployment until an authenticated synthetic athlete A/athlete B
+canary proves the full workflow and cross-athlete isolation. The evidence
+matrix, canary protocol, and data-preserving rollback are in
+`docs/coach/adaptive-coach-release-readiness-2026-09-01.md`. Bead `.12` is
+closed.
+
 
 ## Automatic meal photos physical-device protocol probe (manual signing prepared, 2026-08-12)
 

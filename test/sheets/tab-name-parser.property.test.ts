@@ -13,7 +13,10 @@ import { describe, expect } from 'vitest'
 import { parseTabName } from '@/app/lib/sheets/tab-name-parser'
 
 // Configure minimum 100 iterations for all property tests
-const propertyConfig = { numRuns: 100 }
+const configuredSeed = Number(process.env.FAST_CHECK_SEED)
+const propertyConfig = Number.isInteger(configuredSeed)
+  ? { numRuns: 100, seed: configuredSeed }
+  : { numRuns: 100 }
 
 // Month names for generating test data
 const FULL_MONTH_NAMES = [
@@ -25,6 +28,13 @@ const ABBREV_MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 ]
+
+// Surrounding labels must not introduce another recognized date pattern.
+// Competing patterns are covered separately by the parser-priority properties.
+const SURROUNDING_TEXT = fc.array(
+  fc.constantFrom('Programming', 'Training', 'Week', 'Block', 'Plan', 'Archive', 'Current', 'Next'),
+  { minLength: 0, maxLength: 3 }
+).map(parts => parts.join(' '))
 
 describe('Tab Name Parser - Property Tests', () => {
 
@@ -64,8 +74,8 @@ describe('Tab Name Parser - Property Tests', () => {
     [
       fc.integer({ min: 1, max: 12 }),
       fc.integer({ min: 2020, max: 2030 }),
-      fc.string({ minLength: 0, maxLength: 20 }),
-      fc.string({ minLength: 0, maxLength: 20 })
+      SURROUNDING_TEXT,
+      SURROUNDING_TEXT
     ],
     propertyConfig
   )('Property 2.1b: "Month YYYY" format works with surrounding text', (month, year, prefix, suffix) => {
@@ -107,8 +117,8 @@ describe('Tab Name Parser - Property Tests', () => {
     [
       fc.integer({ min: 1, max: 12 }).filter(m => m !== 5), // Exclude May (month 5)
       fc.integer({ min: 2020, max: 2030 }),
-      fc.string({ minLength: 0, maxLength: 20 }),
-      fc.string({ minLength: 0, maxLength: 20 })
+      SURROUNDING_TEXT,
+      SURROUNDING_TEXT
     ],
     propertyConfig
   )('Property 2.2b: "Mon YYYY" format works with surrounding text', (month, year, prefix, suffix) => {
@@ -148,8 +158,8 @@ describe('Tab Name Parser - Property Tests', () => {
     [
       fc.integer({ min: 1, max: 12 }),
       fc.integer({ min: 2020, max: 2030 }),
-      fc.string({ minLength: 0, maxLength: 20 }),
-      fc.string({ minLength: 0, maxLength: 20 })
+      SURROUNDING_TEXT,
+      SURROUNDING_TEXT
     ],
     propertyConfig
   )('Property 2.3b: "YYYY-MM" format works with surrounding text', (month, year, prefix, suffix) => {
@@ -243,8 +253,8 @@ describe('Tab Name Parser - Property Tests', () => {
   test.prop(
     [
       fc.integer({ min: 1, max: 12 }),
-      fc.string({ minLength: 0, maxLength: 20 }),
-      fc.string({ minLength: 0, maxLength: 20 })
+      SURROUNDING_TEXT,
+      SURROUNDING_TEXT
     ],
     propertyConfig
   )('Property 2.5b: "Month only" format works with surrounding text', (month, prefix, suffix) => {

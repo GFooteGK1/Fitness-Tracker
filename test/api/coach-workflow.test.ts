@@ -202,7 +202,21 @@ describe('adaptive coach API workflow', () => {
         p_input_fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/),
         p_intent: expect.objectContaining({
           horizon_weeks: 8,
-          format: 'complete_programming_plan_v0_3'
+          format: 'complete_programming_plan_v0_3',
+          adaptive_programming: expect.objectContaining({
+            contractVersion: 'adaptive-plan-0.1.0',
+            qualityEmphases: expect.arrayContaining([
+              expect.objectContaining({ state: 'priority_development' })
+            ]),
+            evaluationPolicies: expect.arrayContaining([
+              expect.objectContaining({ automaticPlanActivation: false })
+            ])
+          })
+        }),
+        p_rationale: expect.objectContaining({
+          adaptivePlanContractVersion: 'adaptive-plan-0.1.0',
+          automaticPlanActivation: false,
+          athleteReviewRequired: true
         }),
         p_sessions: expect.arrayContaining([
           expect.objectContaining({
@@ -358,6 +372,126 @@ describe('adaptive coach API workflow', () => {
       p_idempotency_key: 'coach-session-result-1'
     })
     expect(fetchCoachRuntimeContext).toHaveBeenCalledWith(supabase, 'user-1')
+  })
+
+  it('records canonical performed work and typed evidence through the v2 atomic RPC', async () => {
+    const supabase = supabaseClient()
+    supabase.rpc.mockResolvedValue({
+      data: [{
+        prescribed_session_id: '11111111-1111-4111-8111-111111111111',
+        session_status: 'completed',
+        checkin_id: '22222222-2222-4222-8222-222222222222',
+        workout_id: '33333333-3333-4333-8333-333333333333',
+        observation_group_ids: ['44444444-4444-4444-8444-444444444444'],
+        occurred_at: '2026-09-01T15:00:00.000Z',
+        replayed: false
+      }],
+      error: null
+    })
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+
+    const observation = {
+      clientId: 'trap-bar-capacity-set-1',
+      kind: 'strength_set',
+      semanticRole: 'training_signal',
+      observedAt: '2026-09-01T14:45:00.000Z',
+      assessmentDefinition: { id: 'strength.repetition_capacity', version: '1.0.0' },
+      protocol: { id: 'strength-repetition-capacity-standard', version: '1.0.0' },
+      metric: { metricId: 'strength.repetitions', value: 8, unit: 'repetitions' },
+      sourceDeviceId: null,
+      comparison: {
+        movementId: 'trap_bar_deadlift',
+        variationId: 'high_handle',
+        repetitions: null,
+        externalLoad: { value: 315, unit: 'lb' },
+        distance: null,
+        duration: { value: 45, unit: 's' },
+        equipmentIds: ['trap_bar'],
+        techniqueModifiers: ['continuous_repetitions'],
+        environmentModifiers: []
+      },
+      metadata: { setNumber: 1 }
+    }
+    const performedWork = {
+      mode: 'modified',
+      workoutDate: '2026-09-01',
+      inputText: 'Reduced the final two sets from eight reps to six reps.',
+      blocks: [{ label: 'Primary strength', actualSets: [8, 8, 6, 6] }],
+      totalDurationMinutes: 48
+    }
+
+    const response = await recordCoachSessionResult(
+      request('/api/coach/sessions/11111111-1111-4111-8111-111111111111/complete', {
+        contractVersion: 2,
+        idempotencyKey: 'coach-session-result-v2-1',
+        feedback: {
+          outcome: 'modified',
+          sessionRpe: 7.5,
+          energy: 'okay',
+          pain: 'none',
+          note: 'Used the recorded actual work.',
+          occurredAt: '2026-09-01T15:00:00.000Z'
+        },
+        performedWork,
+        observations: [observation]
+      }),
+      { params: Promise.resolve({ id: '11111111-1111-4111-8111-111111111111' }) }
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      result: {
+        workout_id: '33333333-3333-4333-8333-333333333333',
+        observation_group_ids: ['44444444-4444-4444-8444-444444444444'],
+        replayed: false
+      }
+    })
+    expect(supabase.rpc).toHaveBeenCalledWith('record_coach_session_result_v2', {
+      p_session_id: '11111111-1111-4111-8111-111111111111',
+      p_status: 'completed',
+      p_feedback: {
+        schemaVersion: 1,
+        outcome: 'modified',
+        sessionRpe: 7.5,
+        energy: 'okay',
+        pain: 'none',
+        note: 'Used the recorded actual work.'
+      },
+      p_occurred_at: '2026-09-01T15:00:00.000Z',
+      p_idempotency_key: 'coach-session-result-v2-1',
+      p_performed_work: performedWork,
+      p_observations: [expect.objectContaining({
+        clientId: 'trap-bar-capacity-set-1',
+        assessmentCatalogVersion: '0.2.0',
+        comparabilityKey: expect.stringContaining('comparison-v1')
+      })]
+    })
+    expect(fetchCoachRuntimeContext).toHaveBeenCalledWith(supabase, 'user-1')
+  })
+
+  it('rejects v2 as-prescribed completion that replaces accepted work', async () => {
+    const supabase = supabaseClient()
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+
+    const response = await recordCoachSessionResult(
+      request('/api/coach/sessions/11111111-1111-4111-8111-111111111111/complete', {
+        contractVersion: 2,
+        idempotencyKey: 'coach-session-result-v2-2',
+        feedback: {
+          outcome: 'as_planned', sessionRpe: 7, energy: 'okay', pain: 'none', note: null,
+          occurredAt: '2026-09-01T15:00:00.000Z'
+        },
+        performedWork: {
+          mode: 'as_prescribed', workoutDate: '2026-09-01', inputText: null,
+          blocks: [{ replacement: true }], totalDurationMinutes: 55
+        },
+        observations: []
+      }),
+      { params: Promise.resolve({ id: '11111111-1111-4111-8111-111111111111' }) }
+    )
+
+    expect(response.status).toBe(400)
+    expect(supabase.rpc).not.toHaveBeenCalled()
   })
 
   it('rejects invalid session feedback before calling the database', async () => {

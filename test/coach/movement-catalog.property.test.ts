@@ -35,6 +35,28 @@ describe('versioned movement catalog', () => {
     }
   })
 
+
+  it('maps evidence-only bench imports without changing program movement selection', () => {
+    const aliasMatches = getMovementsByAssessmentAlias('bench press')
+    const bench = aliasMatches.find(movement => movement.id === 'barbell_bench_press')
+    const fullGymContext: MovementEligibilityContext = {
+      availableEquipmentIds: ['barbell', 'bench', 'rack'],
+      trainingExperience: 'experienced',
+      noOverhead: false,
+      noRunning: false
+    }
+
+    expect(bench).toMatchObject({
+      id: 'barbell_bench_press',
+      programmingStatus: 'evidence_only'
+    })
+    expect(bench && isMovementEligible(bench, fullGymContext)).toBe(false)
+    expect(findEligibleMovements({
+      domain: 'strength',
+      requiredCoverage: [{ kind: 'movement_pattern', targetId: 'horizontal_push' }],
+      eligibility: fullGymContext
+    }).map(movement => movement.id)).not.toContain('barbell_bench_press')
+  })
   it('returns substitutions only when they preserve the domain and requested coverage target', () => {
     const substitutions = findMovementSubstitutions({
       movementId: 'barbell_back_squat',

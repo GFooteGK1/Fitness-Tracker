@@ -1,3 +1,7 @@
+import {
+  buildAdaptivePlanContract,
+  type AdaptivePlanContract
+} from './adaptive-plan'
 import { MOVEMENT_CATALOG_VERSION } from './movement-catalog'
 import { COMPLETE_PROGRAMMING_POLICY, COMPLETE_PROGRAMMING_POLICY_VERSION } from './programming-policy'
 import { COMPLETE_PROGRAMMING_REFERENCE } from './programming-reference'
@@ -51,6 +55,7 @@ export interface CompleteProgrammingPlanDraft {
   startDate: string
   endDate: string
   profileSnapshot: ProgrammingProfile
+  adaptiveProgramming: AdaptivePlanContract
   weeks: CompleteProgrammingWeekDraft[]
 }
 
@@ -88,6 +93,7 @@ export function buildCompleteEightWeekPlan(
       uncomposedAvailableDays: composition.uncomposedAvailableDays
     }
   })
+  const adaptiveProgramming = buildAdaptivePlanContract(profile, weeks)
 
   return {
     schemaVersion: PROGRAMMING_SCHEMA_VERSION,
@@ -100,6 +106,7 @@ export function buildCompleteEightWeekPlan(
     startDate: profile.startDate,
     endDate: addDays(profile.startDate, 55),
     profileSnapshot: cloneProfile(profile),
+    adaptiveProgramming,
     weeks
   }
 }
@@ -107,8 +114,8 @@ export function buildCompleteEightWeekPlan(
 function cloneProfile(profile: ProgrammingProfile): ProgrammingProfile {
   return {
     ...profile,
-    primaryGoal: { ...profile.primaryGoal },
-    secondaryGoals: profile.secondaryGoals.map(goal => ({ ...goal })),
+    primaryGoal: structuredClone(profile.primaryGoal),
+    secondaryGoals: profile.secondaryGoals.map(goal => structuredClone(goal)),
     sessionAvailability: profile.sessionAvailability.map(day => ({ ...day })),
     equipment: {
       ...profile.equipment,

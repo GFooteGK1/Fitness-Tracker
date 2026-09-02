@@ -84,6 +84,7 @@ export interface MovementDefinition {
   unilateral: boolean
   overhead: boolean
   running: boolean
+  programmingStatus: 'active' | 'evidence_only'
   assessmentAliases: string[]
   coverage: MovementCoverageTag[]
   substitutionGroup: string
@@ -123,6 +124,7 @@ type MovementOptions = Partial<Pick<MovementDefinition,
   | 'unilateral'
   | 'overhead'
   | 'running'
+  | 'programmingStatus'
   | 'assessmentAliases'
 >>
 
@@ -558,6 +560,13 @@ const MOVEMENTS: MovementDefinition[] = [
     [tag('resilience_capacity', 'movement_capacity')],
     'capacity:movement_flow', 'mobility:breathing_flow',
     { fatigueCost: 'low', impactCost: 'low' }
+  ),
+  movement(
+    'barbell_bench_press', 'Barbell bench press', 'Build horizontal pressing strength with a barbell.',
+    ['strength', 'hypertrophy'], ['horizontal_push'], ['chest', 'triceps'], ['barbell', 'bench'],
+    [tag('movement_pattern', 'horizontal_push'), tag('muscle_region', 'chest')],
+    'resistance:horizontal_push', 'press:barbell_bench',
+    { skillLevel: 'moderate', fatigueCost: 'moderate', impactCost: 'low', programmingStatus: 'evidence_only', assessmentAliases: ['bench press', 'barbell bench press'] }
   )
 ]
 
@@ -585,7 +594,8 @@ export function isMovementEligible(
   const skillEligible = skillRank[movementDefinition.skillLevel] <= skillLimit[context.trainingExperience]
     || context.assessedMovementIds?.includes(movementDefinition.id) === true
 
-  return movementDefinition.equipment.every(required => equipment.has(required))
+  return movementDefinition.programmingStatus === 'active'
+    && movementDefinition.equipment.every(required => equipment.has(required))
     && skillEligible
     && !(context.noOverhead && movementDefinition.overhead)
     && !(context.noRunning && movementDefinition.running)
@@ -732,6 +742,7 @@ function movement(
     unilateral: options.unilateral ?? false,
     overhead: options.overhead ?? false,
     running: options.running ?? false,
+    programmingStatus: options.programmingStatus ?? 'active',
     assessmentAliases: options.assessmentAliases ?? [],
     coverage,
     substitutionGroup,

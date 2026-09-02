@@ -7,9 +7,20 @@ import type {
   TrainingExperience,
   TrainingWeekday
 } from './types'
+import type { TrainingGoal } from './adaptive-programming-contracts'
 
 export const PROGRAMMING_SCHEMA_VERSION = 1 as const
 export const PROGRAMMING_KERNEL_VERSION = '0.3.0'
+
+export interface ProgrammingGoalOutcome {
+  statement: string
+  kind: TrainingGoal['kind']
+  horizon: {
+    startsOn: string
+    endsOn: string
+  }
+  target: TrainingGoal['target']
+}
 
 export type ProgrammingGoalAllocation =
   | {
@@ -18,6 +29,7 @@ export type ProgrammingGoalAllocation =
     role: 'primary'
     allocation: 'lead'
     athleteIntent: string
+    outcome?: ProgrammingGoalOutcome
   }
   | {
     id: string
@@ -25,6 +37,7 @@ export type ProgrammingGoalAllocation =
     role: 'secondary'
     allocation: 'development' | 'maintenance'
     athleteIntent: string
+    outcome?: ProgrammingGoalOutcome
   }
 
 export interface ProgrammingSessionAvailability {
@@ -283,7 +296,8 @@ export function normalizeLegacyPlanningInput(
       domain: input.primaryDomain,
       role: 'primary',
       allocation: 'lead',
-      athleteIntent: input.goal
+      athleteIntent: input.goal,
+      outcome: buildProgrammingGoalOutcome(input.primaryDomain, input.goal, input.startDate)
     },
     secondaryGoals: [],
     trainingExperience: input.experience,
@@ -352,6 +366,21 @@ export function validateProgrammingProfile(
   }
   if (goals.some(goal => goal.athleteIntent.trim().length === 0)) {
     errors.push('Every goal allocation needs athlete intent')
+  }
+  for (const goal of goals) {
+    if (!goal.outcome) continue
+    if (
+      goal.outcome.statement.trim().length < 3
+      || goal.outcome.statement.length > 500
+    ) {
+      errors.push(`Goal ${goal.id} outcome statement must be between 3 and 500 characters`)
+    }
+    if (
+      goal.outcome.horizon.startsOn !== profile.startDate
+      || goal.outcome.horizon.endsOn !== addIsoDays(profile.startDate, 55)
+    ) {
+      errors.push(`Goal ${goal.id} outcome must use the eight-week plan horizon`)
+    }
   }
 
   const days = profile.sessionAvailability.map(availability => availability.day)
@@ -475,6 +504,30 @@ export function detectCoachPrescriptionFormat(
   return 'unknown'
 }
 
+export function buildProgrammingGoalOutcome(
+  domain: CoachProgramDomainId,
+  statement: string,
+  startDate: string
+): ProgrammingGoalOutcome {
+  const kindByDomain: Record<CoachProgramDomainId, TrainingGoal['kind']> = {
+    strength: 'performance_outcome',
+    hypertrophy: 'capacity',
+    power_explosiveness: 'performance_outcome',
+    speed_agility: 'performance_outcome',
+    aerobic: 'performance_outcome',
+    resilience: 'capacity'
+  }
+  return {
+    statement,
+    kind: kindByDomain[domain],
+    horizon: {
+      startsOn: startDate,
+      endsOn: addIsoDays(startDate, 55)
+    },
+    target: null
+  }
+}
+
 function isIsoDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const parsed = new Date(`${value}T00:00:00Z`)
@@ -485,6 +538,12 @@ function isoWeekday(value: string): number | null {
   if (!isIsoDate(value)) return null
   const weekday = new Date(`${value}T00:00:00Z`).getUTCDay()
   return weekday === 0 ? 7 : weekday
+}
+
+function addIsoDays(value: string, days: number): string {
+  const date = new Date(`${value}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
 }
 
 function isNonNegativeNumber(value: number): boolean {
