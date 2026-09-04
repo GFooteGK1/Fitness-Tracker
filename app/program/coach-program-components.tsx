@@ -81,6 +81,8 @@ interface CoachSetupFormProps {
   onSave: () => void
   saving: boolean
   saved: boolean
+  actionLabel?: string
+  beforeAction?: React.ReactNode
 }
 
 export function CoachSetupForm({
@@ -88,7 +90,9 @@ export function CoachSetupForm({
   onChange,
   onSave,
   saving,
-  saved
+  saved,
+  actionLabel = 'Save coach setup',
+  beforeAction
 }: CoachSetupFormProps) {
   const toggleDay = (day: TrainingWeekday) => {
     const trainingDays = value.trainingDays.includes(day)
@@ -120,11 +124,11 @@ export function CoachSetupForm({
           Step 1 · Training intent
         </p>
         <h1 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
-          Build your 8-week plan
+          Set your training direction
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-          Tell the coach what matters and what is realistic. The plan will emphasize intent,
-          feel, and stop conditions before extra detail.
+          Tell the coach what matters and what is realistic. You will see and accept one
+          Monday-to-Sunday dose at a time.
         </p>
       </div>
 
@@ -273,10 +277,10 @@ export function CoachSetupForm({
         </label>
 
         <label className="text-sm font-medium text-gray-800 dark:text-gray-200">
-          Week one starts
+          First week starts
           <input
             type="date"
-            aria-label="Week one starts"
+            aria-label="First week starts"
             value={value.startDate}
             onChange={event => onChange({ ...value, startDate: event.target.value })}
             className={FIELD_CLASS}
@@ -354,13 +358,15 @@ export function CoachSetupForm({
         />
       </label>
 
+      {beforeAction}
+
       <button
         type="button"
         onClick={onSave}
         disabled={saving}
         className="mt-6 min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
-        {saving ? 'Saving setup…' : saved ? 'Save updated setup' : 'Save coach setup'}
+        {saving ? 'Saving setup…' : saved ? 'Save updated setup' : actionLabel}
       </button>
     </section>
   )
@@ -859,7 +865,7 @@ function painLabel(pain: CoachSessionCheckinInput['pain']): string {
   return pain === 'mild' ? 'Mild pain signal' : 'Concerning pain signal'
 }
 
-function CompleteSessionCard({
+export function CompleteSessionCard({
   prescription,
   label
 }: {

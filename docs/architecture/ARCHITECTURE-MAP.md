@@ -577,7 +577,7 @@ Adaptive Coach:
 |- Versioned movement definitions and substitution graph (`app/lib/coach/movement-catalog.ts`)
 |- Goal-to-week coverage ledger and day assignment (`app/lib/coach/weekly-coverage.ts`)
 |- Role-based complete session composition (`app/lib/coach/session-composer.ts`)
-|- Eight-week draft assembly (`app/lib/coach/complete-program.ts`)
+|- Legacy eight-week and rolling one-week draft assembly (`app/lib/coach/complete-program.ts`)
 |- Whole-plan completeness gate (`app/lib/coach/program-validator.ts`)
 |- Bounded athlete context (`app/lib/coach/athlete-context.ts`)
 |- Deterministic session feedback and weekly review (`app/lib/coach/execution-feedback.ts`)
@@ -595,7 +595,7 @@ Athlete statements + logged facts
   -> Program setup and explicit assessment or memory confirmation
   -> user-scoped Supabase state
   -> deterministic planning policy
-  -> atomic immutable proposed plan version + sessions
+  -> atomic immutable proposed weekly plan version + sessions
   -> persistent athlete preview
   -> athlete acceptance RPC
   -> active prescribed sessions
@@ -603,8 +603,10 @@ Athlete statements + logged facts
   -> next inspectable adaptation proposal
 ```
 
-Supabase is canonical for adaptive programming. Google Sheets is not imported or
-synchronized into this system. Global doctrine and numeric policy remain
+Supabase is canonical for adaptive programming. New rolling programs persist a
+durable goal, quality emphasis, and hypothesis but only one Monday-through-Sunday
+prescription at a time. Future weeks are not generated or hidden. Google Sheets
+is not imported or synchronized into this system. Global doctrine and numeric policy remain
 version-controlled application assets; stored plans retain their doctrine and
 policy versions. The LLM selects context, asks questions, and composes concise
 coaching language. Application policy computes numeric prescriptions, and only
@@ -630,6 +632,21 @@ Saved strength assessments add labeled percentage and rounded load ranges only
 when the prescribed movement matches the assessment. The model does not invent
 these values.
 
+ADR-0007 separates the durable direction, accepted weekly dose, and session
+autoregulation clocks. A deterministic `coach_weekly_reviews` record owns
+every weekly conclusion, including continuation and insufficient-evidence
+outcomes. A review uses the current week for execution tolerance and
+protocol-defined rolling windows for repeated performance evidence. Every next
+week requires explicit acceptance. Existing accepted eight-week plans keep their
+stored policy and payload until the athlete accepts a rolling replacement.
+The authenticated `/api/coach/weekly` surface reads state and creates the first
+weekly proposal. `/review` records the immutable current-week conclusion and may
+create the adjacent proposal. `/reviews/[id]/proposal` reconstructs a lost
+proposal response only when that review belongs to the currently accepted plan.
+`/convert` creates an inactive rolling replacement for a legacy plan. None of
+these routes activates a plan; the existing explicit proposal-acceptance route
+remains the only activation boundary.
+
 The broader doctrine describes what each adaptation requires. The separate
 complete-programming reference records the evidence and product contract for
 assembling weeks and sessions: completeness is defined by adaptation roles,
@@ -647,10 +664,11 @@ equipment, constraint, experience, or unsupported gaps. The session composer
 turns assigned coverage into task-specific preparation,
 priority, secondary, assistance/capacity, and conditioning blocks with
 inspectable selection reasons, policy dose, recovery, stop conditions, and
-equivalent substitutions. The eight-week draft assembler preserves the same
-profile snapshot across eight independently inspectable weekly ledgers and
+equivalent substitutions. The legacy eight-week draft assembler preserves the
+same profile snapshot across eight independently inspectable weekly ledgers and
 leaves weeks 4 and 8 pending athlete review rather than fabricating a uniform
-deload. The completeness gate rejects unaccounted coverage, invalid sequencing,
+deload. The rolling assembler builds only the next weekly ledger from the accepted
+direction, prior dose, and immutable weekly review. The completeness gate rejects unaccounted coverage, invalid sequencing,
 time or dose drift, ineligible movements, false substitutions, vague interval
 work, unproven loads, and missing review state. The proposal route builds a
 structured v0.3 profile, runs this gate, and only then invokes the
@@ -813,7 +831,14 @@ retention, medical diagnosis, and silent plan activation are non-goals.
 
 ### Critical invariants
 
-- Weeks 4 and 8 are review-led deloads within the initial eight-week horizon.
+- Existing eight-week plans retain their recorded week 4 and week 8 review-led
+  behavior. New rolling programs have no fixed deload week; recovery changes are
+  evidence-led.
+- New rolling programs store and expose only one accepted Monday-Sunday dose.
+- Every completed weekly review is immutable and reproducible, including a
+  decision to continue or collect more evidence.
+- Goal horizons, rolling evidence windows, and weekly prescription windows are
+  separate contracts.
 - Durable memory is explicit, versioned, correctable, provenance-bearing, and
   idempotent; inferred conversation is not silently persisted.
 - Accepted plan and prescription content is immutable.

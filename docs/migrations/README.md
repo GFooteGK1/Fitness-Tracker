@@ -193,6 +193,25 @@ twice and passed its rollback-only verifier in PGlite PostgreSQL 17.5. See
 September 1, 2026; see
 `adaptive-coach-production-application-2026-09-01.md`.
 
+### `rolling-weekly-coach-migration.sql`
+Apply after the layered adaptive-coach migration chain. This compatibility
+migration tags existing programs and plans as `legacy_eight_week`, adds the
+separate durable direction and goal horizon, and permits new
+`rolling_weekly` plan versions with one Monday-through-Sunday window. It does
+not rewrite accepted legacy payloads.
+
+The migration adds immutable weekly review and observation-link tables, forced
+user-scoped RLS, least-privilege grants, and bounded RPCs for initial weekly
+proposals, evidence-linked review decisions, next-week proposals, and
+mode-aware acceptance. Every next week remains proposed until the athlete
+accepts it. The canonical SQL is mirrored exactly at
+`../../supabase/migrations/20260903150000_rolling_weekly_coach.sql`.
+
+The migration applied twice and its rollback-only verifier passed in a
+disposable PostgreSQL 17.5-compatible PGlite database. See
+`rolling-weekly-coach-verification-2026-09-03.md`. It has not been applied to
+production.
+
 
 ### `secure-legacy-database-objects-migration.sql`
 Containment migration for three historical WHOOP backup tables and the unused
@@ -298,6 +317,14 @@ the trust migration applied twice. This verifier has not been run against
 production. See
 `coach-trust-review-verification-2026-09-01.md` for the disposable PostgreSQL
 apply-twice and rollback-verifier evidence.
+
+### `verify-rolling-weekly-coach-migration.sql`
+Rollback-only verification for legacy compatibility, one-week horizon and
+window constraints, initial and next-week proposal idempotency, weekly review
+immutability, stale-base rejection, overlapping-window rejection,
+tenant-consistent evidence links, forced RLS, and least-privilege grants.
+Apply the complete prerequisite coach chain and the rolling migration twice
+before running it.
 
 
 ### `verify-nutrition-fast-logging.sql`

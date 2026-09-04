@@ -17,7 +17,7 @@ vi.mock('@/app/components/auth/ProtectedRoute', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }))
 
-import ProgramPage from '@/app/program/page'
+import LegacyProgramPage from '@/app/program/legacy-program-page'
 import { ActiveProgramView } from '@/app/program/coach-program-components'
 
 const emptyContext = {
@@ -121,12 +121,12 @@ describe('ProgramPage adaptive coach workflow', () => {
 
   it('moves from confirmed setup to an eight-week preview and explicit acceptance', async () => {
     await act(async () => {
-      render(<ProgramPage />)
+      render(<LegacyProgramPage />)
     })
 
-    expect(await screen.findByRole('heading', { name: 'Build your 8-week plan' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Set your training direction' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Known strength baselines' })).toBeInTheDocument()
-    expect((screen.getByLabelText('Week one starts') as HTMLInputElement).value)
+    expect((screen.getByLabelText('First week starts') as HTMLInputElement).value)
       .toMatch(/^\d{4}-\d{2}-\d{2}$/)
 
     fireEvent.change(screen.getByLabelText('Goal'), {
@@ -208,10 +208,10 @@ describe('ProgramPage adaptive coach workflow', () => {
       return response({ error: 'Unexpected request' }, false, 500)
     })
 
-    await act(async () => render(<ProgramPage />))
+    await act(async () => render(<LegacyProgramPage />))
     expect(await screen.findByRole('heading', { name: 'Active training plan' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Build a replacement proposal' }))
-    expect(screen.getByRole('heading', { name: 'Build your 8-week plan' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Set your training direction' })).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Goal'), {
       target: { value: 'Build useful full-body strength' }
@@ -423,7 +423,7 @@ describe('ProgramPage adaptive coach workflow', () => {
       return response({ error: 'Unexpected request' }, false, 500)
     })
 
-    await act(async () => render(<ProgramPage />))
+    await act(async () => render(<LegacyProgramPage />))
     fireEvent.click(await screen.findByRole('button', { name: 'Readiness 4' }))
     fireEvent.click(screen.getByRole('button', { name: 'Finish or skip session' }))
     fireEvent.click(screen.getByLabelText('Confirm completed prescribed work'))
