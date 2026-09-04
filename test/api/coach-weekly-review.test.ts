@@ -92,7 +92,8 @@ describe('POST /api/coach/weekly/review', () => {
         id: 'checkin-1',
         prescribedSessionId: 'session-1',
         outcome: 'as_planned',
-        sessionRpe: 7
+        sessionRpe: 7,
+        occurredAt: '2026-09-08T12:00:00.000Z'
       })]
     }))
     expect(supabase.rpc).toHaveBeenNthCalledWith(
@@ -274,7 +275,7 @@ function client(user: { id: string } | null = { id: 'user-1' }) {
           pain: 'none',
           note: 'Completed as prescribed.'
         },
-        occurred_at: '2026-09-08T12:00:00.000Z'
+        occurred_at: '2026-09-08T12:00:00+00:00'
       }],
       error: null
     }]

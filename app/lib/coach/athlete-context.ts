@@ -10,7 +10,7 @@ import {
 import { MOVEMENT_CATALOG } from './movement-catalog'
 import {
   buildCoachWeeklyReview,
-  validateCoachSessionCheckinInput,
+  validateStoredCoachSessionCheckin,
   type CoachExecutionSession,
   type CoachSessionCheckinSummary
 } from './execution-feedback'
@@ -562,10 +562,7 @@ function normalizeSession(
 
 function normalizeSessionCheckin(row: CoachCheckinRow): CoachSessionCheckinSummary | null {
   if (!row.id || !row.prescribed_session_id) return null
-  const validation = validateCoachSessionCheckinInput({
-    ...(isRecord(row.responses) ? row.responses : {}),
-    occurredAt: row.occurred_at
-  })
+  const validation = validateStoredCoachSessionCheckin(row.responses, row.occurred_at)
   if (!validation.ok) return null
 
   return {

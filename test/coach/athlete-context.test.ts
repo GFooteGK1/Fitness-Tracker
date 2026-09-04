@@ -170,7 +170,7 @@ describe('fetchCoachRuntimeContext', () => {
             pain: 'none',
             note: null
           },
-          occurred_at: '2026-08-10T18:00:00.000Z'
+          occurred_at: '2026-08-10T18:00:00+00:00'
         }],
         error: null
       }
@@ -221,7 +221,8 @@ describe('fetchCoachRuntimeContext', () => {
         id: 'checkin-1',
         prescribedSessionId: 'session-1',
         outcome: 'as_planned',
-        sessionRpe: 7
+        sessionRpe: 7,
+        occurredAt: '2026-08-10T18:00:00.000Z'
       }],
       currentWeekReview: {
         weekNumber: 3,
