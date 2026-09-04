@@ -114,6 +114,23 @@ export function validateCoachSessionCheckinInput(value: unknown): CheckinValidat
   }
 }
 
+export function validateStoredCoachSessionCheckin(
+  responses: unknown,
+  occurredAt: unknown
+): CheckinValidation {
+  const parsedOccurredAt = typeof occurredAt === 'string'
+    ? new Date(occurredAt)
+    : null
+  const normalizedOccurredAt = parsedOccurredAt && !Number.isNaN(parsedOccurredAt.getTime())
+    ? parsedOccurredAt.toISOString()
+    : ''
+
+  return validateCoachSessionCheckinInput({
+    ...(isRecord(responses) ? responses : {}),
+    occurredAt: normalizedOccurredAt
+  })
+}
+
 export function buildCoachWeeklyReview({
   weekNumber,
   reviewRequired,

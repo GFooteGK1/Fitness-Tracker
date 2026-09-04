@@ -7,7 +7,7 @@ import {
   buildProgrammingProfile,
   validateCompleteCoachPlanningInput
 } from '@/app/lib/coach/complete-intake'
-import { validateCoachSessionCheckinInput } from '@/app/lib/coach/execution-feedback'
+import { validateStoredCoachSessionCheckin } from '@/app/lib/coach/execution-feedback'
 import { fetchCoachEvidenceContext } from '@/app/lib/coach/evidence-context'
 import type {
   CoachExecutionSession,
@@ -175,11 +175,7 @@ export async function POST(request: Request) {
     })) as CoachExecutionSession[]
     const checkins: CoachSessionCheckinSummary[] = []
     for (const row of checkinResult.data ?? []) {
-      const responses = isRecord(row.responses) ? row.responses : {}
-      const validation = validateCoachSessionCheckinInput({
-        ...responses,
-        occurredAt: row.occurred_at
-      })
+      const validation = validateStoredCoachSessionCheckin(row.responses, row.occurred_at)
       if (!validation.ok) {
         return apiError('Weekly session feedback has an unsupported format', 409)
       }
