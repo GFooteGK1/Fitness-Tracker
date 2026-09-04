@@ -259,6 +259,8 @@ describe('purpose-specific coach evidence context', () => {
       && series.metricId === 'strength.repetitions'
     ))).toBe(true)
     expect(context.evidenceIds).not.toContain('sprint-current')
+    expect(context.activePlan?.goalIds).toEqual(['goal-strength', 'goal-speed'])
+    expect(context.missing).not.toContain('goal_not_in_active_plan')
   })
 
   it('normalizes values to canonical units while retaining the original measurement and ordinal', () => {
@@ -438,7 +440,10 @@ describe('purpose-specific coach evidence context', () => {
 function adaptiveIntent() {
   return {
     adaptive_programming: {
-      goals: [{ id: 'goal-strength' }, { id: 'goal-speed' }],
+      goals: [
+        { goalId: 'goal-strength' },
+        { goalId: 'goal-speed' }
+      ],
       hypotheses: [
         { id: 'hypothesis-strength', goalId: 'goal-strength' },
         { id: 'hypothesis-speed', goalId: 'goal-speed' }
