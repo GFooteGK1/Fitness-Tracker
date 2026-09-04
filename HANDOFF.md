@@ -1,13 +1,18 @@
 # Handoff
 
-## Rolling weekly adaptive coach (local candidate, 2026-09-03)
+## Rolling weekly adaptive coach (released, 2026-09-04)
 
-Work is isolated in
+The release was prepared in
 `C:\Dev\Personal\repos\Fitness-Tracker\.worktrees\rolling-weekly-coach`
-on `codex/rolling-weekly-coach`, based on exact `origin/main` commit
-`d4044dfc5ca07fa8e2687a1fb07b786be6b188bb`. Existing source changes in the
-primary checkout were preserved. Shared Beads tracker activity may update the
-existing `.beads/interactions.jsonl` working-tree entry.
+and is now on `main` at `666b50d1428be06dcc75b1378b752714d798001b`.
+The original `codex/rolling-weekly-coach` candidate was committed unchanged as
+`44cf0da14f6bf4a4b7a8552456317117e7ae340b`. Review and authenticated
+production canary findings were fixed in separate focused PRs before the final
+canary passed. Existing source changes in the primary checkout were preserved.
+Shared Beads tracker activity may update the existing
+`.beads/interactions.jsonl` working-tree entry. Exact migration, pull request,
+deployment, health, isolation, idempotency, cleanup, and rollback evidence is
+in `docs/migrations/rolling-weekly-coach-production-application-2026-09-04.md`.
 
 Completed implementation scope in epic `Fitness-Tracker-a2s`:
 
@@ -64,13 +69,20 @@ Verification on this worktree:
   errors or horizontal overflow. The preview identified and fixed the
   past-due-session label.
 
-Release boundary:
+Production release verification:
 
-- Bead `.9` remains open for the production migration, commit/PR, merge,
-  deployment, authenticated two-athlete RLS canary, and rollback readback.
-- The new migration has not been applied to production.
-- No production data was written or changed in this implementation pass.
-- The candidate has not been committed, pushed, merged, or deployed.
+- Production migrations `20260903150000` and `20260904023000` are applied.
+  Migration history is aligned, the post-apply dry run is empty, and database
+  lint reports zero errors.
+- PRs #71 through #75 are merged. Exact-head and merged-main CI passed tests,
+  typecheck, lint, and build for the final source commit.
+- Vercel production deployment `dpl_BqiCLUhKdZdE4PG5UghWRkv47ZXu` is Ready on
+  `www.sociusfit.com`, `sociusfit.com`, and the project aliases.
+- Authenticated canary `1788491899096-ea853ee5` passed the complete two-week
+  proposal, acceptance, execution, review, and next-week transition. Cross-
+  tenant reads and acceptance were blocked, retries created no duplicates, and
+  cleanup read back zero synthetic rows and zero synthetic auth users.
+- No real athlete record was read or changed by the canary.
 
 ## Layered adaptive programming evidence and memory (local implementation, 2026-09-01)
 
