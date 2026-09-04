@@ -904,7 +904,7 @@ function extractAdaptiveScope(intent: unknown, goalId: string | undefined): Adap
   }
 
   const goals = Array.isArray(adaptive.goals) ? adaptive.goals.filter(isRecord) : []
-  const allGoalIds = goals.flatMap(goal => typeof goal.id === 'string' ? [goal.id] : [])
+  const allGoalIds = goals.flatMap(goal => typeof goal.goalId === 'string' ? [goal.goalId] : [])
   if (!goalId) {
     return { goalFound: true, allGoalIds, metricIds: new Set(), assessmentDefinitionIds: new Set() }
   }
