@@ -120,6 +120,36 @@ export function validateCompleteProgrammingPlan(
   return { ok: errors.length === 0, errors: unique(errors), warnings }
 }
 
+/**
+ * Validates one complete weekly dose without applying the legacy eight-week
+ * intent and checkpoint rules.
+ */
+export function validateCompleteProgrammingWeekDose(
+  profile: ProgrammingProfile,
+  schedule: WeeklyCoverageSchedule,
+  sessions: CompleteProgrammingSessionPrescription[]
+): CompleteProgrammingPlanValidation {
+  const errors: string[] = []
+  const warnings: string[] = []
+  const profileValidation = validateProgrammingProfile(profile)
+  errors.push(...profileValidation.errors.map(error => `Profile: ${error}`))
+  if (schedule.weekNumber !== 1) {
+    errors.push('Rolling weekly schedule must use week number 1 within its immutable plan version')
+  }
+  if (schedule.reviewRequired) {
+    errors.push('Rolling weekly schedules do not embed a fixed review checkpoint')
+  }
+  if (sessions.length < 1) {
+    errors.push('Rolling weekly dose must contain at least one actionable session')
+  }
+  validateSchedule(profile, {
+    weekNumber: 1,
+    schedule,
+    sessions
+  } as CompleteProgrammingWeekDraft, errors)
+  return { ok: errors.length === 0, errors: unique(errors), warnings }
+}
+
 function validateWeek(
   profile: ProgrammingProfile,
   week: CompleteProgrammingWeekDraft,

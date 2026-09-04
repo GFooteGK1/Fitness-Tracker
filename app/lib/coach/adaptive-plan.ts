@@ -240,9 +240,15 @@ export function buildAdaptivePlanContract(
   weeks: readonly AdaptivePlanWeek[]
 ): AdaptivePlanContract {
   const goalAllocations: GoalAllocation[] = [profile.primaryGoal, ...profile.secondaryGoals]
-  const planEndDate = addDays(profile.startDate, 55)
-  const goals = goalAllocations.map(goal => buildGoalOutcome(goal, profile.startDate, planEndDate))
-  const hypotheses = goalAllocations.map(goal => buildHypothesis(goal, profile.startDate, planEndDate))
+  const defaultDirectionEndDate = addDays(profile.startDate, 55)
+  const goals = goalAllocations.map(goal => (
+    buildGoalOutcome(goal, profile.startDate, defaultDirectionEndDate)
+  ))
+  const goalById = new Map(goals.map(goal => [goal.goalId, goal]))
+  const hypotheses = goalAllocations.map(goal => {
+    const horizon = goalById.get(goal.id)?.horizon
+    return buildHypothesis(goal, horizon?.startsOn ?? profile.startDate, horizon?.endsOn ?? defaultDirectionEndDate)
+  })
   const scheduledAssessments = goalAllocations.flatMap(goal => (
     buildScheduledAssessments(goal, profile.startDate)
   ))
@@ -286,7 +292,7 @@ export function validateAdaptivePlanContract(
   const errors: string[] = []
   const allocations: GoalAllocation[] = [profile.primaryGoal, ...profile.secondaryGoals]
   const allocationIds = new Set(allocations.map(goal => goal.id))
-  const expectedEndDate = addDays(profile.startDate, 55)
+  const defaultDirectionEndDate = addDays(profile.startDate, 55)
 
   if (contract.schemaVersion !== ADAPTIVE_PROGRAMMING_SCHEMA_VERSION) {
     errors.push('Adaptive plan schema version is unsupported')
@@ -301,7 +307,7 @@ export function validateAdaptivePlanContract(
     errors.push('Adaptive plan policy version is unsupported')
   }
 
-  validateGoals(contract, allocations, profile.startDate, expectedEndDate, errors)
+  validateGoals(contract, allocations, profile.startDate, defaultDirectionEndDate, errors)
   validateHypotheses(contract, allocationIds, errors)
   validateScheduledAssessments(contract, allocationIds, profile.startDate, errors)
   validateExpectedSignals(contract, errors)
@@ -528,8 +534,15 @@ function validateGoals(
     if (goal.statement.trim().length < 3 || goal.statement.length > 500) {
       errors.push(`Adaptive goal ${goal.goalId} needs a concise outcome statement`)
     }
-    if (goal.horizon.startsOn !== startDate || goal.horizon.endsOn !== endDate) {
-      errors.push(`Adaptive goal ${goal.goalId} must use the immutable plan horizon`)
+    const expectedHorizon = allocation?.outcome?.horizon ?? {
+      startsOn: startDate,
+      endsOn: endDate
+    }
+    if (
+      goal.horizon.startsOn !== expectedHorizon.startsOn
+      || goal.horizon.endsOn !== expectedHorizon.endsOn
+    ) {
+      errors.push(`Adaptive goal ${goal.goalId} must use its immutable direction horizon`)
     }
     if (goal.target) {
       const emphasisQualityIds = contract.qualityEmphases

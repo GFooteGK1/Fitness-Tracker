@@ -1,5 +1,77 @@
 # Handoff
 
+## Rolling weekly adaptive coach (local candidate, 2026-09-03)
+
+Work is isolated in
+`C:\Dev\Personal\repos\Fitness-Tracker\.worktrees\rolling-weekly-coach`
+on `codex/rolling-weekly-coach`, based on exact `origin/main` commit
+`d4044dfc5ca07fa8e2687a1fb07b786be6b188bb`. Existing source changes in the
+primary checkout were preserved. Shared Beads tracker activity may update the
+existing `.beads/interactions.jsonl` working-tree entry.
+
+Completed implementation scope in epic `Fitness-Tracker-a2s`:
+
+- `.1` records ADR-0007. Durable goal direction, accepted weekly dose, rolling
+  evidence windows, and in-session autoregulation are separate clocks.
+- `.2` adds the additive rolling-week schema, immutable weekly reviews,
+  evidence links, proposal lineage, tenant RLS, least-privilege grants, and
+  atomic idempotent proposal, review, and acceptance transitions.
+- `.3` adds the deterministic one-week planner. It creates one athlete-local
+  Monday-through-Sunday dose and supports continuation, one-variable dose
+  adjustment, signal collection, recovery, material emphasis change, and
+  safety pause decisions.
+- `.4` computes review readiness and the immutable weekly conclusion from the
+  accepted sessions, concise check-ins, and compatible rolling evidence.
+  Missed and past-due sessions remain evidence and never carry automatically.
+- `.5` adds authenticated read, first-week proposal, review, saved-review
+  proposal recovery, and acceptance-separated API flows.
+- `.6` replaces the default Program surface with the mobile-first weekly flow:
+  current accepted dose, concise result logging, coach review, inspectable
+  next-week proposal, explicit acceptance, durable direction, and history.
+- `.7` keeps accepted legacy eight-week plans readable and unchanged. A legacy
+  athlete can build one inactive rolling replacement; only explicit acceptance
+  supersedes the legacy plan.
+- `.8` adds API, planner, review, migration, legacy, response-loss, stale-review,
+  and Program UI coverage plus local database and browser verification.
+
+Approved product rules implemented:
+
+- Every week, including continuation, requires a one-tap acceptance.
+- The prescription window is athlete-local Monday through Sunday.
+- Missed sessions become review evidence and are not carried forward.
+- Existing eight-week plans remain authoritative until the athlete accepts a
+  weekly replacement.
+- Repeated compatible evidence can shift emphasis. One fatigued session or one
+  readiness score cannot establish a new level.
+- A safety signal pauses proposal generation. No route silently activates a
+  plan.
+
+Verification on this worktree:
+
+- Full Vitest: 227 files passed, 5 skipped; 2,435 tests passed, 7 skipped.
+- Focused latest weekly UI/API recovery run: 3 files and 14 tests passed.
+- Latest weekly Program regression: 8 tests passed, including rejection of a
+  review from a superseded week.
+- TypeScript `npx tsc --noEmit`: passed.
+- Next.js lint: passed with no warnings or errors.
+- Next.js production build: compiled, typechecked, and generated all 81 routes.
+  The build includes `/api/coach/weekly`, `/convert`, `/review`, and
+  `/reviews/[id]/proposal`.
+- `git diff --check`: passed.
+- The migration applied twice in disposable PGlite PostgreSQL 17.5 and its
+  rollback verifier passed. Static migration/RLS tests are also green.
+- Real Chromium preview passed at desktop, 390 px, and 320 px with no console
+  errors or horizontal overflow. The preview identified and fixed the
+  past-due-session label.
+
+Release boundary:
+
+- Bead `.9` remains open for the production migration, commit/PR, merge,
+  deployment, authenticated two-athlete RLS canary, and rollback readback.
+- The new migration has not been applied to production.
+- No production data was written or changed in this implementation pass.
+- The candidate has not been committed, pushed, merged, or deployed.
+
 ## Layered adaptive programming evidence and memory (local implementation, 2026-09-01)
 
 Work is isolated in

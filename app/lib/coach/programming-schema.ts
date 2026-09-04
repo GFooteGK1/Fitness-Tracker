@@ -376,10 +376,11 @@ export function validateProgrammingProfile(
       errors.push(`Goal ${goal.id} outcome statement must be between 3 and 500 characters`)
     }
     if (
-      goal.outcome.horizon.startsOn !== profile.startDate
-      || goal.outcome.horizon.endsOn !== addIsoDays(profile.startDate, 55)
+      !isIsoDate(goal.outcome.horizon.startsOn)
+      || !isIsoDate(goal.outcome.horizon.endsOn)
+      || goal.outcome.horizon.endsOn < goal.outcome.horizon.startsOn
     ) {
-      errors.push(`Goal ${goal.id} outcome must use the eight-week plan horizon`)
+      errors.push(`Goal ${goal.id} outcome must use a valid independent goal horizon`)
     }
   }
 

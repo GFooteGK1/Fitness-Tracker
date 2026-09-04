@@ -80,7 +80,8 @@ export function TodaySessionCard({
     item.schedule.assessmentDefinition.id !== 'readiness.self_report'
   ))
   const lowReadiness = readiness !== null && readiness <= 2
-  const exactDate = session.scheduledDate === getLocalDate()
+  const today = getLocalDate()
+  const exactDate = session.scheduledDate === today
 
   const submitPayload = async (payload: AtomicSessionCompletionInput) => {
     setError(null)
@@ -144,7 +145,11 @@ export function TodaySessionCard({
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">
-            {exactDate ? 'Today' : 'Next session'} · Week {session.weekNumber}
+            {exactDate
+              ? 'Today'
+              : session.scheduledDate && session.scheduledDate < today
+                ? 'Past-due session'
+                : 'Next session'} · Week {session.weekNumber}
           </p>
           <h2 className="mt-2 break-words text-2xl font-bold text-gray-950 dark:text-white">
             {prescription.title}

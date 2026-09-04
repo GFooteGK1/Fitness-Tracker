@@ -1,13 +1,13 @@
 # ADR-0003: Adaptive coach state, memory, and authority boundaries
 
-- **Status:** Accepted
+- **Status:** Accepted; fixed eight-week horizon superseded by ADR-0007
 - **Date:** 2026-07-27
 - **Deciders:** Greg Foote
-- **Related:** ADR-0001 (compute vs compose), evidence-based training doctrine
+- **Related:** ADR-0001 (compute vs compose), ADR-0007 (rolling weekly programming), evidence-based training doctrine
 
 ## Context
 
-The coach needs to build an eight-week program with the athlete, remember durable
+The original coach needed to build an eight-week program with the athlete, remember durable
 facts, use logged training and recovery data, and adapt the program over time.
 Those behaviors need stable ownership boundaries. Free-form conversation alone
 cannot safely serve as the training record, numeric policy, or plan activation
@@ -26,9 +26,10 @@ paths, but it does not feed or synchronize adaptive-coach state.
 ### Doctrine and numeric policy are version-controlled application assets
 
 General coaching doctrine lives in `app/lib/coach/reference.ts`; deterministic
-rules such as estimated 1RM derivation and the eight-week intent live in
-`app/lib/coach/policy.ts`. Stored plans record both versions. The initial horizon
-is eight weeks, with review-led deloads in weeks 4 and 8.
+rules such as estimated 1RM derivation and prescription construction live in
+version-controlled policy. Stored plans record both versions. ADR-0007
+supersedes the initial eight-week horizon and fixed week 4/week 8 review cadence
+for new rolling programs. Existing eight-week plans retain their recorded policy.
 
 ### The app computes prescriptions; the model explains and proposes
 
