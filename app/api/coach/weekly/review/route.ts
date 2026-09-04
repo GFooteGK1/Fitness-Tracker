@@ -7,6 +7,7 @@ import {
   buildProgrammingProfile,
   validateCompleteCoachPlanningInput
 } from '@/app/lib/coach/complete-intake'
+import { validateCoachSessionCheckinInput } from '@/app/lib/coach/execution-feedback'
 import { fetchCoachEvidenceContext } from '@/app/lib/coach/evidence-context'
 import type {
   CoachExecutionSession,
@@ -148,9 +149,10 @@ export async function POST(request: Request) {
       }),
       fetchCoachRuntimeContext(supabase, user.id, new Date(asOf)),
       supabase
-        .from('coach_session_checkins')
-        .select('id, prescribed_session_id, outcome, session_rpe, energy, pain, note, occurred_at')
+        .from('coach_checkins')
+        .select('id, prescribed_session_id, responses, occurred_at')
         .eq('user_id', user.id)
+        .eq('checkin_type', 'session')
         .in('prescribed_session_id', (sessionResult.data ?? []).map(session => session.id))
         .order('occurred_at', { ascending: true })
     ])
@@ -171,16 +173,22 @@ export async function POST(request: Request) {
       scheduledDate: row.scheduled_date,
       status: row.status
     })) as CoachExecutionSession[]
-    const checkins = (checkinResult.data ?? []).map(row => ({
-      id: row.id,
-      prescribedSessionId: row.prescribed_session_id,
-      outcome: row.outcome,
-      sessionRpe: row.session_rpe,
-      energy: row.energy,
-      pain: row.pain,
-      note: row.note,
-      occurredAt: row.occurred_at
-    })) as CoachSessionCheckinSummary[]
+    const checkins: CoachSessionCheckinSummary[] = []
+    for (const row of checkinResult.data ?? []) {
+      const responses = isRecord(row.responses) ? row.responses : {}
+      const validation = validateCoachSessionCheckinInput({
+        ...responses,
+        occurredAt: row.occurred_at
+      })
+      if (!validation.ok) {
+        return apiError('Weekly session feedback has an unsupported format', 409)
+      }
+      checkins.push({
+        id: row.id,
+        prescribedSessionId: row.prescribed_session_id,
+        ...validation.value
+      })
+    }
     const review = buildRollingWeeklyReview({
       programId: program.id,
       basePlanVersionId: planRow.id,

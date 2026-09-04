@@ -86,6 +86,15 @@ describe('POST /api/coach/weekly/review', () => {
       asOf: '2026-09-14T12:00:00.000Z',
       windowDays: 84
     })
+    expect(supabase.from).toHaveBeenCalledWith('coach_checkins')
+    expect(buildRollingWeeklyReview).toHaveBeenCalledWith(expect.objectContaining({
+      checkins: [expect.objectContaining({
+        id: 'checkin-1',
+        prescribedSessionId: 'session-1',
+        outcome: 'as_planned',
+        sessionRpe: 7
+      })]
+    }))
     expect(supabase.rpc).toHaveBeenNthCalledWith(
       1,
       'record_coach_weekly_review',
@@ -253,7 +262,22 @@ function client(user: { id: string } | null = { id: 'user-1' }) {
       })),
       error: null
     }],
-    coach_session_checkins: [{ data: [], error: null }]
+    coach_checkins: [{
+      data: [{
+        id: 'checkin-1',
+        prescribed_session_id: 'session-1',
+        responses: {
+          schemaVersion: 1,
+          outcome: 'as_planned',
+          sessionRpe: 7,
+          energy: 'okay',
+          pain: 'none',
+          note: 'Completed as prescribed.'
+        },
+        occurred_at: '2026-09-08T12:00:00.000Z'
+      }],
+      error: null
+    }]
   }
   const rpc = vi.fn()
     .mockResolvedValueOnce({
