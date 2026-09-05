@@ -1,3 +1,7 @@
+vi.mock('@/app/lib/coach/athlete-context', () => ({
+  fetchCoachRuntimeContext: vi.fn().mockResolvedValue({ storageAvailable: true, activeProgram: null })
+}))
+
 /**
  * Property-Based Tests for Context Builders
  *

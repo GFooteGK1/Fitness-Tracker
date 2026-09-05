@@ -1,3 +1,4 @@
+import { beginRequest, finishRequest, loggingContext, validRequestId } from '@/app/lib/logging/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
@@ -45,7 +46,7 @@ import { callNutritionistAgent, persistMeal } from '@/app/lib/agents/nutritionis
 import { callSociusAgent, persistInsights } from '@/app/lib/agents/socius-agent'
 import { triggerSociusBackground } from '@/app/lib/agents/socius-background'
 
-export async function POST(request: NextRequest) {
+async function processRequest(request: NextRequest) {
   const startTime = Date.now()
 
   try {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Rate limit check (only count valid requests against the limit)
     if (!checkRateLimit(user.id)) {
-      return apiError('Too many requests. Please wait before sending another message.', 429)
+      return NextResponse.json({ error: 'Too many requests. Please wait before sending another message.', retrySafe: true }, { status: 429 })
     }
 
     // 4. Preprocess input (handle voice/photo/file)
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Agent process error:', error)
     return apiError(
-      'Internal server error',
+      'The request could not be completed. Check history before starting a new log.',
       500,
       error instanceof Error ? error.message : 'Unknown error'
     )
@@ -177,7 +178,7 @@ function createTrainerCaller(
       let workoutId: string | null = (toolPersistedWorkout?.result.data?.workout_id as string) ?? null
 
       // Fallback: if no tools were used but agent returned workout data, persist manually
-      if (!workoutId && response.workout && response.workout.blocks.length > 0) {
+      if (!workoutId && !response._toolCalls?.length && response.workout && response.workout.blocks.length > 0) {
         workoutId = await persistWorkout(response, userId, content, supabase)
 
         if (workoutId && response.new_prs && response.new_prs.length > 0) {
@@ -187,6 +188,8 @@ function createTrainerCaller(
         if (workoutId) invalidatePassiveCache(userId)
       }
 
+      if (response._toolCalls?.some(tc => !tc.result.success)) throw new Error('A workout action was not saved')
+      if (response.workout?.blocks.length && !workoutId) throw new Error('Workout save was not confirmed')
       const message: AgentMessage = {
         role: 'trainer',
         content: response.message,
@@ -199,12 +202,7 @@ function createTrainerCaller(
       return [message]
     } catch (error) {
       console.error('Trainer agent error:', error)
-      return [{
-        role: 'trainer',
-        content: 'I had trouble processing that workout. Could you try rephrasing it?',
-        domain: 'trainer',
-        confidence: 0
-      }]
+      throw new Error('The save could not be confirmed. Retry the same request or check history before logging again.')
     }
   }
 }
@@ -228,7 +226,7 @@ function createNutritionistCaller(
       let mealId: string | null = (toolPersistedMeal?.result.data?.meal_id as string) ?? null
 
       // Fallback: if no tools were used but agent returned meal data, persist manually
-      if (!mealId && response.meal && response.meal.items.length > 0) {
+      if (!mealId && !response._toolCalls?.length && response.meal && response.meal.items.length > 0) {
         console.log('[nutritionist] fallback persist — meal parsed:',
           'items:', response.meal.items.length,
           'confidence:', response.confidence)
@@ -236,6 +234,8 @@ function createNutritionistCaller(
         if (mealId) invalidatePassiveCache(userId)
       }
 
+      if (response._toolCalls?.some(tc => !tc.result.success)) throw new Error('A meal action was not saved')
+      if (response.meal?.items.length && !mealId) throw new Error('Meal save was not confirmed')
       const message: AgentMessage = {
         role: 'nutritionist',
         content: response.message,
@@ -248,12 +248,7 @@ function createNutritionistCaller(
       return [message]
     } catch (error) {
       console.error('Nutritionist agent error:', error)
-      return [{
-        role: 'nutritionist',
-        content: 'I had trouble processing that meal. Could you try describing it again?',
-        domain: 'nutritionist',
-        confidence: 0
-      }]
+      throw new Error('The save could not be confirmed. Retry the same request or check history before logging again.')
     }
   }
 }
@@ -368,5 +363,28 @@ async function persistChatMessages(
   const { error } = await supabase.from('chat_messages').insert(rows)
   if (error) {
     console.error('Failed to persist chat messages:', error)
+  }
+}
+
+/** A claimed request is never rerun after an uncertain tool write. */
+export async function POST(request: NextRequest) {
+  const supabase = await createServerClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return apiError('Unauthorized', 401)
+  let body: AgentRequest
+  try { body = await request.clone().json() } catch { return apiError('Invalid JSON body', 400) }
+  if (body?.expectedUserId && body.expectedUserId !== user.id) return apiError('The signed-in account changed. Sign back in to the original account to retry.', 403)
+  const invalid = validateRequest(body)
+  if (invalid) return apiError(invalid, 400)
+  if (!validRequestId(body.requestId) || typeof body.submittedAt !== 'string' || !Number.isFinite(Date.parse(body.submittedAt))) {
+    return apiError('A requestId and submittedAt timestamp are required. Refresh the app and try again.', 400)
+  }
+  const claim = await beginRequest(supabase, `agent:${body.requestId}`, JSON.stringify(body))
+  if (claim.response) return claim.response
+  try {
+    return await loggingContext.run({ id: claim.id!, submittedAt: body.submittedAt, tzOffset: body.tz_offset }, async () =>
+      finishRequest(supabase, claim.id!, await processRequest(request)))
+  } catch {
+    return apiError('The result could not be confirmed. Retry this same request or check history; do not create a new log.', 503)
   }
 }

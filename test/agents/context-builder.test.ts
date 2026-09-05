@@ -1,3 +1,8 @@
+import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
+vi.mock('@/app/lib/coach/athlete-context', () => ({
+  fetchCoachRuntimeContext: vi.fn().mockResolvedValue({ storageAvailable: true, activeProgram: null })
+}))
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   aggregateMacros,
@@ -338,7 +343,7 @@ describe('buildTrainerContext', () => {
     // Trainer-specific fields
     expect(ctx.recent_workouts).toEqual([])
     expect(ctx.benchmark_prs).toEqual([])
-    expect(ctx.todays_program).toBeNull()
+    expect(ctx.todays_program).toBe('No accepted program yet. Open Program to review and accept a plan.')
     expect(ctx.movement_aliases).toEqual(MOVEMENT_ALIASES)
   })
 
@@ -417,7 +422,7 @@ describe('buildTrainerContext', () => {
     })
   })
 
-  it('returns null for todays_program when GOOGLE_SHEETS_CSV_URL is not set', async () => {
+  it('explains that no accepted program exists independently of spreadsheet configuration', async () => {
     delete process.env.GOOGLE_SHEETS_CSV_URL
 
     const mockSupabase = createMockSupabaseForTrainer()
@@ -427,7 +432,33 @@ describe('buildTrainerContext', () => {
     const { buildTrainerContext } = await import('@/app/lib/agents/context-builder')
     const ctx = await buildTrainerContext('user-456')
 
-    expect(ctx.todays_program).toBeNull()
+    expect(ctx.todays_program).toBe('No accepted program yet. Open Program to review and accept a plan.')
+  })
+
+  it('uses the authenticated accepted session on the athlete local date', async () => {
+    const mockSupabase = createMockSupabaseForTrainer()
+    const { createServerClient } = await import('@/app/lib/auth/supabase-server')
+    vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any)
+    vi.mocked(fetchCoachRuntimeContext).mockResolvedValueOnce({
+      storageAvailable: true,
+      activeProgram: {
+        upcomingSessions: [
+          { scheduledDate: '2026-09-03', status: 'completed', prescription: { title: 'Accepted strength session', intent: 'Controlled progress' } },
+          { scheduledDate: '2026-09-04', status: 'planned', prescription: { title: 'Tomorrow session' } }
+        ]
+      }
+    } as unknown as Awaited<ReturnType<typeof fetchCoachRuntimeContext>>)
+    const now = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-04T01:00:00Z'))
+    try {
+      const { buildTrainerContext } = await import('@/app/lib/agents/context-builder')
+      const ctx = await buildTrainerContext('user-accepted-plan', -300)
+      expect(fetchCoachRuntimeContext).toHaveBeenCalledWith(mockSupabase, 'user-accepted-plan')
+      expect(ctx.todays_program).toContain('Accepted strength session \u2014 completed\nControlled progress')
+      expect(ctx.todays_program).toContain('Stored accepted prescription:')
+      expect(ctx.todays_program).not.toContain('Tomorrow session')
+    } finally {
+      now.mockRestore()
+    }
   })
 
   it('handles workout rows with null/missing optional fields gracefully', async () => {

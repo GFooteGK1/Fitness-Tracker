@@ -1,5 +1,7 @@
 'use client'
 
+import { sendLoggingRequest, fileFingerprint } from '@/app/lib/client/logging-request'
+
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/app/lib/auth/AuthContext'
@@ -117,14 +119,14 @@ export default function FoodLog() {
     setStatus({ message: 'Analyzing meal with AI...', type: 'info' })
 
     try {
-      const response = await fetch('/api/meals/parse-text', {
+      const response = await sendLoggingRequest('/api/meals/parse-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: mealText,
           timestamp: new Date(mealDate + 'T12:00:00').toISOString()
         })
-      })
+      }, user?.id ?? '', 60_000, JSON.stringify([mealText, mealDate]))
 
       const result = await response.json()
 
@@ -250,10 +252,10 @@ export default function FoodLog() {
       formData.append('photo', file)
       formData.append('timestamp', new Date(mealDate + 'T12:00:00').toISOString())
 
-      const uploadResponse = await fetch('/api/meals/upload', {
+      const uploadResponse = await sendLoggingRequest('/api/meals/upload', {
         method: 'POST',
         body: formData
-      })
+      }, user?.id ?? '', 60_000, JSON.stringify([await fileFingerprint(file), mealDate]))
 
       const data = await uploadResponse.json()
 

@@ -1,3 +1,4 @@
+import { saveActivity, loggingContext } from '@/app/lib/logging/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   NutritionistContext,
@@ -469,15 +470,13 @@ export async function persistMeal(
   }
 
   const { items, totals, timing } = response.meal
-  const mealTimestamp = new Date().toISOString()
+  const mealTimestamp = loggingContext.getStore()?.submittedAt ?? new Date().toISOString()
 
   // Normalize timing from agent format (BREAKFAST, LUNCH, etc.)
   // to DB constraint format (pre_workout, post_workout, general, recovery)
   const dbTiming = normalizeMealTiming(timing)
 
-  const { data: meal, error: dbError } = await supabase
-    .from('meals')
-    .insert({
+  return saveActivity(supabase, 'meal', {
       user_id: userId,
       meal_timestamp: mealTimestamp,
       photo_url: null,
@@ -490,13 +489,4 @@ export async function persistMeal(
       needs_review: response.confidence < 0.7,
       ai_confidence: response.confidence
     })
-    .select('id')
-    .single()
-
-  if (dbError || !meal) {
-    console.error('Failed to persist meal:', dbError)
-    return null
-  }
-
-  return meal.id as string
 }

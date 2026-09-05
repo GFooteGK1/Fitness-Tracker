@@ -74,10 +74,7 @@ interface PageFetchOptions {
 }
 
 function makeResponse(data: unknown, ok = true): Promise<Response> {
-  return Promise.resolve({
-    ok,
-    json: vi.fn().mockResolvedValue(data),
-  } as unknown as Response)
+  return Promise.resolve(new Response(JSON.stringify(data), { status: ok ? 200 : 500, headers: { 'Content-Type': 'application/json' } }))
 }
 
 function requestUrl(input: RequestInfo | URL): string {
@@ -124,8 +121,8 @@ function stubPageFetch(options: PageFetchOptions = {}) {
       })
     }
 
-    if (url.startsWith('/api/workouts')) {
-      return makeResponse(options.program ?? { found: false })
+    if (url.startsWith('/api/coach')) {
+      return makeResponse(options.program ?? { context: { storageAvailable: true, activeProgram: null } })
     }
 
     return makeResponse({})
@@ -212,9 +209,9 @@ describe('V2Page', () => {
       })
     })
 
-    it('loads today program when the workouts API returns one', async () => {
+    it('loads today program from the accepted coach plan', async () => {
       stubPageFetch({
-        program: { found: true, workout: 'Back Squat 5x5\nFran 21-15-9' },
+        program: { context: { storageAvailable: true, activeProgram: { upcomingSessions: [{ scheduledDate: new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0') + '-' + String(new Date().getDate()).padStart(2,'0'), status: 'planned', prescription: { title: 'Back Squat 5x5', intent: 'Fran 21-15-9' } }] } } },
       })
 
       await act(async () => {
@@ -223,8 +220,8 @@ describe('V2Page', () => {
 
       await waitFor(() => {
         expect(screen.getByText("Today's Program")).toBeInTheDocument()
-        expect(screen.getByText('Back Squat 5x5')).toBeInTheDocument()
-        expect(screen.getByText('Fran 21-15-9')).toBeInTheDocument()
+        expect(screen.getByText(/Back Squat 5x5/)).toBeInTheDocument()
+        expect(screen.getByText(/Fran 21-15-9/)).toBeInTheDocument()
       })
     })
 
@@ -240,7 +237,7 @@ describe('V2Page', () => {
         expect(urls).toContain('/api/whoop/data')
         expect(urls.some(url => url.startsWith('/api/meals/daily'))).toBe(true)
         expect(urls.some(url => url.startsWith('/api/targets'))).toBe(true)
-        expect(urls.some(url => url.startsWith('/api/workouts'))).toBe(true)
+        expect(urls.some(url => url.startsWith('/api/coach'))).toBe(true)
       })
     })
   })

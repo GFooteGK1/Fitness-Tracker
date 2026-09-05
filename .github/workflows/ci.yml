@@ -48,3 +48,17 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify mobile browser journeys
+        run: npm run test:browser
+
+      - name: Upload browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: browser-failure-evidence
+          path: output/playwright/app-quality-results/
+          retention-days: 7

@@ -2,9 +2,7 @@ import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
 
 export default defineConfig({
-  esbuild: {
-    jsx: 'automatic',
-  },
+  oxc: { jsx: { runtime: 'automatic' } },
   test: {
     environment: 'node',
     globals: true,

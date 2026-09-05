@@ -72,7 +72,7 @@ VALUES
     current_setting('atomic_completion_test.program_1')::UUID,
     current_setting('atomic_completion_test.user_1')::UUID,
     2,
-    'accepted',
+    'superseded',
     'verify-reference',
     'verify-policy',
     '{"horizon_weeks":8}'::JSONB,

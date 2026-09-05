@@ -1,5 +1,7 @@
 'use client'
+import { sendLoggingRequest } from '@/app/lib/client/logging-request'
 
+import { useAuth } from '@/app/lib/auth/AuthContext'
 import { useState } from 'react'
 import Link from 'next/link'
 import { compressImage, isSupportedImageFormat, formatFileSize, type ImageCompressionResult } from '../lib/imageUtils'
@@ -8,6 +10,7 @@ import PRNotification from '../components/PRNotification'
 import { type PRResult } from '../lib/pr-detection'
 
 export default function LogWorkout() {
+  const { user } = useAuth()
   const [workoutText, setWorkoutText] = useState('')
   const [workoutDate, setWorkoutDate] = useState(getLocalDate())
   const [loading, setLoading] = useState(false)
@@ -110,14 +113,14 @@ export default function LogWorkout() {
     setStatus({ message: 'Parsing workout with AI...', type: 'info' })
 
     try {
-      const response = await fetch('/api/parse-workout', {
+      const response = await sendLoggingRequest('/api/parse-workout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: workoutText,
           date: workoutDate
         })
-      })
+      }, user?.id ?? '')
 
       const result = await response.json()
 

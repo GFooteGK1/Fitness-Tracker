@@ -1,3 +1,4 @@
+import { loggingRpc } from '../helpers/logging-rpc'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
@@ -15,6 +16,7 @@ import { complete } from '@/app/lib/llm/client'
 
 function uploadRequest() {
   const formData = new FormData()
+  formData.append('requestId','photo-123456')
   formData.append(
     'photo',
     new File([new Uint8Array(2048)], 'meal.jpg', { type: 'image/jpeg' })
@@ -42,6 +44,7 @@ function authenticatedSupabase() {
 
   return {
     client: {
+      rpc: loggingRpc('meal-1', record => { insertSpy(record) }),
       auth: {
         getUser: vi.fn().mockResolvedValue({
           data: { user: { id: 'user-1' } },

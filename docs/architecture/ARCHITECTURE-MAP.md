@@ -862,3 +862,23 @@ The current deterministic numeric and selection ranges are recorded in
 The researched construction contract and v0.3 implementation boundary are
 recorded in `docs/coach/complete-programming-evidence-research.md` and
 `docs/coach/programming-kernel-v0.3-spec.md`.
+
+
+## Logging and accepted-plan boundary (2026-09-04)
+
+ADR-0008 extends shared logging to the agent, text parsing, and meal-photo routes.
+`app/lib/client/logging-request.ts` freezes request identity/input/time for retry.
+`app/lib/logging/server.ts` claims and finalizes authenticated database receipts;
+`save_logged_activity` owns canonical workout/block or meal inserts. Uncertain
+writes stop processing and remain reconcilable through their saved entity IDs.
+Photo response persistence shares the meal transaction. No worker automatically
+re-executes a claimed request. See the release notes for precise scope/limitations.
+
+`app/lib/coach/todays-program.ts` projects the accepted runtime plan into Coach's
+summary and trainer context. Trainer receives the stored prescription; neither
+consumer substitutes hardcoded Google Sheets programming. Program remains the
+execution and explicit plan-acceptance surface.
+
+The `verify` CI job includes executable PGlite migration/transaction tests and
+mobile Chromium retry journeys with simulated external services. Production
+canaries remain a release step. See `docs/releases/app-quality-2026-09-04.md`.

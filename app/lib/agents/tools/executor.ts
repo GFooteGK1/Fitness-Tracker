@@ -1,3 +1,4 @@
+import { saveActivity, ActivitySaveError } from '@/app/lib/logging/server'
 import { createHash } from 'crypto'
 
 /**
@@ -66,6 +67,7 @@ export async function executeToolCall(
         return { success: false, error: `Unknown tool: ${toolName}` }
     }
   } catch (err) {
+    if (err instanceof ActivitySaveError) throw err;
     console.error(`[tool-executor] ${toolName} failed:`, err)
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }
@@ -287,29 +289,8 @@ async function executeLogWorkout(
     return { success: false, error: 'workout_date and blocks are required' }
   }
 
-  // Insert workout
-  const { data: workout, error: workoutError } = await supabase
-    .from('workouts')
-    .insert({
-      user_id: userId,
-      workout_date: workoutDate,
-      input_text: inputText,
-      blocks,
-      primary_score: (input.primary_score as string) ?? null,
-      tags: (input.tags as string[]) ?? [],
-      rpe: (input.rpe as number) ?? null,
-      parse_confidence: 0.9
-    })
-    .select('id')
-    .single()
-
-  if (workoutError || !workout) {
-    return { success: false, error: `Failed to insert workout: ${workoutError?.message}` }
-  }
-
   // Insert block scores
   const blockScores = blocks.map(block => ({
-    workout_id: workout.id,
     user_id: userId,
     block_type: block.block_type,
     block_title: null,
@@ -322,13 +303,18 @@ async function executeLogWorkout(
     is_pr: false
   }))
 
-  const { error: blockError } = await supabase.from('block_scores').insert(blockScores)
-  if (blockError) {
-    console.error('[tool-executor] Failed to insert block_scores:', blockError)
-  }
-
+  const workoutId = await saveActivity(supabase, 'workout', {
+      user_id: userId,
+      workout_date: workoutDate,
+      input_text: inputText,
+      blocks,
+      primary_score: (input.primary_score as string) ?? null,
+      tags: (input.tags as string[]) ?? [],
+      rpe: (input.rpe as number) ?? null,
+      parse_confidence: 0.9
+    }, blockScores)
   invalidatePassiveCache(userId)
-  return { success: true, data: { workout_id: workout.id } }
+  return { success: true, data: { workout_id: workoutId } }
 }
 
 async function executeLogPR(
@@ -551,9 +537,7 @@ async function executeLogMeal(
 
   const timing = normalizeMealTiming(input.timing as string)
 
-  const { data: meal, error } = await supabase
-    .from('meals')
-    .insert({
+  const mealId = await saveActivity(supabase, 'meal', {
       user_id: userId,
       meal_timestamp: mealTimestamp,
       meal_timing: timing,
@@ -566,15 +550,8 @@ async function executeLogMeal(
       needs_review: false,
       ai_confidence: 0.9
     })
-    .select('id')
-    .single()
-
-  if (error || !meal) {
-    return { success: false, error: `Failed to insert meal: ${error?.message}` }
-  }
-
   invalidatePassiveCache(userId)
-  return { success: true, data: { meal_id: meal.id, totals } }
+  return { success: true, data: { meal_id: mealId, totals } }
 }
 
 async function executeQueryMeals(

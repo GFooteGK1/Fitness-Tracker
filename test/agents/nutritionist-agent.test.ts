@@ -432,35 +432,15 @@ describe('macro validation flagging', () => {
 
 describe('persistMeal', () => {
   function createMockSupabase(mealId = 'meal-123') {
-    const insertFn = vi.fn()
-    const selectFn = vi.fn()
-    const singleFn = vi.fn()
-
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'meals') {
-        return {
-          insert: insertFn.mockReturnValue({
-            select: selectFn.mockReturnValue({
-              single: singleFn.mockResolvedValue({
-                data: { id: mealId },
-                error: null,
-              }),
-            }),
-          }),
-        }
-      }
-      return { insert: vi.fn().mockResolvedValue({ error: null }) }
-    })
-
+    const rpc = vi.fn().mockResolvedValue({ data: mealId, error: null })
     return {
-      supabase: { from: fromFn } as unknown as import('@supabase/supabase-js').SupabaseClient,
-      fromFn,
-      insertFn,
+      supabase: { rpc } as unknown as import('@supabase/supabase-js').SupabaseClient,
+      rpc
     }
   }
 
   it('persists meal and returns meal ID', async () => {
-    const { supabase, fromFn, insertFn } = createMockSupabase()
+    const { supabase, rpc } = createMockSupabase()
     const response: NutritionistResponse = {
       message: 'Logged!',
       meal: {
@@ -484,9 +464,8 @@ describe('persistMeal', () => {
 
     const id = await persistMeal(response, 'user-1', supabase)
     expect(id).toBe('meal-123')
-    expect(fromFn).toHaveBeenCalledWith('meals')
-    expect(insertFn).toHaveBeenCalledWith(
-      expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('save_logged_activity', expect.objectContaining({
+      p_kind: 'meal', p_record: expect.objectContaining({
         user_id: 'user-1',
         meal_timing: 'general',
         total_protein: 42,
@@ -494,7 +473,7 @@ describe('persistMeal', () => {
         total_fat: 3,
         total_calories: 195,
       })
-    )
+    }))
   })
 
   it('returns null when no meal in response', async () => {
@@ -542,24 +521,9 @@ describe('persistMeal', () => {
     expect(id).toBeNull()
   })
 
-  it('returns null when DB insert fails', async () => {
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'meals') {
-        return {
-          insert: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: null,
-                error: { message: 'DB error' },
-              }),
-            }),
-          }),
-        }
-      }
-      return { insert: vi.fn().mockResolvedValue({ error: null }) }
-    })
-
-    const supabase = { from: fromFn } as unknown as import('@supabase/supabase-js').SupabaseClient
+  it('throws when the meal save fails', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: 'DB error' } })
+    const supabase = { rpc } as unknown as import('@supabase/supabase-js').SupabaseClient
     const response: NutritionistResponse = {
       message: 'Logged!',
       meal: {
@@ -581,12 +545,11 @@ describe('persistMeal', () => {
       confidence: 0.85,
     }
 
-    const id = await persistMeal(response, 'user-1', supabase)
-    expect(id).toBeNull()
+    await expect(persistMeal(response, 'user-1', supabase)).rejects.toThrow('Unable to save the complete activity')
   })
 
   it('sets needs_review true when confidence is low', async () => {
-    const { supabase, insertFn } = createMockSupabase()
+    const { supabase, rpc } = createMockSupabase()
     const response: NutritionistResponse = {
       message: 'Logged!',
       meal: {
@@ -609,11 +572,11 @@ describe('persistMeal', () => {
     }
 
     await persistMeal(response, 'user-1', supabase)
-    expect(insertFn).toHaveBeenCalledWith(
-      expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('save_logged_activity', expect.objectContaining({
+      p_kind: 'meal', p_record: expect.objectContaining({
         needs_review: true,
         ai_confidence: 0.5,
       })
-    )
+    }))
   })
 })

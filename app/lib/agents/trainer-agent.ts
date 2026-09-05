@@ -1,3 +1,5 @@
+import { saveActivity, loggingContext } from '@/app/lib/logging/server'
+import { formatUTCAsLocalDateWithOffset } from '@/app/lib/timezone-utils'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   TrainerContext,
@@ -221,8 +223,8 @@ export function detectNewPRs(
 
   // The LLM may already have detected PRs — we verify and augment
   const detectedPRs: BenchmarkPR[] = []
-  const now = new Date()
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const request = loggingContext.getStore()
+  const today = formatUTCAsLocalDateWithOffset(request?.submittedAt ?? new Date().toISOString(), -(request?.tzOffset ?? 0))
 
   for (const block of response.workout.blocks) {
     if (!block.score) continue
@@ -480,33 +482,11 @@ export async function persistWorkout(
     return null
   }
 
-  const now = new Date()
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-
-  // Insert workout
-  const { data: workout, error: workoutError } = await supabase
-    .from('workouts')
-    .insert({
-      user_id: userId,
-      workout_date: today,
-      input_text: inputText,
-      blocks: response.workout.blocks,
-      primary_score: response.workout.primary_score,
-      tags: response.workout.tags,
-      rpe: response.workout.rpe,
-      parse_confidence: response.confidence
-    })
-    .select('id')
-    .single()
-
-  if (workoutError || !workout) {
-    console.error('Failed to persist workout:', workoutError)
-    return null
-  }
+  const request = loggingContext.getStore()
+  const today = formatUTCAsLocalDateWithOffset(request?.submittedAt ?? new Date().toISOString(), -(request?.tzOffset ?? 0))
 
   // Insert block scores
   const blockScores = response.workout.blocks.map(block => ({
-    workout_id: workout.id,
     user_id: userId,
     block_type: block.block_type,
     block_title: null,
@@ -519,12 +499,16 @@ export async function persistWorkout(
     is_pr: false
   }))
 
-  const { error: blockError } = await supabase.from('block_scores').insert(blockScores)
-  if (blockError) {
-    console.error('Failed to persist block scores:', blockError)
-  }
-
-  return workout.id as string
+  return saveActivity(supabase, 'workout', {
+      user_id: userId,
+      workout_date: today,
+      input_text: inputText,
+      blocks: response.workout.blocks,
+      primary_score: response.workout.primary_score,
+      tags: response.workout.tags,
+      rpe: response.workout.rpe,
+      parse_confidence: response.confidence
+    }, blockScores)
 }
 
 /**

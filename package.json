@@ -16,7 +16,9 @@
     "test:ios-signing": "node --test scripts/ios-signing/workflow.node-test.mjs",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "test:database": "vitest run test/database",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
@@ -34,7 +36,9 @@
     "serwist": "^9.5.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@fast-check/vitest": "^0.2.4",
+    "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/jest": "^30.0.0",

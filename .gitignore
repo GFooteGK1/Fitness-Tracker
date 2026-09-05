@@ -58,3 +58,10 @@ scripts/eval/manifest.*.json
 /ios/*.xcodeproj/
 /ios/.build/
 /ios/DerivedData/
+
+# Local verification artifacts
+/test-results.json
+/focused-results.json
+/audit-current.json
+/output/playwright/app-quality-results/
+/output/playwright/app-quality-report/

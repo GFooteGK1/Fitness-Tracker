@@ -1,5 +1,7 @@
 'use client'
 
+import { sendLoggingRequest, fileFingerprint } from '@/app/lib/client/logging-request'
+
 import React, { useState, useRef, useCallback } from 'react'
 import { compressImage, isSupportedImageFormat, formatFileSize } from '@/app/lib/imageUtils'
 import { MealUploadResponse, FoodItem } from '@/app/lib/types/food-tracking'
@@ -7,7 +9,7 @@ import { createUserErrorMessage, ErrorContext } from '@/app/lib/error-handling'
 import { queuePhotoUpload, useOfflineQueue } from '@/app/lib/offline-queue'
 import { useSession } from '@/app/lib/session-management'
 import { useAuth } from '@/app/lib/auth/AuthContext'
-import { getMealTimestamp } from '@/app/lib/timezone-utils'
+import { getMealTimestamp, getLocalDate } from '@/app/lib/timezone-utils'
 import PortionSelector from './PortionSelector'
 
 interface MealCameraCaptureProps {
@@ -354,7 +356,8 @@ export default function MealCameraCapture({
       try {
         const queueId = queuePhotoUpload(
           photoState.file,
-          getMealTimestamp(selectedDate)
+          getMealTimestamp(selectedDate),
+          effectiveUserId
         )
 
         setPhotoState(prev => ({
@@ -440,10 +443,10 @@ export default function MealCameraCapture({
         }, 300)
 
         // Upload photo with regular fetch (Supabase auth handles session)
-        const response = await fetch('/api/meals/upload', {
+        const response = await sendLoggingRequest('/api/meals/upload', {
           method: 'POST',
           body: formData
-        })
+        }, user?.id ?? '', 60_000, JSON.stringify([await fileFingerprint(photoState.file!), selectedDate ? getLocalDate(selectedDate) : 'today']))
 
         clearInterval(progressInterval)
 

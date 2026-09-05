@@ -308,15 +308,8 @@ describe('Socius retrieval tools', () => {
 
 describe('meal tool timezone handling', () => {
   it('stores the agent local meal time as UTC', async () => {
-    const query: Record<string, ReturnType<typeof vi.fn>> = {
-      insert: vi.fn(),
-      select: vi.fn(),
-      single: vi.fn(),
-    }
-    query.insert.mockReturnValue(query)
-    query.select.mockReturnValue(query)
-    query.single.mockResolvedValue({ data: { id: 'meal-1' }, error: null })
-    const supabase = { from: vi.fn().mockReturnValue(query) } as unknown as SupabaseClient
+    const rpc = vi.fn().mockResolvedValue({ data: 'meal-1', error: null })
+    const supabase = { rpc } as unknown as SupabaseClient
 
     const result = await executeToolCall(
       'log_meal',
@@ -332,8 +325,9 @@ describe('meal tool timezone handling', () => {
     )
 
     expect(result.success).toBe(true)
-    expect(query.insert).toHaveBeenCalledWith(expect.objectContaining({
-      meal_timestamp: '2026-08-03T19:30:00.000Z',
+    expect(rpc).toHaveBeenCalledWith('save_logged_activity', expect.objectContaining({
+      p_kind: 'meal',
+      p_record: expect.objectContaining({ meal_timestamp: '2026-08-03T19:30:00.000Z' })
     }))
   })
 })

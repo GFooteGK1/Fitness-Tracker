@@ -1,10 +1,11 @@
+import { saveActivity, replayJsonRequest } from '@/app/lib/logging/server'
 import { NextResponse } from 'next/server'
 import { complete } from '@/app/lib/llm/client'
 import { extractJson } from '@/app/lib/llm/json'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
 
-export async function POST(request: Request) {
+async function processWorkout(request: Request) {
   try {
     const supabase = await createServerClient()
 
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
 
     const { text, date } = await request.json()
 
-    if (!text || !text.trim()) {
+    if (typeof text !== 'string' || !text.trim() || text.length > 5000) {
       return apiError('Workout text is required', 400)
     }
 
@@ -43,54 +44,26 @@ export async function POST(request: Request) {
     // Calculate primary score for display
     const primaryScore = buildPrimaryScore(parsed)
 
-    // Save to Supabase
-    const { data: workout, error: workoutError } = await supabase
-      .from('workouts')
-      .insert({
-        workout_date: date,
-        input_text: text,
-        blocks: parsed.blocks,
-        primary_score: primaryScore,
-        tags: parsed.tags || [],
-        notes: parsed.notes || '',
-        rpe: parsed.rpe || null,
-        parse_confidence: 0.85,
-        user_id: user.id
-      })
-      .select()
-      .single()
-
-    if (workoutError) {
-      console.error('Supabase error:', workoutError)
-      return apiError('Failed to save workout', 500, workoutError.message)
-    }
-
-    // Save block scores
-    if (parsed.blocks && parsed.blocks.length > 0) {
-      const blockScores = parsed.blocks.map((block: any) => ({
-        workout_id: workout.id,
-        user_id: user.id,
-        block_type: block.block_type,
-        block_title: block.title || null,
-        rounds_completed: block.block_score?.rounds_completed || null,
-        extra_reps: block.block_score?.extra_reps || null,
-        time_s: block.block_score?.time_s || null,
-        total_reps: block.block_score?.total_reps || null,
-        tonnage_lb: block.block_score?.tonnage_lb || null,
-        rx_status: block.block_score?.rx_status || null,
-        is_pr: block.block_score?.is_pr || false
-      }))
-
-      const { error: blockError } = await supabase.from('block_scores').insert(blockScores)
-      if (blockError) {
-        console.error('Block scores error:', blockError)
-        // Don't fail the whole request for block score errors
-      }
-    }
+    if (!Array.isArray(parsed.blocks) || !parsed.blocks.length) return apiError('No workout blocks found', 422)
+    const blockScores = parsed.blocks.map((block: any) => ({
+      block_type: block.block_type, block_title: block.title ?? null,
+      rounds_completed: block.block_score?.rounds_completed ?? null,
+      extra_reps: block.block_score?.extra_reps ?? null,
+      time_s: block.block_score?.time_s ?? null,
+      total_reps: block.block_score?.total_reps ?? null,
+      tonnage_lb: block.block_score?.tonnage_lb ?? null,
+      rx_status: block.block_score?.rx_status ?? null,
+      is_pr: block.block_score?.is_pr ?? false
+    }))
+    const workoutId = await saveActivity(supabase, 'workout', {
+      workout_date: date, input_text: text, blocks: parsed.blocks,
+      primary_score: primaryScore, tags: parsed.tags ?? [], notes: parsed.notes ?? '',
+      rpe: parsed.rpe ?? null, parse_confidence: 0.85
+    }, blockScores)
 
     return NextResponse.json({
       success: true,
-      workoutId: workout.id,
+      workoutId,
       primaryScore,
       parsed
     })
@@ -277,3 +250,5 @@ function buildPrimaryScore(parsed: any): string {
   
   return scores.length > 0 ? scores.join(' | ') : 'Workout logged'
 }
+
+export function POST(request: Request) { return replayJsonRequest(request, 'workout-text', processWorkout) }
