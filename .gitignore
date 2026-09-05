@@ -65,3 +65,5 @@ scripts/eval/manifest.*.json
 /audit-current.json
 /output/playwright/app-quality-results/
 /output/playwright/app-quality-report/
+
+/output/app-quality-release/

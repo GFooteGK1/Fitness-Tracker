@@ -5,8 +5,9 @@
 Plan: [ADR-0008](../decisions/ADR-0008-app-quality-and-canonical-logging.md).
 Worktree: `.worktrees/app-quality`; branch `codex/app-quality`.
 Base/current remote main verified as `7c656d0c679ad2fce256b29f3fa306ff8a26d35d`.
-Local implementation only. No commit, push, production migration, deployment,
-or GitHub protection write has been performed.
+Release approved in the current task. See
+[application evidence](app-quality-production-2026-09-04.md) for current migration,
+canary, CI, and protection state; the sections below preserve the candidate plan.
 
 1. Shared PostgreSQL saves cover `/api/agent/process`, `/api/parse-workout`,
    `/api/meals/parse-text`, and `/api/meals/upload`. Workout and block scores
@@ -84,7 +85,7 @@ these remaining paths has not been established or ruled out. Do not report this
 candidate as vulnerability-free. New development dependencies are PGlite and
 Playwright; no production dependency was added.
 
-## Concrete release sequence (requires approval)
+## Approved release sequence
 
 1. Review/commit the isolated candidate, push the branch, and create the PR.
    Require the updated `verify` CI job to pass on the exact candidate SHA.

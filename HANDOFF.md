@@ -3,7 +3,9 @@
 ## Current objective
 
 Execute the three approved code-quality priorities. Local implementation is
-complete. Release is the next decision. The plan is
+complete and release is approved. PR #77 is open; migration, preview canary, and
+branch protection passed. Merge/deployment and production canary are next.
+Current evidence: `docs/releases/app-quality-production-2026-09-04.md`. The plan is
 `docs/decisions/ADR-0008-app-quality-and-canonical-logging.md`; exact release
 instructions and limitations are in `docs/releases/app-quality-2026-09-04.md`.
 
