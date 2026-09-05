@@ -46,10 +46,7 @@ vi.mock('@/app/lib/imageUtils', () => ({
 import V2Page from '@/app/v2/page'
 
 function jsonResponse(body: unknown, ok = true) {
-  return {
-    ok,
-    json: () => Promise.resolve(body),
-  }
+  return new Response(JSON.stringify(body), { status: ok ? 200 : 500, headers: { 'Content-Type': 'application/json' } })
 }
 
 describe('V2 meal photo upload', () => {
@@ -99,8 +96,8 @@ describe('V2 meal photo upload', () => {
         return jsonResponse({ targetProtein: 180, targetCarbs: 250, targetFat: 70, targetCalories: 2350 })
       }
 
-      if (url.startsWith('/api/workouts')) {
-        return jsonResponse({ found: false })
+      if (url.startsWith('/api/coach')) {
+        return jsonResponse({ context: { storageAvailable: true, activeProgram: null } })
       }
 
       return jsonResponse({})

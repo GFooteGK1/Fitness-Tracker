@@ -1,3 +1,5 @@
+import { beginRequest, finishRequest, loggingContext, saveActivity, validRequestId } from '@/app/lib/logging/server'
+import { createHash } from 'node:crypto'
 import { randomUUID } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -11,7 +13,7 @@ import {
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MIN_FILE_SIZE = 1000
 
-export async function POST(request: NextRequest) {
+async function processUpload(request: NextRequest) {
   const requestId = randomUUID()
 
   try {
@@ -68,6 +70,7 @@ export async function POST(request: NextRequest) {
           analysisStatus: 'failed',
           error: 'Could not reliably identify the meal. Try a clearer photo or enter it manually.',
           shouldRetry: true,
+          retrySafe: true,
           fallbackAction: 'manual_entry',
         }, { status: 422 })
       }
@@ -82,6 +85,7 @@ export async function POST(request: NextRequest) {
         analysisStatus: 'failed',
         error: 'Meal photo analysis is temporarily unavailable. Please try again or enter the meal manually.',
         shouldRetry: true,
+          retrySafe: true,
         fallbackAction: 'manual_entry',
       }, { status: 503 })
     }
@@ -91,9 +95,7 @@ export async function POST(request: NextRequest) {
     // Database stores as TIMESTAMPTZ (UTC)
     const mealTimestamp = timestamp
 
-    const { data: meal, error: dbError } = await supabase
-      .from('meals')
-      .insert({
+    const mealId = await saveActivity(supabase, 'meal', {
         user_id: user.id,
         meal_timestamp: mealTimestamp,
         photo_url: null,
@@ -104,18 +106,7 @@ export async function POST(request: NextRequest) {
         total_calories: result.total_calories,
         needs_review: result.confidence < 0.7 || result.items.length === 0,
         ai_confidence: result.confidence
-      })
-      .select()
-      .single()
-
-    if (dbError) {
-      console.error('[MealPhotoUpload]', {
-        requestId,
-        stage: 'database_insert_failed',
-        errorCode: dbError.code,
-      })
-      return apiError('Database error', 500)
-    }
+      }, [], { analysisStatus: 'complete', analysis: result })
 
     console.info('[MealPhotoUpload]', {
       requestId,
@@ -125,7 +116,7 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({
-      mealId: meal.id,
+      mealId,
       analysisStatus: 'complete',
       analysis: result
     })
@@ -137,5 +128,34 @@ export async function POST(request: NextRequest) {
       errorType: error instanceof Error ? error.name : 'unknown',
     })
     return apiError('Server error', 500)
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const supabase = await createServerClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return apiError('Unauthorized', 401)
+  let form: FormData
+  try { form = await request.clone().formData() } catch { return apiError('Invalid photo upload', 400) }
+  const expectedUserId = form.get('expectedUserId')
+  if (expectedUserId && expectedUserId !== user.id) return apiError('The signed-in account changed. Sign back in to the original account to retry.', 403)
+  const file = form.get('photo')
+  const timestamp = form.get('timestamp')
+  if (!(file instanceof File) || file.size < MIN_FILE_SIZE || file.size > MAX_FILE_SIZE) return apiError('Invalid photo size', 400)
+  if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) return apiError('Unsupported photo format', 400)
+  if (typeof timestamp !== 'string' || !Number.isFinite(Date.parse(timestamp))) return apiError('Invalid timestamp', 400)
+  const requestId = form.get('requestId')
+  if (!validRequestId(requestId)) return apiError('A requestId is required. Refresh the app and try again.', 400)
+  const hash = createHash('sha256').update(Buffer.from(await file.arrayBuffer())).digest('hex')
+  const claim = await beginRequest(supabase, `photo:${requestId}`, JSON.stringify([hash, file.type, timestamp]))
+  if (claim.response) return claim.response
+  try {
+    return await loggingContext.run({ id: claim.id! }, async () => {
+      const response = await processUpload(request)
+      // Successful photo responses are committed atomically with the meal.
+      return response.ok ? response : await finishRequest(supabase, claim.id!, response)
+    })
+  } catch {
+    return apiError('The upload result is uncertain. Retry the same photo or check meal history before logging again.', 503)
   }
 }

@@ -8,7 +8,7 @@ import {
 } from './types'
 import { MOVEMENT_ALIASES, PORTION_DEFAULTS } from './constants'
 import { fetchRecentChat, fetchPendingUrgentInsights } from './chat-persistence'
-import { fetchWorkoutForDate } from '@/app/lib/sheets/workout-fetcher'
+import { projectTodaysProgram } from '@/app/lib/coach/todays-program'
 import { localDateToUTCStart, localDateToUTCEnd } from '@/app/lib/timezone-utils'
 import { fetchProgrammingReadinessContext } from './programming-context'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
@@ -735,8 +735,10 @@ async function fetchBenchmarkPRs(
   }))
 }
 
-async function fetchTodaysProgram(_userId: string, localDate: string): Promise<string | null> {
-  return fetchWorkoutForDate(localDate)
+async function fetchTodaysProgram(userId: string, localDate: string): Promise<string | null> {
+  const supabase = await createServerClient()
+  const context = await fetchCoachRuntimeContext(supabase, userId)
+  return projectTodaysProgram(context, localDate, true)
 }
 
 // ─── Utility Functions (exported for testing) ────────────────────────

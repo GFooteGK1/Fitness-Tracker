@@ -1,7 +1,12 @@
 'use client'
 
+import { sendLoggingRequest, fileFingerprint } from '@/app/lib/client/logging-request'
+
+import { projectTodaysProgram } from '@/app/lib/coach/todays-program'
+
 import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/app/lib/auth/AuthContext'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/app/lib/auth/supabase-client'
 import type { AgentRequest, AgentResponse } from '@/app/lib/agents/types'
@@ -164,7 +169,7 @@ function TodaysProgram({ program }: { program: ProgramBlock[] | null }) {
       <div className="space-y-3">
         {program.map((block, i) => (
           <div key={i}>
-            <div className="text-sm font-semibold mb-1.5">{block.title}</div>
+            <div className="text-sm font-semibold mb-1.5 whitespace-pre-line">{block.title}</div>
             {block.movements.map((movement, j) => (
               <div key={j} className="text-xs text-slate-300 pl-2 border-l-2 border-blue-500/30 mb-1">
                 {movement}
@@ -173,6 +178,7 @@ function TodaysProgram({ program }: { program: ProgramBlock[] | null }) {
           </div>
         ))}
       </div>
+      <Link href="/program" className="mt-3 inline-flex min-h-[44px] items-center rounded-lg px-3 text-sm font-semibold text-white underline">Open Program</Link>
     </div>
   )
 }
@@ -397,17 +403,13 @@ export default function V2Page() {
   const loadTodaysProgram = async () => {
     try {
       const today = getLocalDate()
-      const res = await fetch(`/api/workouts?date=${today}`)
-      if (res.ok) {
-        const data = await res.json()
-        if (data.found && data.workout) {
-          // Split workout text into display lines; each non-empty line becomes one program block
-          const lines: string[] = data.workout.split('\n').filter((l: string) => l.trim())
-          setProgram(lines.map((line: string) => ({ title: line, movements: [] })))
-        }
-      }
+      const res = await fetch('/api/coach', { cache: 'no-store' })
+      if (!res.ok) throw new Error('Accepted program unavailable')
+      const data = await res.json()
+      setProgram([{ title: projectTodaysProgram(data.context, today), movements: [] }])
     } catch (error) {
       console.error('Error loading program:', error)
+      setProgram([{ title: 'Your accepted program is temporarily unavailable. Open Program to retry.', movements: [] }])
     }
   }
 
@@ -439,11 +441,11 @@ export default function V2Page() {
         tz_offset: -getTimezoneOffset()
       }
 
-      const response = await fetchWithTimeout('/api/agent/process', {
+      const response = await sendLoggingRequest('/api/agent/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request)
-      }, 50_000)
+      }, user?.id ?? '', 50_000)
 
       if (!response.ok) {
         let errorMessage = 'Failed to process message'
@@ -567,7 +569,7 @@ export default function V2Page() {
         const formData = new FormData()
         formData.append('photo', normalizedFile)
         formData.append('timestamp', getMealTimestamp())
-        const uploadResponse = await fetchWithTimeout('/api/meals/upload', { method: 'POST', body: formData }, 60_000)
+        const uploadResponse = await sendLoggingRequest('/api/meals/upload', { method: 'POST', body: formData }, user?.id ?? '', 60_000)
         const uploadData = await uploadResponse.json()
 
         if (!uploadResponse.ok) {
@@ -618,7 +620,7 @@ export default function V2Page() {
           return
         }
 
-        const agentRes = await fetchWithTimeout('/api/agent/process', {
+        const agentRes = await sendLoggingRequest('/api/agent/process', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -628,7 +630,7 @@ export default function V2Page() {
             // Agent requests use the negated convention: local time = UTC + tz_offset.
             tz_offset: -getTimezoneOffset()
           } satisfies AgentRequest)
-        }, 50_000)
+        }, user?.id ?? '', 50_000, await fileFingerprint(file))
         if (!agentRes.ok) throw new Error('Failed to process workout')
         const agentData: AgentResponse = await agentRes.json()
 

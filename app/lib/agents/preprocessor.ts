@@ -1,3 +1,4 @@
+import { isValidTimezoneOffset } from '@/app/lib/timezone-utils'
 import type { AgentRequest } from './types'
 
 /**
@@ -41,6 +42,11 @@ export async function preprocessInput(request: AgentRequest): Promise<string> {
  * Returns an error message string if invalid, or null if valid.
  */
 export function validateRequest(request: AgentRequest): string | null {
+  if (!request || typeof request !== 'object' || typeof request.content !== 'string') return 'Text content must be a string.'
+  if (request.tz_offset !== undefined && (!Number.isInteger(request.tz_offset) || !isValidTimezoneOffset(request.tz_offset))) return 'Invalid timezone offset.'
+  for (const value of [request.photo_data, request.audio_data]) {
+    if (value !== undefined && typeof value !== 'string') return 'Media input must be a string.'
+  }
   if (!request.content && !request.photo_data && !request.audio_data) {
     return 'No input provided. Send text, photo, or audio.'
   }

@@ -311,31 +311,12 @@ describe('Property 2.1: Trainer successful parsing behavior preserved', () => {
       let capturedBlockScores: Record<string, unknown>[] | null = null
 
       const mockSupabase = {
-        from: vi.fn((table: string) => {
-          if (table === 'workouts') {
-            return {
-              insert: vi.fn((data: Record<string, unknown>) => {
-                capturedWorkout = data
-                return {
-                  select: vi.fn().mockReturnValue({
-                    single: vi.fn().mockResolvedValue({
-                      data: { id: 'workout-preservation' },
-                      error: null,
-                    }),
-                  }),
-                }
-              }),
-            }
-          }
-          if (table === 'block_scores') {
-            return {
-              insert: vi.fn((data: Record<string, unknown>[]) => {
-                capturedBlockScores = data
-                return Promise.resolve({ error: null })
-              }),
-            }
-          }
-          return { insert: vi.fn().mockResolvedValue({ error: null }) }
+        rpc: vi.fn(async (name: string, args: { p_record: Record<string, unknown>; p_blocks: Record<string, unknown>[]; p_kind: string }) => {
+          expect(name).toBe('save_logged_activity')
+          expect(args.p_kind).toBe('workout')
+          capturedWorkout = args.p_record
+          capturedBlockScores = args.p_blocks
+          return { data: 'workout-preservation', error: null }
         }),
       }
 
@@ -536,23 +517,11 @@ describe('Property 2.2: Nutritionist successful parsing behavior preserved', () 
       let capturedMeal: Record<string, unknown> | null = null
 
       const mockSupabase = {
-        from: vi.fn((table: string) => {
-          if (table === 'meals') {
-            return {
-              insert: vi.fn((data: Record<string, unknown>) => {
-                capturedMeal = data
-                return {
-                  select: vi.fn().mockReturnValue({
-                    single: vi.fn().mockResolvedValue({
-                      data: { id: 'meal-preservation' },
-                      error: null,
-                    }),
-                  }),
-                }
-              }),
-            }
-          }
-          return { insert: vi.fn().mockResolvedValue({ error: null }) }
+        rpc: vi.fn(async (name: string, args: { p_record: Record<string, unknown>; p_blocks: Record<string, unknown>[]; p_kind: string }) => {
+          expect(name).toBe('save_logged_activity')
+          expect(args.p_kind).toBe('meal')
+          capturedMeal = args.p_record
+          return { data: 'meal-preservation', error: null }
         }),
       }
 

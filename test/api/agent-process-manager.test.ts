@@ -1,3 +1,4 @@
+import { loggingRpc } from '../helpers/logging-rpc'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
@@ -48,12 +49,13 @@ function createMockRequest(body: unknown): NextRequest {
   return new NextRequest('http://localhost:3000/api/agent/process', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    body: JSON.stringify({ requestId: 'request-123456', submittedAt: '2026-09-04T12:00:00Z', ...(body as object) })
   })
 }
 
 function createSupabaseMock() {
   return {
+    rpc: loggingRpc('saved-1'),
     auth: {
       getUser: vi.fn().mockResolvedValue({
         data: { user: { id: 'user-123' } },

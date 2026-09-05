@@ -1,10 +1,11 @@
 'use client'
+import { sendLoggingRequest } from '@/app/lib/client/logging-request'
 
 import React, { useEffect, useRef, useState } from 'react'
 import MealCameraCapture from './MealCameraCapture'
 import FastMealLogger from './FastMealLogger'
 import type { MealUploadResponse } from '@/app/lib/types/food-tracking'
-import { getMealTimestamp } from '@/app/lib/timezone-utils'
+import { getMealTimestamp, getLocalDate } from '@/app/lib/timezone-utils'
 
 interface MealInputEnhancedProps {
   onUploadComplete?: (response: MealUploadResponse) => void
@@ -336,14 +337,14 @@ export default function MealInputEnhanced({
 
     setIsSubmitting(true)
     try {
-      const response = await fetch('/api/meals/parse-text', {
+      const response = await sendLoggingRequest('/api/meals/parse-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: mealText,
           timestamp: getMealTimestamp(selectedDate)
         })
-      })
+      }, userId ?? '', 60_000, JSON.stringify([mealText, selectedDate ? getLocalDate(selectedDate) : 'today']))
       const result = await response.json().catch(() => ({})) as { mealId?: string; error?: string }
 
       if (!response.ok) {

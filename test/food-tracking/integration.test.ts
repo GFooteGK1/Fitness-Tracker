@@ -1,3 +1,4 @@
+import { loggingRpc } from '../helpers/logging-rpc'
 /**
  * Integration Tests for Complete Food Tracking Workflows
  * Task 11.3: End-to-end integration tests covering the full food tracking pipeline
@@ -195,6 +196,7 @@ function createMockSupabase(opts: {
   } = opts
 
   return {
+    rpc: loggingRpc(mealsInsertData?.id, undefined, insertError),
     auth: {
       getUser: vi.fn().mockResolvedValue(
         authenticated
@@ -307,6 +309,7 @@ function createMockSupabase(opts: {
 
 function createUploadRequest(photo: Blob, timestamp: string) {
   const formData = new FormData()
+  formData.append('requestId','photo-123456')
   formData.append('photo', photo, 'meal.jpg')
   formData.append('timestamp', timestamp)
   return new NextRequest('http://localhost:3000/api/meals/upload', {

@@ -446,23 +446,11 @@ describe('Property 10: Meal persistence round-trip', () => {
       let capturedInsert: Record<string, unknown> | null = null
 
       const mockSupabase = {
-        from: vi.fn((table: string) => {
-          if (table === 'meals') {
-            return {
-              insert: vi.fn((data: Record<string, unknown>) => {
-                capturedInsert = data
-                return {
-                  select: vi.fn().mockReturnValue({
-                    single: vi.fn().mockResolvedValue({
-                      data: { id: 'meal-prop10' },
-                      error: null,
-                    }),
-                  }),
-                }
-              }),
-            }
-          }
-          return { insert: vi.fn().mockResolvedValue({ error: null }) }
+        rpc: vi.fn(async (name: string, args: { p_record: Record<string, unknown>; p_blocks: Record<string, unknown>[]; p_kind: string }) => {
+          expect(name).toBe('save_logged_activity')
+          expect(args.p_kind).toBe('meal')
+          capturedInsert = args.p_record
+          return { data: 'meal-prop10', error: null }
         }),
       }
 
@@ -522,23 +510,11 @@ describe('Property 10: Meal persistence round-trip', () => {
       let capturedInsert: Record<string, unknown> | null = null
 
       const mockSupabase = {
-        from: vi.fn((table: string) => {
-          if (table === 'meals') {
-            return {
-              insert: vi.fn((data: Record<string, unknown>) => {
-                capturedInsert = data
-                return {
-                  select: vi.fn().mockReturnValue({
-                    single: vi.fn().mockResolvedValue({
-                      data: { id: 'meal-low-conf' },
-                      error: null,
-                    }),
-                  }),
-                }
-              }),
-            }
-          }
-          return { insert: vi.fn().mockResolvedValue({ error: null }) }
+        rpc: vi.fn(async (name: string, args: { p_record: Record<string, unknown>; p_blocks: Record<string, unknown>[]; p_kind: string }) => {
+          expect(name).toBe('save_logged_activity')
+          expect(args.p_kind).toBe('meal')
+          capturedInsert = args.p_record
+          return { data: 'meal-low-conf', error: null }
         }),
       }
 

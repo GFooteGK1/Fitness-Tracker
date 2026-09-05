@@ -572,41 +572,15 @@ describe('lookupLastWeight', () => {
 
 describe('persistWorkout', () => {
   function createMockSupabase(workoutId = 'workout-123') {
-    const insertFn = vi.fn()
-    const selectFn = vi.fn()
-    const singleFn = vi.fn()
-
-    // Track calls to distinguish workouts vs block_scores inserts
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'workouts') {
-        return {
-          insert: insertFn.mockReturnValue({
-            select: selectFn.mockReturnValue({
-              single: singleFn.mockResolvedValue({
-                data: { id: workoutId },
-                error: null
-              })
-            })
-          })
-        }
-      }
-      if (table === 'block_scores') {
-        return {
-          insert: vi.fn().mockResolvedValue({ error: null })
-        }
-      }
-      return { insert: vi.fn().mockResolvedValue({ error: null }) }
-    })
-
+    const rpc = vi.fn().mockResolvedValue({ data: workoutId, error: null })
     return {
-      supabase: { from: fromFn } as unknown as import('@supabase/supabase-js').SupabaseClient,
-      fromFn,
-      insertFn
+      supabase: { rpc } as unknown as import('@supabase/supabase-js').SupabaseClient,
+      rpc
     }
   }
 
   it('persists workout and returns workout ID', async () => {
-    const { supabase, fromFn } = createMockSupabase()
+    const { supabase, rpc } = createMockSupabase()
     const response: TrainerResponse = {
       message: 'Logged!',
       workout: {
@@ -622,8 +596,12 @@ describe('persistWorkout', () => {
 
     const id = await persistWorkout(response, 'user-1', 'Fran 4:10 Rx', supabase)
     expect(id).toBe('workout-123')
-    expect(fromFn).toHaveBeenCalledWith('workouts')
-    expect(fromFn).toHaveBeenCalledWith('block_scores')
+    expect(rpc).toHaveBeenCalledOnce()
+    expect(rpc).toHaveBeenCalledWith('save_logged_activity', expect.objectContaining({
+      p_kind: 'workout',
+      p_record: expect.objectContaining({ blocks: response.workout!.blocks, input_text: 'Fran 4:10 Rx' }),
+      p_blocks: [expect.objectContaining({ block_type: response.workout!.blocks[0].block_type })]
+    }))
   })
 
   it('returns null when no workout in response', async () => {
@@ -658,24 +636,9 @@ describe('persistWorkout', () => {
     expect(id).toBeNull()
   })
 
-  it('returns null when workout insert fails', async () => {
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'workouts') {
-        return {
-          insert: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: null,
-                error: { message: 'DB error' }
-              })
-            })
-          })
-        }
-      }
-      return { insert: vi.fn().mockResolvedValue({ error: null }) }
-    })
-
-    const supabase = { from: fromFn } as unknown as import('@supabase/supabase-js').SupabaseClient
+  it('throws when the atomic workout save fails', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: 'DB error' } })
+    const supabase = { rpc } as unknown as import('@supabase/supabase-js').SupabaseClient
     const response: TrainerResponse = {
       message: 'Logged!',
       workout: {
@@ -689,8 +652,7 @@ describe('persistWorkout', () => {
       confidence: 0.9
     }
 
-    const id = await persistWorkout(response, 'user-1', 'test', supabase)
-    expect(id).toBeNull()
+    await expect(persistWorkout(response, 'user-1', 'test', supabase)).rejects.toThrow('Unable to save the complete activity')
   })
 })
 

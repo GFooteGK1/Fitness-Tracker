@@ -230,11 +230,14 @@ class OfflineQueueManager {
   }
 
   private async processPhotoUpload(operation: QueuedOperation): Promise<void> {
+    if (!operation.userId) throw new Error('This older queued photo has no account identity. Review it before resubmitting.')
     const { file, timestamp } = operation.data
 
     const formData = new FormData()
     formData.append('photo', file)
     formData.append('timestamp', timestamp)
+    formData.append('requestId', operation.id)
+    formData.append('expectedUserId', operation.userId)
 
     const response = await fetch('/api/meals/upload', {
       method: 'POST',
@@ -423,9 +426,10 @@ export const offlineQueue = new OfflineQueueManager()
  * Helper functions for common operations
  */
 
-export function queuePhotoUpload(file: File, timestamp: string): string {
+export function queuePhotoUpload(file: File, timestamp: string, userId?: string): string {
   return offlineQueue.enqueue({
     type: 'photo_upload',
+    userId,
     data: { file, timestamp },
     maxRetries: DEFAULT_MAX_RETRIES,
     priority: 'high'

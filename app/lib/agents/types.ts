@@ -292,6 +292,9 @@ export interface ClassificationResult {
 
 /** What the client sends to /api/agent/process */
 export interface AgentRequest {
+  expectedUserId?: string
+  requestId?: string
+  submittedAt?: string
   content: string            // Text content or transcription
   input_mode: InputMode
   input_type?: InputType     // Optional hint: 'workout_log', 'meal_log', 'query', etc.

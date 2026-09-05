@@ -767,28 +767,11 @@ describe('Property 7: Workout persistence round-trip', () => {
       let capturedInsert: Record<string, unknown> | null = null
 
       const mockSupabase = {
-        from: vi.fn((table: string) => {
-          if (table === 'workouts') {
-            return {
-              insert: vi.fn((data: Record<string, unknown>) => {
-                capturedInsert = data
-                return {
-                  select: vi.fn().mockReturnValue({
-                    single: vi.fn().mockResolvedValue({
-                      data: { id: 'workout-prop7' },
-                      error: null,
-                    }),
-                  }),
-                }
-              }),
-            }
-          }
-          if (table === 'block_scores') {
-            return {
-              insert: vi.fn().mockResolvedValue({ error: null }),
-            }
-          }
-          return { insert: vi.fn().mockResolvedValue({ error: null }) }
+        rpc: vi.fn(async (name: string, args: { p_record: Record<string, unknown>; p_blocks: Record<string, unknown>[]; p_kind: string }) => {
+          expect(name).toBe('save_logged_activity')
+          expect(args.p_kind).toBe('workout')
+          capturedInsert = args.p_record
+          return { data: 'workout-prop7', error: null }
         }),
       }
 
@@ -836,28 +819,11 @@ describe('Property 7: Workout persistence round-trip', () => {
       let capturedBlockScores: Record<string, unknown>[] | null = null
 
       const mockSupabase = {
-        from: vi.fn((table: string) => {
-          if (table === 'workouts') {
-            return {
-              insert: vi.fn().mockReturnValue({
-                select: vi.fn().mockReturnValue({
-                  single: vi.fn().mockResolvedValue({
-                    data: { id: 'workout-prop7b' },
-                    error: null,
-                  }),
-                }),
-              }),
-            }
-          }
-          if (table === 'block_scores') {
-            return {
-              insert: vi.fn((data: Record<string, unknown>[]) => {
-                capturedBlockScores = data
-                return Promise.resolve({ error: null })
-              }),
-            }
-          }
-          return { insert: vi.fn().mockResolvedValue({ error: null }) }
+        rpc: vi.fn(async (name: string, args: { p_record: Record<string, unknown>; p_blocks: Record<string, unknown>[]; p_kind: string }) => {
+          expect(name).toBe('save_logged_activity')
+          expect(args.p_kind).toBe('workout')
+          capturedBlockScores = args.p_blocks
+          return { data: 'workout-prop7b', error: null }
         }),
       }
 
@@ -879,7 +845,8 @@ describe('Property 7: Workout persistence round-trip', () => {
         const score = capturedBlockScores![i]
 
         expect(score.block_type).toBe(block.block_type)
-        expect(score.workout_id).toBe('workout-prop7b')
+        // The transaction supplies its generated workout ID to every score.
+        expect(score).not.toHaveProperty('workout_id')
         expect(score.user_id).toBe('user-prop7b')
         expect(score.rounds_completed).toBe(block.score?.rounds ?? null)
         expect(score.extra_reps).toBe(block.score?.extra_reps ?? null)

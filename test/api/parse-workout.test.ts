@@ -1,3 +1,4 @@
+import { loggingRpc } from '../helpers/logging-rpc'
 /**
  * Tests for POST /api/parse-workout (migrated onto the LLM seam).
  *
@@ -22,6 +23,7 @@ import { complete } from '../../app/lib/llm/client'
 
 function authedSupabase(workoutId = 'w1') {
   return {
+    rpc: loggingRpc(workoutId),
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
     },
@@ -62,7 +64,7 @@ function mockLlmText(text: string) {
 function req(body: unknown): Request {
   return new Request('http://localhost:3000/api/parse-workout', {
     method: 'POST',
-    body: JSON.stringify(body),
+    body: JSON.stringify({ requestId: 'request-123456', submittedAt: '2026-09-04T12:00:00Z', ...(body as object) }),
     headers: { 'content-type': 'application/json' },
   })
 }

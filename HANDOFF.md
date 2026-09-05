@@ -1,3 +1,147 @@
+# Handoff — SociusFit app quality — 2026-09-04
+
+## Current objective
+
+Execute the three approved code-quality priorities. Local implementation is
+complete and release is approved. PR #77 is open; migration, preview canary, and
+branch protection passed. Merge/deployment and production canary are next.
+Current evidence: `docs/releases/app-quality-production-2026-09-04.md`. The plan is
+`docs/decisions/ADR-0008-app-quality-and-canonical-logging.md`; exact release
+instructions and limitations are in `docs/releases/app-quality-2026-09-04.md`.
+
+## State of play
+
+- Branch `codex/app-quality` in `C:\Dev\Personal\repos\Fitness-Tracker\.worktrees\app-quality`.
+- Base and live remote main verified: `7c656d0c679ad2fce256b29f3fa306ff8a26d35d`.
+- Uncommitted local implementation. No commit, push, production migration,
+  deployment, or repository-permission write performed.
+- Full Vitest: 2,452 passed, zero failed. Includes five executable PostgreSQL
+  tests and both coach completion/rolling-week SQL verifiers.
+- `tsc --noEmit --pretty false`, lint, production build, and `git diff --check`
+  passed. Build generated all 81 routes/pages successfully.
+- Final Playwright: 3/3 passed after all client changes. Screenshot visually
+  inspected at `output/playwright/app-quality-results/coach-mobile.png`.
+  Real local Next/React/Chromium; auth and service responses are simulated.
+- Original primary checkout retains its prior `.gitignore`, HANDOFF.md,
+  `.worktrees/`, and `supabase/.temp/` changes. Shared Beads activity updated its
+  already-dirty `.beads/interactions.jsonl`; no primary source edits.
+- Team pass: root lead/builder/verifier; independent logging_design_review agent
+  reviewed design and final diff, maintained eight agent test files, and authored
+  the browser tests. Root fixed all material findings and the null-body follow-up.
+
+## Decisions and evidence
+
+Shared user-owned request receipts guard the four AI logging endpoints. Workout
+and block scores commit atomically; photo response and meal commit atomically.
+Uncertain writes abort the tool loop and preserve replay identity. Only confirmed
+pre-write analysis failures allow a new attempt. Session storage retains retry
+metadata, not photo bytes. Explicit date and expected-user guards prevent retries
+from silently changing the original athlete or selected day.
+
+Coach and trainer project the current accepted Supabase plan. Trainer retains the
+full stored prescription; the card includes the Program link and terminal status.
+No new plan is generated or accepted by these reads.
+
+PGlite executes PostgreSQL, with a local auth identity/role fixture. This does not
+replace a staging/live Supabase canary. Browser tests likewise simulate APIs and
+save receipts; they prove UI/storage recovery separately from database semantics.
+
+## Remaining decisions and risks
+
+- Production/repository write approval is required by AGENTS.md. The prepared
+  settings require `verify` from GitHub Actions app 15368; main is currently
+  unprotected. Settings are not yet active, and remote CI has not run this diff.
+- Apply the additive receipt migration before code. Old clients missing IDs must
+  refresh. A processing receipt after a crash may require history reconciliation;
+  there is no automatic worker restart or retention/deletion policy.
+- Four audit affected-package findings remain (3 high, 1 moderate), zero critical.
+  npm's suggested fixes involve Next16 or a Serwist downgrade. Details/primary
+  advisories are in the release record; exploitability is not claimed either way.
+- Dormant workout-offline-queue has an old contract and remains unwired.
+- Host sandbox helper returns `helper_unknown_error: setup refresh had errors`
+  for default execution/view_image. Approved escalated PowerShell commands worked;
+  visual review used an elevated read of the generated screenshot only.
+
+## Tracking
+
+Local implementation epic: `Fitness-Tracker-j7g`, children `.1`, `.2`, `.3`.
+Release follow-up: `Fitness-Tracker-22h`.
+Dependency follow-up: `Fitness-Tracker-zhi`.
+Dormant offline queue/reconciliation follow-up: `Fitness-Tracker-ebu`.
+
+## Next three actions
+
+1. Obtain approval for the concrete release sequence and GitHub settings in the
+   release record. Preserve unrelated primary-checkout changes.
+2. Commit/push this worktree, run remote CI on the exact SHA, apply additive schema
+   to the verified target, and execute staging/production canaries under approval.
+3. Read back deployed behavior and GitHub protection; attach evidence to the
+   release issue and close it only after the approved release is verified.
+
+## Uncommitted files at handoff
+
+This inventory precedes this HANDOFF.md update. Generated test/audit/browser
+artifacts are ignored and are not release source.
+
+```text
+M .github/workflows/ci.yml
+ M .gitignore
+ M app/api/agent/process/route.ts
+ M app/api/meals/parse-text/route.ts
+ M app/api/meals/upload/route.ts
+ M app/api/parse-workout/route.ts
+ M app/components/MealCameraCapture.tsx
+ M app/components/MealInputEnhanced.tsx
+ M app/food-log/page.tsx
+ M app/lib/agents/context-builder.ts
+ M app/lib/agents/nutritionist-agent.ts
+ M app/lib/agents/preprocessor.ts
+ M app/lib/agents/tools/executor.ts
+ M app/lib/agents/trainer-agent.ts
+ M app/lib/agents/types.ts
+ M app/lib/offline-queue.ts
+ M app/log/page.tsx
+ M app/v2/page.tsx
+ M docs/architecture/ARCHITECTURE-MAP.md
+ M docs/migrations/verify-atomic-coach-session-completion-migration.sql
+ M package-lock.json
+ M package.json
+ M test/agents/context-builder.property.test.ts
+ M test/agents/context-builder.test.ts
+ M test/agents/error-handling-preservation.property.test.ts
+ M test/agents/nutritionist-agent.property.test.ts
+ M test/agents/nutritionist-agent.test.ts
+ M test/agents/socius-tools.test.ts
+ M test/agents/trainer-agent.property.test.ts
+ M test/agents/trainer-agent.test.ts
+ M test/api/agent-process-manager.test.ts
+ M test/api/meals-parse-text.test.ts
+ M test/api/meals-upload.test.ts
+ M test/api/parse-workout.test.ts
+ M test/food-tracking/integration.test.ts
+ M test/v2/V2Page.test.tsx
+ M test/v2/meal-photo-upload.test.tsx
+ M vitest.config.ts
+?? app/lib/client/logging-request.ts
+?? app/lib/coach/todays-program.ts
+?? app/lib/logging/server.ts
+?? docs/decisions/ADR-0008-app-quality-and-canonical-logging.md
+?? docs/migrations/logging-receipts-migration.sql
+?? docs/releases/app-quality-2026-09-04.md
+?? docs/releases/github-main-protection.json
+?? e2e/coach-logging.pw.ts
+?? playwright.config.ts
+?? supabase/migrations/20260904120000_logging_receipts.sql
+?? test/api/logging-boundary.test.ts
+?? test/client/logging-request.test.ts
+?? test/database/fixture.ts
+?? test/database/logging.test.ts
+?? test/database/weekly.test.ts
+?? test/helpers/logging-rpc.ts
+```
+
+---
+
 # Handoff
 
 ## Rolling weekly adaptive coach (released, 2026-09-04)

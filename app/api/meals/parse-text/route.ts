@@ -1,9 +1,10 @@
+import { saveActivity, replayJsonRequest } from '@/app/lib/logging/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { complete } from '@/app/lib/llm/client'
 import { extractJson } from '@/app/lib/llm/json'
 
-export async function POST(request: NextRequest) {
+async function processMeal(request: NextRequest) {
   try {
     const supabase = await createServerClient()
 
@@ -19,14 +20,14 @@ export async function POST(request: NextRequest) {
 
     const { text, timestamp } = await request.json()
 
-    if (!text || !text.trim()) {
+    if (typeof text !== 'string' || !text.trim() || text.length > 5000) {
       return NextResponse.json(
         { error: 'Meal text is required' },
         { status: 400 }
       )
     }
 
-    if (!timestamp) {
+    if (typeof timestamp !== 'string' || !Number.isFinite(Date.parse(timestamp))) {
       return NextResponse.json(
         { error: 'Timestamp is required' },
         { status: 400 }
@@ -85,10 +86,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Save to database
-    const { data: meal, error: mealError } = await supabase
-      .from('meals')
-      .insert({
+    const mealId = await saveActivity(supabase, 'meal', {
         user_id: user.id,
         // Timestamp is expected to be in ISO 8601 UTC format from the client
         // Client should convert local time to UTC before sending
@@ -104,22 +102,10 @@ export async function POST(request: NextRequest) {
         ai_confidence: parsed.confidence || 0.8,
         needs_review: (parsed.confidence || 0.8) < 0.7
       })
-      .select()
-      .single()
-
-    if (mealError) {
-      console.error('[Parse Text] Database error:', mealError)
-      return NextResponse.json(
-        { error: 'Failed to save meal: ' + mealError.message },
-        { status: 500 }
-      )
-    }
-
-    console.log('[Parse Text] Meal saved:', meal.id)
 
     return NextResponse.json({
       success: true,
-      mealId: meal.id,
+      mealId,
       items: parsed.items,
       totals: parsed.totals,
       confidence: parsed.confidence || 0.8
@@ -248,3 +234,5 @@ ${text}
 
 Parse this meal description and return structured JSON matching the schema.`
 }
+
+export function POST(request: NextRequest) { return replayJsonRequest(request, 'meal-text', processMeal) }
