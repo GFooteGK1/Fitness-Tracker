@@ -1,3 +1,57 @@
+# Handoff — SociusFit app-quality release complete — 2026-09-04
+
+## Current objective and state
+
+The approved app-quality release is complete. PR #77 merged as
+`183bd2cd26cb613801f01567dcde9886420e5289`. Production deployment
+`dpl_CMKRaFPbHhgcmnfWARn85Tsr3U7r` is Ready and serves www.sociusfit.com,
+sociusfit.com, and sociusai.vercel.app. Health: HTTP 200, healthy.
+
+The additive logging migration `20260904120000` is applied to verified Supabase
+project `auolnfwetmfcwhtvakzy`. Fresh dry run is empty; database lint has zero
+errors. Receipt RLS/FORCE RLS and authenticated-only RPC execution are verified.
+
+Final PR CI `33935909491` and merged-main CI `33936146879` passed. Authenticated
+preview and production canaries passed text, photo, and agent logging replay,
+date preservation, account guards, two-user isolation, and zero-row cleanup.
+No real athlete state changed. Main protection is applied and read back: strict
+`verify` from GitHub Actions 15368, admin enforcement, PR/resolved conversations,
+no force pushes or branch deletion.
+
+## Files and evidence
+
+`docs/releases/app-quality-production-2026-09-04.md` records exact deployments,
+CI runs, synthetic IDs, migration application, and cleanup evidence.
+`scripts/release/verify-app-quality.mjs` is the reusable authenticated canary.
+`docs/releases/github-main-protection.json` is the applied protection payload.
+The local final canary log is ignored at
+`output/app-quality-release/production-canary.jsonl`; it contains no credentials.
+
+The implementation/source is on main. Final post-release evidence is committed
+and pushed on `codex/app-quality` without changing deployed application code.
+The original primary checkout's unrelated source, HANDOFF, ignore, and generated
+files are preserved; shared Beads activity may update interactions.jsonl.
+
+## Decisions, tracking, and remaining work
+
+Implementation epic `Fitness-Tracker-j7g` is complete. Release issue
+`Fitness-Tracker-22h` is complete. Four noncritical affected-package advisories
+remain in `Fitness-Tracker-zhi`. Dormant offline queue and reconciliation/retention
+follow-up: `Fitness-Tracker-ebu`. No release blocker remains.
+
+Rollback target is `dpl_8BQ1DSzBP5cBjcykKbKFGg33J7Nj` (source `7c656d0`).
+Use application-first rollback; preserve additive schema and user data.
+
+## Next three actions
+
+1. Triage the supported Next/PostCSS and Serwist/Browserslist dependency fixes.
+2. Design receipt reconciliation/retention and dormant offline queue ownership
+   before enabling additional offline logging paths.
+3. Use the required CI and existing independent review/canary flow for the next
+   behavior change. Do not bypass newly enabled main protection.
+
+---
+
 # Handoff — SociusFit app quality — 2026-09-04
 
 ## Current objective

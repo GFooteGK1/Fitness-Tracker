@@ -5,7 +5,7 @@
 Plan: [ADR-0008](../decisions/ADR-0008-app-quality-and-canonical-logging.md).
 Worktree: `.worktrees/app-quality`; branch `codex/app-quality`.
 Base/current remote main verified as `7c656d0c679ad2fce256b29f3fa306ff8a26d35d`.
-Release approved in the current task. See
+Released to production through PR #77. See
 [application evidence](app-quality-production-2026-09-04.md) for current migration,
 canary, CI, and protection state; the sections below preserve the candidate plan.
 

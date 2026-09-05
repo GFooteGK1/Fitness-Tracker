@@ -51,10 +51,36 @@ The first API request was rejected without changing settings because it included
 both deprecated `contexts` and replacement `checks`. The corrected tracked JSON
 uses `checks` only and preserves the approved policy.
 
-## Remaining release gate
+## Production release
 
-Merge only after CI passes the final PR head (including this reusable canary and
-release evidence), verify the resulting production deployment/alias SHA, and
-repeat the bounded authenticated canary. Final production proof will be recorded
-in this PR and the local HANDOFF. The remaining four dependency findings are
-tracked separately in `Fitness-Tracker-zhi`.
+Final PR head `f6bff03558b17e7fe5d8e058f55ea715e7b8853d` passed CI run
+`33935909491`, job `101223692208`, before protected merge.
+PR #77 merged at `2026-09-05T01:26:02Z` as
+`183bd2cd26cb613801f01567dcde9886420e5289`.
+
+Production deployment `dpl_CMKRaFPbHhgcmnfWARn85Tsr3U7r` is Ready and has
+that exact Git SHA. Deployment URL:
+https://fitness-tracker-ae9dso1ei-gregs-projects-98860c8b.vercel.app.
+Verified aliases include https://www.sociusfit.com, https://sociusfit.com, and
+https://sociusai.vercel.app. Live health at `2026-09-05T01:28:27.572Z` returned
+HTTP 200, healthy, database connected, auth configured.
+
+The production canary against https://www.sociusfit.com passed the same real
+text-meal, workout, synthetic meal-photo, and agent logging/replay checks,
+explicit date checks, account guards, and two-user isolation. It created exactly
+two meals, two workouts, and two block-score rows before cleanup.
+Synthetic users: `431f8b1d-2257-4888-9f42-55e654861c8f` and
+`80655b9c-1192-4cef-b944-c48282ea7e69`. Both users and all related canary records
+were removed. Independent cleanup readback returned zero rows/auth users and
+zero orphan blocks. Final result: `canary_passed` and `cleanup_passed`.
+
+Merged-main CI run `33936146879` passed. Both the exact final PR head and the
+merged production source passed the full required verify job.
+
+Rollback target retained: `dpl_8BQ1DSzBP5cBjcykKbKFGg33J7Nj`, source
+`7c656d0c679ad2fce256b29f3fa306ff8a26d35d`. Use application-first rollback;
+leave additive schema/receipts and real athlete data intact.
+
+The remaining four dependency findings are tracked in `Fitness-Tracker-zhi`;
+they do not include critical advisories. No real athlete data was changed by
+either canary.
