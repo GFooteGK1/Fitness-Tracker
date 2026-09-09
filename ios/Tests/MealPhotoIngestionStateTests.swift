@@ -231,3 +231,48 @@ func diagnosticsExcludePrivateMetadata() throws {
         #expect(!payload.contains(forbidden))
     }
 }
+
+@Test("Build 5 diagnostics decode without a startup timestamp")
+func legacyDiagnosticsRemainReadable() throws {
+    var legacy = ProtocolProbeDiagnostics()
+    legacy.prepareFreshCanary(at: Date(timeIntervalSince1970: 1_777_000_000))
+    let encoded = try JSONEncoder().encode(legacy)
+    var payload = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+    payload.removeValue(forKey: "lastInitializationAt")
+    let decoded = try JSONDecoder().decode(
+        ProtocolProbeDiagnostics.self,
+        from: JSONSerialization.data(withJSONObject: payload)
+    )
+    #expect(decoded == legacy)
+    #expect(decoded.lastInitializationAt == nil)
+    #expect(decoded.phase == .readyForCapture)
+}
+
+@Test("Initialization evidence survives reads without claiming a processing invocation")
+func initializationDoesNotClaimProcessing() throws {
+    let fixture = isolatedProtocolProbeStore()
+    defer {
+        fixture.defaults.removePersistentDomain(forName: fixture.suiteName)
+    }
+    let baseline = Data([4, 5, 6])
+    let preparedAt = Date(timeIntervalSince1970: 1_777_000_000)
+    let initializedAt = preparedAt.addingTimeInterval(60)
+    try fixture.store.prepareFreshCanary(tokenData: baseline, at: preparedAt)
+    try fixture.store.updateDiagnostics { $0.lastInitializationAt = initializedAt }
+
+    let diagnostics = fixture.store.loadDiagnostics()
+    #expect(diagnostics.lastInitializationAt == initializedAt)
+    #expect(diagnostics.invocationCount == 0)
+    #expect(diagnostics.lastInvocationAt == nil)
+    #expect(diagnostics.lastUpdatedAt == preparedAt)
+    #expect(diagnostics.phase == .readyForCapture)
+    #expect(!diagnostics.jobRegistered)
+    #expect(fixture.store.loadPersistentChangeTokenData() == baseline)
+    #expect(fixture.store.loadDiagnostics() == diagnostics)
+
+    try fixture.store.updateDiagnostics {
+        $0.beginInvocation(hasBaselineToken: true, at: initializedAt.addingTimeInterval(1))
+    }
+    #expect(fixture.store.loadDiagnostics().lastInitializationAt == initializedAt)
+    #expect(fixture.store.loadDiagnostics().invocationCount == 1)
+}

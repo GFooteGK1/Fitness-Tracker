@@ -13,9 +13,26 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
     private let terminationLock = NSLock()
     private var terminationRequested = false
 
-    required init() {}
+    required init() {
+        logger.notice("Protocol probe extension initialized")
+        guard let sharedStore else {
+            logger.error("Protocol probe initialization: App Group is unavailable")
+            return
+        }
+        do {
+            try sharedStore.updateDiagnostics {
+                $0.lastInitializationAt = Date()
+            }
+        } catch {
+            let nsError = error as NSError
+            logger.error(
+                "Protocol probe startup diagnostic failed domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)"
+            )
+        }
+    }
 
     func process() -> PHBackgroundResourceUploadProcessingResult {
+        logger.notice("Protocol probe process entered")
         guard let sharedStore else {
             logger.error("Protocol probe App Group is unavailable")
             return .failure

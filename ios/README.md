@@ -157,3 +157,37 @@ diagnostic snapshot defined by ADR-0006.
 
 Official PhotoKit source:
 https://developer.apple.com/documentation/photokit/uploading-asset-resources-in-the-background
+
+## Startup investigation (2026-09-09, local candidate)
+
+The refreshed phone screenshot shows full Photos access, extension enabled,
+zero recorded invocations, and no registered job. This does not distinguish a
+launch that never occurred from a failure before shared diagnostics were saved.
+
+The diagnostic candidate records the latest extension initialization separately
+from process invocations. It emits local OSLog markers at both entry points and
+checks App Group container availability before opening the shared defaults suite.
+The host displays its App Group access, app version/build, and a Last checked time
+on refresh. Last update remains the processing-state timestamp. Startup evidence
+uses the same shared store: missing evidence still cannot rule out a storage
+failure or failure before initialization. Host access does not prove extension
+access. Device logs are needed if both startup and processing evidence remain absent.
+
+The optional initialization timestamp preserves decoding of Build 5 snapshots.
+Preparing a fresh canary resets it with the existing diagnostics, so capture the
+current card before resetting. No photo discovery, upload, endpoint, or nutrition
+processing behavior changes in this candidate.
+
+An external developer reports similar scheduling failure when iCloud Photos is
+enabled: https://developer.apple.com/forums/thread/822256 . This is an unconfirmed
+lead, not an Apple-confirmed cause on Greg's device. Record current iOS version
+and iCloud Photos state without changing sync settings. Do not disable iCloud
+Photos as a routine workaround.
+
+Windows validation cannot compile the Apple extension. Before TestFlight release,
+run the native Swift tests and unsigned Xcode compile on this candidate, then the
+protected signing workflow under release authorization. On the phone, preserve
+old diagnostics, verify the new build number and refresh timestamp, and compare
+initialization evidence with process count. A recorded initialization with zero
+process calls narrows the failure to after initialization; neither marker requires
+or claims a photo upload or a nutrition result.

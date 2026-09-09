@@ -16,6 +16,14 @@ struct AutoMealPhotoSetupView: View {
                 }
 
                 Section("Probe diagnostics") {
+                    LabeledContent(
+                        "App Group access",
+                        value: controller.sharedContainerAvailable ? "Available" : "Unavailable"
+                    )
+                    LabeledContent(
+                        "Extension initialized",
+                        value: controller.diagnostics.lastInitializationAt?.formatted() ?? "Not recorded"
+                    )
                     LabeledContent("Phase", value: controller.diagnostics.phase.displayName)
                     LabeledContent(
                         "Extension invocations",
@@ -55,6 +63,14 @@ struct AutoMealPhotoSetupView: View {
                         controller.refreshDiagnostics()
                     }
                     .frame(minHeight: 44)
+                    if let checkedAt = controller.lastCheckedAt {
+                        LabeledContent(
+                            "Last checked",
+                            value: checkedAt.formatted(date: .abbreviated, time: .standard)
+                        )
+                    }
+                    Text("Refresh reads saved diagnostics. It does not start the extension or upload a photo.")
+                    LabeledContent("App version", value: appVersion)
                 }
 
                 Section("Fresh canary") {
@@ -79,7 +95,7 @@ struct AutoMealPhotoSetupView: View {
 
                 Section("Privacy") {
                     Text(
-                        "This diagnostic build uploads at most one newly captured photo per extension run to the private probe. Shared diagnostics contain no filename, asset identifier, location, photo bytes, endpoint URL, or nutrition data. Use disposable test photos only."
+                        "This diagnostic build uploads at most one newly captured photo per extension run to the private probe. It does not analyze nutrition or log meals. Shared diagnostics contain no filename, asset identifier, location, photo bytes, endpoint URL, or nutrition data. Use disposable test photos only."
                     )
                 }
 
@@ -116,6 +132,12 @@ struct AutoMealPhotoSetupView: View {
                 }
             }
         }
+    }
+
+    private var appVersion: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unknown"
+        return "\(version) (\(build))"
     }
 
     private var resourceDescription: String {

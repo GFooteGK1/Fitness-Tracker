@@ -26,6 +26,7 @@ public struct ProtocolProbeDiagnostics: Codable, Equatable, Sendable {
     public var phase: ProtocolProbePhase
     public var lastUpdatedAt: Date?
     public var lastInvocationAt: Date?
+    public var lastInitializationAt: Date?
     public var invocationCount: Int
     public var hasBaselineToken: Bool
     public var insertedPhotoCount: Int
@@ -55,6 +56,7 @@ public struct ProtocolProbeDiagnostics: Codable, Equatable, Sendable {
         self.phase = phase
         self.lastUpdatedAt = lastUpdatedAt
         self.lastInvocationAt = lastInvocationAt
+        self.lastInitializationAt = nil
         self.invocationCount = invocationCount
         self.hasBaselineToken = hasBaselineToken
         self.insertedPhotoCount = insertedPhotoCount
@@ -144,6 +146,13 @@ public final class ProtocolProbeSharedStore {
     private let defaults: UserDefaults
 
     public convenience init?() {
+        #if os(iOS)
+        guard FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: protocolProbeAppGroupIdentifier
+        ) != nil else {
+            return nil
+        }
+        #endif
         guard let defaults = UserDefaults(suiteName: protocolProbeAppGroupIdentifier) else {
             return nil
         }

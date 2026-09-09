@@ -8,6 +8,7 @@ final class PhotoLibraryAuthorizationController: ObservableObject {
     @Published private(set) var extensionEnabled: Bool
     @Published private(set) var diagnostics: ProtocolProbeDiagnostics
     @Published private(set) var isPreparingCanary = false
+    @Published private(set) var lastCheckedAt: Date?
     @Published private(set) var errorMessage: String?
 
     private let sharedStore: ProtocolProbeSharedStore?
@@ -96,10 +97,13 @@ final class PhotoLibraryAuthorizationController: ObservableObject {
         authorizationStatus == .authorized && !isPreparingCanary
     }
 
+    var sharedContainerAvailable: Bool { sharedStore != nil }
+
     func refreshDiagnostics() {
         authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         extensionEnabled = PHPhotoLibrary.shared().uploadJobExtensionEnabled
         diagnostics = sharedStore?.loadDiagnostics() ?? ProtocolProbeDiagnostics()
+        lastCheckedAt = Date()
     }
 
     func disable() {
