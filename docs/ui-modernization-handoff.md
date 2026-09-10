@@ -51,4 +51,3 @@ Photo review remains honest about estimation and existing correction semantics.
 
 Review this worktree diff before release. Keep generated browser artifacts out
 of a future commit. Commit, push, merge, and deployment require Greg's authority.
-
