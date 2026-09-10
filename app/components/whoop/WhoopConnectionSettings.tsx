@@ -145,8 +145,8 @@ export function WhoopConnectionSettings() {
 
   if (loading && !connectionStatus) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">WHOOP Connection</h3>
+      <div className="app-panel p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">WHOOP Connection</h3>
         <div className="flex items-center justify-center py-8">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -155,8 +155,8 @@ export function WhoopConnectionSettings() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">WHOOP Connection</h3>
+    <div className="app-panel p-6">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">WHOOP Connection</h3>
 
       {error && (
         <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
@@ -174,7 +174,7 @@ export function WhoopConnectionSettings() {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-gray-700 dark:text-gray-200">
                 Connect your WHOOP account to track recovery, strain, and sleep metrics alongside your workouts and nutrition.
               </p>
             </div>
@@ -198,7 +198,7 @@ export function WhoopConnectionSettings() {
             Connect WHOOP
           </button>
 
-          <p className="text-xs text-gray-500 mt-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
             By connecting, you agree to share your WHOOP data with SociusFit.
             View our <a href="/privacy" className="text-blue-600 hover:text-blue-700">privacy policy</a>.
           </p>
@@ -214,8 +214,8 @@ export function WhoopConnectionSettings() {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900">WHOOP Connected</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">WHOOP Connected</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Last synced: {formatLastSync(connectionStatus.lastSyncAt)}
                 </p>
               </div>
@@ -235,7 +235,7 @@ export function WhoopConnectionSettings() {
                 </div>
                 <button
                   onClick={handleConnect}
-                  className="ml-4 text-sm font-medium text-orange-700 hover:text-orange-900 underline"
+                  className="ml-4 min-h-[44px] text-sm font-medium text-orange-700 hover:text-orange-900 underline"
                 >
                   Reconnect
                 </button>
@@ -262,11 +262,11 @@ export function WhoopConnectionSettings() {
             <button
               onClick={handleSync}
               disabled={syncing || connectionStatus.status === 'syncing'}
-              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center min-h-[44px] px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {syncing || connectionStatus.status === 'syncing' ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700 dark:text-gray-200" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
@@ -274,7 +274,7 @@ export function WhoopConnectionSettings() {
                 </>
               ) : (
                 <>
-                  <svg className="-ml-1 mr-2 h-4 w-4 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="-ml-1 mr-2 h-4 w-4 text-gray-700 dark:text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   Sync Now
@@ -285,7 +285,7 @@ export function WhoopConnectionSettings() {
             {connectionStatus.status === 'error' && (
               <button
                 onClick={handleConnect}
-                className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="inline-flex items-center justify-center min-h-[44px] px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Reconnect
               </button>
@@ -294,14 +294,14 @@ export function WhoopConnectionSettings() {
             <button
               onClick={() => setShowDisconnectConfirm(true)}
               disabled={loading}
-              className="inline-flex items-center justify-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center min-h-[44px] px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 dark:text-red-300 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-950 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Disconnect
             </button>
           </div>
 
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <p className="text-xs text-gray-600">
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <p className="text-xs text-gray-600 dark:text-gray-300">
               <strong>Note:</strong> Disconnecting will stop syncing new data, but your historical WHOOP data will be retained for insights.
             </p>
           </div>
@@ -311,22 +311,22 @@ export function WhoopConnectionSettings() {
       {/* Disconnect Confirmation Modal */}
       {showDisconnectConfirm && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Disconnect WHOOP?</h3>
-            <p className="text-sm text-gray-500 mb-6">
+          <div className="app-panel max-w-md w-full p-6">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Disconnect WHOOP?</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
               Are you sure you want to disconnect your WHOOP account? You can reconnect at any time. Your historical data will be preserved.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowDisconnectConfirm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="min-h-[44px] px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDisconnect}
                 disabled={loading}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="min-h-[44px] px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Disconnecting...' : 'Disconnect'}
               </button>

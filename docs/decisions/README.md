@@ -10,3 +10,4 @@
 | [ADR-0006](ADR-0006-layered-adaptive-programming-evidence-and-memory.md) | Layered adaptive-programming evidence and memory | Accepted |
 | [ADR-0007](ADR-0007-rolling-weekly-adaptive-programming.md) | Rolling weekly adaptive programming | Accepted |
 | [ADR-0009](ADR-0009-daily-action-navigation.md) | Daily action navigation | Accepted |
+| [ADR-0010](ADR-0010-low-touch-entry-and-feature-retirement.md) | Low-touch entry and Leaderboard retirement | Accepted |

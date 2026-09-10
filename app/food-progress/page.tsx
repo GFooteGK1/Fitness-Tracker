@@ -135,11 +135,11 @@ function FoodProgressContent() {
     if (currentView === 'camera') {
       breadcrumbs.push({ label: 'Add Meal', current: true } as any)
     } else if (currentView === 'weekly') {
-      breadcrumbs.push({ label: 'Weekly View', current: true } as any)
+      breadcrumbs.push({ label: 'Week', current: true } as any)
     } else if (currentView === 'targets') {
       breadcrumbs.push({ label: 'Manage Targets', current: true } as any)
     } else {
-      breadcrumbs.push({ label: 'Daily View', current: true } as any)
+      breadcrumbs.push({ label: 'Day', current: true } as any)
     }
 
     return breadcrumbs
@@ -188,17 +188,15 @@ function FoodProgressContent() {
               {currentView === 'camera' ? 'Log a meal' :
                currentView === 'weekly' ? `Weekly Progress` :
                currentView === 'targets' ? 'Manage Targets' :
-               'Daily Progress'}
+               'Nutrition'}
             </h1>
-            {currentView !== 'camera' && <button
-              onClick={() => setShowExport(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Export
-            </button>}
+            {currentView !== 'camera' && <details className="relative">
+              <summary className="app-secondary cursor-pointer">More</summary>
+              <div className="app-panel absolute right-0 z-10 mt-2 min-w-44 p-2">
+                <button type="button" className="app-secondary w-full" onClick={() => setCurrentView('targets')}>Manage targets</button>
+                <button type="button" className="app-secondary mt-2 w-full" onClick={() => setShowExport(true)}>Export meals</button>
+              </div>
+            </details>}
           </div>
 
           <ExportDialog isOpen={showExport} onClose={() => setShowExport(false)} defaultDataType="meals" />
@@ -217,38 +215,29 @@ function FoodProgressContent() {
         {currentView === 'camera' && <button type="button" className="app-secondary mb-4" onClick={() => setCurrentView('daily')}>← Back to nutrition</button>}
         <div className={`${currentView === 'camera' ? 'hidden' : ''} bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700 mb-4 sm:mb-6`}>
           {/* Mobile View Toggle - Horizontal scroll on small screens */}
-          <div className="mb-4 sm:mb-0">
-            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 overflow-x-auto">
+          <div className="mb-2">
+            <div className="grid grid-cols-2 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
               <button
                 onClick={() => setCurrentView('daily')}
                 className={`px-3 sm:px-4 py-2 rounded-md font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
                   currentView === 'daily'
-                    ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                    ? 'app-primary shadow-sm'
                     : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               >
-                Daily View
+                Day
               </button>
               <button
                 onClick={() => setCurrentView('weekly')}
                 className={`px-3 sm:px-4 py-2 rounded-md font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
                   currentView === 'weekly'
-                    ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                    ? 'app-primary shadow-sm'
                     : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               >
-                Weekly View
+                Week
               </button>
-              <button
-                onClick={() => setCurrentView('targets')}
-                className={`px-3 sm:px-4 py-2 rounded-md font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
-                  currentView === 'targets'
-                    ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
-                }`}
-              >
-                🎯 Targets
-              </button>
+
             </div>
           </div>
 
@@ -256,7 +245,7 @@ function FoodProgressContent() {
           {(currentView === 'daily' || currentView === 'weekly') && (
             <div className="mt-4">
               <label htmlFor="nutrition-date" className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                📅 {currentView === 'daily' ? 'Date' : 'Week Of'}
+                {currentView === 'daily' ? 'Date' : 'Week Of'}
               </label>
               <input
                 type="date"

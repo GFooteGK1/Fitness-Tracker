@@ -7,6 +7,7 @@ import { projectTodaysProgram } from '@/app/lib/coach/todays-program'
 import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import Link from 'next/link'
+import { AppIcon } from '@/app/components/AppIcon'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/app/lib/auth/supabase-client'
 import type { AgentRequest, AgentResponse } from '@/app/lib/agents/types'
@@ -85,64 +86,6 @@ const AGENTS = {
 // ============================================================
 // COMPONENTS
 // ============================================================
-function ProfileMenu({ user, onSignOut }: { user: any; onSignOut: () => void }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const router = useRouter()
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-10 h-10 rounded-full bg-blue-600 dark:bg-blue-500 text-white font-semibold flex items-center justify-center hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
-      >
-        {user?.email?.[0]?.toUpperCase() || 'U'}
-      </button>
-
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.email}</p>
-            </div>
-            <div className="py-1">
-              <button
-                onClick={() => { setIsOpen(false); router.push('/profile') }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                Profile Settings
-              </button>
-              <button
-                onClick={() => { setIsOpen(false); router.push('/dashboard') }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                Dashboard
-              </button>
-              <button
-                onClick={() => { setIsOpen(false); router.push('/profile#whoop') }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                ⌚ WHOOP Connection
-              </button>
-            </div>
-            <div className="border-t border-gray-200 dark:border-gray-700 py-1">
-              <button
-                onClick={() => { setIsOpen(false); onSignOut() }}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
 function RecoveryBadge({ score }: { score: number }) {
   const color = score >= 67 ? '#16a34a' : score >= 34 ? '#ca8a04' : '#dc2626'
   return (
@@ -162,7 +105,7 @@ function TodaysProgram({ program }: { program: ProgramBlock[] | null }) {
   if (!program || program.length === 0) return null
 
   return (
-    <div className="bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-black rounded-xl p-4 text-white">
+    <div className="rounded-xl p-4 bg-[var(--background)]">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Today&apos;s Program</span>
       </div>
@@ -171,14 +114,14 @@ function TodaysProgram({ program }: { program: ProgramBlock[] | null }) {
           <div key={i}>
             <div className="text-sm font-semibold mb-1.5 whitespace-pre-line">{block.title}</div>
             {block.movements.map((movement, j) => (
-              <div key={j} className="text-xs text-slate-300 pl-2 border-l-2 border-blue-500/30 mb-1">
+              <div key={j} className="text-sm app-muted pl-2 border-l-2 border-[var(--accent)] mb-1">
                 {movement}
               </div>
             ))}
           </div>
         ))}
       </div>
-      <Link href="/program" className="mt-3 inline-flex min-h-[44px] items-center rounded-lg px-3 text-sm font-semibold text-white underline">Open Program</Link>
+      <Link href="/program" className="mt-3 inline-flex min-h-[44px] items-center rounded-lg px-3 text-sm font-semibold text-[var(--accent)] underline">Open Program</Link>
     </div>
   )
 }
@@ -197,7 +140,7 @@ function MacroSummary({ consumed, target }: { consumed: Macros; target: Macros }
           const pct = Math.min(100, Math.round((macro.current / Math.max(1, macro.target)) * 100))
           return (
             <div key={macro.label} className="flex-1">
-              <div className="flex justify-between items-baseline mb-1.5">
+              <div className="flex flex-col gap-1 mb-1.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {macro.label}
                 </span>
@@ -223,9 +166,9 @@ function ChatMessage({ msg, isDark }: { msg: Message; isDark: boolean }) {
   if (msg.role === 'user') {
     return (
       <div className="flex justify-end mb-4 animate-fadeUp">
-        <div className="max-w-[85%] px-4 py-2.5 bg-blue-600 dark:bg-blue-500 text-white rounded-2xl rounded-br-sm">
-          <div className="text-sm leading-relaxed">{msg.content}</div>
-          <div className="text-[10px] text-blue-100 dark:text-blue-200 mt-1 text-right">{msg.time}</div>
+        <div className="max-w-[85%] px-4 py-2.5 bg-[var(--action)] text-[var(--action-text)] rounded-2xl rounded-br-sm">
+          <div className="text-base leading-relaxed">{msg.content}</div>
+          <div className="text-xs opacity-80 mt-1 text-right">{msg.time}</div>
         </div>
       </div>
     )
@@ -251,7 +194,7 @@ function ChatMessage({ msg, isDark }: { msg: Message; isDark: boolean }) {
           borderColor: agentBorder
         }}
       >
-        <div className="text-sm leading-relaxed text-gray-900 dark:text-gray-100">{msg.content}</div>
+        <div className="text-base leading-relaxed text-gray-900 dark:text-gray-100">{msg.content}</div>
         <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">{msg.time}</div>
       </div>
     </div>
@@ -262,7 +205,7 @@ function ChatMessage({ msg, isDark }: { msg: Message; isDark: boolean }) {
 // MAIN PAGE
 // ============================================================
 export default function V2Page() {
-  const { user, loading, signOut } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
@@ -491,11 +434,6 @@ export default function V2Page() {
     }
   }
 
-  const handleSignOut = async () => {
-    await signOut()
-    router.push('/auth/signin')
-  }
-
   const handleVoiceStart = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) {
@@ -669,7 +607,7 @@ export default function V2Page() {
   if (!user) return null
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900 transition-colors">
+    <div className="flex flex-col min-h-[calc(100dvh-180px)] max-w-2xl mx-auto">
       <style>{`
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(8px); }
@@ -685,7 +623,7 @@ export default function V2Page() {
       `}</style>
 
       {/* HEADER */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <header className="flex items-center justify-between pb-3">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Coach</h1>
         <div className="flex items-center gap-3">
           <button
@@ -696,18 +634,20 @@ export default function V2Page() {
             New Chat
           </button>
           {recovery > 0 && <RecoveryBadge score={recovery} />}
-          <ProfileMenu user={user} onSignOut={handleSignOut} />
+
         </div>
       </header>
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-          {/* Today's Program */}
-          {program && <TodaysProgram program={program} />}
-
-          {/* Macro Summary */}
-          <MacroSummary consumed={macros.consumed} target={macros.target} />
+      <div className="flex-1">
+        <div className="py-4 space-y-4">
+          <details className="app-panel p-4">
+            <summary className="min-h-11 flex items-center cursor-pointer font-medium">Today&apos;s context</summary>
+            <div className="mt-3 space-y-3">
+              {program && <TodaysProgram program={program} />}
+              <MacroSummary consumed={macros.consumed} target={macros.target} />
+            </div>
+          </details>
 
           {/* Chat Feed */}
           <div
@@ -717,8 +657,14 @@ export default function V2Page() {
             className="space-y-2"
           >
             {messages.length === 0 && !isTyping && (
-              <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                Start a conversation by logging a workout, meal, or asking anything.
+              <div className="py-6">
+                <h2 className="text-xl font-semibold">What would help today?</h2>
+                <p className="app-muted mt-2">Ask a question or capture what you did. Review your message before sending.</p>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {(program ? ['Help me adjust today’s workout', 'Explain my recovery', 'Help me log a workout or meal'] : ['Help me plan my training', 'Explain my recovery', 'Help me log a workout or meal']).map(prompt => (
+                    <button key={prompt} className="app-secondary text-left" onClick={() => { setInputValue(prompt); document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Message input"]')?.focus() }}>{prompt}</button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -745,7 +691,7 @@ export default function V2Page() {
       </div>
 
       {/* INPUT BAR */}
-      <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
+      <div className="sticky bottom-[calc(76px+env(safe-area-inset-bottom,0px))] md:bottom-0 z-30 border-t border-gray-200 dark:border-gray-800 bg-[var(--background)] py-3">
         {/* Hidden file inputs — gallery (no capture) and camera (rear lens) */}
         <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onChange={handlePhotoSelected} className="hidden" />
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelected} className="hidden" />
@@ -780,10 +726,10 @@ export default function V2Page() {
                   onClick={handleVoiceStart}
                   disabled={isTyping}
                   aria-label="Voice input"
-                  className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-11 h-11 shrink-0 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Voice input"
                 >
-                <span className="text-lg">🎤</span>
+                <AppIcon name="microphone" />
               </button>
 
               {/* Photo menu button + popover */}
@@ -792,10 +738,10 @@ export default function V2Page() {
                   onClick={() => setShowPhotoMenu(v => !v)}
                   disabled={isTyping}
                   aria-label="Photo input"
-                  className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-11 h-11 shrink-0 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Photo input"
                 >
-                  <span className="text-lg">📷</span>
+                  <AppIcon name="camera" />
                 </button>
 
                 {showPhotoMenu && (
@@ -829,7 +775,7 @@ export default function V2Page() {
                   </>
                 )}
               </div>
-              <div className="flex-1 flex items-end bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 focus-within:border-blue-500 dark:focus-within:border-blue-400 transition-colors">
+              <div className="min-w-0 flex-1 flex items-end bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 focus-within:border-blue-500 dark:focus-within:border-blue-400 transition-colors">
                 <textarea
                   aria-label="Message input"
                   value={inputValue}
@@ -841,9 +787,9 @@ export default function V2Page() {
                     }
                   }}
                   placeholder="Log a workout, meal, or ask anything..."
-                  rows={1}
+                  rows={2}
                   disabled={isTyping}
-                  className="flex-1 bg-transparent px-4 py-3 text-sm resize-none outline-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 max-h-32 disabled:opacity-50"
+                  className="min-w-0 w-full flex-1 bg-transparent px-3 py-3 text-base resize-none outline-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 max-h-32 disabled:opacity-50"
                 />
               </div>
               {inputValue.trim() && (
@@ -851,7 +797,7 @@ export default function V2Page() {
                   aria-label="Send message"
                   onClick={handleSend}
                   disabled={isTyping}
-                  className="w-10 h-10 rounded-full bg-blue-600 dark:bg-blue-500 text-white flex items-center justify-center hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all animate-fadeUp"
+                  className="w-11 h-11 shrink-0 rounded-full bg-[var(--action)] text-[var(--action-text)] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-all animate-fadeUp"
                 >
                   <span className="text-lg">↑</span>
                 </button>

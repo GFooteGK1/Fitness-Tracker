@@ -1,3 +1,4 @@
+import { validateBodyMetrics } from '@/app/lib/auth/onboarding'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { calculateTargetCalories } from '@/app/lib/target-management'
@@ -32,43 +33,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate body metrics
-    const { height_cm, weight_kg, age, gender } = body_metrics
-    
-    if (!height_cm || !weight_kg || !age || !gender) {
-      return NextResponse.json(
-        { error: 'Height, weight, age, and gender are required' },
-        { status: 400 }
-      )
-    }
-
-    if (height_cm < 50 || height_cm > 300) {
-      return NextResponse.json(
-        { error: 'Height must be between 50 and 300 cm' },
-        { status: 400 }
-      )
-    }
-
-    if (weight_kg < 20 || weight_kg > 500) {
-      return NextResponse.json(
-        { error: 'Weight must be between 20 and 500 kg' },
-        { status: 400 }
-      )
-    }
-
-    if (age < 13 || age > 120) {
-      return NextResponse.json(
-        { error: 'Age must be between 13 and 120 years' },
-        { status: 400 }
-      )
-    }
-
-    if (!['male', 'female', 'other'].includes(gender)) {
-      return NextResponse.json(
-        { error: 'Gender must be male, female, or other' },
-        { status: 400 }
-      )
-    }
+    // Body measurements are optional; age eligibility remains required.
+    const metricsError = validateBodyMetrics(body_metrics)
+    if (metricsError) return NextResponse.json({ error: metricsError }, { status: 400 })
 
     // Validate fitness goals
     if (!Array.isArray(fitness_goals) || fitness_goals.length === 0) {

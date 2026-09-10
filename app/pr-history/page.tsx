@@ -37,7 +37,7 @@ const PR_TYPE_COLORS: Record<string, string> = {
 }
 
 function formatImprovement(prType: string, value: number, previousValue: number | null): string {
-  if (!previousValue || previousValue === 0) return 'First time!'
+  if (!previousValue || previousValue === 0) return 'Baseline recorded'
   if (prType === 'time') {
     const diff = previousValue - value
     const pct = ((diff / previousValue) * 100).toFixed(1)
@@ -56,6 +56,7 @@ export default function PRHistory() {
   const [error, setError] = useState('')
   const [filterExercise, setFilterExercise] = useState('')
   const [filterType, setFilterType] = useState('')
+  const [includeBaselines, setIncludeBaselines] = useState(false)
 
   const fetchPRHistory = useCallback(async () => {
     try {
@@ -66,6 +67,7 @@ export default function PRHistory() {
       if (filterExercise) params.set('exercise', filterExercise)
       if (filterType) params.set('prType', filterType)
       params.set('limit', '100')
+      if (includeBaselines) params.set('includeBaselines', 'true')
 
       const response = await fetch(`/api/pr-history?${params}`)
       const data = await response.json()
@@ -81,7 +83,7 @@ export default function PRHistory() {
     } finally {
       setLoading(false)
     }
-  }, [filterExercise, filterType])
+  }, [filterExercise, filterType, includeBaselines])
 
   useEffect(() => {
     if (user) {
@@ -89,32 +91,31 @@ export default function PRHistory() {
     }
   }, [fetchPRHistory, user])
 
-  // Get unique exercises for filter dropdown
-  const uniqueExercises = [...new Set(records.map(r => r.exercise))].sort()
 
   return (
     <ProtectedRoute>
       <div>
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">PR History</h1>
+          <h1 className="app-title">Records</h1>
+          <p className="app-muted mt-2">Improvements over your previous best. First attempts are saved as baselines.</p>
         </div>
 
         {/* Summary Stats */}
         {summary && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 text-center">
+            <div className="app-panel p-4 text-center">
               <div className="text-2xl font-bold text-amber-500">{summary.thisWeek}</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">This Week</div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 text-center">
+            <div className="app-panel p-4 text-center">
               <div className="text-2xl font-bold text-amber-500">{summary.thisMonth}</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">This Month</div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 text-center">
+            <div className="app-panel p-4 text-center">
               <div className="text-2xl font-bold text-amber-500">{summary.thisYear}</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">This Year</div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 text-center">
+            <div className="app-panel p-4 text-center">
               <div className="text-2xl font-bold text-amber-500">{summary.allTime}</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">All Time</div>
             </div>
@@ -174,13 +175,14 @@ export default function PRHistory() {
           </div>
         )}
 
+        <label className="mb-4 flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={includeBaselines} onChange={event => setIncludeBaselines(event.target.checked)} />Include first-attempt baselines</label>
         {/* PR Records List */}
         {!loading && !error && records.length > 0 && (
           <div className="space-y-3">
             {records.map(record => (
               <div
                 key={record.id}
-                className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700"
+                className="app-panel p-4"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -189,7 +191,7 @@ export default function PRHistory() {
                         {record.exercise}
                       </h3>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${PR_TYPE_COLORS[record.pr_type]}`}>
-                        {PR_TYPE_LABELS[record.pr_type]}
+                        {record.previous_value ? PR_TYPE_LABELS[record.pr_type] : 'Baseline'}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">

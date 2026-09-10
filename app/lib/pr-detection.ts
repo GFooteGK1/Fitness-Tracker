@@ -45,7 +45,7 @@ interface HistoricalRecord {
 
 function formatImprovement(prType: string, previousBest: number, newRecord: number): string {
   if (previousBest === 0) {
-    return 'First time!';
+    return 'Baseline recorded';
   }
 
   if (prType === 'time') {
@@ -146,7 +146,7 @@ export function detectPRsFromBlocks(
     }
 
     const timeS = block.block_score?.time_s ?? 0;
-    if (timeS > 0 && block.title) {
+    if (block.block_type === 'FOR_TIME' && timeS > 0 && block.title) {
       const key = block.title.toLowerCase();
       const currentTime = timeCandidates.get(key);
       if (!currentTime || timeS < currentTime.value) {
@@ -159,7 +159,7 @@ export function detectPRsFromBlocks(
     const previousBest = bestMap.get(`${exerciseKey}:weight`) ?? 0;
     if (candidate.value > previousBest) {
       prs.push({
-        isPR: true,
+        isPR: previousBest > 0,
         prType: 'weight',
         previousBest,
         newRecord: candidate.value,
@@ -173,7 +173,7 @@ export function detectPRsFromBlocks(
     const previousBest = bestMap.get(`${exerciseKey}:reps`) ?? 0;
     if (candidate.value > previousBest) {
       prs.push({
-        isPR: true,
+        isPR: previousBest > 0,
         prType: 'reps',
         previousBest,
         newRecord: candidate.value,
@@ -187,7 +187,7 @@ export function detectPRsFromBlocks(
     const previousBest = timeBestMap.get(`${exerciseKey}:time`) ?? 0;
     if (previousBest === 0 || candidate.value < previousBest) {
       prs.push({
-        isPR: true,
+        isPR: previousBest > 0,
         prType: 'time',
         previousBest,
         newRecord: candidate.value,
@@ -201,7 +201,7 @@ export function detectPRsFromBlocks(
     const previousBest = bestMap.get(`${exerciseKey}:volume`) ?? 0;
     if (candidate.value > previousBest) {
       prs.push({
-        isPR: true,
+        isPR: previousBest > 0,
         prType: 'volume',
         previousBest,
         newRecord: candidate.value,

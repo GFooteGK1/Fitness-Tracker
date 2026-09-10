@@ -51,7 +51,6 @@ export const DEFAULT_DASHBOARD_VIEW_TEMPLATE: ViewTemplateConfig = {
     { id: 'recovery', visible: true },
     { id: 'workout_summary', visible: true },
     { id: 'nutrition', visible: true },
-    { id: 'leaderboard', visible: true },
   ],
 }
 

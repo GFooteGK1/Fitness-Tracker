@@ -43,6 +43,7 @@ async function signedInCoach(page: Page) {
       if (url.pathname === '/rest/v1/chat_messages') return json(route, [])
     }
     if (url.origin === origin) {
+      if (url.pathname === '/api/whoop/sync' && route.request().method() === 'GET') return json(route, { isConnected: true, lastSyncAt: '2026-09-04T15:00:00Z', status: 'idle' })
       if (url.pathname === '/api/whoop/initialize') return json(route, { initialized: false })
       if (url.pathname === '/api/whoop/data') return json(route, { recovery: null })
       if (url.pathname === '/api/meals/daily') return json(route, { dailyTotals: { protein: 0, carbs: 0, fat: 0, calories: 0 } })
@@ -66,6 +67,7 @@ async function openCoach(page: Page) {
   await page.goto('/coach')
   await expect(page.getByRole('heading', { name: 'Coach', exact: true })).toBeVisible()
   await expect(page.getByLabel('Message input')).toBeEnabled()
+  await page.getByText("Today's context", { exact: true }).click()
   await expect(page.getByText('Accepted strength session', { exact: false })).toBeVisible()
 }
 
@@ -165,5 +167,88 @@ test('meal photo response loss survives reload with the same request and capture
   expect(submissions[0].requestId).toMatch(/^[0-9a-f-]{36}$/)
   expect(submissions[1]).toEqual(submissions[0])
   expect(saved.size).toBe(1)
+  expect(unexpected).toEqual([])
+})
+
+
+test('low-touch screens preserve navigation, empty-state meaning, and draft preferences', async ({ page }) => {
+  const unexpected = await signedInCoach(page)
+  await page.route(`${origin}/api/meals/daily**`, route => json(route, {
+    meals: [], dailyTotals: { protein: 0, carbs: 0, fat: 0, calories: 0 },
+    adherence: { overallScore: 0, withinTolerance: false, proteinAdherence: 0, carbsAdherence: 0, fatAdherence: 0, caloriesAdherence: 0 }
+  }))
+  await page.route(`${origin}/api/templates**`, route => json(route, { templates: [] }))
+  await page.route(`${origin}/api/whoop/data**`, route => json(route, { connectionStatus: 'disconnected', recovery: null }))
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.goto('/coach')
+  await expect(page.getByRole('heading', { name: 'What would help today?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Explain my recovery', exact: true }).click()
+  await expect(page.getByLabel('Message input')).toHaveValue('Explain my recovery')
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 })
+    await expect(page.getByRole('navigation', { name: 'Mobile navigation' })).toBeVisible()
+    const composer = await page.getByLabel('Message input').boundingBox()
+    const nav = await page.getByRole('navigation', { name: 'Mobile navigation' }).boundingBox()
+    expect(composer!.y + composer!.height).toBeLessThanOrEqual(nav!.y)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+    await page.screenshot({ path: `output/playwright/app-quality-results/coach-${width}.png` })
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/log')
+  await expect(page.getByLabel('Workout details', { exact: false })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Mobile navigation' })).toBeVisible()
+  await page.screenshot({ path: 'output/playwright/app-quality-results/log-new.png' })
+  await page.goto('/food-progress')
+  await expect(page.getByText('No meals logged yet', { exact: false })).toBeVisible()
+  await expect(page.getByText('Outside target range')).toHaveCount(0)
+  await page.screenshot({ path: 'output/playwright/app-quality-results/nutrition-new.png' })
+  await page.goto('/templates')
+  await expect(page.getByRole('heading', { name: 'Workout Templates' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Mobile navigation' })).toBeVisible()
+  await page.screenshot({ path: 'output/playwright/app-quality-results/templates-new.png' })
+  await page.goto('/profile')
+  await expect(page.getByRole('heading', { name: 'Profile' , exact: true })).toBeVisible()
+  await page.screenshot({ path: 'output/playwright/app-quality-results/profile-new.png' })
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.screenshot({ path: 'output/playwright/app-quality-results/profile-light.png' })
+  expect(unexpected).toEqual([])
+})
+
+test('photo portion correction preserves the draft and retries the same totals', async ({ page }) => {
+  const unexpected = await signedInCoach(page)
+  await page.route(`${origin}/api/meals/daily**`, route => json(route, {
+    meals: [], dailyTotals: { protein: 0, carbs: 0, fat: 0, calories: 0 },
+    adherence: { overallScore: 0, withinTolerance: false, proteinAdherence: 0, carbsAdherence: 0, fatAdherence: 0, caloriesAdherence: 0 }
+  }))
+  const updates: unknown[] = []
+  await page.route(`${origin}/api/meals/upload`, route => json(route, {
+    mealId: savedMealId, analysisStatus: 'complete', analysis: {
+      items: [{ food: 'Rice', portion: '1 cup', protein: 4, carbs: 40, fat: 2, calories: 194 }],
+      total_protein: 4, total_carbs: 40, total_fat: 2, total_calories: 194
+    }
+  }))
+  await page.route(`${origin}/api/meals/${savedMealId}`, route => {
+    updates.push(route.request().postDataJSON())
+    return json(route, updates.length === 1 ? { error: 'Unavailable' } : {}, updates.length === 1 ? 500 : 200)
+  })
+  await page.goto('/food-progress?view=camera&input=photo')
+  const base64 = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 96; canvas.height = 96
+    const context = canvas.getContext('2d')!; context.fillStyle = '#aabbcc'; context.fillRect(0, 0, 96, 96)
+    return canvas.toDataURL('image/png').split(',')[1]
+  })
+  await page.locator('input[type=file]').first().setInputFiles({ name: 'test-meal.png', mimeType: 'image/png', buffer: Buffer.from(base64, 'base64') })
+  await page.getByRole('button', { name: 'Analyze Photo', exact: true }).click()
+  await expect(page.getByText('Review the estimate', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Half', exact: true }).click()
+  await page.getByRole('button', { name: 'Apply corrections', exact: true }).click()
+  await expect(page.getByText('Changes could not be fully saved.', { exact: false })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Half', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await page.screenshot({ path: 'output/playwright/app-quality-results/portion-retry.png', fullPage: true })
+  await page.getByRole('button', { name: 'Apply corrections', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Nutrition', exact: true })).toBeVisible()
+  expect(updates).toHaveLength(2)
+  expect(updates[1]).toEqual(updates[0])
+  expect(updates[1]).toMatchObject({ totalCalories: 97, totalProtein: 2, totalCarbs: 20, totalFat: 1 })
   expect(unexpected).toEqual([])
 })

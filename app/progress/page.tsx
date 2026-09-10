@@ -8,7 +8,6 @@ import PerformanceMonitor from '@/app/components/PerformanceMonitor'
 import { WhoopMetricsCard } from '@/app/components/whoop/WhoopMetricsCard'
 import ExportDialog from '@/app/components/ExportDialog'
 import { formatPRValue } from '@/app/lib/pr-detection'
-import LeaderboardWidget from '@/app/components/LeaderboardWidget'
 import { getTimezoneOffset } from '@/app/lib/timezone-utils'
 
 interface WorkoutStats {
@@ -119,12 +118,10 @@ export default function Progress() {
 
         {stats && !loading && !error && (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-3"><Link className="app-secondary" href="/food-progress">Nutrition</Link><Link className="app-secondary" href="/leaderboards">Leaderboards</Link></div>
+            <div className="grid grid-cols-2 gap-3"><Link className="app-secondary" href="/food-progress">Nutrition</Link><Link className="app-secondary" href="/pr-history">Records</Link></div>
             {/* AI composes presentation only; the deterministic cards below stay authoritative. */}
 
 
-            {/* Leaderboard Widget */}
-            <LeaderboardWidget />
 
             {/* WHOOP Metrics Card */}
             <WhoopMetricsCard />

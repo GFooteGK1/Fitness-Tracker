@@ -19,7 +19,7 @@ export default function Navigation() {
   const { user, loading } = useAuth()
   const pathname = usePathname()
   const active = (href: string) => pathname === href
-    || (href === '/progress' && ['/food-progress', '/pr-history', '/leaderboards'].some(route => pathname.startsWith(route)))
+    || (href === '/progress' && ['/food-progress', '/pr-history'].some(route => pathname.startsWith(route)))
     || (href === '/program' && pathname.startsWith('/templates'))
     || (href === '/capture' && ['/log', '/food-log'].includes(pathname))
 

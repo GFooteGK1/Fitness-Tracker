@@ -17,14 +17,14 @@ describe('dashboard narrative Supabase store', () => {
     const prs = resolvedChain({
       data: [{
         exercise: 'Back Squat', pr_type: 'weight', value: '315.00',
-        achieved_at: '2026-07-26T12:00:00Z',
+        previous_value: 200, achieved_at: '2026-07-26T12:00:00Z',
       }],
       error: null,
     })
     ;(prs.limit as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: [{
         exercise: 'Back Squat', pr_type: 'weight', value: '315.00',
-        achieved_at: '2026-07-26T12:00:00Z',
+        previous_value: 200, achieved_at: '2026-07-26T12:00:00Z',
       }],
       error: null,
     })
@@ -159,15 +159,15 @@ describe('dashboard narrative Supabase store', () => {
       data: [
         {
           id: '5', workout_id: 'workout-1', exercise: 'Back Squat',
-          pr_type: 'weight', value: '285.00', achieved_at: '2026-07-28T12:00:00Z',
+          pr_type: 'weight', value: '285.00', previous_value: 200, achieved_at: '2026-07-28T12:00:00Z',
         },
         {
           id: '4', workout_id: 'workout-1', exercise: 'Back Squat',
-          pr_type: 'weight', value: '275.00', achieved_at: '2026-07-28T12:00:00Z',
+          pr_type: 'weight', value: '275.00', previous_value: 200, achieved_at: '2026-07-28T12:00:00Z',
         },
         {
           id: '3', workout_id: 'workout-1', exercise: 'Back Squat',
-          pr_type: 'weight', value: '285.00', achieved_at: '2026-07-28T12:00:00Z',
+          pr_type: 'weight', value: '285.00', previous_value: 200, achieved_at: '2026-07-28T12:00:00Z',
         },
       ],
       error: null,

@@ -35,7 +35,7 @@ export default function LogWorkout() {
       const workoutParam = params.get('workout')
       const dateParam = params.get('date')
 
-      if (workoutParam) setWorkoutText(decodeURIComponent(workoutParam))
+      if (workoutParam) setWorkoutText(workoutParam)
       if (dateParam) setWorkoutDate(dateParam)
 
       // Setup Web Speech API
@@ -326,52 +326,55 @@ export default function LogWorkout() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <label htmlFor="date" className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            📅 Workout Date
-          </label>
-          <input
-            type="date"
-            id="date"
-            value={workoutDate}
-            onChange={(e) => setWorkoutDate(e.target.value)}
-            className="block w-full px-3 py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 box-border"
-            style={{
-              minHeight: '48px',
-              fontSize: '16px',
-              colorScheme: 'light dark',
-              maxWidth: '100%',
-              margin: '0',
-              WebkitAppearance: 'none',
-              appearance: 'none'
-            }}
-          />
-        </div>
-
-        {/* Use Template */}
         <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-          <Link
-            href="/templates"
-            className="flex items-center justify-center gap-2 w-full px-4 py-3 text-base font-semibold text-blue-600 dark:text-blue-400 border-2 border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-          >
-            <span>📋</span>
-            Use Template
-          </Link>
-          <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">
-            Choose from benchmark WODs, hero WODs, or your saved templates
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              type="button"
+              onClick={() => {
+                alert('💡 Quick Tips:\n\n• Use natural language: "Grace: 9:47 Rx"\n• Include your score (rounds, time, or weight)\n• Mention Rx or Scaled if applicable\n• Add RPE (1-10) if you track it')
+              }}
+              className="text-xl active:scale-95 transition-transform"
+              aria-label="Show tips"
+            >
+              💡
+            </button>
+            <label htmlFor="workout" className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Workout Details
+            </label>
+          </div>
+          <textarea
+            id="workout"
+            value={workoutText}
+            onChange={(e) => setWorkoutText(e.target.value)}
+            placeholder="12min AMRAP:
+5 Pull-ups
+10 Push-ups
+15 Air Squats
+
+Got 7 rounds + 5
+RPE: 8/10"
+            rows={5}
+            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-y bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+            style={{ minHeight: '140px' }}
+          />
+          <p className="mt-2 sm:mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+            Type naturally, like you&apos;d write on a whiteboard
           </p>
         </div>
 
+        <details className="app-panel px-4 py-2">
+          <summary className="min-h-11 flex items-center cursor-pointer">{workoutDate === getLocalDate() ? 'Today' : workoutDate} · Change date</summary>
+          <label htmlFor="date" className="block mt-2">Workout Date</label>
+          <input type="date" id="date" value={workoutDate} onChange={e => setWorkoutDate(e.target.value)} className="w-full min-h-12 text-base p-3 rounded-lg bg-[var(--surface)] border border-[var(--line)] my-2" />
+        </details>
         {/* Input Method Selection */}
         <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <h3 className="text-center text-lg font-semibold text-gray-700 dark:text-gray-300 mb-6">
-            Choose how to log your workout:
-          </h3>
-
           {/* Show full-width photo preview when image is captured, otherwise show grid */}
           {capturedImage ? (
             <div className="relative">
               <button
+                type="button"
+                aria-label="Remove workout photo"
                 onClick={removePhoto}
                 className="absolute -top-2 -right-2 z-10 w-8 h-8 bg-red-500 text-white rounded-full text-sm flex items-center justify-center shadow-lg"
               >
@@ -413,113 +416,13 @@ export default function LogWorkout() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
-              {/* Capture Picker - First */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={handleGalleryPicker}
-                  disabled={isCompressing || isAnalyzing}
-                  className="w-full p-6 bg-gray-50 dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <div className="flex flex-col items-center gap-3">
-                    <div className={`text-4xl transition-transform ${isCompressing ? 'animate-pulse' : 'group-hover:scale-110'}`}>
-                      {isCompressing ? '🔄' : '📷'}
-                    </div>
-                    <div className="text-center">
-                      <div className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                        {isCompressing ? 'Processing...' : 'Capture'}
-                      </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {isCompressing ? 'Compressing image' : 'Add photo'}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              {/* Voice Recording - Second */}
-              <div className="relative">
-                {finalTranscript && !isRecording && (
-                  <button
-                    onClick={clearVoiceRecording}
-                    className="absolute -top-2 -right-2 z-10 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
-                  >
-                    ×
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={toggleVoiceRecording}
-                  className={`w-full h-full p-6 rounded-xl border-2 transition-colors group ${
-                    isRecording
-                      ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-500'
-                      : finalTranscript
-                      ? 'bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-500'
-                      : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-green-400 dark:hover:border-green-500'
-                  }`}
-                >
-                  <div className="flex flex-col items-center gap-3">
-                    <div className={`text-4xl transition-transform ${
-                      isRecording ? 'animate-pulse' : 'group-hover:scale-110'
-                    }`}>
-                      {isRecording ? '⏹️' : finalTranscript ? '✅' : '🎤'}
-                    </div>
-                    <div className="text-center">
-                      <div className={`font-semibold mb-1 ${
-                        isRecording
-                          ? 'text-red-700 dark:text-red-300'
-                          : finalTranscript
-                          ? 'text-green-700 dark:text-green-300'
-                          : 'text-gray-900 dark:text-gray-100'
-                      }`}>
-                        Voice
-                      </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {isRecording ? 'Tap to stop' : finalTranscript ? 'Captured!' : 'Speak workout'}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="app-secondary" onClick={handleGalleryPicker} disabled={isCompressing || isAnalyzing}>{isCompressing ? 'Processing...' : 'Add photo'}</button>
+              <button type="button" className="app-secondary" onClick={toggleVoiceRecording}>{isRecording ? 'Stop recording' : 'Use voice'}</button>
+              <Link href="/templates" className="app-secondary">Templates</Link>
+              {finalTranscript && !isRecording && <button type="button" className="app-secondary" onClick={clearVoiceRecording}>Clear voice</button>}
             </div>
           )}
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2 mb-2">
-            <button
-              type="button"
-              onClick={() => {
-                alert('💡 Quick Tips:\n\n• Use natural language: "Grace: 9:47 Rx"\n• Include your score (rounds, time, or weight)\n• Mention Rx or Scaled if applicable\n• Add RPE (1-10) if you track it')
-              }}
-              className="text-xl active:scale-95 transition-transform"
-              aria-label="Show tips"
-            >
-              💡
-            </button>
-            <label htmlFor="workout" className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-              💪 Workout Details
-            </label>
-          </div>
-          <textarea
-            id="workout"
-            value={workoutText}
-            onChange={(e) => setWorkoutText(e.target.value)}
-            placeholder="12min AMRAP:
-5 Pull-ups
-10 Push-ups
-15 Air Squats
-
-Got 7 rounds + 5
-RPE: 8/10"
-            rows={8}
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-y bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 font-mono"
-            style={{ minHeight: '180px' }}
-          />
-          <p className="mt-2 sm:mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-            Type naturally, like you&apos;d write on a whiteboard
-          </p>
         </div>
 
         <div className="flex gap-2 sm:gap-3 sticky bottom-[calc(76px+env(safe-area-inset-bottom,0px))] md:bottom-0 bg-gray-50 dark:bg-gray-900 -mx-4 px-4 py-3 sm:static sm:bg-transparent sm:dark:bg-transparent sm:mx-0 sm:px-0 sm:py-0 border-t sm:border-t-0 border-gray-200 dark:border-gray-800">
@@ -537,7 +440,7 @@ RPE: 8/10"
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 bg-blue-600 dark:bg-blue-700 text-white px-4 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-semibold rounded-lg sm:rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 active:bg-blue-800 dark:active:bg-blue-500 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors shadow-sm"
+            className="app-primary flex-1"
           >
             {loading ? '⏳ Parsing...' : '✓ Submit Workout'}
           </button>

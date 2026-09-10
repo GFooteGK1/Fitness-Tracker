@@ -391,6 +391,7 @@ export default function MealInputEnhanced({
 
       {(inputMode === 'all' || inputMode === 'photo') && <MealCameraCapture
         onUploadComplete={onUploadComplete}
+        onTextEntry={() => { setInputMode('all'); setShowTextInput(true) }}
         onError={onError}
         userId={userId}
         selectedDate={selectedDate}

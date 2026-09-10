@@ -5,7 +5,7 @@ import { FoodItem } from '@/app/lib/types/food-tracking'
 
 interface PortionSelectorProps {
   items: FoodItem[]
-  onConfirm: (items: FoodItem[]) => void
+  onConfirm: (items: FoodItem[], multiplier?: number) => void
   onSkip: () => void
   isRefining?: boolean
 }
@@ -41,6 +41,7 @@ export default function PortionSelector({
   onSkip,
   isRefining = false
 }: PortionSelectorProps) {
+  const [multiplier, setMultiplier] = useState(1)
   const [editedItems, setEditedItems] = useState<FoodItem[]>(items)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [foodName, setFoodName] = useState<string>('')
@@ -129,7 +130,7 @@ export default function PortionSelector({
           </span>
         </div>
         <p className="mt-2 text-sm">
-          An estimate from your photo. Adjust anything that looks off.
+          An estimate from your photo, already saved to your log. Adjust anything that looks off.
         </p>
       </div>
 
@@ -138,12 +139,23 @@ export default function PortionSelector({
       </h3>
       
       <p className="app-muted text-sm mb-4">
-        Correct food names or portions now. You can edit every macro again after saving.
+        Keep the saved estimate, or apply corrections to this meal.
       </p>
 
       <div className="mb-5 grid grid-cols-4 gap-2 rounded-xl border border-[var(--line)] p-3" aria-label="Estimated nutrition">
-        {([['calories', 'kcal'], ['protein', 'Protein'], ['carbs', 'Carbs'], ['fat', 'Fat']] as const).map(([key, label]) => <div key={key} className="text-center"><p className="text-lg font-semibold">{Math.round(totals[key])}{key === 'calories' ? '' : 'g'}</p><p className="app-muted text-xs">{label}</p></div>)}
+        {([['calories', 'kcal'], ['protein', 'Protein'], ['carbs', 'Carbs'], ['fat', 'Fat']] as const).map(([key, label]) => <div key={key} className="text-center"><p className="text-lg font-semibold">{Math.round(totals[key] * multiplier)}{key === 'calories' ? '' : 'g'}</p><p className="app-muted text-xs">{label}</p></div>)}
       </div>
+      <fieldset className="mb-5" disabled={isRefining || editingIndex !== null}>
+        <legend className="mb-2 font-medium">How much did you eat?</legend>
+        <div className="grid grid-cols-4 gap-2">
+          {[[0.5, 'Half'], [1, 'All'], [1.5, '1½×'], [2, '2×']].map(([value, label]) => (
+            <button key={value} type="button" aria-pressed={multiplier === value}
+              onClick={() => setMultiplier(Number(value))}
+              className={multiplier === value ? 'app-primary' : 'app-secondary'}>{label}</button>
+          ))}
+        </div>
+        <p className="app-muted mt-2 text-sm">Scales every item in the photo estimate.</p>
+      </fieldset>
       {hasAnyEdits && <p className="app-muted mb-3 text-sm">Nutrition will update after you apply corrections.</p>}
 
       <div className="space-y-3">
@@ -235,6 +247,7 @@ export default function PortionSelector({
                 </div>
                 
                 <button
+                  disabled={isRefining}
                   onClick={() => handleEditClick(index)}
                   className="ml-2 p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg touch-target"
                   aria-label={`Edit ${item.food}`}
@@ -251,7 +264,7 @@ export default function PortionSelector({
 
       <div className="flex flex-col sm:flex-row gap-3 mt-4">
         <button
-          onClick={() => onConfirm(editedItems)}
+          onClick={() => multiplier === 1 ? onConfirm(editedItems) : onConfirm(editedItems, multiplier)}
           disabled={isRefining || editingIndex !== null}
           className="app-primary flex-1"
         >
@@ -260,7 +273,7 @@ export default function PortionSelector({
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
               Refining estimate...
             </>
-          ) : hasAnyEdits ? (
+          ) : hasAnyEdits || multiplier !== 1 ? (
             'Apply corrections'
           ) : (
             'Use these estimates'

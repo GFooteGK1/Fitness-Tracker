@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { useTemplatePreferences } from '@/app/components/useTemplatePreferences';
 import {
   BUILT_IN_TEMPLATES,
   getWorkoutTypeLabel,
@@ -16,6 +17,7 @@ import { createClient } from '../../lib/auth/supabase-client';
 
 export default function TemplateDetailPage() {
   const router = useRouter();
+  const preferences = useTemplatePreferences();
   const params = useParams();
   const templateId = params.id as string;
 
@@ -89,6 +91,7 @@ export default function TemplateDetailPage() {
   function handleLogWorkout() {
     if (!template) return;
     const text = formatTemplateAsWorkoutText(template, showScalePanel ? scaleWeights : undefined);
+    preferences.rememberDraft(template.id, showScalePanel ? scaleWeights : {});
     const encoded = encodeURIComponent(text);
     router.push(`/log?workout=${encoded}`);
   }
@@ -202,6 +205,14 @@ export default function TemplateDetailPage() {
         )}
       </div>
 
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button className="app-secondary" aria-pressed={preferences.favorites.includes(template.id)} onClick={() => preferences.toggleFavorite(template.id)}>{preferences.favorites.includes(template.id) ? 'Remove favorite' : 'Add favorite'}</button>
+        {Object.keys(preferences.weights[template.id] || {}).length > 0 && (
+          <button className="app-secondary" onClick={() => { setScaleWeights(preferences.weights[template.id]); setShowScalePanel(true) }}>Use previous draft weights</button>
+        )}
+      </div>
+      {Object.keys(preferences.weights[template.id] || {}).length > 0 && <p className="app-muted text-sm mb-4">Previous draft: {Object.entries(preferences.weights[template.id]).map(([name, weight]) => `${name}: ${weight}`).join(', ')}. These are your last selected weights, not a recorded result.</p>}
+
       {/* Movements */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
@@ -277,15 +288,16 @@ export default function TemplateDetailPage() {
               </p>
               {weightedMovements.map((m) => (
                 <div key={m.name} className="flex items-center gap-3">
-                  <label className="text-sm text-gray-700 dark:text-gray-300 w-40 flex-shrink-0 truncate">
+                  <label className="text-sm text-gray-700 dark:text-gray-300 w-1/2 min-w-0">
                     {m.name}
                   </label>
                   <input
                     type="text"
+                    aria-label={`${m.name} weight`}
                     placeholder={m.weight}
                     value={scaleWeights[m.name] || ''}
                     onChange={(e) => handleScaleChange(m.name, e.target.value)}
-                    className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    className="min-w-0 flex-1 px-3 py-2 text-base border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     style={{ fontSize: '16px' }}
                   />
                 </div>
@@ -299,7 +311,7 @@ export default function TemplateDetailPage() {
       <div className="flex gap-3 mb-6">
         <button
           onClick={handleLogWorkout}
-          className="flex-1 bg-blue-600 dark:bg-blue-700 text-white px-4 py-3 text-base font-semibold rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+          className="app-primary flex-1"
         >
           Log This Workout
         </button>
