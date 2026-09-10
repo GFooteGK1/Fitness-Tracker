@@ -220,7 +220,7 @@ export function createDashboardNarrativeStore(
         }),
         supabase
           .from('personal_records')
-          .select('id, workout_id, exercise, pr_type, value, achieved_at')
+          .select('id, workout_id, exercise, pr_type, value, previous_value, achieved_at')
           .eq('user_id', userId)
           .order('achieved_at', { ascending: false })
           .order('id', { ascending: false })
@@ -289,7 +289,7 @@ export function createDashboardNarrativeStore(
         .filter(hasDailyData)
         .sort((a, b) => b.date.localeCompare(a.date))
       const personalRecords = recentPersonalRecords(
-        (recordsResult.data ?? []) as PersonalRecordRow[],
+        (recordsResult.data ?? []).filter((row: { previous_value?: unknown }) => Number(row.previous_value) > 0) as PersonalRecordRow[],
       )
 
       return { localDate, days, personalRecords }

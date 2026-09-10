@@ -22,13 +22,13 @@ describe('ConditionalNavigation', () => {
     navigationMocks.pathname = '/dashboard'
   })
 
-  it.each(['/coach', '/v2'])('lets the conversational surface own navigation at %s', (pathname) => {
+  it.each(['/coach', '/v2'])('retains shared navigation at %s', (pathname) => {
     navigationMocks.pathname = pathname
 
     render(<ConditionalNavigation><div>Conversation</div></ConditionalNavigation>)
 
     expect(screen.getByText('Conversation')).toBeInTheDocument()
-    expect(screen.queryByText('Global navigation')).not.toBeInTheDocument()
+    expect(screen.getByText('Global navigation')).toBeInTheDocument()
   })
 
   it('retains global navigation on persistent app views', () => {

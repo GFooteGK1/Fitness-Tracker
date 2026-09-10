@@ -61,10 +61,10 @@ describe('detectPRsFromBlocks', () => {
 
       const weightPR = prs.find(p => p.prType === 'weight' && p.exercise === 'Back Squat')
       expect(weightPR).toBeDefined()
-      expect(weightPR!.isPR).toBe(true)
+      expect(weightPR!.isPR).toBe(false)
       expect(weightPR!.newRecord).toBe(225)
       expect(weightPR!.previousBest).toBe(0)
-      expect(weightPR!.improvement).toBe('First time!')
+      expect(weightPR!.improvement).toBe('Baseline recorded')
     })
 
     it('detects a weight PR when new value exceeds history', () => {
@@ -168,7 +168,7 @@ describe('detectPRsFromBlocks', () => {
       expect(timePR!.improvement).toContain('faster')
     })
 
-    it('detects first-time WOD completion as a PR', () => {
+    it('records first-time WOD completion as a baseline', () => {
       const blocks = [makeForTimeBlock('Murph', 2400)]
       const prs = detectPRsFromBlocks(blocks, [])
 
@@ -176,7 +176,7 @@ describe('detectPRsFromBlocks', () => {
       expect(timePR).toBeDefined()
       expect(timePR!.newRecord).toBe(2400)
       expect(timePR!.previousBest).toBe(0)
-      expect(timePR!.improvement).toBe('First time!')
+      expect(timePR!.improvement).toBe('Baseline recorded')
     })
 
     it('does NOT detect a time PR on a tie', () => {

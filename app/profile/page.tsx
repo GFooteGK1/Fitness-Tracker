@@ -1,178 +1,48 @@
 'use client'
 
-import React, { useCallback } from 'react'
+import React, { useState } from 'react'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import BodyMetricsForm from '@/app/components/profile/BodyMetricsForm'
 import GoalsSelection from '@/app/components/profile/GoalsSelection'
-import Breadcrumbs from '@/app/components/Breadcrumbs'
 import { WhoopConnectionSettings } from '@/app/components/whoop/WhoopConnectionSettings'
+import { FITNESS_GOALS, UserProfile } from '@/app/lib/auth/types'
+import { validateBodyMetrics } from '@/app/lib/auth/onboarding'
 
 export default function ProfilePage() {
-  const { user, profile, updateProfile } = useAuth()
-
-  const handleProfileUpdate = useCallback(async (updates: any) => {
+  const { user, profile, profileError, refreshProfile, updateProfile } = useAuth()
+  const [editing, setEditing] = useState<'body' | 'goals' | 'preferences' | null>(null)
+  const [draft, setDraft] = useState<UserProfile | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const startEdit = (section: typeof editing) => { setDraft(profile ? structuredClone(profile) : null); setEditing(section); setError(''); setMessage('') }
+  const save = async () => {
+    if (!draft || !editing) return
+    const validation = editing === 'body' ? validateBodyMetrics(draft.bodyMetrics) : editing === 'goals' && !draft.fitnessGoals.length ? 'Select at least one fitness goal.' : null
+    if (validation) { setError(validation); return }
+    setSaving(true); setError('')
     try {
+      const updates = editing === 'body' ? { bodyMetrics: draft.bodyMetrics, preferences: draft.preferences } : editing === 'goals' ? { fitnessGoals: draft.fitnessGoals, activityLevel: draft.activityLevel } : { preferences: draft.preferences }
       await updateProfile(updates)
-    } catch (error) {
-      console.error('Failed to update profile:', error)
-    }
-  }, [updateProfile])
-
-  const handleGoalsChange = useCallback((goals: string[]) => {
-    handleProfileUpdate({ fitnessGoals: goals })
-  }, [handleProfileUpdate])
-
-  const handleActivityLevelChange = useCallback((level: string) => {
-    handleProfileUpdate({ activityLevel: level })
-  }, [handleProfileUpdate])
-
-  const handleBodyMetricsChange = useCallback((data: any) => {
-    handleProfileUpdate({ bodyMetrics: data })
-  }, [handleProfileUpdate])
-
-  const handlePreferencesChange = useCallback((prefs: any) => {
-    handleProfileUpdate({ preferences: prefs })
-  }, [handleProfileUpdate])
-
-  const breadcrumbs = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Profile', current: true }
-  ]
-
-  return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-          {/* Breadcrumbs - Hidden on mobile to save space */}
-          <div className="mb-3 sm:mb-4 hidden sm:block">
-            <Breadcrumbs items={breadcrumbs} />
-          </div>
-
-          {/* Page Title */}
-          <div className="mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
-              Profile Settings
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Manage your fitness profile and preferences
-            </p>
-          </div>
-
-          {/* Profile Content */}
-          {!profile ? (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-center py-8">
-                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 dark:border-blue-400 mr-3"></div>
-                <span className="text-gray-600 dark:text-gray-400">Loading profile...</span>
-              </div>
-            </div>
-          ) : (
-          <div className="space-y-6">
-            {/* Account Information */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Account Information
-              </h2>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Email Address
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
-                    {user?.email}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Member Since
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
-                    {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'N/A'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Body Metrics */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Body Metrics
-              </h2>
-              <BodyMetricsForm
-                initialData={profile?.bodyMetrics || {}}
-                preferences={profile?.preferences || { units: 'metric', notifications: true, privacy_level: 'private' }}
-                onDataChange={handleBodyMetricsChange}
-                onPreferencesChange={handlePreferencesChange}
-              />
-            </div>
-
-            {/* Fitness Goals */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Fitness Goals
-              </h2>
-              <GoalsSelection
-                selectedGoals={profile?.fitnessGoals || []}
-                selectedActivityLevel={profile?.activityLevel || 'moderately_active'}
-                onGoalsChange={handleGoalsChange}
-                onActivityLevelChange={handleActivityLevelChange}
-              />
-            </div>
-
-            {/* WHOOP Connection */}
-            <div id="whoop">
-              <WhoopConnectionSettings />
-            </div>
-
-            {/* Preferences */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Preferences
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Units
-                  </label>
-                  <select
-                    value={profile?.preferences?.units || 'metric'}
-                    onChange={(e) => handleProfileUpdate({
-                      preferences: {
-                        ...profile?.preferences,
-                        units: e.target.value
-                      }
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  >
-                    <option value="metric">Metric (kg, cm)</option>
-                    <option value="imperial">Imperial (lbs, ft/in)</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="notifications"
-                    checked={profile?.preferences?.notifications !== false}
-                    onChange={(e) => handleProfileUpdate({
-                      preferences: {
-                        ...profile?.preferences,
-                        notifications: e.target.checked
-                      }
-                    })}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="notifications" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                    Enable notifications
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-          )}
-        </div>
-      </div>
-    </ProtectedRoute>
-  )
+      setEditing(null); setDraft(null); setMessage('Changes saved.')
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not save. Your changes are still here. Try again.') }
+    finally { setSaving(false) }
+  }
+  const button = 'min-h-[44px] rounded-xl px-4 py-2 font-medium text-gray-900 dark:text-gray-100'
+  const controls = <div className="mt-5 flex gap-3"><button type="button" disabled={saving} onClick={save} className="min-h-[44px] rounded-xl bg-emerald-400 px-5 py-3 font-semibold text-gray-950 disabled:opacity-50">{saving ? 'Saving…' : 'Save changes'}</button><button type="button" disabled={saving} onClick={() => { setEditing(null); setDraft(null); setError('') }} className={button}>Cancel</button></div>
+  const section = (key: NonNullable<typeof editing>, title: string, summary: string, content: React.ReactNode) => <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+    <div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">{title}</h2><p className="mt-1 text-gray-600 dark:text-gray-400">{summary}</p></div>{editing !== key && <button type="button" disabled={saving || editing !== null} onClick={() => startEdit(key)} className={button} aria-label={`Edit ${title.toLowerCase()}`}>Edit</button>}</div>
+    {editing === key && draft && <fieldset disabled={saving} className="mt-5">{content}{error && <p role="alert" className="mt-4 text-red-600 dark:text-red-400">{error}</p>}{controls}</fieldset>}
+  </section>
+  return <ProtectedRoute><main className="mx-auto max-w-3xl space-y-5 px-4 py-6 text-gray-900 dark:text-gray-100">
+    <header><h1 className="text-3xl font-semibold">Profile</h1><p className="mt-1 break-words text-gray-600 dark:text-gray-400">{user?.email}</p></header>
+    {message && <p role="status" className="rounded-xl bg-emerald-50 p-4 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">{message}</p>}
+    <div id="whoop"><WhoopConnectionSettings /></div>
+    {!profile ? <div role="status">{profileError || 'Loading profile…'}{profileError && <button className={button} onClick={() => refreshProfile()}>Retry</button>}</div> : <>
+      {section('goals', 'Goals and activity', profile.fitnessGoals.map(goal => FITNESS_GOALS.find(item => item.id === goal)?.label || goal).join(' · ') || 'Choose your direction', draft && <GoalsSelection selectedGoals={draft.fitnessGoals} selectedActivityLevel={draft.activityLevel} onGoalsChange={fitnessGoals => setDraft(previous => previous && { ...previous, fitnessGoals })} onActivityLevelChange={activityLevel => setDraft(previous => previous && { ...previous, activityLevel: activityLevel as UserProfile['activityLevel'] })} />)}
+      {section('body', 'Measurements and units', `${profile.preferences.units === 'imperial' ? 'Imperial' : 'Metric'} · ${profile.bodyMetrics.age ? `${profile.bodyMetrics.age} years` : 'Age needed'}${profile.bodyMetrics.weight_kg ? ` · ${Math.round(profile.bodyMetrics.weight_kg * (profile.preferences.units === 'imperial' ? 2.2046226218 : 1) * 10) / 10} ${profile.preferences.units === 'imperial' ? 'lb' : 'kg'}` : ' · Measurements optional'}`, draft && <BodyMetricsForm initialData={draft.bodyMetrics} preferences={draft.preferences} onDataChange={bodyMetrics => setDraft(previous => previous && { ...previous, bodyMetrics })} onPreferencesChange={preferences => setDraft(previous => previous && { ...previous, preferences })} />)}
+      {section('preferences', 'Notifications', profile.preferences.notifications ? 'Enabled' : 'Disabled', draft && <label className="flex min-h-[44px] items-center gap-3"><input type="checkbox" checked={draft.preferences.notifications} onChange={event => setDraft({ ...draft, preferences: { ...draft.preferences, notifications: event.target.checked } })} className="h-5 w-5 accent-emerald-500" />Enable notifications</label>)}
+    </>}
+  </main></ProtectedRoute>
 }

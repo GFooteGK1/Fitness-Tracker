@@ -58,7 +58,7 @@ export function DashboardNarrativeView({
       </p>
       {composition.highlights.length > 0 && (
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {composition.highlights.map(highlight => (
+          {composition.highlights.filter(highlight => highlight.section !== 'leaderboard').map(highlight => (
             <div
               key={`${highlight.section}-${highlight.text}`}
               className="rounded-lg border border-white/80 bg-white/70 p-3 dark:border-gray-700 dark:bg-gray-800/70"

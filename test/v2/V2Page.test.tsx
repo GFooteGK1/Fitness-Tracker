@@ -166,7 +166,16 @@ describe('V2Page', () => {
       })
 
       expect(screen.getByRole('log', { name: 'Conversation' })).toBeInTheDocument()
-      expect(screen.getByText(/start a conversation/i)).toBeInTheDocument()
+      expect(screen.getByText(/What would help today/i)).toBeInTheDocument()
+    })
+
+    it('prefills contextual prompts without sending or saving', async () => {
+      const mockFetch = stubPageFetch()
+      await act(async () => { render(<V2Page />) })
+      fireEvent.click(screen.getByRole('button', { name: 'Explain my recovery' }))
+      expect(screen.getByLabelText('Message input')).toHaveValue('Explain my recovery')
+      expect(screen.getByLabelText('Message input')).toHaveFocus()
+      expect(mockFetch.mock.calls.some(([input]) => requestUrl(input) === '/api/agent/process')).toBe(false)
     })
 
     it('renders the fixed input controls', async () => {
@@ -390,7 +399,7 @@ describe('V2Page', () => {
       })
 
       expect(screen.queryByText('Hello')).not.toBeInTheDocument()
-      expect(screen.getByText(/start a conversation/i)).toBeInTheDocument()
+      expect(screen.getByText(/What would help today/i)).toBeInTheDocument()
     })
   })
 })

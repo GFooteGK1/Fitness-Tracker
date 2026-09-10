@@ -1,3 +1,4 @@
+import { isOnboardingComplete } from '@/app/lib/auth/onboarding'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 
@@ -64,12 +65,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if onboarding is complete
-    const hasCompletedOnboarding = (
-      profile.body_metrics?.height_cm !== undefined &&
-      profile.body_metrics?.weight_kg !== undefined &&
-      profile.body_metrics?.age !== undefined &&
-      profile.fitness_goals?.length > 0
-    )
+    const hasCompletedOnboarding = isOnboardingComplete(profile.body_metrics, profile.fitness_goals)
 
     return NextResponse.json({
       profile,

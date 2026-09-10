@@ -1,5 +1,6 @@
 'use client'
 
+import { isOnboardingComplete } from './onboarding'
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { User, Session } from '@supabase/auth-helpers-nextjs'
 import { createClient } from './supabase'
@@ -429,12 +430,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [loadProfile, user])
 
   // Check if user has completed onboarding
-  const hasCompletedOnboarding = profile ? (
-    profile.bodyMetrics.height_cm !== undefined &&
-    profile.bodyMetrics.weight_kg !== undefined &&
-    profile.bodyMetrics.age !== undefined &&
-    profile.fitnessGoals.length > 0
-  ) : false
+  const hasCompletedOnboarding = isOnboardingComplete(profile?.bodyMetrics, profile?.fitnessGoals)
 
   // Initialize WHOOP connection manually (public API — delegates to shared helper)
   const initializeWhoopConnection = async () => {

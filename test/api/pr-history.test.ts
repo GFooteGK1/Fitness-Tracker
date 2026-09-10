@@ -17,6 +17,7 @@ function createQuery(result: QueryResult) {
   const query = {
     select: vi.fn(),
     eq: vi.fn(),
+    gt: vi.fn(),
     order: vi.fn(),
     range: vi.fn(),
     ilike: vi.fn(),
@@ -24,7 +25,7 @@ function createQuery(result: QueryResult) {
       Promise.resolve(resolve ? resolve(result) : result)),
   }
 
-  for (const method of ['select', 'eq', 'order', 'range', 'ilike'] as const) {
+  for (const method of ['select', 'eq', 'gt', 'order', 'range', 'ilike'] as const) {
     query[method].mockReturnValue(query)
   }
 
@@ -126,6 +127,7 @@ describe('GET /api/pr-history', () => {
     expect(historyQuery.range).toHaveBeenCalledWith(10, 29)
     expect(historyQuery.ilike).toHaveBeenCalledWith('exercise', '%Back Squat%')
     expect(historyQuery.eq).toHaveBeenCalledWith('pr_type', 'weight')
+    expect(historyQuery.gt).toHaveBeenCalledWith('previous_value', 0)
   })
 
   it.each([

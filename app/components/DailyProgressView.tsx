@@ -174,23 +174,6 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
     return `${Math.round(value * 10) / 10}${unit}`
   }
 
-  const getAdherenceColor = (adherence: number) => {
-    if (adherence >= 95) return 'text-green-600 bg-green-50 border-green-200'
-    if (adherence >= 85) return 'text-yellow-600 bg-yellow-50 border-yellow-200'
-    return 'text-red-600 bg-red-50 border-red-200'
-  }
-
-  const getProgressBarColor = (adherence: number) => {
-    if (adherence >= 95) return 'bg-green-500'
-    if (adherence >= 85) return 'bg-yellow-500'
-    return 'bg-red-500'
-  }
-
-  const calculateProgress = (actual: number, target: number) => {
-    if (!target || target <= 0) return 0
-    return Math.min((actual / target) * 100, 100)
-  }
-
   const configuredTargets = targets &&
     targets.targetProtein > 0 &&
     targets.targetCarbs > 0 &&
@@ -233,7 +216,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
         {onAddMeal && (
           <button
             onClick={onAddMeal}
-            className="bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors font-semibold flex items-center justify-center space-x-2 text-sm sm:text-base touch-target w-full sm:w-auto"
+            className="app-primary flex items-center justify-center gap-2 w-full sm:w-auto"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -243,135 +226,35 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
         )}
       </div>
 
-      {/* Daily Totals and Targets - Mobile Optimized */}
-      {configuredTargets && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Daily Progress</h2>
-
-          {/* Overall Adherence Score */}
-          <div className={`rounded-lg p-3 sm:p-4 mb-4 border ${getAdherenceColor(adherence.overallScore)}`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base">Overall Adherence</h3>
-                <p className="text-xs sm:text-sm opacity-75">
-                  {adherence.withinTolerance ? 'Within target range' : 'Outside target range'}
-                </p>
-              </div>
-              <div className="text-xl sm:text-2xl font-bold">
-                {Math.round(adherence.overallScore)}%
-              </div>
+      <section className="app-panel p-4" aria-label="Daily nutrition summary">
+        <h2 className="text-lg font-semibold">{getLocalDate(date) === getLocalDate() ? 'Today so far' : 'Logged nutrition'}</h2>
+        <p className="app-muted mt-1 mb-4 text-sm">
+          {meals.length === 0 ? 'No meals logged yet. Missing entries are not a measure of what you ate.' : 'Based on logged meals. This may not represent your whole day.'}
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {([
+            ['Protein', dailyTotals.protein, configuredTargets?.targetProtein, 'g'],
+            ['Carbs', dailyTotals.carbs, configuredTargets?.targetCarbs, 'g'],
+            ['Fat', dailyTotals.fat, configuredTargets?.targetFat, 'g'],
+            ['Calories', dailyTotals.calories, configuredTargets?.targetCalories, '']
+          ] as const).map(([label, actual, target, unit]) => (
+            <div key={label}>
+              <p className="app-muted text-sm">{label}</p>
+              <p className="text-xl font-semibold">{formatMacro(actual, unit)}</p>
+              {target && <p className="app-muted text-sm">of {formatMacro(target, unit)} target</p>}
             </div>
-          </div>
-
-          {/* Macro Progress Bars - Mobile Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {/* Protein */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Protein</span>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {formatMacro(dailyTotals.protein)} / {formatMacro(configuredTargets.targetProtein)}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(adherence.proteinAdherence)}`}
-                  style={{ width: `${calculateProgress(dailyTotals.protein, configuredTargets.targetProtein)}%` }}
-                ></div>
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {Math.round(adherence.proteinAdherence)}% adherence
-              </div>
-            </div>
-
-            {/* Carbs */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Carbs</span>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {formatMacro(dailyTotals.carbs)} / {formatMacro(configuredTargets.targetCarbs)}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(adherence.carbsAdherence)}`}
-                  style={{ width: `${calculateProgress(dailyTotals.carbs, configuredTargets.targetCarbs)}%` }}
-                ></div>
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {Math.round(adherence.carbsAdherence)}% adherence
-              </div>
-            </div>
-
-            {/* Fat */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Fat</span>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {formatMacro(dailyTotals.fat)} / {formatMacro(configuredTargets.targetFat)}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(adherence.fatAdherence)}`}
-                  style={{ width: `${calculateProgress(dailyTotals.fat, configuredTargets.targetFat)}%` }}
-                ></div>
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {Math.round(adherence.fatAdherence)}% adherence
-              </div>
-            </div>
-
-            {/* Calories */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Calories</span>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {formatMacro(dailyTotals.calories, '')} / {formatMacro(configuredTargets.targetCalories, '')}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(adherence.caloriesAdherence)}`}
-                  style={{ width: `${calculateProgress(dailyTotals.calories, configuredTargets.targetCalories)}%` }}
-                ></div>
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {Math.round(adherence.caloriesAdherence)}% adherence
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
-      )}
-
-      {/* No targets message - Mobile Optimized */}
-      {!configuredTargets && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 sm:p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-start sm:items-center">
-              <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mr-2 mt-0.5 sm:mt-0 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <h3 className="font-medium text-yellow-800 dark:text-yellow-200 text-sm sm:text-base">No Daily Targets Set</h3>
-                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                  Set your daily macro targets to see adherence tracking and progress indicators.
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/food-progress?view=targets"
-              className="bg-yellow-600 dark:bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 dark:hover:bg-yellow-600 transition-colors font-medium text-sm whitespace-nowrap touch-target w-full sm:w-auto text-center"
-            >
-              Set Targets
-            </Link>
-          </div>
-        </div>
-      )}
+        {!configuredTargets && <p className="app-muted mt-4 text-sm"><span>No Daily Targets Set</span>. <Link className="underline inline-flex min-h-11 items-center" href="/food-progress?view=targets">Set Targets</Link></p>}
+        {configuredTargets && meals.length > 0 && <details className="mt-4 border-t border-[var(--line)] pt-2">
+          <summary className="min-h-11 flex items-center cursor-pointer font-medium">Target comparison</summary>
+          <p className="app-muted text-sm">{Math.round(adherence.overallScore)}% adherence for logged meals only. Unlogged meals may change this comparison.</p>
+        </details>}
+      </section>
 
       {/* Meals List - Mobile Optimized */}
       <div className="space-y-3 sm:space-y-4">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Today&apos;s Meals</h2>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Meals</h2>
 
         {meals.length === 0 ? (
           <div className="text-center py-6 sm:py-8">

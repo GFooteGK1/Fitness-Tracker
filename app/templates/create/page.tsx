@@ -355,7 +355,7 @@ export default function CreateTemplatePage() {
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 bg-blue-600 dark:bg-blue-700 text-white px-4 py-3 text-base font-semibold rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+            className="app-primary flex-1"
           >
             {saving ? 'Saving...' : 'Save Template'}
           </button>

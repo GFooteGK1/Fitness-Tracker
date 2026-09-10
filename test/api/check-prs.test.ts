@@ -60,9 +60,9 @@ describe('POST /api/check-prs', () => {
     }))
 
     expect(response.status).toBe(200)
-    expect((await response.json()).prs.filter(
-      (pr: { prType: string }) => pr.prType === 'weight',
-    )).toHaveLength(1)
+    const body = await response.json()
+    expect(body.prs).toEqual([])
+    expect(body.baselinesRecorded).toBeGreaterThan(0)
     expect(write.upsert).toHaveBeenCalledWith(
       expect.any(Array),
       {

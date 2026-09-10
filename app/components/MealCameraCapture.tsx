@@ -16,6 +16,7 @@ interface MealCameraCaptureProps {
   onPhotoCapture?: (photo: File) => void
   onUploadComplete?: (response: MealUploadResponse) => void
   onError?: (error: string) => void
+  onTextEntry?: () => void
   isLoading?: boolean
   userId?: string
   selectedDate?: Date  // Optional date for logging meals to past dates
@@ -64,6 +65,7 @@ export default function MealCameraCapture({
   onPhotoCapture,
   onUploadComplete,
   onError,
+  onTextEntry,
   isLoading = false,
   userId,
   selectedDate
@@ -108,6 +110,7 @@ export default function MealCameraCapture({
   // State for portion selection flow
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [isRefining, setIsRefining] = useState(false)
+  const [correctionError, setCorrectionError] = useState<string | null>(null)
 
   // Monitor network connectivity and sync with offline queue
   React.useEffect(() => {
@@ -390,8 +393,6 @@ export default function MealCameraCapture({
       }
     }
 
-    const startTime = Date.now()
-
     setPhotoState(prev => ({
       ...prev,
       isUploading: true,
@@ -399,7 +400,7 @@ export default function MealCameraCapture({
       uploadProgress: 0,
       analysisStatus: 'uploading',
       analysisProgress: 0,
-      estimatedTimeRemaining: 30, // Initial estimate of 30 seconds
+      estimatedTimeRemaining: null,
       shouldRetry: false,
       retryAfter: undefined,
       fallbackAction: undefined
@@ -415,40 +416,11 @@ export default function MealCameraCapture({
         // Use selectedDate if provided (with current time of day), otherwise use current time
         formData.append('timestamp', getMealTimestamp(selectedDate))
 
-        // Enhanced upload progress simulation with time estimation
-        const progressInterval = setInterval(() => {
-          setPhotoState(prev => {
-            const elapsed = (Date.now() - startTime) / 1000
-            let newProgress = prev.uploadProgress
-            let timeRemaining = prev.estimatedTimeRemaining
-
-            if (prev.analysisStatus === 'uploading' && prev.uploadProgress < 90) {
-              // Upload phase: progress more quickly initially, then slow down
-              const progressIncrement = prev.uploadProgress < 50 ? 15 : 8
-              newProgress = Math.min(90, prev.uploadProgress + progressIncrement)
-
-              // Estimate time remaining based on current progress
-              if (newProgress > 10) {
-                const estimatedTotal = (elapsed / newProgress) * 100
-                timeRemaining = Math.max(0, estimatedTotal - elapsed)
-              }
-            }
-
-            return {
-              ...prev,
-              uploadProgress: newProgress,
-              estimatedTimeRemaining: timeRemaining
-            }
-          })
-        }, 300)
-
         // Upload photo with regular fetch (Supabase auth handles session)
         const response = await sendLoggingRequest('/api/meals/upload', {
           method: 'POST',
           body: formData
         }, user?.id ?? '', 60_000, JSON.stringify([await fileFingerprint(photoState.file!), selectedDate ? getLocalDate(selectedDate) : 'today']))
-
-        clearInterval(progressInterval)
 
         if (!response.ok) {
           const errorData = await response.json()
@@ -511,6 +483,7 @@ export default function MealCameraCapture({
             ...prev,
             uploadProgress: 100,
             analysisStatus: 'complete',
+            isUploading: false,
             analysisProgress: 100,
             estimatedTimeRemaining: 0,
             fallbackAction: 'save_without_photo'
@@ -521,76 +494,26 @@ export default function MealCameraCapture({
           return
         }
 
-        // Update to analyzing status with progress tracking
-        setPhotoState(prev => ({
-          ...prev,
-          uploadProgress: 100,
-          analysisStatus: 'analyzing',
-          analysisProgress: 0,
-          estimatedTimeRemaining: 15 // AI analysis typically takes 10-15 seconds
-        }))
-
-        // Simulate AI analysis progress
-        const analysisInterval = setInterval(() => {
-          setPhotoState(prev => {
-            if (prev.analysisProgress < 90) {
-              const elapsed = (Date.now() - startTime) / 1000
-              const progressIncrement = prev.analysisProgress < 30 ? 20 : 10
-              const newProgress = Math.min(90, prev.analysisProgress + progressIncrement)
-
-              // Update time remaining for analysis phase
-              const analysisTimeElapsed = elapsed - 5 // Subtract upload time
-              const estimatedAnalysisTotal = 15
-              const timeRemaining = Math.max(0, estimatedAnalysisTotal - analysisTimeElapsed)
-
-              return {
-                ...prev,
-                analysisProgress: newProgress,
-                estimatedTimeRemaining: timeRemaining
-              }
+        // The server has already analyzed and saved this estimate.
+        const analysisItems: FoodItem[] = result.analysis?.items || []
+        if (analysisItems.length > 0) {
+          setAnalysisResult({
+            mealId: result.mealId,
+            items: analysisItems,
+            totals: {
+              protein: result.analysis?.total_protein || 0,
+              carbs: result.analysis?.total_carbs || 0,
+              fat: result.analysis?.total_fat || 0,
+              calories: result.analysis?.total_calories || 0
             }
-            return prev
           })
-        }, 800)
-
-        // Complete analysis after realistic time - show portion selection
-        setTimeout(() => {
-          clearInterval(analysisInterval)
-
-          // Extract items from analysis result for portion selection
-          const analysisItems: FoodItem[] = result.analysis?.items || []
-
-          if (analysisItems.length > 0) {
-            // Show portion selection UI
-            setAnalysisResult({
-              mealId: result.mealId,
-              items: analysisItems,
-              totals: {
-                protein: result.analysis?.total_protein || 0,
-                carbs: result.analysis?.total_carbs || 0,
-                fat: result.analysis?.total_fat || 0,
-                calories: result.analysis?.total_calories || 0
-              }
-            })
-            setPhotoState(prev => ({
-              ...prev,
-              isUploading: false,
-              analysisStatus: 'portion-select',
-              analysisProgress: 100,
-              estimatedTimeRemaining: 0
-            }))
-          } else {
-            // No items detected, complete without portion selection
-            setPhotoState(prev => ({
-              ...prev,
-              isUploading: false,
-              analysisStatus: 'complete',
-              analysisProgress: 100,
-              estimatedTimeRemaining: 0
-            }))
-            onUploadComplete?.(result)
-          }
-        }, 3000) // 3 seconds for analysis simulation
+        }
+        setPhotoState(prev => ({
+          ...prev, isUploading: false, uploadProgress: 100,
+          analysisStatus: analysisItems.length ? 'portion-select' : 'complete',
+          analysisProgress: 100, estimatedTimeRemaining: 0
+        }))
+        if (!analysisItems.length) onUploadComplete?.(result)
 
       } catch (error) {
         console.error('Upload error:', error)
@@ -646,14 +569,14 @@ export default function MealCameraCapture({
   }, [photoState.preview])
 
   // Handle estimate confirmation and persist any user corrections.
-  const handlePortionConfirm = useCallback(async (items: FoodItem[]) => {
+  const handlePortionConfirm = useCallback(async (items: FoodItem[], multiplier = 1) => {
     if (!analysisResult) return
 
     const hasReviewEdits = items.some((item, index) =>
       item.portionSpec || item.food !== analysisResult.items[index]?.food
     )
 
-    if (!hasReviewEdits) {
+    if (!hasReviewEdits && multiplier === 1) {
       // The user accepted the original estimate without corrections.
       setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
       onUploadComplete?.({
@@ -664,25 +587,45 @@ export default function MealCameraCapture({
     }
 
     // Persist corrected names and refine macros when portions changed.
+    setCorrectionError(null)
     setIsRefining(true)
     setPhotoState(prev => ({ ...prev, analysisStatus: 'refining' }))
 
     try {
-      const response = await fetch('/api/meals/refine', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mealId: analysisResult.mealId,
-          items
+      let correctedItems = items
+      if (hasReviewEdits) {
+        const response = await fetch('/api/meals/refine', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mealId: analysisResult.mealId, items })
         })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to refine macros')
+        if (!response.ok) throw new Error('Failed to save corrections')
+        const result = await response.json()
+        if (!result.refined && !result.reviewed) throw new Error('Could not refine the estimate')
+        correctedItems = result.items
       }
-
-      const result = await response.json()
-
+      if (multiplier !== 1) {
+        const scaledItems = correctedItems.map(item => ({
+          ...item,
+          portion: `${multiplier} × (${item.portion})`,
+          portionSpec: undefined,
+          protein: Math.round(item.protein * multiplier * 10) / 10,
+          carbs: Math.round(item.carbs * multiplier * 10) / 10,
+          fat: Math.round(item.fat * multiplier * 10) / 10,
+          calories: Math.round(item.calories * multiplier * 10) / 10
+        }))
+        const totals = scaledItems.reduce((sum, item) => ({
+          totalProtein: sum.totalProtein + item.protein,
+          totalCarbs: sum.totalCarbs + item.carbs,
+          totalFat: sum.totalFat + item.fat,
+          totalCalories: sum.totalCalories + item.calories
+        }), { totalProtein: 0, totalCarbs: 0, totalFat: 0, totalCalories: 0 })
+        const response = await fetch(`/api/meals/${analysisResult.mealId}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: scaledItems, ...totals, manualOverride: true, reviewedAt: new Date().toISOString() })
+        })
+        if (!response.ok) throw new Error('Failed to save portion change')
+      }
       setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
       onUploadComplete?.({
         mealId: analysisResult.mealId,
@@ -690,16 +633,13 @@ export default function MealCameraCapture({
       })
     } catch (error) {
       console.error('Portion refinement error:', error)
-      onError?.('Failed to save corrections. Meal saved with the original estimates.')
-      setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
-      onUploadComplete?.({
-        mealId: analysisResult.mealId,
-        analysisStatus: 'complete'
-      })
+      setPhotoState(prev => ({ ...prev, analysisStatus: 'portion-select' }))
+      setCorrectionError('Changes could not be fully saved. Your meal is still logged. Retry these changes or keep the saved meal.')
+
     } finally {
       setIsRefining(false)
     }
-  }, [analysisResult, onUploadComplete, onError])
+  }, [analysisResult, onUploadComplete])
 
   // Handle skip portion selection
   const handlePortionSkip = useCallback(() => {
@@ -800,68 +740,10 @@ export default function MealCameraCapture({
             Your photo is used for this analysis and is not retained in your meal history.
           </p>
 
-          {/* Upload Progress Indicator - Mobile Optimized */}
           {photoState.isUploading && (
-            <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  {photoState.analysisStatus === 'uploading' ? 'Uploading photo...' :
-                   photoState.analysisStatus === 'analyzing' ? 'Analyzing meal...' : 'Processing...'}
-                </span>
-                {photoState.estimatedTimeRemaining !== null && photoState.estimatedTimeRemaining > 0 && (
-                  <span className="text-xs text-blue-600 dark:text-blue-400">
-                    ~{Math.ceil(photoState.estimatedTimeRemaining)}s remaining
-                  </span>
-                )}
-              </div>
-
-              {/* Upload Progress Bar */}
-              {photoState.analysisStatus === 'uploading' && (
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs text-blue-600 dark:text-blue-400 mb-1">
-                    <span>Upload Progress</span>
-                    <span>{Math.round(photoState.uploadProgress)}%</span>
-                  </div>
-                  <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300 ease-out"
-                      style={{ width: `${photoState.uploadProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Analysis Progress Bar */}
-              {photoState.analysisStatus === 'analyzing' && (
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs text-blue-600 dark:text-blue-400 mb-1">
-                    <span>AI Analysis Progress</span>
-                    <span>{Math.round(photoState.analysisProgress)}%</span>
-                  </div>
-                  <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
-                    <div
-                      className="bg-green-600 dark:bg-green-400 h-2 rounded-full transition-all duration-300 ease-out"
-                      style={{ width: `${photoState.analysisProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Status Messages */}
-              <div className="text-xs text-blue-700 dark:text-blue-300">
-                {photoState.analysisStatus === 'uploading' && (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 dark:border-blue-400 mr-2"></div>
-                    Sending your meal photo for analysis...
-                  </div>
-                )}
-                {photoState.analysisStatus === 'analyzing' && (
-                  <div className="flex items-center">
-                    <div className="animate-pulse rounded-full h-3 w-3 bg-green-600 dark:bg-green-400 mr-2"></div>
-                    AI is identifying food items and estimating nutrition...
-                  </div>
-                )}
-              </div>
+            <div role="status" className="app-panel mt-4 p-4 flex items-center gap-3">
+              <span className="animate-spin rounded-full h-5 w-5 border-2 border-[var(--line)] border-t-[var(--accent)]" aria-hidden="true" />
+              <span>Analyzing and saving your meal estimate…</span>
             </div>
           )}
 
@@ -898,7 +780,7 @@ export default function MealCameraCapture({
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-4">
+          {(photoState.analysisStatus === 'idle' || photoState.analysisStatus === 'uploading') && <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-4">
             <button
               onClick={uploadPhoto}
               disabled={photoState.isUploading || isLoading || !networkState.isOnline}
@@ -921,11 +803,12 @@ export default function MealCameraCapture({
             >
               Retake
             </button>
-          </div>
+          </div>}
 
           {/* Portion Selection UI - shown after initial analysis */}
-          {photoState.analysisStatus === 'portion-select' && analysisResult && (
+          {(photoState.analysisStatus === 'portion-select' || photoState.analysisStatus === 'refining') && analysisResult && (
             <div className="mt-4">
+              {correctionError && <p role="alert" className="app-panel mb-3 p-3">{correctionError}</p>}
               <PortionSelector
                 items={analysisResult.items}
                 onConfirm={handlePortionConfirm}
@@ -1008,7 +891,7 @@ export default function MealCameraCapture({
 
               {/* Action Buttons - Mobile Optimized */}
               <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                {photoState.shouldRetry && !photoState.isUploading && (
+                {photoState.analysisStatus === 'failed' && !photoState.isUploading && (
                   <button
                     onClick={uploadPhoto}
                     disabled={!networkState.isOnline}
@@ -1018,21 +901,10 @@ export default function MealCameraCapture({
                   </button>
                 )}
 
-                {photoState.fallbackAction === 'save_without_photo' && (
-                  <button
-                    onClick={() => {
-                      // Simulate successful upload without photo
-                      const fallbackResponse: MealUploadResponse = {
-                        mealId: `fallback_${Date.now()}`,
-                        analysisStatus: 'processing',
-                        photoUrl: null,
-                        storageWarning: 'Meal saved without photo'
-                      }
-                      onUploadComplete?.(fallbackResponse)
-                    }}
-                    className="text-sm bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white px-3 py-1 rounded touch-target"
-                  >
-                    Continue Without Photo
+                <button type="button" onClick={retakePhoto} className="app-secondary">Choose another photo</button>
+                {onTextEntry && (
+                  <button type="button" onClick={onTextEntry} className="app-secondary">
+                    Describe meal instead
                   </button>
                 )}
               </div>

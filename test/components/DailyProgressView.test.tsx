@@ -92,3 +92,18 @@ describe('DailyProgressView', () => {
     expect(screen.queryByText('Nutrition targets request timed out. Progress targets may be temporarily unavailable.')).not.toBeInTheDocument()
   })
 })
+
+
+it('keeps an empty log neutral even when daily targets are configured', async () => {
+  vi.stubGlobal('fetch', vi.fn((input) => Promise.resolve(new Response(JSON.stringify(
+    String(input).startsWith('/api/meals/daily') ? emptyDailyResponse : {
+      targetProtein: 150, targetCarbs: 200, targetFat: 70, targetCalories: 2030
+    }
+  ), { status: 200 }))))
+  render(<DailyProgressView date={new Date()} />)
+  expect(await screen.findByText(/No meals logged yet/)).toBeInTheDocument()
+  expect(screen.queryByText(/Outside target range/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/0% adherence/)).not.toBeInTheDocument()
+  expect(screen.queryByText('Target comparison')).not.toBeInTheDocument()
+  vi.unstubAllGlobals()
+})

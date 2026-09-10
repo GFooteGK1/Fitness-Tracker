@@ -888,3 +888,7 @@ execution and explicit plan-acceptance surface.
 The `verify` CI job includes executable PGlite migration/transaction tests and
 mobile Chromium retry journeys with simulated external services. Production
 canaries remain a release step. See `docs/releases/app-quality-2026-09-04.md`.
+
+## Low-touch entry and feature retirement (September 2026)
+
+See [ADR-0010](../decisions/ADR-0010-low-touch-entry-and-feature-retirement.md). Coach now uses shared navigation. Onboarding completion uses the shared age-and-goal predicate in app/lib/auth/onboarding.ts. Template reuse is account-scoped local draft preference data. Leaderboard pages and APIs are retired without database deletion. PR baselines remain stored but are excluded from celebration and default record counts.

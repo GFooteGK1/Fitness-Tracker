@@ -114,7 +114,7 @@ export async function POST(request: Request) {
               }
             }
           }
-          if (block.block_score?.time_s && block.title) {
+          if (block.block_type === 'FOR_TIME' && block.block_score?.time_s && block.title) {
             historicalRecords.push({
               exercise: block.title,
               pr_type: 'time',
@@ -156,11 +156,11 @@ export async function POST(request: Request) {
 
       if (insertError) {
         console.error('Error storing PRs:', insertError)
-        // Don't fail the request - PRs were detected even if storage fails
+        return apiError('Workout saved, but records could not be saved. Try checking records again.', 500)
       }
     }
 
-    return NextResponse.json({ prs })
+    return NextResponse.json({ prs: prs.filter(pr => pr.isPR), baselinesRecorded: prs.filter(pr => !pr.isPR).length })
   } catch (error) {
     console.error('PR check error:', error)
     return apiError('Failed to check PRs', 500, error instanceof Error ? error.message : 'Unknown error')

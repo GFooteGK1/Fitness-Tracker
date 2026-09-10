@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useTemplatePreferences } from '@/app/components/useTemplatePreferences';
 import { useRouter } from 'next/navigation';
 import {
   BUILT_IN_TEMPLATES,
@@ -28,6 +29,7 @@ const CATEGORIES: (TemplateCategory | 'all')[] = [
 
 export default function TemplatesPage() {
   const router = useRouter();
+  const preferences = useTemplatePreferences();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<TemplateCategory | 'all'>('all');
   const [customTemplates, setCustomTemplates] = useState<WorkoutTemplate[]>([]);
@@ -70,16 +72,29 @@ export default function TemplatesPage() {
         </h1>
         <Link
           href="/templates/create"
-          className="inline-flex items-center justify-center px-4 py-2.5 bg-blue-600 dark:bg-blue-700 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+          className="app-secondary text-sm self-start"
         >
           + Create Template
         </Link>
       </div>
 
+      {!searchQuery && activeCategory === 'all' && [
+        { title: 'Favorites', ids: preferences.favorites },
+        { title: 'Recently used templates', ids: preferences.recent },
+      ].map(section => section.ids.length > 0 && (
+        <section key={section.title} className="mb-5">
+          <h2 className="font-semibold mb-2">{section.title}</h2>
+          <div className="flex flex-wrap gap-2">
+            {section.ids.map(id => { const template = allTemplates.find(item => item.id === id); return template ? <Link className="app-secondary" key={id} href={`/templates/${id}`}>{template.name}</Link> : null })}
+          </div>
+        </section>
+      ))}
+
       {/* Search */}
       <div className="mb-4">
         <input
           type="text"
+          aria-label="Search templates"
           placeholder="Search by name, movement, or tag..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -95,9 +110,9 @@ export default function TemplatesPage() {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
+              className={`min-h-11 px-3 py-1.5 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
                 activeCategory === cat
-                  ? 'bg-blue-600 text-white dark:bg-blue-700'
+                  ? 'bg-[var(--action)] text-[var(--action-text)]'
                   : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >

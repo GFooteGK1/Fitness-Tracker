@@ -31,6 +31,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const exercise = searchParams.get('exercise')?.trim() || null
     const prType = searchParams.get('prType')
+    const includeBaselines = searchParams.get('includeBaselines') === 'true'
     const limit = parseIntegerParam(searchParams.get('limit'), DEFAULT_LIMIT, 1, MAX_LIMIT)
     const offset = parseIntegerParam(searchParams.get('offset'), 0, 0, MAX_OFFSET)
 
@@ -58,6 +59,7 @@ export async function GET(request: Request) {
     if (exercise) {
       query = query.ilike('exercise', `%${exercise}%`)
     }
+    if (!includeBaselines) query = query.gt('previous_value', 0)
     if (prType) {
       query = query.eq('pr_type', prType)
     }
@@ -83,6 +85,7 @@ export async function GET(request: Request) {
       .from('personal_records')
       .select('achieved_at')
       .eq('user_id', user.id)
+      .gt('previous_value', 0)
 
     if (allError) {
       console.error('Error fetching PR summary:', allError)

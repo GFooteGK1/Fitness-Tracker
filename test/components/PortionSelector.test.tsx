@@ -75,3 +75,17 @@ describe('PortionSelector', () => {
     expect(screen.getByText('Nutrition will update after you apply corrections.')).toBeInTheDocument()
   })
 })
+
+
+describe('whole-meal portions', () => {
+  it('previews a multiplier without changing the source items or compounding selections', () => {
+    const onConfirm = vi.fn()
+    render(<PortionSelector items={items} onConfirm={onConfirm} onSkip={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: '2×' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Half' }))
+    expect(within(screen.getByLabelText('Estimated nutrition')).getByText('90')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Apply corrections' }))
+    expect(onConfirm).toHaveBeenCalledWith(items, 0.5)
+    expect(items[0].calories).toBe(180)
+  })
+})
