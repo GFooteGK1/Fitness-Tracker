@@ -16,6 +16,14 @@ describe('FastMealLogger', () => {
   beforeEach(() => vi.stubGlobal('crypto', { randomUUID: vi.fn(() => requestId) }))
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
+  it('distinguishes an unavailable recent-meal history from an empty one', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, false)))
+    render(<FastMealLogger />)
+    expect(await screen.findByText(/Recent meals could not load/)).toBeInTheDocument()
+    expect(screen.queryByText(/No recent meals to repeat yet/)).not.toBeInTheDocument()
+  })
+
   it('quick-logs a common meal with a fresh selected-date timestamp', async () => {
     let quickLogBody: Record<string, unknown> | null = null
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

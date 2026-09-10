@@ -94,6 +94,12 @@ User Input → Form Component → AuthContext.updateProfile() → API Route → 
 
 ## 📊 **Dashboard System**
 
+The daily entry point `/dashboard` now prioritizes an accepted-session summary
+(`TodayPlan`) and logging shortcuts. Historical dashboard reports are at
+`/progress`. `/capture` routes users to existing Program, workout, and meal
+logging flows. No new persistence boundary is introduced. See ADR-0009 for the
+mobile navigation and safe-area contract.
+
 ### **Core Components:**
 ```
 Dashboard:

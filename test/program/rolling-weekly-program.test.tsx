@@ -116,7 +116,7 @@ describe('rolling weekly Program experience', () => {
 
     await act(async () => render(<ProgramPage />))
 
-    expect(await screen.findByText('Legacy plan preserved')).toBeInTheDocument()
+    expect(await screen.findByText('Update your plan')).toBeInTheDocument()
     expect(screen.getByText('Weekly replacement proposal')).toBeInTheDocument()
     expect(screen.getByText('Nothing changes until you accept this week.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Accept weekly replacement' })).toBeInTheDocument()

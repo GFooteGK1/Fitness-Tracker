@@ -381,12 +381,11 @@ export default function RollingProgramPage() {
   return (
     <ProtectedRoute>
       <main className="mx-auto max-w-5xl space-y-5 pb-10">
-        <header className="rounded-2xl bg-gradient-to-br from-gray-950 to-blue-950 p-5 text-white shadow-sm sm:p-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">Socius coach</p>
-          <h1 className="mt-2 text-2xl font-bold sm:text-3xl">Train this week. Adapt from evidence.</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
-            Your goal and direction persist. The coach exposes one accepted week, watches the signals,
-            and asks before every next dose.
+        <header className="py-2">
+          <p className="app-eyebrow">Made for your week</p>
+          <h1 className="app-title">Your training plan</h1>
+          <p className="app-muted mt-2 max-w-2xl text-sm leading-6">
+            Your current plan stays active until you approve a change.
           </p>
         </header>
 
@@ -422,22 +421,7 @@ export default function RollingProgramPage() {
           />
         ) : context?.activeProgram ? (
           <>
-            <section className="rounded-2xl border border-violet-200 bg-violet-50 p-5 dark:border-violet-900 dark:bg-violet-950/30">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-700 dark:text-violet-300">Legacy plan preserved</p>
-              <h2 className="mt-2 text-xl font-bold text-gray-950 dark:text-white">Your accepted plan remains unchanged</h2>
-              <p className="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-200">
-                Continue using it below. Moving to one-week programming requires a separate weekly replacement that you review and accept.
-              </p>
-              {!proposal && !showLegacyConversion && (
-                <button
-                  type="button"
-                  onClick={() => prepareReplacementForm('legacy_conversion')}
-                  className="mt-5 min-h-12 w-full rounded-xl bg-violet-700 px-5 py-3 text-base font-semibold text-white hover:bg-violet-800 sm:w-auto"
-                >
-                  Build a weekly replacement
-                </button>
-              )}
-            </section>
+
             {proposal && (
               <WeeklyProposalCard
                 proposal={proposal}
@@ -453,6 +437,22 @@ export default function RollingProgramPage() {
               onRefreshPlan={loadState}
               savingSessionId={savingSessionId}
             />
+            <details className="app-panel p-4">
+              <summary className="flex min-h-11 cursor-pointer items-center font-medium">Update your plan</summary>
+              <h2 className="mt-2 text-xl font-bold text-gray-950 dark:text-white">Your accepted plan remains unchanged</h2>
+              <p className="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-200">
+                Continue using your current plan. Moving to one-week programming requires a separate weekly replacement that you review and accept.
+              </p>
+              {!proposal && !showLegacyConversion && (
+                <button
+                  type="button"
+                  onClick={() => prepareReplacementForm('legacy_conversion')}
+                  className="app-primary mt-4"
+                >
+                  Build a weekly replacement
+                </button>
+              )}
+            </details>
           </>
         ) : proposal ? (
           <WeeklyProposalCard

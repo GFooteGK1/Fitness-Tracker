@@ -37,7 +37,7 @@ describe('TodaySessionCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Readiness 4' }))
     fireEvent.click(screen.getByRole('button', { name: 'Finish or skip session' }))
     fireEvent.click(screen.getByLabelText('Confirm completed prescribed work'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save session once' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save workout' }))
 
     expect(await screen.findByRole('button', { name: 'Retry same entry' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Retry same entry' }))
@@ -64,7 +64,7 @@ describe('TodaySessionCard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Finish or skip session' }))
     fireEvent.click(screen.getByLabelText('Confirm completed prescribed work'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save session once' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save workout' }))
     expect(await screen.findByRole('button', { name: 'Refresh active plan' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit entry' }))

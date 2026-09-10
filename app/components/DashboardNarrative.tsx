@@ -36,7 +36,7 @@ export function DashboardNarrativeView({
     <section
       aria-label="Today's read"
       aria-live="polite"
-      className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm dark:border-blue-900 dark:from-blue-950/40 dark:to-gray-800"
+      className="app-panel p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
@@ -51,6 +51,8 @@ export function DashboardNarrativeView({
       <h2 className="mt-3 text-xl font-bold text-gray-900 dark:text-gray-100">
         {composition.headline}
       </h2>
+      <details className="mt-3">
+      <summary className="app-muted flex min-h-11 cursor-pointer items-center text-sm">Why this matters <span aria-hidden="true" className="ml-2">＋</span></summary>
       <p className="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-300">
         {composition.summary}
       </p>
@@ -72,6 +74,7 @@ export function DashboardNarrativeView({
       <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
         AI-composed from the numbers shown in SociusFit. Treat this as context, not medical advice.
       </p>
+      </details>
     </section>
   )
 }
@@ -137,7 +140,7 @@ export default function DashboardNarrative() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Today&apos;s read is unavailable</p>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Your dashboard numbers are still current.</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">You can still open your plan and log your day.</p>
           </div>
           <button
             type="button"

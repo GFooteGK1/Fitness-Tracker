@@ -53,7 +53,7 @@ describe('DashboardNarrative', () => {
     await act(async () => render(<DashboardNarrative />))
 
     await waitFor(() => {
-      expect(screen.getByText('Your dashboard numbers are still current.')).toBeInTheDocument()
+      expect(screen.getByText('You can still open your plan and log your day.')).toBeInTheDocument()
     })
   })
 })

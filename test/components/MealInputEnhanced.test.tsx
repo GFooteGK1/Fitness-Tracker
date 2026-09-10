@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
 
-vi.mock('@/app/components/FastMealLogger', () => ({ default: () => null }))
-vi.mock('@/app/components/MealCameraCapture', () => ({ default: () => null }))
+vi.mock('@/app/components/FastMealLogger', () => ({ default: () => <div>Recent meal choices</div> }))
+vi.mock('@/app/components/MealCameraCapture', () => ({ default: () => <div>Meal camera</div> }))
 
 import MealInputEnhanced from '@/app/components/MealInputEnhanced'
 
@@ -22,6 +22,14 @@ class MockSpeechRecognition {
 }
 
 describe('MealInputEnhanced', () => {
+  it('opens the requested meal mode and can reveal the other inputs', () => {
+    render(<MealInputEnhanced initialMode="recent" />)
+    expect(screen.queryByText('Recent meal choices')).not.toBeNull()
+    expect(screen.queryByText('Meal camera')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all meal options' }))
+    expect(screen.queryByText('Meal camera')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Show text input' })).not.toBeNull()
+  })
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
