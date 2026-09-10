@@ -8,6 +8,7 @@ import type { MealUploadResponse } from '@/app/lib/types/food-tracking'
 import { getMealTimestamp, getLocalDate } from '@/app/lib/timezone-utils'
 
 interface MealInputEnhancedProps {
+  initialMode?: 'all' | 'photo' | 'voice' | 'recent';
   onUploadComplete?: (response: MealUploadResponse) => void
   onError?: (error: string) => void
   userId?: string
@@ -50,8 +51,10 @@ export default function MealInputEnhanced({
   onUploadComplete,
   onError,
   userId,
-  selectedDate
+  selectedDate,
+  initialMode = 'all'
 }: MealInputEnhancedProps) {
+  const [inputMode, setInputMode] = useState(initialMode)
   const [mealText, setMealText] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
@@ -366,40 +369,43 @@ export default function MealInputEnhanced({
 
   return (
     <div className="space-y-4">
+      {inputMode !== 'all' && <button type="button" className="app-secondary w-full" onClick={() => setInputMode('all')}>Show all meal options</button>}
+      {(inputMode === 'all' || inputMode === 'recent') && <>
       <FastMealLogger
         selectedDate={selectedDate}
         onLogged={onUploadComplete}
         onError={onError}
       />
+      </>}
 
-      <div className="relative">
+      {inputMode === 'all' && <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-gray-300 dark:border-gray-600" />
         </div>
         <div className="relative flex justify-center text-sm">
           <span className="bg-white px-4 font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-            OR USE PHOTO, VOICE, OR TEXT
+            Photo, voice, or text
           </span>
         </div>
-      </div>
+      </div>}
 
-      <MealCameraCapture
+      {(inputMode === 'all' || inputMode === 'photo') && <MealCameraCapture
         onUploadComplete={onUploadComplete}
         onError={onError}
         userId={userId}
         selectedDate={selectedDate}
-      />
+      />}
 
-      <div className="relative">
+      {inputMode === 'all' && <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-gray-300 dark:border-gray-600" />
         </div>
         <div className="relative flex justify-center text-sm">
           <span className="bg-white px-4 font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">OR</span>
         </div>
-      </div>
+      </div>}
 
-      <div className="space-y-4">
+      {(inputMode === 'all' || inputMode === 'voice') && <div className="space-y-4">
         <div className="flex gap-3">
           <button
             type="button"
@@ -467,7 +473,7 @@ export default function MealInputEnhanced({
             </div>
           </div>
         )}
-      </div>
+      </div>}
     </div>
   )
 }

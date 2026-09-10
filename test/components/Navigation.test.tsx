@@ -4,44 +4,31 @@ import { render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { describe, expect, it, vi } from 'vitest'
 import Navigation from '@/app/components/Navigation'
-
-vi.mock('@/app/lib/auth/AuthContext', () => ({
-  useAuth: () => ({
-    loading: false,
-    user: { email: 'greg@example.com' },
-  }),
-}))
-
-vi.mock('@/app/components/UserMenu', () => ({
-  default: () => <button type="button">User menu</button>,
-}))
-
+const state = vi.hoisted(() => ({ pathname: '/dashboard', user: { id: 'user' } as { id: string } | null }))
+vi.mock('next/navigation', () => ({ usePathname: () => state.pathname }))
+vi.mock('@/app/lib/auth/AuthContext', () => ({ useAuth: () => ({ loading: false, user: state.user }) }))
+vi.mock('@/app/components/UserMenu', () => ({ default: () => <button>User menu</button> }))
 describe('Navigation', () => {
-  it('keeps the mobile shortcut row within the viewport without Board or PR links', () => {
+  it('provides five mobile destinations with Today selected', () => {
+    state.pathname = '/dashboard'; state.user = { id: 'user' }
     render(<Navigation />)
-
-    const mobileNavigation = screen.getByRole('group', { name: 'Mobile navigation' })
-    const mobileLinks = within(mobileNavigation).getAllByRole('link')
-
-    expect(mobileNavigation).toHaveClass('grid', 'grid-cols-6')
-    expect(mobileLinks.map((link) => link.textContent?.trim())).toEqual([
-      '📊Dashboard',
-      '💪Program',
-      '📋WODs',
-      '📝Log',
-      '🍽️Food',
-      '💬Coach',
-    ])
-    expect(mobileLinks[5]).toHaveAttribute('href', '/coach')
-    expect(within(mobileNavigation).queryByRole('link', { name: 'Board' })).not.toBeInTheDocument()
-    expect(within(mobileNavigation).queryByRole('link', { name: 'PRs' })).not.toBeInTheDocument()
+    const nav = within(screen.getByRole('navigation', { name: 'Mobile navigation' }))
+    expect(nav.getAllByRole('link').map(link => link.textContent)).toEqual(['Today', 'Plan', 'Log', 'Progress', 'Coach'])
+    expect(nav.getByRole('link', { name: 'Today' })).toHaveAttribute('aria-current', 'page')
+    expect(nav.getByRole('link', { name: 'Log' })).toHaveAttribute('href', '/capture')
   })
-
-  it('retains leaderboard and PR access in desktop navigation', () => {
+  it('keeps Progress selected for nutrition and links to its history destination', () => {
+    state.pathname = '/food-progress'; state.user = { id: 'user' }
     render(<Navigation />)
-
-    expect(screen.getAllByRole('link', { name: 'Coach' })[0]).toHaveAttribute('href', '/coach')
-    expect(screen.getByRole('link', { name: 'Leaderboards' })).toHaveAttribute('href', '/leaderboards')
-    expect(screen.getAllByRole('link', { name: 'PRs' })).toHaveLength(1)
+    const nav = within(screen.getByRole('navigation', { name: 'Mobile navigation' }))
+    expect(nav.getByRole('link', { name: 'Progress' })).toHaveAttribute('aria-current', 'page')
+    expect(nav.getByRole('link', { name: 'Progress' })).toHaveAttribute('href', '/progress')
+  })
+  it('does not show authenticated navigation when signed out', () => {
+    state.user = null
+    render(<Navigation />)
+    expect(screen.queryByRole('navigation', { name: 'Mobile navigation' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'SociusFit.' })).toHaveAttribute('href', '/')
+    state.user = { id: 'user' }
   })
 })

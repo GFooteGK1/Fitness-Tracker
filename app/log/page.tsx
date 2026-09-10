@@ -522,7 +522,7 @@ RPE: 8/10"
           </p>
         </div>
 
-        <div className="flex gap-2 sm:gap-3 sticky bottom-0 bg-gray-50 dark:bg-gray-900 -mx-4 px-4 py-3 sm:static sm:bg-transparent sm:dark:bg-transparent sm:mx-0 sm:px-0 sm:py-0 border-t sm:border-t-0 border-gray-200 dark:border-gray-800">
+        <div className="flex gap-2 sm:gap-3 sticky bottom-[calc(76px+env(safe-area-inset-bottom,0px))] md:bottom-0 bg-gray-50 dark:bg-gray-900 -mx-4 px-4 py-3 sm:static sm:bg-transparent sm:dark:bg-transparent sm:mx-0 sm:px-0 sm:py-0 border-t sm:border-t-0 border-gray-200 dark:border-gray-800">
           <button
             type="button"
             onClick={() => {

@@ -17,8 +17,8 @@ export default function ConditionalNavigation({ children }: { children: React.Re
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
-      <main className="flex-1 p-4 pb-20 md:pb-4">
-        <div className="max-w-4xl mx-auto">
+      <main className="app-content flex-1 px-4 pt-6 sm:px-6">
+        <div className="max-w-5xl mx-auto">
           {children}
         </div>
       </main>

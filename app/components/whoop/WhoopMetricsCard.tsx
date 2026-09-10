@@ -5,6 +5,7 @@ import type { WhoopRecovery, WhoopSleep, WhoopCycle } from '@/app/lib/types/whoo
 
 interface WhoopMetricsCardProps {
   className?: string;
+  compact?: boolean;
 }
 
 interface WhoopData {
@@ -16,7 +17,7 @@ interface WhoopData {
   staleness: boolean;
 }
 
-export function WhoopMetricsCard({ className = '' }: WhoopMetricsCardProps) {
+export function WhoopMetricsCard({ className = '', compact = false }: WhoopMetricsCardProps) {
   const [data, setData] = useState<WhoopData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +86,7 @@ export function WhoopMetricsCard({ className = '' }: WhoopMetricsCardProps) {
 
   // Loading state
   if (loading) {
+    if (compact) return <section className="app-panel p-5" role="status"><p className="app-muted text-sm">Loading recovery and sleep…</p></section>;
     return (
       <div className={`bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}>
         <div className="flex items-center justify-between mb-4">
@@ -202,6 +204,17 @@ export function WhoopMetricsCard({ className = '' }: WhoopMetricsCardProps) {
     if (diffDays === 1) return '1 day ago';
     return `${diffDays} days ago`;
   };
+
+  if (compact) return (
+    <section className="app-panel p-5" aria-label="Recovery and sleep">
+      <div className="grid grid-cols-3 gap-3">
+        <div><p className="app-muted text-xs">Recovery</p><p className={`mt-2 text-2xl font-semibold ${recoveryColors.text}`}>{recoveryScore == null ? '—' : `${recoveryScore}%`}</p></div>
+        <div><p className="app-muted text-xs">Sleep</p><p className="mt-2 text-2xl font-semibold">{sleepPerformance == null ? '—' : `${sleepPerformance}%`}</p></div>
+        <div><p className="app-muted text-xs">Strain</p><p className="mt-2 text-2xl font-semibold">{strain == null ? '—' : strain.toFixed(1)}</p></div>
+      </div>
+      <p className="app-muted mt-4 text-xs">WHOOP · Last synced: {formatLastSync(data.lastSyncAt)}{data.staleness ? ' · Stale data' : ''}</p>
+    </section>
+  );
 
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}>

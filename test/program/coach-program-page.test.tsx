@@ -431,7 +431,7 @@ describe('ProgramPage adaptive coach workflow', () => {
     fireEvent.change(screen.getByLabelText('Session note'), {
       target: { value: 'Strong and controlled.' }
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save session once' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save workout' }))
 
     expect(await screen.findByText(/Session saved once\. Canonical workout/)).toBeInTheDocument()
     expect(screen.getByText('Continue the accepted plan')).toBeInTheDocument()

@@ -110,29 +110,41 @@ export default function PortionSelector({
     item.portionSpec || item.food !== items[i]?.food
   )
 
+  const totals = items.reduce((sum, item) => ({
+    protein: sum.protein + item.protein,
+    carbs: sum.carbs + item.carbs,
+    fat: sum.fat + item.fat,
+    calories: sum.calories + item.calories,
+  }), { protein: 0, carbs: 0, fat: 0, calories: 0 })
+
   return (
-    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+    <div className="app-panel p-5">
       <div
         role="note"
-        className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-100"
+        className="app-muted mb-4 text-sm"
       >
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide dark:bg-amber-800">
+          <span className="app-eyebrow">
             Photo estimate
           </span>
         </div>
         <p className="mt-2 text-sm">
-          Macros from a photo can be rough. Confirm the food names and portions before relying on them.
+          An estimate from your photo. Adjust anything that looks off.
         </p>
       </div>
 
-      <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">
+      <h3 className="text-2xl font-semibold tracking-tight mb-3">
         Review the estimate
       </h3>
       
-      <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+      <p className="app-muted text-sm mb-4">
         Correct food names or portions now. You can edit every macro again after saving.
       </p>
+
+      <div className="mb-5 grid grid-cols-4 gap-2 rounded-xl border border-[var(--line)] p-3" aria-label="Estimated nutrition">
+        {([['calories', 'kcal'], ['protein', 'Protein'], ['carbs', 'Carbs'], ['fat', 'Fat']] as const).map(([key, label]) => <div key={key} className="text-center"><p className="text-lg font-semibold">{Math.round(totals[key])}{key === 'calories' ? '' : 'g'}</p><p className="app-muted text-xs">{label}</p></div>)}
+      </div>
+      {hasAnyEdits && <p className="app-muted mb-3 text-sm">Nutrition will update after you apply corrections.</p>}
 
       <div className="space-y-3">
         {editedItems.map((item, index) => (
@@ -241,7 +253,7 @@ export default function PortionSelector({
         <button
           onClick={() => onConfirm(editedItems)}
           disabled={isRefining || editingIndex !== null}
-          className="flex-1 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium text-sm sm:text-base touch-target flex items-center justify-center"
+          className="app-primary flex-1"
         >
           {isRefining ? (
             <>
@@ -258,7 +270,7 @@ export default function PortionSelector({
         <button
           onClick={onSkip}
           disabled={isRefining || editingIndex !== null}
-          className="flex-1 bg-gray-600 dark:bg-gray-500 hover:bg-gray-700 dark:hover:bg-gray-600 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium text-sm sm:text-base touch-target"
+          className="app-secondary"
         >
           Skip review
         </button>

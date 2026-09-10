@@ -141,7 +141,7 @@ export function TodaySessionCard({
   }
 
   return (
-    <section className="rounded-2xl border-2 border-blue-200 bg-white p-4 shadow-sm dark:border-blue-900 dark:bg-gray-900 sm:p-6">
+    <section className="app-panel p-5 sm:p-6">
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">
@@ -197,7 +197,7 @@ export function TodaySessionCard({
               disabled={pending !== null || saving}
               onClick={() => chooseReadiness(value)}
               className={`${CHOICE_CLASS} ${readiness === value
-                ? 'border-blue-700 bg-blue-700 text-white'
+                ? 'border-[var(--accent)] bg-[var(--action)] text-[var(--action-text)]'
                 : 'border-gray-300 bg-white text-gray-800 hover:border-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'}`}
             >
               {value}
@@ -292,18 +292,18 @@ export function TodaySessionCard({
         <button
           type="button"
           onClick={() => setFinishing(true)}
-          className="mt-5 min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          className="app-primary mt-5 w-full"
         >
           Finish or skip session
         </button>
       ) : (
         <form onSubmit={submit} className="mt-5 space-y-4 border-t border-gray-200 pt-5 dark:border-gray-700">
           <fieldset disabled={pending !== null || saving} className="space-y-4 disabled:opacity-70">
-            <legend className="font-semibold text-gray-950 dark:text-white">What happened?</legend>
+            <legend className="font-semibold text-gray-950 dark:text-white">Confirm your workout</legend>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {([
                 ['as_planned', 'As prescribed'],
-                ['modified', 'Modified'],
+                ['modified', 'Made changes'],
                 ['stopped_early', 'Stopped early'],
                 ['skipped', 'Skipped']
               ] as Array<[CoachSessionOutcome, string]>).map(([value, label]) => (
@@ -313,7 +313,7 @@ export function TodaySessionCard({
                   aria-pressed={outcome === value}
                   onClick={() => setOutcome(value)}
                   className={`${CHOICE_CLASS} ${outcome === value
-                    ? 'border-blue-700 bg-blue-700 text-white'
+                    ? 'border-[var(--accent)] bg-[var(--action)] text-[var(--action-text)]'
                     : 'border-gray-300 bg-white text-gray-800 hover:border-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'}`}
                 >
                   {label}
@@ -330,7 +330,7 @@ export function TodaySessionCard({
                   onChange={event => setConfirmedAsPrescribed(event.target.checked)}
                   className="mt-0.5 h-5 w-5 shrink-0"
                 />
-                <span>I completed the accepted prescription. Save it as performed without re-entering the work.</span>
+                <span>I completed the work as prescribed.</span>
               </label>
             )}
 
@@ -393,7 +393,7 @@ export function TodaySessionCard({
                     aria-pressed={energy === value}
                     onClick={() => setEnergy(value)}
                     className={`${CHOICE_CLASS} capitalize ${energy === value
-                      ? 'border-blue-700 bg-blue-700 text-white'
+                      ? 'border-[var(--accent)] bg-[var(--action)] text-[var(--action-text)]'
                       : 'border-gray-300 bg-white text-gray-800 hover:border-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'}`}
                   >
                     {value}
@@ -456,9 +456,9 @@ export function TodaySessionCard({
               <button
                 type="submit"
                 disabled={saving}
-                className="min-h-12 flex-1 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-60 sm:flex-none"
+                className="app-primary flex-1"
               >
-                {saving ? 'Saving once…' : outcome === 'skipped' ? 'Save skipped session' : 'Save session once'}
+                {saving ? 'Saving…' : outcome === 'skipped' ? 'Save skipped session' : 'Save workout'}
               </button>
               <button
                 type="button"

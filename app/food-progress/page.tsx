@@ -185,12 +185,12 @@ function FoodProgressContent() {
         <div className="mb-4 sm:mb-6">
           <div className="flex items-center justify-between">
             <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
-              {currentView === 'camera' ? 'Add New Meal' :
+              {currentView === 'camera' ? 'Log a meal' :
                currentView === 'weekly' ? `Weekly Progress` :
                currentView === 'targets' ? 'Manage Targets' :
                'Daily Progress'}
             </h1>
-            <button
+            {currentView !== 'camera' && <button
               onClick={() => setShowExport(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
@@ -198,7 +198,7 @@ function FoodProgressContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               Export
-            </button>
+            </button>}
           </div>
 
           <ExportDialog isOpen={showExport} onClose={() => setShowExport(false)} defaultDataType="meals" />
@@ -214,7 +214,8 @@ function FoodProgressContent() {
         </div>
 
         {/* Mobile-Optimized Navigation Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700 mb-4 sm:mb-6">
+        {currentView === 'camera' && <button type="button" className="app-secondary mb-4" onClick={() => setCurrentView('daily')}>← Back to nutrition</button>}
+        <div className={`${currentView === 'camera' ? 'hidden' : ''} bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700 mb-4 sm:mb-6`}>
           {/* Mobile View Toggle - Horizontal scroll on small screens */}
           <div className="mb-4 sm:mb-0">
             <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 overflow-x-auto">
@@ -339,7 +340,6 @@ function FoodProgressContent() {
         
         {currentView === 'camera' && (
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">Add New Meal</h2>
             {mealInputError && (
               <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
                 {mealInputError}
@@ -347,6 +347,7 @@ function FoodProgressContent() {
             )}
             <Suspense fallback={<ComponentLoader>Meal Input</ComponentLoader>}>
               <MealInputEnhanced
+                initialMode={searchParams.get('input') === 'photo' ? 'photo' : searchParams.get('input') === 'voice' ? 'voice' : searchParams.get('input') === 'recent' ? 'recent' : 'all'}
                 selectedDate={selectedDate}
                 onUploadComplete={handlePhotoUploadComplete}
                 onError={handleCameraError}

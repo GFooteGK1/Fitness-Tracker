@@ -35,6 +35,7 @@ function manualDraft(): FoodCatalogDraft {
 export default function FastMealLogger({ selectedDate, onLogged, onError }: FastMealLoggerProps) {
   const [commonMeals, setCommonMeals] = useState<CommonMeal[]>([])
   const [loadingCommon, setLoadingCommon] = useState(true)
+  const [commonError, setCommonError] = useState(false)
   const [loggingMealId, setLoggingMealId] = useState<string | null>(null)
   const [status, setStatus] = useState('')
   const [draft, setDraft] = useState<FoodCatalogDraft | null>(null)
@@ -51,7 +52,10 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
         return response.json() as Promise<{ meals?: CommonMeal[] }>
       })
       .then(result => { if (active) setCommonMeals(Array.isArray(result.meals) ? result.meals : []) })
-      .catch(error => console.warn('Unable to load common meals:', error))
+      .catch(error => {
+        if (active) setCommonError(true)
+        console.warn('Unable to load common meals:', error)
+      })
       .finally(() => { if (active) setLoadingCommon(false) })
     return () => { active = false }
   }, [])
@@ -116,6 +120,7 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
 
   return (
     <div className="space-y-4">
+      {!loadingCommon && commonMeals.length === 0 && <p className="app-muted text-sm">{commonError ? 'Recent meals could not load.' : 'No recent meals to repeat yet.'} Use a photo, voice, text, or a nutrition label.</p>}
       {(loadingCommon || commonMeals.length > 0) && (
         <section aria-labelledby="common-meals-heading" className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/40">
           <div className="mb-3">

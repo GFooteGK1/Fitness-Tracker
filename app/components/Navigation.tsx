@@ -1,146 +1,45 @@
-'use client';
+'use client'
 
-import React from 'react';
-import Link from 'next/link';
-import { useAuth } from '../lib/auth/AuthContext';
-import UserMenu from './UserMenu';
+import React from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useAuth } from '../lib/auth/AuthContext'
+import UserMenu from './UserMenu'
+import { AppIcon, type AppIconName } from './AppIcon'
+
+const destinations: { href: string; label: string; icon: AppIconName }[] = [
+  { href: '/dashboard', label: 'Today', icon: 'today' },
+  { href: '/program', label: 'Plan', icon: 'plan' },
+  { href: '/capture', label: 'Log', icon: 'plus' },
+  { href: '/progress', label: 'Progress', icon: 'progress' },
+  { href: '/coach', label: 'Coach', icon: 'coach' },
+]
 
 export default function Navigation() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAuth()
+  const pathname = usePathname()
+  const active = (href: string) => pathname === href
+    || (href === '/progress' && ['/food-progress', '/pr-history', '/leaderboards'].some(route => pathname.startsWith(route)))
+    || (href === '/program' && pathname.startsWith('/templates'))
+    || (href === '/capture' && ['/log', '/food-log'].includes(pathname))
 
-  return (
-    <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link href="/" className="text-xl font-bold text-blue-600 dark:text-blue-400">
-            SociusFit
-          </Link>
-
-          {/* Navigation Links */}
-          {!loading && user && (
-            <div className="hidden md:flex space-x-6">
-              <Link 
-                href="/dashboard" 
-                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                Dashboard
-              </Link>
-              <Link 
-                href="/program" 
-                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                Program
-              </Link>
-              <Link
-                href="/templates"
-                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                Templates
-              </Link>
-              <Link
-                href="/log"
-                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                Log Workout
-              </Link>
-              <Link 
-                href="/food-log" 
-                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                Log Meal
-              </Link>
-              <Link 
-                href="/food-progress" 
-                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                Food Progress
-              </Link>
-              <Link
-                href="/coach"
-                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                Coach
-              </Link>
-              <Link
-                href="/leaderboards"
-                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                Leaderboards
-              </Link>
-              <Link
-                href="/pr-history"
-                className="text-gray-600 dark:text-gray-300 hover:text-amber-500 dark:hover:text-amber-400 transition-colors"
-              >
-                PRs
-              </Link>
-            </div>
-          )}
-
-          {/* User Menu - Only show when logged in */}
-          <div className="flex items-center space-x-4">
-            {loading ? (
-              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
-            ) : user ? (
-              <UserMenu />
-            ) : null}
-          </div>
-        </div>
+  return <>
+    <header className="app-header">
+      <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-5">
+        <Link href={user ? '/dashboard' : '/'} className="flex min-h-11 items-center text-xl font-semibold tracking-tight">SociusFit<span className="ml-1 text-[var(--accent)]">.</span></Link>
+        {!loading && user && <nav aria-label="Main navigation" className="hidden items-center gap-1 md:flex">
+          {destinations.map(item => <Link key={item.href} href={item.href} aria-current={active(item.href) ? 'page' : undefined} className="app-desktop-link">{item.label}</Link>)}
+        </nav>}
+        {loading ? <div role="status" aria-label="Loading account" className="h-10 w-10 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" /> : user ? <UserMenu /> : null}
       </div>
-
-      {/* Mobile Navigation */}
-      {!loading && user && (
-        <div className="md:hidden border-t border-gray-200 dark:border-gray-700">
-          <div
-            role="group"
-            aria-label="Mobile navigation"
-            className="grid grid-cols-6 py-2"
-          >
-            <Link 
-              href="/dashboard" 
-              className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-            >
-              <span className="text-lg mb-1">📊</span>
-              Dashboard
-            </Link>
-            <Link 
-              href="/program" 
-              className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-            >
-              <span className="text-lg mb-1">💪</span>
-              Program
-            </Link>
-            <Link
-              href="/templates"
-              className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-            >
-              <span className="text-lg mb-1">📋</span>
-              WODs
-            </Link>
-            <Link
-              href="/log"
-              className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-            >
-              <span className="text-lg mb-1">📝</span>
-              Log
-            </Link>
-            <Link 
-              href="/food-progress" 
-              className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-            >
-              <span className="text-lg mb-1">🍽️</span>
-              Food
-            </Link>
-            <Link
-              href="/coach"
-              className="flex min-w-0 flex-col items-center overflow-hidden px-1 py-2 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-            >
-              <span className="text-lg mb-1">💬</span>
-              Coach
-            </Link>
-          </div>
-        </div>
-      )}
-    </nav>
-  );
+    </header>
+    {!loading && user && <nav aria-label="Mobile navigation" className="app-bottom-nav md:hidden">
+      <div className="mx-auto grid max-w-lg grid-cols-5">
+        {destinations.map(item => <Link key={item.href} href={item.href} aria-current={active(item.href) ? 'page' : undefined} className="app-tab">
+          <span className={item.icon === 'plus' ? 'app-log-icon' : ''}><AppIcon name={item.icon} /></span>
+          <span>{item.label}</span>
+        </Link>)}
+      </div>
+    </nav>}
+  </>
 }
