@@ -104,6 +104,13 @@ export function WhoopMetricsCard({ className = '', compact = false }: WhoopMetri
 
   // Error state
   if (error) {
+    if (compact) return (
+      <section className={`app-panel p-5 ${className}`} aria-label="Recovery and sleep">
+        <h2 className="font-semibold">Recovery and sleep</h2>
+        <p role="alert" className="app-muted mt-3 text-sm">{error}</p>
+        <button onClick={fetchWhoopData} className="app-secondary mt-4">Retry WHOOP</button>
+      </section>
+    );
     return (
       <div className={`bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}>
         <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">⚡ WHOOP Metrics</h2>
@@ -116,6 +123,13 @@ export function WhoopMetricsCard({ className = '', compact = false }: WhoopMetri
 
   // Not connected state
   if (!data || data.connectionStatus === 'disconnected') {
+    if (compact) return (
+      <section className={`app-panel p-5 ${className}`} aria-label="Recovery and sleep">
+        <h2 className="font-semibold">Recovery and sleep</h2>
+        <p className="app-muted mt-3 text-sm">Connect WHOOP to see recovery, sleep, and strain alongside your training.</p>
+        <button onClick={handleConnect} className="app-secondary mt-4">Connect WHOOP</button>
+      </section>
+    );
     return (
       <div className={`bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}>
         <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">⚡ WHOOP Metrics</h2>
@@ -142,6 +156,13 @@ export function WhoopMetricsCard({ className = '', compact = false }: WhoopMetri
 
   // Unhealthy connection state
   if (data.connectionStatus === 'unhealthy') {
+    if (compact) return (
+      <section className={`app-panel p-5 ${className}`} aria-label="Recovery and sleep">
+        <h2 className="font-semibold">Recovery and sleep</h2>
+        <p role="status" className="app-muted mt-3 text-sm">WHOOP could not sync. Reconnect to update your recovery data.</p>
+        <button onClick={handleConnect} className="app-secondary mt-4">Reconnect WHOOP</button>
+      </section>
+    );
     return (
       <div className={`bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}>
         <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">⚡ WHOOP Metrics</h2>
@@ -206,13 +227,21 @@ export function WhoopMetricsCard({ className = '', compact = false }: WhoopMetri
   };
 
   if (compact) return (
-    <section className="app-panel p-5" aria-label="Recovery and sleep">
+    <section className={`app-panel p-5 ${className}`} aria-label="Recovery and sleep">
+      <h2 className="mb-5 font-semibold">Recovery and sleep</h2>
       <div className="grid grid-cols-3 gap-3">
         <div><p className="app-muted text-xs">Recovery</p><p className={`mt-2 text-2xl font-semibold ${recoveryColors.text}`}>{recoveryScore == null ? '—' : `${recoveryScore}%`}</p></div>
         <div><p className="app-muted text-xs">Sleep</p><p className="mt-2 text-2xl font-semibold">{sleepPerformance == null ? '—' : `${sleepPerformance}%`}</p></div>
         <div><p className="app-muted text-xs">Strain</p><p className="mt-2 text-2xl font-semibold">{strain == null ? '—' : strain.toFixed(1)}</p></div>
       </div>
       <p className="app-muted mt-4 text-xs">WHOOP · Last synced: {formatLastSync(data.lastSyncAt)}{data.staleness ? ' · Stale data' : ''}</p>
+      <details className="mt-4 border-t border-[var(--line)] pt-1">
+        <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-[var(--accent)]">Recovery details</summary>
+        <dl className="grid grid-cols-2 gap-4 pt-2 text-sm">
+          <div><dt className="app-muted">HRV</dt><dd className="mt-1 font-medium tabular-nums">{data.recovery?.hrv_rmssd_milli == null ? '—' : `${Math.round(data.recovery.hrv_rmssd_milli)} ms`}</dd></div>
+          <div><dt className="app-muted">Sleep efficiency</dt><dd className="mt-1 font-medium tabular-nums">{data.sleep?.sleep_efficiency_percentage == null ? '—' : `${Math.round(data.sleep.sleep_efficiency_percentage)}%`}</dd></div>
+        </dl>
+      </details>
     </section>
   );
 
