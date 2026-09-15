@@ -301,7 +301,7 @@ export default function InputBar({ onSubmit, isLoading }: InputBarProps) {
         <button
           onClick={handleSubmit}
           disabled={!text.trim() || isLoading}
-          className="app-primary p-0 rounded-full w-11 min-w-[44px] flex items-center justify-center shrink-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="app-primary p-0 rounded-full w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           style={{ touchAction: 'manipulation' }}
           aria-label="Send message"
         >

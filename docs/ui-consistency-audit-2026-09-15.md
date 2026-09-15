@@ -10,7 +10,7 @@ ADR-0010. They do not change data contracts, coaching rules, or save behavior.
 Work is on `codex/ui-consistency`, based on fetched `origin/main` commit
 `484a35c`, in `.worktrees/ui-consistency`. The initial checkout was an older
 feature branch, so it was preserved. Branch publication was subsequently authorized;
-production deployment remains outside this change.
+PR creation and production release were subsequently authorized.
 
 ## Findings and corrections
 
@@ -45,6 +45,7 @@ production deployment remains outside this change.
 | Check | Evidence |
 | --- | --- |
 | Focused components and Program regression | 105 tests passed across 19 files |
+| Full release regression | 2,455 tests passed, 7 skipped; 239 files passed, 5 skipped |
 | Existing browser journeys | Accepted session, interrupted text retry, interrupted photo retry, low-touch navigation, and portion-correction retry passed with simulated accounts and API responses |
 | Added browser checks | Four theme cases cover sign-in errors at 320/1280px, selected Program weekdays, compact composer icons, and install-banner clearance/dismissal in both themes |
 | Static checks | TypeScript and ESLint passed; production build generated all 78 static pages using placeholder Supabase public configuration |
@@ -61,6 +62,11 @@ they were updated for the shared styles, then all 105 tests passed. Initial them
 test failures came from matching Next's route announcer as well as the error notice,
 and measuring the install animation before it settled. The tests now target the
 actual notice and wait for stable geometry.
+
+The first PR CI run found two remaining blue-color assertions in the legacy
+navigation tests and a compact send-button sizing assertion. The assertions now
+use the theme accent, and the circular send control explicitly uses 44px width
+and height. The full local suite then passed before the follow-up push.
 
 The first build lacked the public Supabase variables in the isolated worktree.
 The successful build used the same explicit placeholder values as browser tests;

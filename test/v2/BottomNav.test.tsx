@@ -108,11 +108,11 @@ describe('BottomNav', () => {
       expect(screen.getByText('🏆')).toBeInTheDocument()
     })
 
-    it('highlights the active tab with blue text', () => {
+    it('highlights the active tab with the theme accent', () => {
       render(<BottomNav activeTab="insights" onTabChange={noop} insights={[]} prs={[]} />)
 
       const insightsBtn = screen.getByLabelText('Insights tab')
-      expect(insightsBtn.className).toContain('text-blue-600')
+      expect(insightsBtn.className).toContain('text-[var(--accent)]')
 
       const chatBtn = screen.getByLabelText('Chat tab')
       expect(chatBtn.className).toContain('text-gray-400')
@@ -217,7 +217,7 @@ describe('BottomNav', () => {
 
       expect(urgentLabel).toHaveClass('text-red-700')
       expect(notableLabel).toHaveClass('text-yellow-700')
-      expect(infoLabel).toHaveClass('text-blue-700')
+      expect(infoLabel).toHaveClass('text-[var(--accent)]')
     })
   })
 
