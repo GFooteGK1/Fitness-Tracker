@@ -16,6 +16,46 @@ const token = [
 
 const json = (route: Route, body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
 
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`Progress layout: summary, details and empty states in ${colorScheme}`, async ({ page }) => {
+    const unexpected = await signedInCoach(page)
+    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+    let empty = false
+    let recordsFailed = false
+    await page.route(`${origin}/api/dashboard-stats**`, route => json(route, { totalWorkouts: empty ? 0 : 48, monthToDate: empty ? 0 : 9, strengthSessions: 30, metcons: 20, cardio: 12, currentMonth: 'September 2026' }))
+    await page.route(`${origin}/api/pr-history**`, route => recordsFailed ? json(route, {}, 500) : json(route, { records: empty ? [] : [{ id: 'record-1', exercise: 'Back squat', pr_type: 'weight', value: 225, previous_value: 215, achieved_at: '2026-09-03T15:00:00Z' }], summary: { thisMonth: empty ? 0 : 1 } }))
+    await page.route(`${origin}/api/whoop/data**`, route => json(route, empty ? { connectionStatus: 'disconnected' } : { connectionStatus: 'connected', lastSyncAt: null, recovery: { recovery_score: 70, hrv_rmssd_milli: 56.3 }, sleep: { sleep_performance_percentage: 82, sleep_efficiency_percentage: 91 }, cycle: { strain: 12.4 } }))
+    await page.goto('/progress')
+    await expect(page.getByRole('heading', { name: 'Your progress' })).toBeVisible()
+    await expect(page.getByText('225 lbs', { exact: true })).toBeVisible()
+    await page.getByText('Recovery details', { exact: true }).click()
+    await expect(page.getByText('56 ms', { exact: true })).toBeVisible()
+    for (const width of [320, 390, 1280]) {
+      await page.setViewportSize({ width, height: 900 })
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+      await page.screenshot({ path: `output/playwright/app-quality-results/progress-${colorScheme}-${width}.png`, fullPage: true })
+    }
+    await page.getByRole('button', { name: 'Export', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Export Data' })).toBeVisible()
+    await page.getByRole('button', { name: 'Close', exact: true }).click()
+    recordsFailed = true
+    await page.reload()
+    await page.getByRole('button', { name: 'Retry records' }).waitFor()
+    await expect(page.getByText('48', { exact: true })).toBeVisible()
+    recordsFailed = false
+    await page.getByRole('button', { name: 'Retry records' }).click()
+    await expect(page.getByText('225 lbs', { exact: true })).toBeVisible()
+    empty = true
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.reload()
+    await expect(page.getByRole('link', { name: 'Log a workout', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Connect WHOOP' })).toBeVisible()
+    await expect(page.getByText('Your first results establish a baseline.', { exact: false })).toBeVisible()
+    await page.screenshot({ path: `output/playwright/app-quality-results/progress-empty-${colorScheme}.png`, fullPage: true })
+    expect(unexpected).toEqual([])
+  })
+}
+
 // Theme checks use the actual rendered controls, including compact icon actions.
 for (const colorScheme of ['light', 'dark'] as const) {
   test(`UI consistency: auth and notices in ${colorScheme}`, async ({ page }) => {
