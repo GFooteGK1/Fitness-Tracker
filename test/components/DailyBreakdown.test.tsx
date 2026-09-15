@@ -364,7 +364,7 @@ describe('DailyBreakdown Component', () => {
       )
 
       // Find the card with today's highlight (blue border)
-      const todayCard = container.querySelector('.border-blue-500')
+      const todayCard = container.querySelector('[class~="border-[var(--accent)]"]')
       expect(todayCard).toBeInTheDocument()
     })
 

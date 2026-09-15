@@ -37,8 +37,8 @@ interface TodaySessionCardProps {
   children: ReactNode
 }
 
-const FIELD_CLASS = 'mt-2 block min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-base text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100'
-const CHOICE_CLASS = 'min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40'
+const FIELD_CLASS = 'mt-2 block min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-base text-gray-900 shadow-sm focus:border-[var(--accent-line)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100'
+const CHOICE_CLASS = 'min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)]'
 
 export function TodaySessionCard({
   session,
@@ -144,7 +144,7 @@ export function TodaySessionCard({
     <section className="app-panel p-5 sm:p-6">
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
             {exactDate
               ? 'Today'
               : session.scheduledDate && session.scheduledDate < today
@@ -160,7 +160,7 @@ export function TodaySessionCard({
             </p>
           )}
         </div>
-        <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-900 dark:bg-blue-950 dark:text-blue-200">
+        <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
           Planned
         </span>
       </div>
@@ -198,7 +198,7 @@ export function TodaySessionCard({
               onClick={() => chooseReadiness(value)}
               className={`${CHOICE_CLASS} ${readiness === value
                 ? 'border-[var(--accent)] bg-[var(--action)] text-[var(--action-text)]'
-                : 'border-gray-300 bg-white text-gray-800 hover:border-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'}`}
+                : 'border-gray-300 bg-white text-gray-800 hover:border-[var(--accent-line)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'}`}
             >
               {value}
             </button>
@@ -217,7 +217,7 @@ export function TodaySessionCard({
           disabled={pending !== null || saving}
           onClick={() => setShowConstraint(value => !value)}
           aria-expanded={showConstraint}
-          className="mt-3 min-h-11 rounded-xl px-1 text-left text-sm font-semibold text-blue-700 underline-offset-4 hover:underline dark:text-blue-300"
+          className="mt-3 min-h-11 rounded-xl px-1 text-left text-sm font-semibold text-[var(--accent)] underline-offset-4 hover:underline"
         >
           {showConstraint ? 'Hide pain or constraint' : 'Something changed'}
         </button>
@@ -282,7 +282,7 @@ export function TodaySessionCard({
       )}
 
       <details className="mt-5 border-t border-gray-200 pt-3 dark:border-gray-700">
-        <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-blue-700 dark:text-blue-300">
+        <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-[var(--accent)]">
           Full prescription
         </summary>
         <div className="mt-3">{children}</div>
@@ -314,7 +314,7 @@ export function TodaySessionCard({
                   onClick={() => setOutcome(value)}
                   className={`${CHOICE_CLASS} ${outcome === value
                     ? 'border-[var(--accent)] bg-[var(--action)] text-[var(--action-text)]'
-                    : 'border-gray-300 bg-white text-gray-800 hover:border-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'}`}
+                    : 'border-gray-300 bg-white text-gray-800 hover:border-[var(--accent-line)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'}`}
                 >
                   {label}
                 </button>
@@ -322,7 +322,7 @@ export function TodaySessionCard({
             </div>
 
             {outcome === 'as_planned' && (
-              <label className="flex min-h-11 items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
+              <label className="flex min-h-11 items-start gap-3 rounded-xl border border-[var(--accent-line)] bg-[var(--accent-soft)] p-3 text-sm text-[var(--accent)]">
                 <input
                   aria-label="Confirm completed prescribed work"
                   type="checkbox"
@@ -394,7 +394,7 @@ export function TodaySessionCard({
                     onClick={() => setEnergy(value)}
                     className={`${CHOICE_CLASS} capitalize ${energy === value
                       ? 'border-[var(--accent)] bg-[var(--action)] text-[var(--action-text)]'
-                      : 'border-gray-300 bg-white text-gray-800 hover:border-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'}`}
+                      : 'border-gray-300 bg-white text-gray-800 hover:border-[var(--accent-line)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'}`}
                   >
                     {value}
                   </button>
@@ -441,7 +441,7 @@ export function TodaySessionCard({
                       type="button"
                       disabled={saving}
                       onClick={() => void onRefreshPlan()}
-                      className="min-h-11 rounded-xl border border-gray-300 px-4 py-2 font-semibold text-gray-800 dark:border-gray-700 dark:text-gray-100"
+                      className="app-secondary"
                     >
                       Refresh active plan
                     </button>
@@ -464,7 +464,7 @@ export function TodaySessionCard({
                 type="button"
                 disabled={saving}
                 onClick={() => setFinishing(false)}
-                className="min-h-12 rounded-xl border border-gray-300 px-5 py-3 font-semibold text-gray-800 dark:border-gray-700 dark:text-gray-100"
+                className="app-secondary"
               >
                 Cancel
               </button>
@@ -498,7 +498,7 @@ export function TodayTerminalCard({ session }: { session: ProgramSession }) {
           <p className="mt-1 break-all font-mono text-xs text-gray-600 dark:text-gray-300">
             {session.completedWorkoutId}
           </p>
-          <a href="/dashboard" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-blue-700 underline dark:text-blue-300">
+          <a href="/dashboard" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--accent)] underline">
             View training history
           </a>
         </div>

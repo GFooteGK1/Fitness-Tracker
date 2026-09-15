@@ -135,7 +135,7 @@ export function WeeklyProgramView({
       <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
               This week
             </p>
             <h2 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">{acceptedWeek.title}</h2>
@@ -284,7 +284,7 @@ function CoachReviewSection({
           type="button"
           onClick={() => void onCreateProposal()}
           disabled={creatingProposal}
-          className="mt-5 min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 text-base font-semibold text-white hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
+          className="app-primary mt-5 w-full text-base disabled:opacity-60 sm:w-auto"
         >
           {creatingProposal ? 'Building next week…' : 'Build next week from saved review'}
         </button>
@@ -293,7 +293,7 @@ function CoachReviewSection({
           type="button"
           onClick={() => void onReview()}
           disabled={reviewing}
-          className="mt-5 min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 text-base font-semibold text-white hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
+          className="app-primary mt-5 w-full text-base disabled:opacity-60 sm:w-auto"
         >
           {reviewing ? 'Reviewing your week…' : 'Review this week'}
         </button>
@@ -304,7 +304,7 @@ function CoachReviewSection({
           type="button"
           onClick={() => void onAccept()}
           disabled={accepting}
-          className="mt-3 min-h-12 w-full rounded-xl bg-emerald-600 px-5 py-3 text-base font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 sm:ml-3 sm:w-auto"
+          className="app-primary mt-3 w-full text-base disabled:opacity-60 sm:ml-3 sm:w-auto"
         >
           {accepting ? 'Accepting…' : 'Accept next week'}
         </button>
@@ -330,7 +330,7 @@ function NextWeekProposal({ proposal }: { proposal: RollingWeeklyPlanDraft }) {
         </ul>
       )}
       <details className="mt-3">
-        <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-blue-700 dark:text-blue-300">
+        <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-[var(--accent)]">
           Inspect proposed sessions
         </summary>
         <ul className="mt-2 space-y-2">
@@ -356,7 +356,7 @@ function TrainingDirection({ direction }: { direction: RollingTrainingDirection 
       <p className="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-200">{direction.hypothesis}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         {direction.currentEmphasis.map(emphasis => (
-          <span key={emphasis.goalAllocationId} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-950 dark:text-blue-200">
+          <span key={emphasis.goalAllocationId} className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
             {emphasis.domain.replaceAll('_', ' ')} · {emphasis.allocation}
           </span>
         ))}
@@ -446,7 +446,7 @@ function reviewPresentation(review: RollingWeeklyReview | WeeklyReviewHistoryVie
   if (action === 'collect_signal') return {
     title: 'Stay on track and collect one signal',
     message: 'The evidence is not strong enough to change emphasis. The next week adds one compatible measurement.',
-    className: 'border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100'
+    className: 'border-[var(--accent-line)] bg-[var(--accent-soft)] text-[var(--accent)]'
   }
   if (action === 'continue') return {
     title: 'Continue on the same track',

@@ -120,8 +120,8 @@ export function WhoopConnectionSettings() {
     switch (status) {
       case 'syncing':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-            <svg className="animate-spin -ml-1 mr-1.5 h-3 w-3 text-blue-800" fill="none" viewBox="0 0 24 24">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--accent-soft)] text-[var(--accent)]">
+            <svg className="animate-spin -ml-1 mr-1.5 h-3 w-3 text-[var(--accent)]" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
@@ -148,7 +148,7 @@ export function WhoopConnectionSettings() {
       <div className="app-panel p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">WHOOP Connection</h3>
         <div className="flex items-center justify-center py-8">
-          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-[var(--accent-line)] border-t-transparent rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -180,9 +180,9 @@ export function WhoopConnectionSettings() {
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">What you&apos;ll get:</h4>
-            <ul className="text-sm text-blue-800 space-y-1">
+          <div className="bg-[var(--accent-soft)] border border-[var(--accent-line)] rounded-lg p-4">
+            <h4 className="text-sm font-medium text-[var(--accent)] mb-2">What you&apos;ll get:</h4>
+            <ul className="text-sm text-[var(--accent)] space-y-1">
               <li>• Recovery score tracking</li>
               <li>• Sleep performance analysis</li>
               <li>• Strain monitoring</li>
@@ -193,14 +193,14 @@ export function WhoopConnectionSettings() {
           <button
             onClick={handleConnect}
             disabled={loading}
-            className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="app-primary w-full sm:w-auto inline-flex items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Connect WHOOP
           </button>
 
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
             By connecting, you agree to share your WHOOP data with SociusFit.
-            View our <a href="/privacy" className="text-blue-600 hover:text-blue-700">privacy policy</a>.
+            View our <a href="/privacy" className="text-[var(--accent)] hover:text-[var(--accent)]">privacy policy</a>.
           </p>
         </div>
       ) : (
@@ -262,7 +262,7 @@ export function WhoopConnectionSettings() {
             <button
               onClick={handleSync}
               disabled={syncing || connectionStatus.status === 'syncing'}
-              className="inline-flex items-center justify-center min-h-[44px] px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="app-secondary inline-flex items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {syncing || connectionStatus.status === 'syncing' ? (
                 <>
@@ -285,7 +285,7 @@ export function WhoopConnectionSettings() {
             {connectionStatus.status === 'error' && (
               <button
                 onClick={handleConnect}
-                className="inline-flex items-center justify-center min-h-[44px] px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="app-secondary inline-flex items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent)]"
               >
                 Reconnect
               </button>
@@ -319,7 +319,7 @@ export function WhoopConnectionSettings() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowDisconnectConfirm(false)}
-                className="min-h-[44px] px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="app-secondary text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent)]"
               >
                 Cancel
               </button>

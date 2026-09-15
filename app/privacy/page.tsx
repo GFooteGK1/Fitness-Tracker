@@ -173,7 +173,7 @@ export default function PrivacyPage() {
         <div className="mt-8 pt-8 border-t border-gray-200">
           <Link
             href="/"
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className="text-[var(--accent)] hover:text-[var(--accent)] font-medium"
           >
             ← Back to SociusFit
           </Link>

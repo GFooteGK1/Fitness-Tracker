@@ -145,7 +145,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
     return (
       <div className={`bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}>
         <div className="flex items-center justify-center py-6 sm:py-8">
-          <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 dark:border-blue-400"></div>
+          <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--accent-line)]"></div>
         </div>
       </div>
     )
@@ -158,7 +158,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
         {!isEditing && (
           <button
             onClick={() => setIsEditing(true)}
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium text-sm touch-target"
+            className="text-[var(--accent)] hover:text-[var(--accent)] font-medium text-sm touch-target"
           >
             {hasTargets ? 'Edit' : 'Set Targets'}
           </button>
@@ -180,7 +180,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
           </p>
           <button
             onClick={() => setIsEditing(true)}
-            className="bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors font-medium text-sm sm:text-base touch-target"
+            className="app-primary transition-colors text-sm sm:text-base touch-target"
           >
             Set Your Targets
           </button>
@@ -229,7 +229,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
                 step="0.1"
                 value={formData.targetProtein}
                 onChange={(e) => handleInputChange('targetProtein', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target"
                 placeholder="150"
               />
             </div>
@@ -244,7 +244,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
                 step="0.1"
                 value={formData.targetCarbs}
                 onChange={(e) => handleInputChange('targetCarbs', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target"
                 placeholder="200"
               />
             </div>
@@ -259,7 +259,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
                 step="0.1"
                 value={formData.targetFat}
                 onChange={(e) => handleInputChange('targetFat', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target"
                 placeholder="80"
               />
             </div>
@@ -292,7 +292,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
               step="0.1"
               value={formData.tolerancePct}
               onChange={(e) => handleInputChange('tolerancePct', parseFloat(e.target.value) || 5.0)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target"
               placeholder="5.0"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -304,14 +304,14 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
             <button
               onClick={handleCancel}
               disabled={saving}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 text-sm sm:text-base touch-target"
+              className="app-secondary transition-colors disabled:opacity-50 text-sm sm:text-base touch-target"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center justify-center text-sm sm:text-base touch-target"
+              className="app-primary transition-colors disabled:opacity-50 flex items-center justify-center text-sm sm:text-base touch-target"
             >
               {saving && (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>

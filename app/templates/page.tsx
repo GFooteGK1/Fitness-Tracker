@@ -98,7 +98,7 @@ export default function TemplatesPage() {
           placeholder="Search by name, movement, or tag..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-colors"
+          className="w-full px-4 py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-colors"
           style={{ fontSize: '16px' }}
         />
       </div>
@@ -170,10 +170,10 @@ function TemplateCard({
   return (
     <button
       onClick={onClick}
-      className="text-left w-full bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all group"
+      className="app-secondary block p-4 text-left w-full hover:shadow-md transition-all group"
     >
       <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-[var(--accent)] transition-colors">
           {template.name}
         </h3>
         <div className="flex gap-1.5 flex-shrink-0">

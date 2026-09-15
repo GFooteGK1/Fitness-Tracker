@@ -96,7 +96,7 @@ export default function ExportDialog({ isOpen, onClose, defaultDataType = 'all' 
                 onClick={() => setFormat(f)}
                 className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
                   format === f
-                    ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                    ? 'bg-white dark:bg-gray-600 text-[var(--accent)] shadow-sm'
                     : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               >
@@ -120,7 +120,7 @@ export default function ExportDialog({ isOpen, onClose, defaultDataType = 'all' 
                 onClick={() => setDataType(opt.value)}
                 className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
                   dataType === opt.value
-                    ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                    ? 'bg-white dark:bg-gray-600 text-[var(--accent)] shadow-sm'
                     : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               >
@@ -141,7 +141,7 @@ export default function ExportDialog({ isOpen, onClose, defaultDataType = 'all' 
               id="export-start"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
-              className="block w-full px-3 py-2 text-sm border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              className="block w-full px-3 py-2 text-sm border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               style={{ colorScheme: 'light dark' }}
             />
           </div>
@@ -154,7 +154,7 @@ export default function ExportDialog({ isOpen, onClose, defaultDataType = 'all' 
               id="export-end"
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
-              className="block w-full px-3 py-2 text-sm border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              className="block w-full px-3 py-2 text-sm border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               style={{ colorScheme: 'light dark' }}
             />
           </div>
@@ -172,14 +172,14 @@ export default function ExportDialog({ isOpen, onClose, defaultDataType = 'all' 
           <button
             onClick={onClose}
             disabled={loading}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            className="app-secondary flex-1 text-sm transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleExport}
             disabled={loading}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="app-primary flex-1 text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

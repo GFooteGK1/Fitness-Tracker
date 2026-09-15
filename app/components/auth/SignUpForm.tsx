@@ -116,7 +116,7 @@ export default function SignUpForm() {
         <div className="pt-4">
           <Link
             href="/auth/signin"
-            className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+            className="text-[var(--accent)] hover:underline font-medium"
           >
             Back to Sign In
           </Link>
@@ -129,8 +129,8 @@ export default function SignUpForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* General Error */}
       {errors.general && (
-        <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-800 dark:text-red-200">{errors.general}</p>
+        <div role="alert" className="app-notice app-notice-error">
+          <p className="text-sm text-current">{errors.general}</p>
         </div>
       )}
 
@@ -147,7 +147,7 @@ export default function SignUpForm() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target transition-colors ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target transition-colors ${
             errors.email 
               ? 'border-red-300 dark:border-red-600' 
               : 'border-gray-300 dark:border-gray-600'
@@ -176,7 +176,7 @@ export default function SignUpForm() {
             type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target transition-colors ${
+            className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target transition-colors ${
               errors.password 
                 ? 'border-red-300 dark:border-red-600' 
                 : 'border-gray-300 dark:border-gray-600'
@@ -216,7 +216,7 @@ export default function SignUpForm() {
           type="password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target transition-colors ${
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base touch-target transition-colors ${
             errors.confirmPassword 
               ? 'border-red-300 dark:border-red-600' 
               : 'border-gray-300 dark:border-gray-600'
@@ -235,10 +235,10 @@ export default function SignUpForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-blue-600 dark:bg-blue-500 text-white px-4 py-3 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors font-medium text-base touch-target disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+        className="app-primary w-full transition-colors text-base touch-target disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
       >
         {loading && (
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2"></div>
         )}
         {loading ? 'Creating Account...' : 'Create Account'}
       </button>
@@ -249,7 +249,7 @@ export default function SignUpForm() {
           Already have an account?{' '}
           <Link 
             href="/auth/signin" 
-            className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+            className="text-[var(--accent)] hover:underline font-medium"
           >
             Sign In
           </Link>

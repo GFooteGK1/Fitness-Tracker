@@ -299,14 +299,14 @@ export default function MealEditModal({
 
           {/* AI Analysis Info */}
           {!meal.manualOverride && meal.aiConfidence && (
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="mb-6 p-4 bg-[var(--accent-soft)] border border-[var(--accent-line)] rounded-lg">
               <div className="flex items-start">
-                <svg className="w-5 h-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-5 h-5 text-[var(--accent)] mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-blue-800">Original AI Analysis</h3>
-                  <p className="mt-1 text-sm text-blue-700">
+                  <h3 className="text-sm font-medium text-[var(--accent)]">Original AI Analysis</h3>
+                  <p className="mt-1 text-sm text-[var(--accent)]">
                     AI Confidence: {Math.round(meal.aiConfidence * 100)}% •
                     Making changes will mark this meal as manually edited
                   </p>
@@ -325,14 +325,14 @@ export default function MealEditModal({
                     type="checkbox"
                     checked={autoCalculate}
                     onChange={(e) => setAutoCalculate(e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-300 text-[var(--accent)] focus:ring-[var(--accent)]"
                   />
                   <span className="ml-2 text-sm text-gray-700">Auto-calculate from items</span>
                 </label>
                 {!meal.manualOverride && (
                   <button
                     onClick={handleRevertToAI}
-                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    className="text-sm text-[var(--accent)] hover:text-[var(--accent)] font-medium"
                   >
                     Revert to AI
                   </button>
@@ -355,7 +355,7 @@ export default function MealEditModal({
                   onBlur={(e) => setTotalProtein(toNumber(e.target.value))}
                   onFocus={(e) => e.target.select()}
                   disabled={autoCalculate}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 />
               </div>
               <div>
@@ -372,7 +372,7 @@ export default function MealEditModal({
                   onBlur={(e) => setTotalCarbs(toNumber(e.target.value))}
                   onFocus={(e) => e.target.select()}
                   disabled={autoCalculate}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 />
               </div>
               <div>
@@ -389,7 +389,7 @@ export default function MealEditModal({
                   onBlur={(e) => setTotalFat(toNumber(e.target.value))}
                   onFocus={(e) => e.target.select()}
                   disabled={autoCalculate}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 />
               </div>
               <div>
@@ -406,7 +406,7 @@ export default function MealEditModal({
                   onBlur={(e) => setTotalCalories(toNumber(e.target.value))}
                   onFocus={(e) => e.target.select()}
                   disabled={autoCalculate}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 />
               </div>
             </div>
@@ -418,7 +418,7 @@ export default function MealEditModal({
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Food Items</h3>
               <button
                 onClick={addItem}
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="app-secondary inline-flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent)]"
               >
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -454,7 +454,7 @@ export default function MealEditModal({
                         type="text"
                         value={item.food}
                         onChange={(e) => updateItem(item.id, 'food', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                         placeholder="e.g., Grilled chicken breast"
                       />
                     </div>
@@ -466,7 +466,7 @@ export default function MealEditModal({
                         type="text"
                         value={item.portion}
                         onChange={(e) => updateItem(item.id, 'portion', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                         placeholder="e.g., 6 oz, 1 cup, 150g"
                       />
                     </div>
@@ -485,7 +485,7 @@ export default function MealEditModal({
                         onChange={(e) => updateItem(item.id, 'protein', parseNumber(e.target.value))}
                         onBlur={(e) => updateItem(item.id, 'protein', toNumber(e.target.value))}
                         onFocus={(e) => e.target.select()}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                       />
                     </div>
                     <div>
@@ -500,7 +500,7 @@ export default function MealEditModal({
                         onChange={(e) => updateItem(item.id, 'carbs', parseNumber(e.target.value))}
                         onBlur={(e) => updateItem(item.id, 'carbs', toNumber(e.target.value))}
                         onFocus={(e) => e.target.select()}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                       />
                     </div>
                     <div>
@@ -515,7 +515,7 @@ export default function MealEditModal({
                         onChange={(e) => updateItem(item.id, 'fat', parseNumber(e.target.value))}
                         onBlur={(e) => updateItem(item.id, 'fat', toNumber(e.target.value))}
                         onFocus={(e) => e.target.select()}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                       />
                     </div>
                     <div>
@@ -530,7 +530,7 @@ export default function MealEditModal({
                         onChange={(e) => updateItem(item.id, 'calories', parseNumber(e.target.value))}
                         onBlur={(e) => updateItem(item.id, 'calories', toNumber(e.target.value))}
                         onFocus={(e) => e.target.select()}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -553,14 +553,14 @@ export default function MealEditModal({
             <button
               onClick={onClose}
               disabled={isSaving}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="app-secondary text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent)] disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={!hasChanges || isSaving || errors.length > 0}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="app-primary text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? (
                 <div className="flex items-center">

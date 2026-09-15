@@ -73,7 +73,7 @@ const WEEKDAYS: Array<{ value: TrainingWeekday; short: string; label: string }> 
   { value: 'sunday', short: 'Sun', label: 'Sunday' }
 ]
 
-const FIELD_CLASS = 'mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-base text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100'
+const FIELD_CLASS = 'mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-base text-gray-900 shadow-sm focus:border-[var(--accent-line)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100'
 
 interface CoachSetupFormProps {
   value: CompleteCoachPlanningInput
@@ -120,7 +120,7 @@ export function CoachSetupForm({
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
       <div className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
           Step 1 · Training intent
         </p>
         <h1 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
@@ -240,8 +240,8 @@ export function CoachSetupForm({
                 key={day.value}
                 className={`flex min-h-11 cursor-pointer items-center justify-center rounded-lg border px-2 text-sm font-semibold transition-colors ${
                   selected
-                    ? 'border-blue-600 bg-blue-600 text-white'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200'
+                    ? 'border-[var(--accent-line)] bg-[var(--action)] text-[var(--action-text)]'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-[var(--accent-line)] dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200'
                 }`}
               >
                 <input
@@ -306,7 +306,7 @@ export function CoachSetupForm({
                 key={option.value}
                 className={`flex min-h-11 cursor-pointer items-center rounded-lg border px-3 py-2 text-sm font-medium ${
                   selected
-                    ? 'border-blue-600 bg-blue-50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-100'
+                    ? 'border-[var(--accent-line)] bg-[var(--accent-soft)] text-[var(--accent)]'
                     : 'border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200'
                 }`}
               >
@@ -364,7 +364,7 @@ export function CoachSetupForm({
         type="button"
         onClick={onSave}
         disabled={saving}
-        className="mt-6 min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        className="app-primary mt-6 w-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
         {saving ? 'Saving setup…' : saved ? 'Save updated setup' : actionLabel}
       </button>
@@ -415,7 +415,7 @@ export function StrengthAssessmentPanel({ assessments, onSubmit }: StrengthAsses
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
         Optional baseline
       </p>
       <h2 className="mt-2 text-xl font-bold text-gray-950 dark:text-white">
@@ -510,7 +510,7 @@ export function StrengthAssessmentPanel({ assessments, onSubmit }: StrengthAsses
             type="checkbox"
             checked={isTrueRepMax}
             onChange={event => setIsTrueRepMax(event.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-blue-600"
+            className="h-5 w-5 rounded border-gray-300 text-[var(--accent)]"
           />
           True max effort
         </label>
@@ -518,7 +518,7 @@ export function StrengthAssessmentPanel({ assessments, onSubmit }: StrengthAsses
         <button
           type="submit"
           disabled={saving}
-          className="min-h-12 rounded-xl border border-blue-600 px-4 py-3 font-semibold text-blue-700 transition-colors hover:bg-blue-50 disabled:opacity-60 dark:text-blue-300 dark:hover:bg-blue-950/40"
+          className="app-secondary transition-colors disabled:opacity-60"
         >
           {saving ? 'Saving…' : 'Add baseline'}
         </button>
@@ -560,8 +560,8 @@ export function ProposalPreview({
   replacement = false
 }: ProposalPreviewProps) {
   return (
-    <section className="rounded-2xl border border-blue-200 bg-blue-50/60 p-5 shadow-sm dark:border-blue-900 dark:bg-blue-950/20 sm:p-6">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">
+    <section className="rounded-2xl border border-[var(--accent-line)] bg-[var(--accent-soft)] p-5 shadow-sm sm:p-6">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
         Step 2 · Athlete review
       </p>
       <h2 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
@@ -575,7 +575,7 @@ export function ProposalPreview({
         {proposal.weeks.map(week => {
           const sessions = week.sessions
           return (
-            <article key={week.weekNumber} className="min-w-0 rounded-xl border border-blue-100 bg-white p-4 dark:border-blue-900 dark:bg-gray-900">
+            <article key={week.weekNumber} className="min-w-0 rounded-xl border border-[var(--accent-line)] bg-white p-4 dark:bg-gray-900">
               <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                 <h3 className="font-bold text-gray-950 dark:text-white">Week {week.weekNumber}</h3>
                 {week.review.status === 'pending_athlete_review' && (
@@ -606,7 +606,7 @@ export function ProposalPreview({
                 </ul>
               </details>
               <details className="mt-2 border-t border-gray-100 pt-2 dark:border-gray-800" open={week.weekNumber === 1}>
-                <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-blue-700 dark:text-blue-300">
+                <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-[var(--accent)]">
                   {sessions.length} complete sessions
                 </summary>
                 <div className="mt-3 space-y-3">
@@ -624,7 +624,7 @@ export function ProposalPreview({
         })}
       </div>
 
-      <div className="mt-6 rounded-xl border border-blue-200 bg-white p-4 dark:border-blue-900 dark:bg-gray-900">
+      <div className="mt-6 rounded-xl border border-[var(--accent-line)] bg-white p-4 dark:bg-gray-900">
         <p className="text-sm font-semibold text-gray-900 dark:text-white">Acceptance changes the plan state.</p>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
           This preview is not active until you accept it. The coach cannot silently replace an accepted plan.
@@ -635,7 +635,7 @@ export function ProposalPreview({
         type="button"
         onClick={onAccept}
         disabled={accepting}
-        className="mt-5 min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
+        className="app-primary mt-5 w-full transition-colors disabled:opacity-60 sm:w-auto"
       >
         {accepting ? 'Accepting plan…' : replacement ? 'Accept replacement plan' : 'Accept this plan'}
       </button>
@@ -799,7 +799,7 @@ export function ActiveProgramView({
 function WeeklyReviewCard({ review }: { review: CoachWeeklyReview }) {
   const proposal = review.adaptationProposal
   return (
-    <section className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+    <section className="mt-6 rounded-xl border border-[var(--accent-line)] bg-[var(--accent-soft)] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold text-gray-900 dark:text-white">Week {review.weekNumber} review</h3>
         {review.checkpointReviewRequired && (
@@ -821,7 +821,7 @@ function WeeklyReviewCard({ review }: { review: CoachWeeklyReview }) {
         </ul>
       )}
       {proposal && (
-        <div className="mt-4 border-t border-blue-200 pt-4 dark:border-blue-900">
+        <div className="mt-4 border-t border-[var(--accent-line)] pt-4">
           <h4 className="font-semibold text-gray-900 dark:text-white">{proposal.title}</h4>
           <p className="mt-1 text-sm leading-6 text-gray-700 dark:text-gray-200">
             {proposal.rationale}
@@ -830,7 +830,7 @@ function WeeklyReviewCard({ review }: { review: CoachWeeklyReview }) {
             {proposal.proposedChanges.map(change => <li key={change}>• {change}</li>)}
           </ul>
           {proposal.requiresAcceptance && (
-            <p className="mt-3 text-sm font-semibold text-blue-800 dark:text-blue-200">
+            <p className="mt-3 text-sm font-semibold text-[var(--accent)]">
               No future session has changed. Review and accept a replacement proposal before applying an adjustment.
             </p>
           )}
@@ -893,7 +893,7 @@ export function CompleteSessionCard({
 
       <div className="mt-4 space-y-3">
         {prescription.blocks.map(block => (
-          <section key={block.id} className="min-w-0 border-l-2 border-blue-200 pl-3 dark:border-blue-900">
+          <section key={block.id} className="min-w-0 border-l-2 border-[var(--accent-line)] pl-3">
             <p className="break-words text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               {blockRoleLabel(block.role)} · {block.estimatedMinutes} min
             </p>
@@ -909,7 +909,7 @@ export function CompleteSessionCard({
                   {formatDose(exercise.dose)} · {formatExecutionTarget(exercise.executionTarget)}
                 </p>
                 {exercise.loadAnchor && (
-                  <p className="mt-1 break-words text-xs font-medium text-blue-700 dark:text-blue-300">
+                  <p className="mt-1 break-words text-xs font-medium text-[var(--accent)]">
                     Load: {exercise.loadAnchor.loadRange.min}-{exercise.loadAnchor.loadRange.max}{' '}
                     {exercise.loadAnchor.loadRange.unit}
                     {exercise.loadAnchor.source === 'saved_assessment'
@@ -966,7 +966,7 @@ function SessionPrescriptionCard({
 
       <div className="mt-3 space-y-3">
         {prescription.dose.blocks.map(block => (
-          <section key={block.label} className="border-l-2 border-blue-200 pl-3 dark:border-blue-900">
+          <section key={block.label} className="border-l-2 border-[var(--accent-line)] pl-3">
             <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               {block.label} · {block.minutes} min
             </p>
@@ -975,7 +975,7 @@ function SessionPrescriptionCard({
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">{exercise.name}</p>
                 <p className="text-sm text-gray-700 dark:text-gray-200">{exercise.prescription}</p>
                 {exercise.load_guidance && (
-                  <p className="mt-1 text-xs font-medium text-blue-700 dark:text-blue-300">
+                  <p className="mt-1 text-xs font-medium text-[var(--accent)]">
                     Saved baseline: {exercise.load_guidance.loadRange.min}-
                     {exercise.load_guidance.loadRange.max} {exercise.load_guidance.loadRange.unit}{' '}
                     ({exercise.load_guidance.percentRange[0]}-{exercise.load_guidance.percentRange[1]}% e1RM)

@@ -417,7 +417,7 @@ export default function MealInputEnhanced({
                 ? 'cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-800'
                 : isRecording
                 ? 'bg-red-500 text-white'
-                : 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-[var(--action)] text-[var(--action-text)] hover:opacity-90'
             }`}
           >
             {!voiceAvailable
@@ -432,7 +432,7 @@ export default function MealInputEnhanced({
           <button
             type="button"
             onClick={() => setShowTextInput(!showTextInput)}
-            className="min-h-12 flex-1 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-blue-700"
+            className="app-secondary flex-1 transition-colors"
           >
             {showTextInput ? 'Hide text input' : 'Show text input'}
           </button>
@@ -445,7 +445,7 @@ export default function MealInputEnhanced({
               onChange={event => setMealText(event.target.value)}
               placeholder="Chicken breast 6oz, brown rice 1 cup, broccoli 1 cup, olive oil 1 tbsp"
               rows={4}
-              className="w-full resize-y rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base text-gray-900 transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+              className="w-full resize-y rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base text-gray-900 transition-colors focus:border-[var(--accent-line)] focus:ring-2 focus:ring-[var(--accent)] dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Type naturally. Include portion sizes when possible.
@@ -458,7 +458,7 @@ export default function MealInputEnhanced({
                   setMealText('')
                   transcriptRef.current = ''
                 }}
-                className="min-h-11 rounded-lg border-2 border-gray-300 px-6 py-2 font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                className="app-secondary transition-colors"
                 disabled={isSubmitting}
               >
                 Clear
@@ -467,7 +467,7 @@ export default function MealInputEnhanced({
                 type="button"
                 onClick={handleTextSubmit}
                 disabled={isSubmitting || !mealText.trim()}
-                className="min-h-11 flex-1 rounded-lg bg-blue-600 px-6 py-2 font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+                className="app-primary flex-1 transition-colors disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Analyzing...' : 'Submit meal'}
               </button>

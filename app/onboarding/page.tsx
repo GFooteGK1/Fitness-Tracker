@@ -37,6 +37,6 @@ export default function OnboardingPage() {
     <label className="block space-y-2 text-gray-700 dark:text-gray-300"><span>Age (years)</span><input type="number" inputMode="numeric" min="13" max="120" step="1" required value={age} onChange={event => setAge(event.target.value)} className="min-h-[44px] w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-base dark:border-gray-600 dark:bg-gray-800" /><span className="block text-sm text-gray-600 dark:text-gray-400">SociusFit supports ages 13 and up.</span></label>
     <p className="text-gray-600 dark:text-gray-400">Height, weight, and gender are optional. You can add them later in Profile for more tailored guidance.</p>
     {error && <p role="alert" className="text-red-600 dark:text-red-400">{error}</p>}
-    <button type="submit" className="min-h-[44px] w-full rounded-xl bg-emerald-400 px-5 py-3 font-semibold text-gray-950 disabled:opacity-50">{saving ? 'Saving…' : 'Start using SociusFit'}</button>
+    <button type="submit" className="app-primary w-full disabled:opacity-50">{saving ? 'Saving…' : 'Start using SociusFit'}</button>
   </fieldset></form></AuthLayout>
 }

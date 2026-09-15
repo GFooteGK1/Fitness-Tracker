@@ -349,10 +349,10 @@ export default function FoodLog() {
         <h1 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Log Meal</h1>
 
         {status && (
-          <div className={`mb-3 sm:mb-4 p-3 sm:p-4 rounded-lg sm:rounded-xl text-sm font-medium ${
-            status.type === 'success' ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-2 border-green-200 dark:border-green-800' :
-            status.type === 'error' ? 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 border-2 border-red-200 dark:border-red-800' :
-            'bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border-2 border-blue-200 dark:border-blue-800'
+          <div role={status.type === 'error' ? 'alert' : 'status'} className={`app-notice mb-3 sm:mb-4 text-sm font-medium ${
+            status.type === 'success' ? 'app-notice-success' :
+            status.type === 'error' ? 'app-notice-error' :
+            'app-notice-info'
           }`}>
             {status.message}
           </div>
@@ -368,7 +368,7 @@ export default function FoodLog() {
               id="date"
               value={mealDate}
               onChange={(e) => setMealDate(e.target.value)}
-              className="block w-full px-3 py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 box-border"
+              className="block w-full px-3 py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 box-border"
               style={{
                 minHeight: '48px',
                 fontSize: '16px',
@@ -387,7 +387,7 @@ export default function FoodLog() {
               Choose how to log your meal:
             </h3>
             <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-6">
-              💡 For photos with portion refinement, use <Link href="/food-progress?view=camera" className="text-blue-600 dark:text-blue-400 underline">Camera View</Link>
+              💡 For photos with portion refinement, use <Link href="/food-progress?view=camera" className="text-[var(--accent)] underline">Camera View</Link>
             </p>
 
             {/* Show full-width photo preview when image is captured, otherwise show grid */}
@@ -399,7 +399,7 @@ export default function FoodLog() {
                 >
                   ×
                 </button>
-                <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-blue-400 dark:border-blue-500 overflow-hidden">
+                <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-[var(--accent-line)] overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={capturedImage}
@@ -418,7 +418,7 @@ export default function FoodLog() {
                         type="button"
                         onClick={removePhoto}
                         disabled={isAnalyzing}
-                        className="flex-1 px-4 py-3 text-base font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="app-secondary flex-1 text-base disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         📷 Retake
                       </button>
@@ -426,7 +426,7 @@ export default function FoodLog() {
                         type="button"
                         onClick={analyzeImage}
                         disabled={isAnalyzing}
-                        className="flex-1 px-4 py-3 text-base font-semibold text-white bg-blue-600 dark:bg-blue-700 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="app-primary flex-1 text-base disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         {isAnalyzing ? '🔍 Analyzing...' : '🔍 Analyze'}
                       </button>
@@ -442,7 +442,7 @@ export default function FoodLog() {
                     type="button"
                     onClick={handleGalleryPicker}
                     disabled={isCompressing || isAnalyzing}
-                    className="w-full p-6 bg-gray-50 dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="app-secondary w-full transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex flex-col items-center gap-3">
                       <div className={`text-4xl transition-transform ${isCompressing ? 'animate-pulse' : 'group-hover:scale-110'}`}>
@@ -535,7 +535,7 @@ export default function FoodLog() {
               onChange={(e) => setMealText(e.target.value)}
               placeholder="Chicken breast 6oz, brown rice 1 cup, broccoli 1 cup, olive oil 1 tbsp"
               rows={6}
-              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-y bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] transition-colors resize-y bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
               style={{ minHeight: '140px' }}
             />
             <p className="mt-2 sm:mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -550,7 +550,7 @@ export default function FoodLog() {
                 setMealText('')
                 setStatus(null)
               }}
-              className="px-4 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-semibold border-2 border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors disabled:opacity-50 text-gray-700 dark:text-gray-300"
+              className="app-secondary text-sm sm:text-base transition-colors disabled:opacity-50"
               disabled={loading}
             >
               Clear
@@ -558,7 +558,7 @@ export default function FoodLog() {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 dark:bg-blue-700 text-white px-4 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-semibold rounded-lg sm:rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 active:bg-blue-800 dark:active:bg-blue-500 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors shadow-sm"
+              className="app-primary flex-1 text-sm sm:text-base disabled:cursor-not-allowed transition-colors"
             >
               {loading ? '⏳ Analyzing...' : '✓ Submit Meal'}
             </button>

@@ -185,7 +185,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8 sm:py-12">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-blue-600 dark:border-blue-400 mb-3"></div>
+        <div className="inline-block animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-[var(--accent-line)] mb-3"></div>
       </div>
     )
   }
@@ -197,7 +197,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
         <p className="text-red-600 dark:text-red-400 mb-4 text-sm sm:text-base px-4">{error}</p>
         <button
           onClick={fetchDailyData}
-          className="bg-blue-600 dark:bg-blue-500 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors font-semibold text-sm sm:text-base touch-target"
+          className="app-primary transition-colors text-sm sm:text-base touch-target"
         >
           Try Again
         </button>
@@ -261,7 +261,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
             {onAddMeal && (
               <button
                 onClick={onAddMeal}
-                className="bg-blue-600 dark:bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors font-semibold text-base touch-target"
+                className="app-primary transition-colors text-base touch-target"
               >
                 + Add Your First Meal
               </button>

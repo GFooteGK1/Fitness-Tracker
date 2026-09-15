@@ -59,7 +59,7 @@ export default function UserMenu() {
         </Link>
         <Link
           href="/auth/signup"
-          className="bg-blue-600 dark:bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-sm font-medium"
+          className="app-primary transition-colors text-sm"
         >
           Sign Up
         </Link>
@@ -83,7 +83,7 @@ export default function UserMenu() {
         className="flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors touch-target"
         aria-label="User menu"
       >
-        <div className="w-8 h-8 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
+        <div className="w-8 h-8 bg-[var(--action)] text-[var(--action-text)] rounded-full flex items-center justify-center text-sm font-medium">
           {getInitials()}
         </div>
         <svg 
@@ -102,7 +102,7 @@ export default function UserMenu() {
           {/* User Info */}
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center font-medium">
+              <div className="w-10 h-10 bg-[var(--action)] text-[var(--action-text)] rounded-full flex items-center justify-center font-medium">
                 {getInitials()}
               </div>
               <div className="flex-1 min-w-0">

@@ -39,7 +39,7 @@ export function DashboardNarrativeView({
       className="app-panel p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
           Today&apos;s read
         </p>
         {cached && (
@@ -118,12 +118,12 @@ export default function DashboardNarrative() {
       <section
         aria-label="Today's read"
         role="status"
-        className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm dark:border-blue-900 dark:from-blue-950/40 dark:to-gray-800"
+        className="app-panel p-6"
       >
-        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
           Today&apos;s read
         </p>
-        <div className="mt-3 h-5 w-56 animate-pulse rounded bg-blue-100 dark:bg-blue-900/50" />
+        <div className="mt-3 h-5 w-56 animate-pulse rounded bg-[var(--accent-soft)]" />
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
           Preparing today&apos;s read from your current data…
         </p>
@@ -145,7 +145,7 @@ export default function DashboardNarrative() {
           <button
             type="button"
             onClick={() => void load()}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+            className="app-secondary text-sm"
           >
             Retry
           </button>

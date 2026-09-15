@@ -174,7 +174,7 @@ export default function PortionSelector({
                     value={foodName}
                     onChange={(e) => setFoodName(e.target.value)}
                     placeholder="e.g., Grilled chicken breast"
-                    className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                    className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[var(--accent)] dark:bg-gray-700 dark:text-gray-100"
                     autoFocus
                   />
                 </div>
@@ -191,7 +191,7 @@ export default function PortionSelector({
                       value={portionAmount}
                       onChange={(e) => setPortionAmount(e.target.value)}
                       placeholder="e.g., 6"
-                      className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                      className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[var(--accent)] dark:bg-gray-700 dark:text-gray-100"
                     />
                   </div>
                   
@@ -203,7 +203,7 @@ export default function PortionSelector({
                       id={`unit-${index}`}
                       value={portionUnit}
                       onChange={(e) => setPortionUnit(e.target.value)}
-                      className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                      className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[var(--accent)] dark:bg-gray-700 dark:text-gray-100"
                     >
                       {STANDARD_UNITS.map(unit => (
                         <option key={unit} value={unit}>{unit}</option>
@@ -215,13 +215,13 @@ export default function PortionSelector({
                 <div className="flex gap-2">
                   <button
                     onClick={handleSavePortion}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-medium touch-target"
+                    className="app-primary flex-1 text-sm touch-target"
                   >
                     Save item changes
                   </button>
                   <button
                     onClick={handleCancelEdit}
-                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium touch-target"
+                    className="app-secondary flex-1 text-sm touch-target"
                   >
                     Cancel
                   </button>
@@ -236,7 +236,7 @@ export default function PortionSelector({
                       {item.food}
                     </h4>
                     {item.portionSpec && item.portionSpec.exact && (
-                      <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded">
+                      <span className="text-xs bg-[var(--accent-soft)] text-[var(--accent)] px-2 py-0.5 rounded">
                         {item.portionSpec.exact.amount} {item.portionSpec.exact.unit}
                       </span>
                     )}
@@ -249,7 +249,7 @@ export default function PortionSelector({
                 <button
                   disabled={isRefining}
                   onClick={() => handleEditClick(index)}
-                  className="ml-2 p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg touch-target"
+                  className="ml-2 p-2 text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-lg touch-target"
                   aria-label={`Edit ${item.food}`}
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

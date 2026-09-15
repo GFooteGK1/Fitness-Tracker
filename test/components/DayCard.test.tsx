@@ -215,11 +215,11 @@ describe('DayCard Component', () => {
       const card = screen.getByRole('button')
 
       // Verify today's card has the blue highlight classes
-      expect(card).toHaveClass('border-blue-500')
-      expect(card).toHaveClass('bg-blue-50')
+      expect(card).toHaveClass('border-[var(--accent)]')
+      expect(card).toHaveClass('bg-[var(--accent-soft)]')
 
       // Verify the today indicator dot is present
-      const todayDot = card.querySelector('.bg-blue-500.rounded-full')
+      const todayDot = card.querySelector('[aria-hidden="true"].rounded-full')
       expect(todayDot).toBeInTheDocument()
 
       // Verify aria-label includes "(Today)"

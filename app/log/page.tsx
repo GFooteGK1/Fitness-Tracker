@@ -316,10 +316,10 @@ export default function LogWorkout() {
       <h1 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Log Workout</h1>
 
       {status && (
-        <div className={`mb-3 sm:mb-4 p-3 sm:p-4 rounded-lg sm:rounded-xl text-sm font-medium ${
-          status.type === 'success' ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-2 border-green-200 dark:border-green-800' :
-          status.type === 'error' ? 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 border-2 border-red-200 dark:border-red-800' :
-          'bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border-2 border-blue-200 dark:border-blue-800'
+        <div role={status.type === 'error' ? 'alert' : 'status'} className={`app-notice mb-3 sm:mb-4 text-sm font-medium ${
+          status.type === 'success' ? 'app-notice-success' :
+          status.type === 'error' ? 'app-notice-error' :
+          'app-notice-info'
         }`}>
           {status.message}
         </div>
@@ -354,7 +354,7 @@ export default function LogWorkout() {
 Got 7 rounds + 5
 RPE: 8/10"
             rows={5}
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-y bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] transition-colors resize-y bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
             style={{ minHeight: '140px' }}
           />
           <p className="mt-2 sm:mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -380,7 +380,7 @@ RPE: 8/10"
               >
                 ×
               </button>
-              <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-blue-400 dark:border-blue-500 overflow-hidden">
+              <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-[var(--accent-line)] overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={capturedImage}
@@ -399,7 +399,7 @@ RPE: 8/10"
                       type="button"
                       onClick={removePhoto}
                       disabled={isAnalyzing}
-                      className="flex-1 px-4 py-3 text-base font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="app-secondary flex-1 text-base disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       📷 Retake
                     </button>
@@ -407,7 +407,7 @@ RPE: 8/10"
                       type="button"
                       onClick={analyzeImage}
                       disabled={isAnalyzing}
-                      className="flex-1 px-4 py-3 text-base font-semibold text-white bg-blue-600 dark:bg-blue-700 rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="app-primary flex-1 text-base disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {isAnalyzing ? '🔍 Analyzing...' : '🔍 Analyze'}
                     </button>
@@ -432,7 +432,7 @@ RPE: 8/10"
               setWorkoutText('')
               setStatus(null)
             }}
-            className="px-4 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-semibold border-2 border-gray-300 dark:border-gray-600 rounded-lg sm:rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors disabled:opacity-50 text-gray-700 dark:text-gray-300"
+            className="app-secondary text-sm sm:text-base transition-colors disabled:opacity-50"
             disabled={loading}
           >
             Clear

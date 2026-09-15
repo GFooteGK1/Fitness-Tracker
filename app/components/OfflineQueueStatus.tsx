@@ -22,9 +22,9 @@ export default function OfflineQueueStatus({ className = '' }: OfflineQueueStatu
   }
 
   return (
-    <div className={`bg-white border border-gray-200 rounded-lg p-4 ${className}`}>
+    <div className={`app-panel p-4 ${className}`}>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-gray-900">
+        <h3 className="text-sm font-medium text-[var(--foreground)]">
           Sync Status
         </h3>
         
@@ -32,7 +32,7 @@ export default function OfflineQueueStatus({ className = '' }: OfflineQueueStatu
           <div className={`w-2 h-2 rounded-full mr-2 ${
             isOnline ? 'bg-green-500' : 'bg-red-500'
           }`}></div>
-          <span className="text-xs text-gray-600">
+          <span className="text-xs app-muted">
             {isOnline ? 'Online' : 'Offline'}
           </span>
         </div>
@@ -42,8 +42,8 @@ export default function OfflineQueueStatus({ className = '' }: OfflineQueueStatu
       <div className="space-y-2">
         {stats.pendingOperations > 0 && (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Pending uploads:</span>
-            <span className="font-medium text-yellow-600">
+            <span className="app-muted">Pending uploads:</span>
+            <span className="font-medium text-[var(--warning)]">
               {stats.pendingOperations}
             </span>
           </div>
@@ -51,8 +51,8 @@ export default function OfflineQueueStatus({ className = '' }: OfflineQueueStatu
 
         {stats.failedOperations > 0 && (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Failed uploads:</span>
-            <span className="font-medium text-red-600">
+            <span className="app-muted">Failed uploads:</span>
+            <span className="font-medium text-[var(--danger)]">
               {stats.failedOperations}
             </span>
           </div>
@@ -60,8 +60,8 @@ export default function OfflineQueueStatus({ className = '' }: OfflineQueueStatu
 
         {stats.completedOperations > 0 && (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Completed:</span>
-            <span className="font-medium text-green-600">
+            <span className="app-muted">Completed:</span>
+            <span className="font-medium text-[var(--accent)]">
               {stats.completedOperations}
             </span>
           </div>
@@ -73,7 +73,7 @@ export default function OfflineQueueStatus({ className = '' }: OfflineQueueStatu
         {isOnline && stats.pendingOperations > 0 && (
           <button
             onClick={processQueue}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-lg font-medium"
+            className="app-primary flex-1 text-xs"
           >
             Sync Now
           </button>
@@ -82,7 +82,7 @@ export default function OfflineQueueStatus({ className = '' }: OfflineQueueStatu
         {stats.completedOperations > 0 && (
           <button
             onClick={clearCompleted}
-            className="flex-1 bg-gray-600 hover:bg-gray-700 text-white text-xs px-3 py-2 rounded-lg font-medium"
+            className="app-secondary flex-1 text-xs"
           >
             Clear Completed
           </button>
@@ -91,7 +91,7 @@ export default function OfflineQueueStatus({ className = '' }: OfflineQueueStatu
 
       {/* Status Messages */}
       {!isOnline && stats.pendingOperations > 0 && (
-        <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+        <div className="app-notice app-notice-warning mt-3 text-xs">
           <div className="flex items-center">
             <svg className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -102,7 +102,7 @@ export default function OfflineQueueStatus({ className = '' }: OfflineQueueStatu
       )}
 
       {stats.failedOperations > 0 && (
-        <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+        <div className="app-notice app-notice-error mt-3 text-xs">
           <div className="flex items-center">
             <svg className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

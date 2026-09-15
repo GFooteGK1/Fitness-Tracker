@@ -215,7 +215,7 @@ export default function InputBar({ onSubmit, isLoading }: InputBarProps) {
         <div className="flex items-center justify-center gap-6 p-4 bg-black/80">
           <button
             onClick={closeCamera}
-            className="min-w-[44px] min-h-[44px] px-5 py-3 rounded-full bg-gray-700 text-white text-sm font-medium"
+            className="app-secondary min-w-[44px] text-sm"
             style={{ touchAction: 'manipulation' }}
             aria-label="Cancel camera"
           >
@@ -223,7 +223,7 @@ export default function InputBar({ onSubmit, isLoading }: InputBarProps) {
           </button>
           <button
             onClick={capturePhoto}
-            className="min-w-[64px] min-h-[64px] rounded-full bg-white border-4 border-gray-300"
+            className="app-secondary min-w-[64px]"
             style={{ touchAction: 'manipulation' }}
             aria-label="Capture photo"
           />
@@ -301,7 +301,7 @@ export default function InputBar({ onSubmit, isLoading }: InputBarProps) {
         <button
           onClick={handleSubmit}
           disabled={!text.trim() || isLoading}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full shrink-0 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="app-primary p-0 rounded-full w-11 min-w-[44px] flex items-center justify-center shrink-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           style={{ touchAction: 'manipulation' }}
           aria-label="Send message"
         >

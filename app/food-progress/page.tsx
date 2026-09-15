@@ -20,7 +20,7 @@ const TargetManagement = lazy(() => import('@/app/components/TargetManagement'))
 const ComponentLoader = ({ children }: { children: string }) => (
   <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
     <div className="flex items-center justify-center py-12">
-      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mr-3"></div>
+      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent-line)] mr-3"></div>
       <span className="text-gray-600 dark:text-gray-400">Loading {children}...</span>
     </div>
   </div>
@@ -255,7 +255,7 @@ function FoodProgressContent() {
                   const newDate = new Date(e.target.value + 'T00:00:00')
                   setSelectedDate(newDate)
                 }}
-                className="block w-full px-3 py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 box-border"
+                className="block w-full px-3 py-3 text-base border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent-line)] transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 box-border"
                 style={{
                   minHeight: '48px',
                   fontSize: '16px',
