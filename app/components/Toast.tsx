@@ -10,12 +10,12 @@ interface ToastProps {
   isVisible?: boolean
 }
 
-export default function Toast({ 
-  message, 
-  type = 'info', 
-  duration = 4000, 
+export default function Toast({
+  message,
+  type = 'info',
+  duration = 4000,
   onClose,
-  isVisible = true 
+  isVisible = true
 }: ToastProps) {
   const [show, setShow] = useState(isVisible)
 
@@ -35,17 +35,17 @@ export default function Toast({
   }, [show, duration, onClose])
 
   const getToastStyles = () => {
-    const baseStyles = "fixed top-4 right-4 z-50 max-w-sm w-full bg-white rounded-lg shadow-lg border-l-4 p-4 transition-all duration-300 transform"
-    
+    const baseStyles = "fixed top-4 right-4 z-50 max-w-sm w-[calc(100vw-2rem)] app-notice shadow-lg transition-all duration-300 transform"
+
     const typeStyles = {
-      success: "border-green-500 bg-green-50",
-      error: "border-red-500 bg-red-50", 
-      warning: "border-yellow-500 bg-yellow-50",
-      info: "border-blue-500 bg-blue-50"
+      success: "app-notice-success",
+      error: "app-notice-error",
+      warning: "app-notice-warning",
+      info: "app-notice-info"
     }
 
-    const visibilityStyles = show 
-      ? "translate-x-0 opacity-100" 
+    const visibilityStyles = show
+      ? "translate-x-0 opacity-100"
       : "translate-x-full opacity-0"
 
     return `${baseStyles} ${typeStyles[type]} ${visibilityStyles}`
@@ -55,26 +55,26 @@ export default function Toast({
     switch (type) {
       case 'success':
         return (
-          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-current" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         )
       case 'error':
         return (
-          <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-current" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         )
       case 'warning':
         return (
-          <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-current" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
         )
       case 'info':
       default:
         return (
-          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-current" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         )
@@ -83,18 +83,18 @@ export default function Toast({
 
   const getTextColor = () => {
     switch (type) {
-      case 'success': return 'text-green-800'
-      case 'error': return 'text-red-800'
-      case 'warning': return 'text-yellow-800'
-      case 'info': 
-      default: return 'text-blue-800'
+      case 'success': return 'text-current'
+      case 'error': return 'text-current'
+      case 'warning': return 'text-current'
+      case 'info':
+      default: return 'text-current'
     }
   }
 
   if (!show && !isVisible) return null
 
   return (
-    <div className={getToastStyles()}>
+    <div role={type === 'error' ? 'alert' : 'status'} className={getToastStyles()}>
       <div className="flex items-start">
         <div className="flex-shrink-0">
           {getIcon()}
@@ -110,7 +110,7 @@ export default function Toast({
               setShow(false)
               setTimeout(() => onClose?.(), 300)
             }}
-            className={`inline-flex rounded-md p-1.5 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 ${getTextColor()}`}
+            className={`app-icon-action ${getTextColor()}`}
           >
             <span className="sr-only">Dismiss</span>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

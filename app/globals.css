@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: light;
   --background: #f4f5f2;
   --foreground: #202824;
   --surface: #ffffff;
@@ -11,10 +12,19 @@
   --accent: #216b55;
   --action: #216b55;
   --action-text: #ffffff;
+  --accent-soft: #e8f1ec;
+  --accent-line: #a8c8b9;
+  --warning: #805000;
+  --warning-soft: #fff4d6;
+  --warning-line: #dec78b;
+  --danger: #a52b32;
+  --danger-soft: #fff0f0;
+  --danger-line: #e7b7bb;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
+    color-scheme: dark;
     --background: #14191d;
     --foreground: #f1f4f2;
     --surface: #20272b;
@@ -23,6 +33,14 @@
     --accent: #84dbc2;
     --action: #84dbc2;
     --action-text: #10231c;
+    --accent-soft: #243c34;
+    --accent-line: #476d5e;
+    --warning: #f1cd79;
+    --warning-soft: #383022;
+    --warning-line: #75613b;
+    --danger: #ffadb2;
+    --danger-soft: #3c272d;
+    --danger-line: #80505b;
   }
 }
 
@@ -36,6 +54,15 @@
   .app-primary { background: var(--action); color: var(--action-text); border: 1px solid transparent; }
   .app-secondary { background: var(--surface); border: 1px solid var(--line); color: var(--foreground); }
   .app-primary:disabled, .app-secondary:disabled { opacity: .5; cursor: not-allowed; }
+  .app-primary, .app-secondary { text-align: center; transition: background-color .15s, border-color .15s; touch-action: manipulation; }
+  .app-primary:enabled:hover, a.app-primary:hover { background: color-mix(in srgb, var(--action) 90%, var(--foreground)); }
+  .app-secondary:enabled:hover, a.app-secondary:hover { background: var(--accent-soft); border-color: var(--accent-line); }
+  .app-icon-action { display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; border-radius: 12px; color: var(--muted); }
+  .app-icon-action:enabled:hover { background: var(--accent-soft); color: var(--foreground); }
+  .app-notice { border: 1px solid var(--line); border-radius: 12px; padding: 1rem; background: var(--surface); color: var(--foreground); }
+  .app-notice-info, .app-notice-success { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent); }
+  .app-notice-warning { border-color: var(--warning-line); background: var(--warning-soft); color: var(--warning); }
+  .app-notice-error { border-color: var(--danger-line); background: var(--danger-soft); color: var(--danger); }
   .app-badge { border: 1px solid var(--line); padding: .3rem .7rem; border-radius: 99px; color: var(--accent); font-size: .75rem; }
   .app-header { background: var(--background); border-bottom: 1px solid var(--line); }
   .app-desktop-link { padding: .75rem 1rem; font-size: .875rem; color: var(--muted); border-radius: 10px; }
@@ -50,6 +77,7 @@
 }
 
 :where(a, button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--action); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }

@@ -86,7 +86,7 @@ export default function Progress() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Your progress</h1>
           <button
             onClick={() => setShowExport(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="app-secondary flex items-center gap-2 text-sm transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -99,7 +99,7 @@ export default function Progress() {
 
         {loading && (
           <div className="flex items-center justify-center py-12">
-            <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-400 mb-3"></div>
+            <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--accent-line)] mb-3"></div>
           </div>
         )}
 
@@ -109,7 +109,7 @@ export default function Progress() {
             <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
             <button
               onClick={fetchStats}
-              className="bg-blue-600 dark:bg-blue-700 text-white px-6 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors font-semibold"
+              className="app-primary transition-colors"
             >
               Try Again
             </button>
@@ -179,7 +179,7 @@ export default function Progress() {
               </h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="text-3xl font-bold text-[var(--accent)]">
                     {stats.monthToDate}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -236,17 +236,17 @@ export default function Progress() {
                 </div>
 
                 {/* Cardio */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <div className="bg-[var(--accent-soft)] rounded-lg p-4 border border-[var(--accent-line)]">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-2xl">🏃</span>
-                    <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    <span className="text-2xl font-bold text-[var(--accent)]">
                       {stats.cardio}
                     </span>
                   </div>
-                  <div className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  <div className="text-sm font-medium text-[var(--accent)]">
                     Cardio
                   </div>
-                  <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  <div className="text-xs text-[var(--accent)] mt-1">
                     Running, rowing, biking
                   </div>
                 </div>

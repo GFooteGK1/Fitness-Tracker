@@ -54,8 +54,8 @@ export default function OfflinePage() {
         </div>
 
         {pendingCount > 0 && (
-          <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <p className="text-sm text-blue-700 dark:text-blue-300">
+          <div className="bg-[var(--accent-soft)] border border-[var(--accent-line)] rounded-lg p-4">
+            <p className="text-sm text-[var(--accent)]">
               <span className="font-semibold">{pendingCount} queued {pendingCount === 1 ? 'entry' : 'entries'}</span>{' '}
               will sync automatically when your connection is restored.
             </p>
@@ -90,7 +90,7 @@ export default function OfflinePage() {
 
         <button
           onClick={() => window.location.reload()}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          className="app-primary inline-flex items-center gap-2 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

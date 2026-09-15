@@ -115,15 +115,15 @@ export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
   return (
     <section aria-labelledby="coach-trust-title" className="space-y-4 rounded-2xl border border-slate-300 bg-slate-50 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-950/30 sm:p-6">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Data trust</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Data trust</p>
         <h2 id="coach-trust-title" className="mt-1 text-xl font-bold text-gray-950 dark:text-white">What Coach knows and why it matters</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-300">
           You control confirmed facts, imported evidence, and plan changes. One hard day never changes the plan by itself.
         </p>
       </div>
 
-      {status && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">{status}</p>}
-      {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">{error}</p>}
+      {status && <p role="status" className="app-notice app-notice-success text-sm font-medium">{status}</p>}
+      {error && <p role="alert" className="app-notice app-notice-error text-sm">{error}</p>}
 
       <TrustSection title="What Coach Knows" description="Only athlete-confirmed facts appear here.">
         {trust.memories.length === 0 ? <Empty>No confirmed facts yet.</Empty> : trust.memories.map(memory => (
@@ -326,7 +326,7 @@ function ProposalReviewCard(props: {
   onReject: (reason: string) => void
 }) {
   return (
-    <article className="rounded-xl border border-blue-200 bg-white p-4 dark:border-blue-900 dark:bg-gray-900">
+    <article className="rounded-xl border border-[var(--accent-line)] bg-white p-4 dark:bg-gray-900">
       <div className="flex flex-wrap items-center gap-2"><Badge tone="blue">{label(props.proposal.action)}</Badge><Badge tone="gray">{label(props.proposal.trend)}</Badge><Badge tone="gray">{label(props.proposal.evidenceStatus)}</Badge></div>
       <p className="mt-3 font-semibold text-gray-950 dark:text-white">Evidence-derived proposal</p>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-gray-700 dark:text-gray-200">
@@ -360,8 +360,8 @@ function MemoryCorrectionForm(props: {
     typeof value === 'string' || typeof value === 'number' || isStringArray(value)
   ))
   return (
-    <form className="mt-4 space-y-3 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/20" onSubmit={event => { event.preventDefault(); props.onSave(props.value) }}>
-      <p className="text-sm font-semibold text-blue-950 dark:text-blue-100">Save a corrected version</p>
+    <form className="mt-4 space-y-3 rounded-xl border border-[var(--accent-line)] bg-[var(--accent-soft)] p-4" onSubmit={event => { event.preventDefault(); props.onSave(props.value) }}>
+      <p className="text-sm font-semibold text-[var(--accent)]">Save a corrected version</p>
       {fields.map(([field, value]) => (
         <label key={field} className="block text-sm font-medium text-gray-800 dark:text-gray-200">
           {label(field)}
@@ -423,12 +423,12 @@ function Empty({ children }: { children: React.ReactNode }) {
 }
 
 function Badge({ children, tone }: { children: React.ReactNode; tone: 'green' | 'amber' | 'red' | 'blue' | 'gray' }) {
-  const colors = { green: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200', amber: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200', red: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200', blue: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200', gray: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200' }
+  const colors = { green: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200', amber: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200', red: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200', blue: 'bg-[var(--accent-soft)] text-[var(--accent)]', gray: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200' }
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${colors[tone]}`}>{children}</span>
 }
 
-const primaryButton = 'min-h-11 rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50'
-const secondaryButton = 'min-h-11 rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-800 hover:border-blue-500 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'
+const primaryButton = 'app-primary disabled:cursor-not-allowed disabled:opacity-50'
+const secondaryButton = 'app-secondary disabled:cursor-not-allowed disabled:opacity-50'
 const warningButton = 'min-h-11 rounded-xl border border-amber-500 bg-white px-4 py-2 font-semibold text-amber-800 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-900 dark:text-amber-200'
 
 function measurementSummary(values: CoachTrustObservationValue[]): string {

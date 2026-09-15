@@ -134,7 +134,7 @@ export default function TemplateDetailPage() {
         <p className="text-gray-500 dark:text-gray-400 text-lg mb-4">Template not found</p>
         <Link
           href="/templates"
-          className="text-blue-600 dark:text-blue-400 hover:underline"
+          className="text-[var(--accent)] hover:underline"
         >
           Back to templates
         </Link>
@@ -148,7 +148,7 @@ export default function TemplateDetailPage() {
       <div className="mb-4">
         <Link
           href="/templates"
-          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          className="text-sm text-[var(--accent)] hover:underline"
         >
           &larr; All Templates
         </Link>
@@ -224,13 +224,13 @@ export default function TemplateDetailPage() {
               key={i}
               className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
             >
-              <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5">
+              <div className="w-6 h-6 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5">
                 {i + 1}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-gray-900 dark:text-gray-100">
                   {m.reps && (
-                    <span className="text-blue-600 dark:text-blue-400 mr-1">
+                    <span className="text-[var(--accent)] mr-1">
                       {m.reps}
                     </span>
                   )}
@@ -276,7 +276,7 @@ export default function TemplateDetailPage() {
             <h2 className="font-semibold text-gray-900 dark:text-gray-100">
               Scale Weights
             </h2>
-            <span className="text-sm text-blue-600 dark:text-blue-400">
+            <span className="text-sm text-[var(--accent)]">
               {showScalePanel ? 'Use Rx' : 'Adjust'}
             </span>
           </button>

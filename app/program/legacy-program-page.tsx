@@ -246,23 +246,23 @@ export default function LegacyProgramPage() {
   return (
     <ProtectedRoute>
       <main className="mx-auto max-w-6xl space-y-5 pb-10">
-        <header className="rounded-2xl bg-gradient-to-br from-gray-950 to-blue-950 p-5 text-white shadow-sm sm:p-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">Socius coach</p>
+        <header className="app-panel p-5 sm:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">Socius coach</p>
           <h1 className="mt-2 text-2xl font-bold sm:text-3xl">Your training plan, built with you</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--accent)]">
             This is the durable plan home. Use Socius to discuss and understand the work;
             only a plan you review and accept becomes active here.
           </p>
         </header>
 
         {status && (
-          <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+          <p role="status" className="app-notice app-notice-success text-sm font-medium">
             {status}
           </p>
         )}
 
         {error && (
-          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+          <div role="alert" className="app-notice app-notice-error text-sm">
             <p>{error}</p>
             {loading === false && context === null && (
               <button type="button" onClick={() => void loadCoachState()} className="mt-2 font-semibold underline">
@@ -301,7 +301,7 @@ export default function LegacyProgramPage() {
               <div className="flex flex-wrap gap-3">
                 <a
                   href="/coach"
-                  className="inline-flex min-h-11 items-center rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-800 hover:border-blue-500 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  className="app-secondary inline-flex items-center"
                 >
                   Discuss this plan with Coach
                 </a>
@@ -315,7 +315,7 @@ export default function LegacyProgramPage() {
                     setError(null)
                     proposalKey.current = null
                   }}
-                  className="min-h-11 rounded-xl border border-blue-600 bg-white px-4 py-2 font-semibold text-blue-700 hover:bg-blue-50 dark:bg-gray-800 dark:text-blue-300 dark:hover:bg-blue-950/30"
+                  className="app-secondary"
                 >
                   Build a replacement proposal
                 </button>
@@ -333,7 +333,7 @@ export default function LegacyProgramPage() {
                       setSetupSaved(false)
                       proposalKey.current = null
                     }}
-                    className="min-h-11 rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                    className="app-secondary"
                   >
                     Keep current plan
                   </button>
@@ -362,7 +362,7 @@ export default function LegacyProgramPage() {
                       type="button"
                       onClick={() => void createProposal()}
                       disabled={creatingProposal}
-                      className="mt-4 min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
+                      className="app-primary mt-4 w-full transition-colors disabled:opacity-60 sm:w-auto"
                     >
                       {creatingProposal
                         ? 'Creating proposal…'

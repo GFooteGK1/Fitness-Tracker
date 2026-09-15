@@ -2,21 +2,21 @@ export default function Home() {
   return (
     <div className="space-y-6">
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-blue-600 to-purple-700 rounded-xl p-8 text-white">
+      <div className="app-panel p-6 sm:p-8">
         <h1 className="text-3xl font-bold mb-2">Welcome to SociusFit</h1>
-        <p className="text-blue-100 text-lg mb-6">
+        <p className="app-muted text-lg mb-6">
           Your AI-powered fitness companion for comprehensive workout and nutrition tracking
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
           <a 
             href="/auth/signup" 
-            className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors text-center"
+            className="app-primary"
           >
             Get Started
           </a>
           <a 
             href="/auth/signin" 
-            className="border border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors text-center"
+            className="app-secondary transition-colors text-center"
           >
             Sign In
           </a>
@@ -33,7 +33,7 @@ export default function Home() {
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Log workouts with AI-powered parsing. Support for photo OCR, voice input, and manual entry.
           </p>
-          <a href="/log" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+          <a href="/log" className="text-[var(--accent)] hover:underline font-medium">
             Start Logging →
           </a>
         </div>
@@ -46,7 +46,7 @@ export default function Home() {
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Track meals with photo analysis and AI-powered nutrition insights for optimal performance.
           </p>
-          <a href="/food-progress" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+          <a href="/food-progress" className="text-[var(--accent)] hover:underline font-medium">
             Track Nutrition →
           </a>
         </div>
@@ -59,7 +59,7 @@ export default function Home() {
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Comprehensive dashboard with workout stats, nutrition adherence, and progress tracking.
           </p>
-          <a href="/dashboard" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+          <a href="/dashboard" className="text-[var(--accent)] hover:underline font-medium">
             View Dashboard →
           </a>
         </div>
@@ -72,7 +72,7 @@ export default function Home() {
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Ask questions, discuss your program, and get feedback grounded in your training data.
           </p>
-          <a href="/coach" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+          <a href="/coach" className="text-[var(--accent)] hover:underline font-medium">
             Talk to Coach →
           </a>
         </div>
@@ -85,7 +85,7 @@ export default function Home() {
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">3x</div>
+            <div className="text-2xl font-bold text-[var(--accent)]">3x</div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Faster Parsing</div>
           </div>
           <div>

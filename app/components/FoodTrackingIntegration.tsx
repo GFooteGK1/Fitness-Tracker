@@ -103,7 +103,7 @@ export default function FoodTrackingIntegration({
               onClick={() => handleViewChange('daily')}
               className={`px-4 py-2 rounded-md font-medium transition-colors ${
                 currentView === 'daily'
-                  ? 'bg-white text-blue-600 shadow-sm'
+                  ? 'bg-white text-[var(--accent)] shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -113,7 +113,7 @@ export default function FoodTrackingIntegration({
               onClick={() => handleViewChange('weekly')}
               className={`px-4 py-2 rounded-md font-medium transition-colors ${
                 currentView === 'weekly'
-                  ? 'bg-white text-blue-600 shadow-sm'
+                  ? 'bg-white text-[var(--accent)] shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -123,7 +123,7 @@ export default function FoodTrackingIntegration({
               onClick={() => handleViewChange('camera')}
               className={`px-4 py-2 rounded-md font-medium transition-colors ${
                 currentView === 'camera'
-                  ? 'bg-white text-blue-600 shadow-sm'
+                  ? 'bg-white text-[var(--accent)] shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -133,7 +133,7 @@ export default function FoodTrackingIntegration({
               onClick={() => handleViewChange('targets')}
               className={`px-4 py-2 rounded-md font-medium transition-colors ${
                 currentView === 'targets'
-                  ? 'bg-white text-blue-600 shadow-sm'
+                  ? 'bg-white text-[var(--accent)] shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >

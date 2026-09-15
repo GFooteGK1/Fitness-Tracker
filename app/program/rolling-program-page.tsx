@@ -389,8 +389,8 @@ export default function RollingProgramPage() {
           </p>
         </header>
 
-        {status && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">{status}</p>}
-        {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">{error}</p>}
+        {status && <p role="status" className="app-notice app-notice-success text-sm font-medium">{status}</p>}
+        {error && <p role="alert" className="app-notice app-notice-error text-sm">{error}</p>}
 
         {loading ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
@@ -529,8 +529,8 @@ function WeeklyProposalCard({
   onAccept: () => Promise<void>
 }) {
   return (
-    <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900 dark:bg-blue-950/30">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">{label}</p>
+    <section className="rounded-2xl border border-[var(--accent-line)] bg-[var(--accent-soft)] p-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{label}</p>
       <h2 className="mt-2 text-xl font-bold text-gray-950 dark:text-white">{proposal.proposal.title}</h2>
       <p className="mt-2 text-sm text-gray-700 dark:text-gray-200">
         {proposal.proposal.sessions.length} sessions · {proposal.proposal.windowStart} to {proposal.proposal.windowEnd}
@@ -538,11 +538,11 @@ function WeeklyProposalCard({
       <p className="mt-2 text-sm font-medium text-gray-800 dark:text-gray-100">
         Nothing changes until you accept this week.
       </p>
-      <details className="mt-4 rounded-xl border border-blue-200 bg-white/70 dark:border-blue-900 dark:bg-gray-900/70">
-        <summary className="flex min-h-11 cursor-pointer items-center px-4 py-3 font-semibold text-blue-800 dark:text-blue-200">
+      <details className="mt-4 rounded-xl border border-[var(--accent-line)] bg-white/70 dark:bg-gray-900/70">
+        <summary className="flex min-h-11 cursor-pointer items-center px-4 py-3 font-semibold text-[var(--accent)]">
           Inspect proposed sessions
         </summary>
-        <ul className="space-y-2 border-t border-blue-100 p-4 dark:border-blue-900">
+        <ul className="space-y-2 border-t border-[var(--accent-line)] p-4">
           {proposal.proposal.scheduledSessions.map(session => (
             <li key={session.prescription.sessionId} className="rounded-lg bg-white p-3 dark:bg-gray-950">
               <p className="font-semibold text-gray-950 dark:text-white">{session.scheduledDate}</p>
@@ -553,7 +553,7 @@ function WeeklyProposalCard({
           ))}
         </ul>
       </details>
-      <button type="button" onClick={() => void onAccept()} disabled={accepting} className="mt-5 min-h-12 w-full rounded-xl bg-emerald-600 px-5 py-3 text-base font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 sm:w-auto">
+      <button type="button" onClick={() => void onAccept()} disabled={accepting} className="app-primary mt-5 w-full text-base disabled:opacity-60 sm:w-auto">
         {accepting ? 'Accepting…' : label === 'First week proposal' ? 'Accept first week' : 'Accept weekly replacement'}
       </button>
     </section>

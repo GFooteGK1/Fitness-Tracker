@@ -16,6 +16,65 @@ const token = [
 
 const json = (route: Route, body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
 
+// Theme checks use the actual rendered controls, including compact icon actions.
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`UI consistency: auth and notices in ${colorScheme}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+    await page.route('https://placeholder.supabase.co/**', route => json(route, { message: 'Invalid login credentials', error: 'invalid_grant' }, 400))
+    await page.goto('/auth/signin')
+    await page.getByLabel('Email Address').fill('visual@test.invalid')
+    await page.getByLabel('Password', { exact: true }).fill('simulated-password')
+    await page.getByRole('button', { name: 'Sign In', exact: true }).click()
+    await expect(page.getByRole('alert').filter({ hasText: 'Invalid email or password' })).toBeVisible()
+    for (const width of [320, 1280]) {
+      await page.setViewportSize({ width, height: 900 })
+      const button = page.getByRole('button', { name: 'Sign In', exact: true })
+      expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+      await expect(button).toHaveCSS('background-color', colorScheme === 'light' ? 'rgb(33, 107, 85)' : 'rgb(132, 219, 194)')
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
+      await page.screenshot({ path: `output/playwright/app-quality-results/auth-${colorScheme}-${width}.png`, fullPage: true })
+    }
+  })
+
+  test(`UI consistency: program selection and install banner in ${colorScheme}`, async ({ page }) => {
+    await signedInCoach(page)
+    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+    await page.route(`${origin}/api/coach`, route => json(route, { context: {
+      generatedAt: '2026-09-04T15:00:00Z', storageAvailable: true,
+      doctrineVersion: '0.1.0', policyVersion: '0.1.0', assessments: [], memories: [], activeProgram: null
+    } }))
+    await page.route(`${origin}/api/coach/weekly`, route => json(route, { mode: 'rolling_weekly', program: null, currentWeek: null, history: [] }))
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/program')
+    await expect(page.getByRole('heading', { name: 'Set your training direction' })).toBeVisible()
+    const monday = page.getByLabel('Monday', { exact: true })
+    await monday.check()
+    await expect(monday.locator('..')).toHaveCSS('background-color', colorScheme === 'light' ? 'rgb(33, 107, 85)' : 'rgb(132, 219, 194)')
+    await page.screenshot({ path: `output/playwright/app-quality-results/program-${colorScheme}.png`, fullPage: true })
+    await page.goto('/coach')
+    await expect(page.getByLabel('Message input')).toBeEnabled()
+    for (const label of ['Photo input', 'Voice input']) {
+      const control = page.getByRole('button', { name: label, exact: true })
+      expect((await control.boundingBox())!.width).toBeGreaterThanOrEqual(44)
+      expect((await control.locator('svg').boundingBox())!.width).toBeGreaterThanOrEqual(16)
+    }
+    await page.evaluate(() => {
+      const event = new Event('beforeinstallprompt', { cancelable: true })
+      Object.assign(event, { prompt: async () => {}, userChoice: Promise.resolve({ outcome: 'dismissed' }) })
+      window.dispatchEvent(event)
+    })
+    await expect(page.getByText('Install SociusFit', { exact: true })).toBeVisible()
+    await expect.poll(async () => {
+      const banner = await page.getByRole('button', { name: 'Install', exact: true }).boundingBox()
+      const nav = await page.getByRole('navigation', { name: 'Mobile navigation' }).boundingBox()
+      return banner!.y + banner!.height < nav!.y
+    }).toBe(true)
+    await page.screenshot({ path: `output/playwright/app-quality-results/install-${colorScheme}.png` })
+    await page.getByRole('button', { name: 'Not now', exact: true }).click()
+    await expect(page.getByText('Install SociusFit', { exact: true })).toHaveCount(0)
+  })
+}
+
 async function signedInCoach(page: Page) {
   const unexpected: string[] = []
   // Keep dates reproducible without freezing browser timers or request deadlines.

@@ -4,8 +4,8 @@
   "description": "AI-powered workout tracking and nutrition monitoring for comprehensive fitness insights",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f5f5",
-  "theme_color": "#2563eb",
+  "background_color": "#f4f5f2",
+  "theme_color": "#216b55",
   "orientation": "portrait-primary",
   "icons": [
     {

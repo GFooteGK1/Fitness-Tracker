@@ -108,7 +108,7 @@ export function QwikImportPanel({ onImported }: QwikImportPanelProps) {
   }
 
   return (
-    <article className="rounded-xl border border-dashed border-blue-300 bg-blue-50/60 p-4 dark:border-blue-800 dark:bg-blue-950/20">
+    <article className="rounded-xl border border-dashed border-[var(--accent-line)] bg-[var(--accent-soft)] p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-semibold text-gray-950 dark:text-white">Import a Qwik export</p>
@@ -116,7 +116,7 @@ export function QwikImportPanel({ onImported }: QwikImportPanelProps) {
             Choose a Qwik JSON 1.10 export. Coach parses and previews it on this device. Only normalized measurements and a source hash are sent.
           </p>
         </div>
-        <label className="block text-sm font-semibold text-blue-900 dark:text-blue-200">
+        <label className="block text-sm font-semibold text-[var(--accent)]">
           Choose Qwik JSON
           <input
             key={inputKey}
@@ -124,12 +124,12 @@ export function QwikImportPanel({ onImported }: QwikImportPanelProps) {
             accept="application/json,.json"
             disabled={parsing || saving}
             onChange={event => void selectFile(event.target.files?.[0] ?? null)}
-            className="mt-1 block min-h-11 w-full max-w-sm text-base text-gray-700 file:mr-3 file:min-h-11 file:rounded-lg file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-blue-700 dark:text-gray-200"
+            className="mt-1 block min-h-11 w-full max-w-sm text-base text-gray-700 file:mr-3 file:min-h-11 file:rounded-lg file:border-0 file:bg-[var(--action)] file:px-4 file:py-2 file:font-semibold file:text-[var(--action-text)] hover:file:opacity-90 dark:text-gray-200"
           />
         </label>
       </div>
 
-      {parsing && <p role="status" className="mt-3 text-sm text-blue-900 dark:text-blue-200">Reading and normalizing on this device…</p>}
+      {parsing && <p role="status" className="mt-3 text-sm text-[var(--accent)]">Reading and normalizing on this device…</p>}
       {status && <p role="status" className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">{status}</p>}
       {error && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">{error}</p>}
 
@@ -160,7 +160,7 @@ function QwikPreview({
   const velocityCount = preview.sets.reduce((total, set) => total + set.reps.length, 0)
 
   return (
-    <section aria-labelledby="qwik-preview-title" className="mt-4 rounded-xl border border-blue-200 bg-white p-4 dark:border-blue-900 dark:bg-gray-900">
+    <section aria-labelledby="qwik-preview-title" className="mt-4 rounded-xl border border-[var(--accent-line)] bg-white p-4 dark:bg-gray-900">
       <h4 id="qwik-preview-title" className="font-bold text-gray-950 dark:text-white">Normalized preview</h4>
       <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">{preview.sourceFileName} · {preview.sets.length} sets · {velocityCount} velocity readings</p>
       <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
@@ -205,8 +205,8 @@ function QwikPreview({
   )
 }
 
-const primaryButton = 'min-h-11 rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50'
-const secondaryButton = 'min-h-11 rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-800 hover:border-blue-500 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'
+const primaryButton = 'app-primary disabled:cursor-not-allowed disabled:opacity-50'
+const secondaryButton = 'app-secondary disabled:cursor-not-allowed disabled:opacity-50'
 
 function importDisposition(body: unknown): string | null {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) return null

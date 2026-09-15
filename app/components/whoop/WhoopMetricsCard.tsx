@@ -91,7 +91,7 @@ export function WhoopMetricsCard({ className = '', compact = false }: WhoopMetri
       <div className={`bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">⚡ WHOOP Metrics</h2>
-          <div className="w-6 h-6 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-[var(--accent-line)] border-t-transparent rounded-full animate-spin" />
         </div>
         <div className="space-y-3">
           <div className="h-16 bg-gray-100 dark:bg-gray-700 rounded animate-pulse" />
@@ -131,7 +131,7 @@ export function WhoopMetricsCard({ className = '', compact = false }: WhoopMetri
           </p>
           <button
             onClick={handleConnect}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            className="app-primary inline-flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent)] transition-colors"
           >
             Connect WHOOP
           </button>

@@ -5,10 +5,10 @@ import { DailyAdherenceScore, getAdherenceColor } from '@/app/lib/adherence-calc
 
 /**
  * DayCard Component
- * 
+ *
  * Displays an individual day's nutrition data within the horizontal scroll daily breakdown.
  * Shows day name, date number, adherence score badge, and macro values in a compact format.
- * 
+ *
  * Requirements: 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 4.1
  */
 
@@ -60,15 +60,15 @@ export default function DayCard({
 }: DayCardProps) {
   const dayName = getDayName(date)
   const dateNumber = getDateNumber(date)
-  
+
   // Determine if we have data to display
   const hasData = dayData !== null && !isFuture
-  
+
   // Get adherence score and color if we have data
   const overallScore = hasData ? dayData.adherenceStatus.overallScore : 0
   const scoreColor = hasData ? getAdherenceColor(overallScore) : 'gray'
   const scoreBadgeClasses = hasData ? getScoreBadgeClasses(scoreColor) : ''
-  
+
   // Get macro values if we have data
   const protein = hasData ? Math.round(dayData.dailyTotals.protein) : 0
   const carbs = hasData ? Math.round(dayData.dailyTotals.carbs) : 0
@@ -88,8 +88,8 @@ export default function DayCard({
         border-2
         transition-all duration-200
         touch-action-manipulation
-        ${isToday 
-          ? 'border-blue-500 bg-blue-50 shadow-md' 
+        ${isToday
+          ? 'border-[var(--accent)] bg-[var(--accent-soft)] shadow-md'
           : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
         }
         ${onSelect ? 'cursor-pointer active:scale-95' : 'cursor-default'}
@@ -100,19 +100,19 @@ export default function DayCard({
       {/* Day name */}
       <span className={`
         text-sm font-semibold uppercase tracking-wide
-        ${isToday ? 'text-blue-700' : 'text-gray-600'}
+        ${isToday ? 'text-[var(--accent)]' : 'text-gray-600'}
       `}>
         {dayName}
       </span>
-      
+
       {/* Date number */}
       <span className={`
         text-2xl font-bold mt-0.5
-        ${isToday ? 'text-blue-900' : 'text-gray-900'}
+        ${isToday ? 'text-[var(--accent)]' : 'text-gray-900'}
       `}>
         {dateNumber}
       </span>
-      
+
       {/* Score badge, "No data", or "Future" indicator */}
       <div className="mt-2 min-h-[24px] flex items-center justify-center">
         {isFuture ? (
@@ -135,7 +135,7 @@ export default function DayCard({
           </span>
         )}
       </div>
-      
+
       {/* Macro values - only shown when we have data */}
       {hasData && (
         <div className="mt-2 flex flex-col items-center text-xs text-gray-600 space-y-0.5">
@@ -153,10 +153,10 @@ export default function DayCard({
           </span>
         </div>
       )}
-      
+
       {/* Today indicator dot */}
       {isToday && (
-        <div className="mt-2 w-2 h-2 rounded-full bg-blue-500" aria-hidden="true" />
+        <div className="mt-2 w-2 h-2 rounded-full bg-[var(--accent-soft)]0" aria-hidden="true" />
       )}
     </button>
   )

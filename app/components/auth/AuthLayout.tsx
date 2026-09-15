@@ -17,7 +17,7 @@ export default function AuthLayout({
   showLogo = true 
 }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Logo and Branding */}
         {showLogo && (
@@ -47,7 +47,7 @@ export default function AuthLayout({
         </div>
 
         {/* Content */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="app-panel p-6">
           {children}
         </div>
 
@@ -55,11 +55,11 @@ export default function AuthLayout({
         <div className="text-center text-xs text-gray-500 dark:text-gray-400">
           <p>
             By continuing, you agree to our{' '}
-            <Link href="/terms" className="text-blue-600 dark:text-blue-400 hover:underline">
+            <Link href="/terms" className="text-[var(--accent)] hover:underline">
               Terms of Service
             </Link>{' '}
             and{' '}
-            <Link href="/privacy" className="text-blue-600 dark:text-blue-400 hover:underline">
+            <Link href="/privacy" className="text-[var(--accent)] hover:underline">
               Privacy Policy
             </Link>
           </p>

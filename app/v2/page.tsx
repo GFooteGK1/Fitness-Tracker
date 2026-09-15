@@ -726,7 +726,7 @@ export default function V2Page() {
                   onClick={handleVoiceStart}
                   disabled={isTyping}
                   aria-label="Voice input"
-                  className="w-11 h-11 shrink-0 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="app-icon-action w-11 h-11 shrink-0 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Voice input"
                 >
                 <AppIcon name="microphone" />
@@ -738,7 +738,7 @@ export default function V2Page() {
                   onClick={() => setShowPhotoMenu(v => !v)}
                   disabled={isTyping}
                   aria-label="Photo input"
-                  className="w-11 h-11 shrink-0 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="app-icon-action w-11 h-11 shrink-0 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Photo input"
                 >
                   <AppIcon name="camera" />
@@ -775,7 +775,7 @@ export default function V2Page() {
                   </>
                 )}
               </div>
-              <div className="min-w-0 flex-1 flex items-end bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 focus-within:border-blue-500 dark:focus-within:border-blue-400 transition-colors">
+              <div className="min-w-0 flex-1 flex items-end bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 focus-within:border-[var(--accent-line)] transition-colors">
                 <textarea
                   aria-label="Message input"
                   value={inputValue}

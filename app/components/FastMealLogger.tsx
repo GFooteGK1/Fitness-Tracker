@@ -130,7 +130,7 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
           {loadingCommon ? <p className="text-sm text-gray-500">Loading recent meals...</p> : (
             <div className="grid gap-2 sm:grid-cols-2">
               {commonMeals.map(meal => (
-                <button key={meal.signature} type="button" onClick={() => void logCommonMeal(meal)} disabled={loggingMealId !== null} aria-label={`Log ${meal.title}`} className="min-h-12 rounded-lg border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-400 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800">
+                <button key={meal.signature} type="button" onClick={() => void logCommonMeal(meal)} disabled={loggingMealId !== null} aria-label={`Log ${meal.title}`} className="app-secondary flex-col items-start text-left gap-1 transition-colors disabled:opacity-50">
                   <span className="block font-medium text-gray-900 dark:text-gray-100">{loggingMealId === meal.sourceMealId ? 'Logging...' : meal.title}</span>
                   <span className="block text-xs text-gray-500 dark:text-gray-400">{Math.round(meal.totals.calories)} cal · {Math.round(meal.totals.protein)}g protein{meal.timesLogged > 1 ? ` · ${meal.timesLogged} times` : ' · recent'}</span>
                 </button>
@@ -145,7 +145,7 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
           <h3 id="nutrition-label-heading" className="font-semibold text-gray-900 dark:text-gray-100">Nutrition label</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">Enter the package values yourself.</p>
         </div>
-        <button type="button" onClick={beginManualEntry} className="min-h-11 text-sm font-semibold text-blue-700 underline-offset-2 hover:underline dark:text-blue-300">Enter label manually</button>
+        <button type="button" onClick={beginManualEntry} className="min-h-11 text-sm font-semibold text-[var(--accent)] underline-offset-2 hover:underline">Enter label manually</button>
         {status && <p role="status" className="mt-3 text-sm text-gray-600 dark:text-gray-300">{status}</p>}
         {draft && (
           <div className="mt-4 space-y-3 border-t border-gray-200 pt-4 dark:border-gray-700">
@@ -169,7 +169,7 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
               </div>
             </fieldset>
             {scaled && <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700 dark:bg-gray-900 dark:text-gray-300">Log total: {scaled.calories} cal · {scaled.protein}g protein · {scaled.carbs}g carbs · {scaled.fat}g fat</p>}
-            <button type="button" onClick={() => void logReviewedFood()} disabled={loggingFood || !draft.name.trim() || !draft.servingLabel.trim() || !draft.servingUnit.trim() || !Number.isFinite(draft.servingAmount) || draft.servingAmount <= 0 || !Number.isFinite(servings) || servings <= 0} className="min-h-12 w-full rounded-lg bg-green-600 px-4 font-semibold text-white hover:bg-green-700 disabled:bg-gray-400">{loggingFood ? 'Logging...' : 'Log reviewed food'}</button>
+            <button type="button" onClick={() => void logReviewedFood()} disabled={loggingFood || !draft.name.trim() || !draft.servingLabel.trim() || !draft.servingUnit.trim() || !Number.isFinite(draft.servingAmount) || draft.servingAmount <= 0 || !Number.isFinite(servings) || servings <= 0} className="app-primary w-full">{loggingFood ? 'Logging...' : 'Log reviewed food'}</button>
           </div>
         )}
       </section>

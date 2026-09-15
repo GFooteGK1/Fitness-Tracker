@@ -33,7 +33,7 @@ describe('CoachTrustCenter', () => {
     expect(screen.getByText(/Excluded because: Incompatible Comparability Series/)).not.toBeNull()
 
     const button = screen.getByRole('button', { name: 'Still correct' })
-    expect(button.className).toContain('min-h-11')
+    expect(button.className).toContain('app-secondary')
     await act(async () => fireEvent.click(button))
     expect((await screen.findByRole('alert')).textContent).toContain('Write interrupted')
     await act(async () => fireEvent.click(button))

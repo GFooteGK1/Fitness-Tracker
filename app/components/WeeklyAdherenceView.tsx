@@ -101,7 +101,7 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-3"></div>
+        <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--accent-line)] mb-3"></div>
       </div>
     )
   }
@@ -113,7 +113,7 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
         <p className="text-red-600 mb-4">{error}</p>
         <button
           onClick={fetchWeeklyData}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+          className="app-primary transition-colors"
         >
           Try Again
         </button>
@@ -182,8 +182,8 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
 
       {/* Correction Guidance */}
       {weeklyData.correctionGuidance.needsImprovement && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-          <h2 className="text-lg font-bold text-yellow-800 mb-4 flex items-center">
+        <div className="app-notice app-notice-warning p-6">
+          <h2 className="text-lg font-bold text-[var(--warning)] mb-4 flex items-center">
             <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
@@ -191,35 +191,35 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
           </h2>
 
           <div className="space-y-3">
-            <p className="text-yellow-800 font-medium">
+            <p className="text-[var(--warning)] font-medium">
               {weeklyData.correctionGuidance.overallGuidance}
             </p>
 
             {weeklyData.correctionGuidance.proteinGuidance && (
-              <div className="bg-white rounded-lg p-3 border border-yellow-300">
-                <h4 className="font-semibold text-yellow-800 mb-1">🥩 Protein</h4>
-                <p className="text-yellow-700 text-sm">{weeklyData.correctionGuidance.proteinGuidance}</p>
+              <div className="bg-[var(--surface)] rounded-lg p-3 border border-[var(--warning-line)]">
+                <h4 className="font-semibold text-[var(--warning)] mb-1">🥩 Protein</h4>
+                <p className="text-[var(--warning)] text-sm">{weeklyData.correctionGuidance.proteinGuidance}</p>
               </div>
             )}
 
             {weeklyData.correctionGuidance.carbsGuidance && (
-              <div className="bg-white rounded-lg p-3 border border-yellow-300">
-                <h4 className="font-semibold text-yellow-800 mb-1">🍞 Carbohydrates</h4>
-                <p className="text-yellow-700 text-sm">{weeklyData.correctionGuidance.carbsGuidance}</p>
+              <div className="bg-[var(--surface)] rounded-lg p-3 border border-[var(--warning-line)]">
+                <h4 className="font-semibold text-[var(--warning)] mb-1">🍞 Carbohydrates</h4>
+                <p className="text-[var(--warning)] text-sm">{weeklyData.correctionGuidance.carbsGuidance}</p>
               </div>
             )}
 
             {weeklyData.correctionGuidance.fatGuidance && (
-              <div className="bg-white rounded-lg p-3 border border-yellow-300">
-                <h4 className="font-semibold text-yellow-800 mb-1">🥑 Fat</h4>
-                <p className="text-yellow-700 text-sm">{weeklyData.correctionGuidance.fatGuidance}</p>
+              <div className="bg-[var(--surface)] rounded-lg p-3 border border-[var(--warning-line)]">
+                <h4 className="font-semibold text-[var(--warning)] mb-1">🥑 Fat</h4>
+                <p className="text-[var(--warning)] text-sm">{weeklyData.correctionGuidance.fatGuidance}</p>
               </div>
             )}
 
             {weeklyData.correctionGuidance.caloriesGuidance && (
-              <div className="bg-white rounded-lg p-3 border border-yellow-300">
-                <h4 className="font-semibold text-yellow-800 mb-1">🔥 Calories</h4>
-                <p className="text-yellow-700 text-sm">{weeklyData.correctionGuidance.caloriesGuidance}</p>
+              <div className="bg-[var(--surface)] rounded-lg p-3 border border-[var(--warning-line)]">
+                <h4 className="font-semibold text-[var(--warning)] mb-1">🔥 Calories</h4>
+                <p className="text-[var(--warning)] text-sm">{weeklyData.correctionGuidance.caloriesGuidance}</p>
               </div>
             )}
           </div>
@@ -228,14 +228,14 @@ export default function WeeklyAdherenceView({ weekStart, onDateSelect }: WeeklyA
 
       {/* Success Message */}
       {!weeklyData.correctionGuidance.needsImprovement && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+        <div className="app-notice app-notice-success p-6">
           <div className="flex items-center">
             <svg className="w-8 h-8 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <h3 className="text-lg font-bold text-green-800">Excellent Work!</h3>
-              <p className="text-green-700 mt-1">{weeklyData.correctionGuidance.overallGuidance}</p>
+              <h3 className="text-lg font-bold text-[var(--accent)]">Excellent Work!</h3>
+              <p className="text-[var(--accent)] mt-1">{weeklyData.correctionGuidance.overallGuidance}</p>
             </div>
           </div>
         </div>

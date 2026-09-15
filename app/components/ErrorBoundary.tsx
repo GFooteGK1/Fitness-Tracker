@@ -74,19 +74,19 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => this.setState({ hasError: false, error: undefined, errorInfo: undefined })}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="app-primary transition-colors"
               >
                 🔄 Try Again
               </button>
               <button
                 onClick={() => window.location.reload()}
-                className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                className="app-secondary transition-colors"
               >
                 🔃 Reload Page
               </button>
               <a
                 href="/debug"
-                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors text-center"
+                className="app-secondary transition-colors text-center"
               >
                 🔍 Debug Info
               </a>

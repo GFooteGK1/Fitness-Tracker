@@ -33,7 +33,7 @@ function getPriorityStyle(priority: InsightPriority) {
     case 'notable':
       return { dot: 'bg-yellow-500', text: 'text-yellow-700 dark:text-yellow-400', bg: 'bg-yellow-50 dark:bg-yellow-900/30', label: 'Notable' }
     case 'informational':
-      return { dot: 'bg-blue-500', text: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30', label: 'Info' }
+      return { dot: 'bg-blue-500', text: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]', label: 'Info' }
   }
 }
 
@@ -153,7 +153,7 @@ export default function BottomNav({ activeTab, onTabChange, insights, prs }: Bot
               onClick={() => onTabChange(tab.id)}
               className={`flex flex-col items-center justify-center min-w-[44px] min-h-[44px] px-4 py-2 transition-colors ${
                 isActive
-                  ? 'text-blue-600 dark:text-blue-400 border-t-2 border-blue-600 dark:border-blue-400'
+                  ? 'text-[var(--accent)] border-t-2 border-[var(--accent-line)]'
                   : 'text-gray-400 dark:text-gray-500 border-t-2 border-transparent'
               }`}
               style={{ touchAction: 'manipulation' }}
