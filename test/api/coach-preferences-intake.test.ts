@@ -15,6 +15,26 @@ function client(user: string | null = 'owner') {
 describe('preference intake',()=>{
  beforeEach(()=>{vi.clearAllMocks();vi.stubEnv('COACH_EXERCISE_PREFERENCES_ENABLED','true')})
  afterEach(()=>vi.unstubAllEnvs())
+ it('saves standalone preferences without changing other memories and preserves retry identity',async()=>{
+  const db=client();vi.mocked(createServerClient).mockResolvedValue(db as never)
+  const standalone=()=>new Request('http://localhost/api/coach/intake',{method:'POST',body:JSON.stringify({exercisePreferences:none,idempotencyKey:'standalone-retry-1'})})
+  db.rpc.mockResolvedValueOnce({error:{code:'unavailable'}})
+  expect((await POST(standalone())).status).toBe(503)
+  expect((await POST(standalone())).status).toBe(200)
+  expect(db.rpc).toHaveBeenCalledTimes(2)
+  expect(db.rpc.mock.calls[0]).toEqual(db.rpc.mock.calls[1])
+  expect(db.rpc.mock.calls[1][1]).toMatchObject({p_memory_key:'exercise_preferences',p_content:none,p_idempotency_key:'standalone-retry-1:exercise_preferences'})
+ })
+ it('rejects malformed, ambiguous, or disabled standalone writes',async()=>{
+  const db=client();vi.mocked(createServerClient).mockResolvedValue(db as never)
+  const standalone=(extra={})=>new Request('http://localhost/api/coach/intake',{method:'POST',body:JSON.stringify({exercisePreferences:none,idempotencyKey:'standalone-retry-1',...extra})})
+  expect((await POST(standalone({exercisePreferences:{...none,state:'specified'}}))).status).toBe(400)
+  expect((await POST(standalone({planningInput}))).status).toBe(400)
+  expect((await POST(standalone({idempotencyKey:''}))).status).toBe(400)
+  vi.stubEnv('COACH_EXERCISE_PREFERENCES_ENABLED','false')
+  expect((await POST(standalone())).status).toBe(409)
+  expect(db.rpc).not.toHaveBeenCalled()
+ })
  it('requires authentication for read and write',async()=>{
   const db=client(null);vi.mocked(createServerClient).mockResolvedValue(db as never)
   expect((await GET()).status).toBe(401);expect((await POST(request({exercisePreferences:none}))).status).toBe(401);expect(db.rpc).not.toHaveBeenCalled()

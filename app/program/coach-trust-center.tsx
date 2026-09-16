@@ -9,7 +9,7 @@ import type {
   CoachTrustProposal,
   CoachTrustObservationValue
 } from '@/app/lib/coach/trust-center'
-import { validateExercisePreferences } from '@/app/lib/coach/exercise-preferences'
+import { validateExercisePreferences, type ExercisePreferences } from '@/app/lib/coach/exercise-preferences'
 import { ExercisePreferencesEditor, PREFERENCES_CHANGED_EVENT } from './exercise-preferences-editor'
 import { QwikImportPanel } from './qwik-import-panel'
 
@@ -37,6 +37,9 @@ const ROLE_LABELS: Record<string, string> = {
 export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
   const [trust, setTrust] = useState<CoachTrustCenterModel | null>(null)
   const [preferencesEnabled, setPreferencesEnabled] = useState(false)
+  const [addingPreferences, setAddingPreferences] = useState(false)
+  const [newPreferences, setNewPreferences] = useState<ExercisePreferences>()
+  const preferenceSaveKey = useRef<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
@@ -109,6 +112,33 @@ export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
     }
   }
 
+  const saveNewPreferences = async () => {
+    if (!validateExercisePreferences(newPreferences)) return
+    preferenceSaveKey.current ??= createIdempotencyKey('exercise-preferences')
+    setBusy('add_preferences')
+    setError(null)
+    setStatus(null)
+    try {
+      const response = await fetch('/api/coach/intake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exercisePreferences: newPreferences, idempotencyKey: preferenceSaveKey.current })
+      })
+      const body = await response.json()
+      if (!response.ok) throw new Error(errorMessage(body, 'Unable to save favorites'))
+      preferenceSaveKey.current = null
+      setAddingPreferences(false)
+      setNewPreferences(undefined)
+      window.dispatchEvent(new Event(PREFERENCES_CHANGED_EVENT))
+      await load(true)
+      setStatus('Favorite exercises saved. Your accepted plan is unchanged.')
+    } catch (caught) {
+      setError(`${caught instanceof Error ? caught.message : 'Unable to save favorites'} Your entry is still here; retry uses the same save key.`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
   if (loading) {
     return <section aria-label="Coach trust center" className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">Loading what Coach knows…</section>
   }
@@ -133,6 +163,21 @@ export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
       {error && <p role="alert" className="app-notice app-notice-error text-sm">{error}</p>}
 
       <TrustSection title="What Coach Knows" description="Only athlete-confirmed facts appear here.">
+        {preferencesEnabled && !trust.memories.some(memory => memory.memoryKey === 'exercise_preferences') && (
+          <div className="app-panel p-4">
+            {addingPreferences ? <form className="space-y-3" onSubmit={event => { event.preventDefault(); void saveNewPreferences() }}>
+              <ExercisePreferencesEditor value={newPreferences} disabled={busy !== null} onChange={value => {
+                preferenceSaveKey.current = null
+                setNewPreferences(value)
+              }} />
+              <p className="text-sm app-muted">Favorites influence future newly composed drafts. Your accepted plan stays unchanged until you review and accept a change.</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="submit" disabled={busy !== null || !validateExercisePreferences(newPreferences)} className={primaryButton}>{busy === 'add_preferences' ? 'Saving…' : 'Save favorite exercises'}</button>
+                <button type="button" disabled={busy !== null} className={secondaryButton} onClick={() => setAddingPreferences(false)}>Cancel</button>
+              </div>
+            </form> : <button type="button" disabled={busy !== null} className={secondaryButton} onClick={() => setAddingPreferences(true)}>Add favorite exercises</button>}
+          </div>
+        )}
         {trust.memories.length === 0 ? <Empty>No confirmed facts yet.</Empty> : trust.memories.map(memory => (
           <article key={memory.id} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">

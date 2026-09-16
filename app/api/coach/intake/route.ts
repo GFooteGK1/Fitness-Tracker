@@ -11,6 +11,7 @@ import {
 
 interface IntakeRequest {
   planningInput?: unknown
+  exercisePreferences?: unknown
   idempotencyKey?: unknown
 }
 
@@ -46,21 +47,30 @@ export async function POST(request: Request) {
     const body = await readJson(request)
     if (!body) return apiError('Request body must be valid JSON', 400)
 
-    const validated = validateCompleteCoachPlanningInput(body.planningInput)
-    if (!validated.ok) {
-      return NextResponse.json(
-        { error: 'Invalid coach setup', details: validated.errors },
-        { status: 400 }
-      )
-    }
-
-    if (validated.value.exercisePreferences !== undefined && !exercisePreferencesEnabled()) {
-      return apiError('Exercise preferences are not enabled', 409)
-    }
     const idempotencyKey = validIdempotencyKey(body.idempotencyKey)
     if (!idempotencyKey) return apiError('A valid idempotency key is required', 400)
 
-    const memories = memoryWrites(validated.value)
+    let memories: MemoryWrite[]
+    if (body.exercisePreferences !== undefined) {
+      if (body.planningInput !== undefined || !validateExercisePreferences(body.exercisePreferences)) {
+        return apiError('Invalid exercise preferences', 400)
+      }
+      if (!exercisePreferencesEnabled()) return apiError('Exercise preferences are not enabled', 409)
+      memories = [{ key: 'exercise_preferences', kind: 'preference', content: { ...body.exercisePreferences } }]
+    } else {
+      const validated = validateCompleteCoachPlanningInput(body.planningInput)
+      if (!validated.ok) {
+        return NextResponse.json(
+          { error: 'Invalid coach setup', details: validated.errors },
+          { status: 400 }
+        )
+      }
+
+      if (validated.value.exercisePreferences !== undefined && !exercisePreferencesEnabled()) {
+        return apiError('Exercise preferences are not enabled', 409)
+      }
+      memories = memoryWrites(validated.value)
+    }
     for (const memory of memories) {
       const { error } = await supabase.rpc('confirm_coach_memory', {
         p_memory_key: memory.key,
