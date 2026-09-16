@@ -92,6 +92,7 @@ export interface MovementDefinition {
 }
 
 export interface MovementEligibilityContext {
+  avoidedMovementIds?: readonly string[]
   availableEquipmentIds: readonly MovementEquipmentId[]
   trainingExperience: TrainingExperience
   assessedMovementIds?: readonly string[]
@@ -594,7 +595,8 @@ export function isMovementEligible(
   const skillEligible = skillRank[movementDefinition.skillLevel] <= skillLimit[context.trainingExperience]
     || context.assessedMovementIds?.includes(movementDefinition.id) === true
 
-  return movementDefinition.programmingStatus === 'active'
+  return !context.avoidedMovementIds?.includes(movementDefinition.id)
+    && movementDefinition.programmingStatus === 'active'
     && movementDefinition.equipment.every(required => equipment.has(required))
     && skillEligible
     && !(context.noOverhead && movementDefinition.overhead)

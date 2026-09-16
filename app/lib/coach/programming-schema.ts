@@ -1,3 +1,4 @@
+import { validateExercisePreferences, type ExercisePreferences } from './exercise-preferences'
 import type {
   CoachPlanningContext,
   CoachPlanningInput,
@@ -99,6 +100,8 @@ export interface ProgrammingProfile {
   explicitConstraints: ProgrammingConstraint[]
   /** Preserved for athlete review; not a medical or movement-eligibility input. */
   unresolvedConstraintNote: string | null
+  exercisePreferences?: ExercisePreferences
+  preferenceNotes?: string[]
   preferences: ProgrammingMovementPreference[]
   assessments: CoachStrengthAssessmentSummary[]
   recentTraining: ProgrammingRecentTrainingSummary
@@ -335,6 +338,7 @@ export function validateProgrammingProfile(
   profile: ProgrammingProfile
 ): ProgrammingSchemaValidation {
   const errors: string[] = []
+  if (profile.exercisePreferences !== undefined && !validateExercisePreferences(profile.exercisePreferences)) errors.push('Exercise preferences are invalid')
   const goals: ProgrammingGoalAllocation[] = [profile.primaryGoal, ...profile.secondaryGoals]
 
   if (profile.schemaVersion !== PROGRAMMING_SCHEMA_VERSION) {

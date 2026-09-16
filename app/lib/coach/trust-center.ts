@@ -1,3 +1,4 @@
+import { validateExercisePreferences, preferenceSummary } from './exercise-preferences'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import {
@@ -545,6 +546,7 @@ function groupValues(rows: ObservationValueRow[]): Map<string, CoachTrustObserva
 }
 
 function memorySummary(key: string, content: Record<string, unknown>): string {
+  if (key === 'exercise_preferences') return validateExercisePreferences(content) ? preferenceSummary(content) : 'Exercise preferences need review'
   if (key === 'primary_goal') return stringOrNull(content.goal) ?? 'Goal needs review'
   if (key === 'training_schedule') {
     const days = stringArray(content.trainingDays).map(titleCase).join(', ')

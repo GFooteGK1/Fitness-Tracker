@@ -1,3 +1,6 @@
+import { exercisePreferencesEnabled } from '@/app/lib/coach/exercise-preferences-server'
+import { validateExercisePreferences } from '@/app/lib/coach/exercise-preferences'
+import { fetchCoachEvidenceContext } from '@/app/lib/coach/evidence-context'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -8,13 +11,31 @@ import {
 
 interface IntakeRequest {
   planningInput?: unknown
+  exercisePreferences?: unknown
   idempotencyKey?: unknown
 }
 
 interface MemoryWrite {
   key: string
-  kind: 'goal' | 'schedule' | 'equipment' | 'constraint'
+  kind: 'goal' | 'schedule' | 'equipment' | 'constraint' | 'preference'
   content: Record<string, unknown>
+}
+
+export async function GET() {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error || !user) return apiError('Unauthorized', 401)
+    const enabled = exercisePreferencesEnabled()
+    if (!enabled) return NextResponse.json({ exercisePreferencesEnabled: false, exercisePreferences: null }, { headers: { 'Cache-Control': 'private, no-store' } })
+    const context = await fetchCoachEvidenceContext(supabase, user.id, { purpose: 'new_planning', asOf: new Date().toISOString() })
+    if (!context.storageAvailable || !context.selectionComplete) return apiError('Unable to load preferences', 503)
+    const memory = context.memories.find(item => item.memoryKey === 'exercise_preferences')
+    if (memory && !validateExercisePreferences(memory.content)) return apiError('Saved preferences need review', 422)
+    return NextResponse.json({ exercisePreferencesEnabled: true, exercisePreferences: memory?.content ?? null }, { headers: { 'Cache-Control': 'private, no-store' } })
+  } catch {
+    return apiError('Unable to load preferences', 503)
+  }
 }
 
 export async function POST(request: Request) {
@@ -26,18 +47,30 @@ export async function POST(request: Request) {
     const body = await readJson(request)
     if (!body) return apiError('Request body must be valid JSON', 400)
 
-    const validated = validateCompleteCoachPlanningInput(body.planningInput)
-    if (!validated.ok) {
-      return NextResponse.json(
-        { error: 'Invalid coach setup', details: validated.errors },
-        { status: 400 }
-      )
-    }
-
     const idempotencyKey = validIdempotencyKey(body.idempotencyKey)
     if (!idempotencyKey) return apiError('A valid idempotency key is required', 400)
 
-    const memories = memoryWrites(validated.value)
+    let memories: MemoryWrite[]
+    if (body.exercisePreferences !== undefined) {
+      if (body.planningInput !== undefined || !validateExercisePreferences(body.exercisePreferences)) {
+        return apiError('Invalid exercise preferences', 400)
+      }
+      if (!exercisePreferencesEnabled()) return apiError('Exercise preferences are not enabled', 409)
+      memories = [{ key: 'exercise_preferences', kind: 'preference', content: { ...body.exercisePreferences } }]
+    } else {
+      const validated = validateCompleteCoachPlanningInput(body.planningInput)
+      if (!validated.ok) {
+        return NextResponse.json(
+          { error: 'Invalid coach setup', details: validated.errors },
+          { status: 400 }
+        )
+      }
+
+      if (validated.value.exercisePreferences !== undefined && !exercisePreferencesEnabled()) {
+        return apiError('Exercise preferences are not enabled', 409)
+      }
+      memories = memoryWrites(validated.value)
+    }
     for (const memory of memories) {
       const { error } = await supabase.rpc('confirm_coach_memory', {
         p_memory_key: memory.key,
@@ -70,7 +103,11 @@ export async function POST(request: Request) {
 }
 
 function memoryWrites(input: CompleteCoachPlanningInput): MemoryWrite[] {
+  const preferences: MemoryWrite[] = input.exercisePreferences === undefined ? [] : [{
+    key: 'exercise_preferences', kind: 'preference', content: { ...input.exercisePreferences }
+  }]
   return [
+    ...preferences,
     {
       key: 'primary_goal',
       kind: 'goal',

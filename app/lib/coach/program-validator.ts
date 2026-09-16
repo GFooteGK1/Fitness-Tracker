@@ -561,6 +561,7 @@ function validateLoad(
 function eligibilityForProfile(profile: ProgrammingProfile): MovementEligibilityContext {
   const equipment = new Set<string>(MOVEMENT_EQUIPMENT_IDS)
   return {
+    avoidedMovementIds: profile.preferences.filter(item => item.preference === 'avoid').map(item => item.movementId),
     availableEquipmentIds: profile.equipment.resolvedIds.filter(
       (id): id is MovementEquipmentId => equipment.has(id)
     ),

@@ -45,6 +45,56 @@ describe('CoachTrustCenter', () => {
     expect(first.action).toBe('reaffirm_memory')
   })
 
+  it('adds favorites without other setup changes and retries safely after a failed save', async () => {
+    const fixture = trustFixture()
+    const requests: Array<{ url: string; body: Record<string, unknown> }> = []
+    const planChanged = vi.fn()
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (!init) return response({ trust: fixture, exercisePreferencesEnabled: true })
+      const body = JSON.parse(String(init.body))
+      requests.push({ url, body })
+      if (requests.length === 1) return response({ error: 'Save interrupted' }, 503)
+      fixture.memories.push({ ...fixture.memories[0], id: 'preferences-1', memoryKey: 'exercise_preferences', kind: 'preference', content: body.exercisePreferences, summary: 'Squat variations' })
+      return response({ saved: true })
+    }))
+    render(<CoachTrustCenter onPlanChanged={planChanged} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Add favorite exercises' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Squat variations' }))
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Save favorite exercises' })))
+    expect((await screen.findByRole('alert')).textContent).toContain('Save interrupted')
+    expect(screen.getByRole('button', { name: 'Remove Squat variations' })).not.toBeNull()
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Save favorite exercises' })))
+    expect(requests).toHaveLength(2)
+    expect(requests[0].url).toBe('/api/coach/intake')
+    expect(Object.keys(requests[0].body).sort()).toEqual(['exercisePreferences', 'idempotencyKey'])
+    expect(requests[0].body.exercisePreferences).toMatchObject({ schemaVersion: 1, state: 'specified', entries: [{ athleteWording: 'Squat variations', target: { kind: 'interest', id: 'squat_variations' } }] })
+    expect(requests[1].body.idempotencyKey).toBe(requests[0].body.idempotencyKey)
+    expect(screen.queryByRole('button', { name: 'Add favorite exercises' })).toBeNull()
+    expect(screen.getByText('Squat variations')).not.toBeNull()
+    expect(planChanged).not.toHaveBeenCalled()
+  })
+
+  it('corrects favorites with the structured editor and preserves the answer after failure', async () => {
+    const fixture = trustFixture()
+    fixture.memories[0] = { ...fixture.memories[0], memoryKey: 'exercise_preferences', kind: 'preference', summary: 'Squat variations', content: { schemaVersion: 1, state: 'specified', entries: [{ athleteWording: 'Squat variations', target: { kind: 'interest', id: 'squat_variations' } }] } }
+    const requests: Array<Record<string, unknown>> = []
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      if (!init) return response({ trust: fixture, exercisePreferencesEnabled: true })
+      requests.push(JSON.parse(String(init.body)))
+      if (requests.length === 1) return response({ error: 'Save interrupted' }, 503)
+      return response({ trust: fixture, exercisePreferencesEnabled: true })
+    }))
+    render(<CoachTrustCenter />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Correct' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Squat variations' }))
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Save correction' })))
+    expect((await screen.findByRole('alert')).textContent).toContain('Save interrupted')
+    expect(screen.getByText('No preference selected.')).not.toBeNull()
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Save correction' })))
+    expect(requests[0]).toMatchObject({ action: 'correct_memory', content: { schemaVersion: 1, state: 'none', entries: [] } })
+    expect(requests[1].idempotencyKey).toBe(requests[0].idempotencyKey)
+  })
+
   it('requires an explicit ambiguous movement selection before confirming Qwik evidence', async () => {
     const requests: Array<Record<string, unknown>> = []
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {

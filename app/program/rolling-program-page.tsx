@@ -16,6 +16,7 @@ import {
   CoachSetupForm,
   StrengthAssessmentPanel
 } from './coach-program-components'
+import { ExercisePreferenceNotes } from './exercise-preferences-editor'
 import { CoachTrustCenter } from './coach-trust-center'
 import {
   WeeklyProgramView,
@@ -144,6 +145,17 @@ export default function RollingProgramPage() {
     }
   }
 
+  const savePlanningInput = async () => {
+    intakeKey.current ??= createIdempotencyKey('coach-intake')
+    const response = await fetch('/api/coach/intake', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planningInput, idempotencyKey: intakeKey.current })
+    })
+    const body = await response.json()
+    if (!response.ok) throw new Error(errorMessage(body, 'Unable to save coach setup'))
+  }
+
   const createFirstWeek = async () => {
     setCreatingProposal(true)
     setStatus(null)
@@ -151,13 +163,7 @@ export default function RollingProgramPage() {
     intakeKey.current ??= createIdempotencyKey('coach-intake')
     proposalKey.current ??= createIdempotencyKey('weekly-proposal')
     try {
-      const intakeResponse = await fetch('/api/coach/intake', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planningInput, idempotencyKey: intakeKey.current })
-      })
-      const intakeBody = await intakeResponse.json()
-      if (!intakeResponse.ok) throw new Error(errorMessage(intakeBody, 'Unable to save coach setup'))
+      await savePlanningInput()
 
       const response = await fetch('/api/coach/weekly', {
         method: 'POST',
@@ -235,6 +241,9 @@ export default function RollingProgramPage() {
     setStatus(null)
     proposalKey.current ??= createIdempotencyKey('weekly-proposal')
     try {
+      if (storedReviewAction === 'shift_emphasis' && planningInput.exercisePreferences !== undefined) {
+        await savePlanningInput()
+      }
       const response = await fetch(`/api/coach/weekly/reviews/${storedReviewId}/proposal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -265,6 +274,7 @@ export default function RollingProgramPage() {
     setStatus(null)
     proposalKey.current ??= createIdempotencyKey('legacy-weekly-conversion')
     try {
+      if (planningInput.exercisePreferences !== undefined) await savePlanningInput()
       const response = await fetch('/api/coach/weekly/convert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -538,6 +548,7 @@ function WeeklyProposalCard({
       <p className="mt-2 text-sm font-medium text-gray-800 dark:text-gray-100">
         Nothing changes until you accept this week.
       </p>
+      <ExercisePreferenceNotes notes={proposal.proposal.profileSnapshot.preferenceNotes} />
       <details className="mt-4 rounded-xl border border-[var(--accent-line)] bg-white/70 dark:bg-gray-900/70">
         <summary className="flex min-h-11 cursor-pointer items-center px-4 py-3 font-semibold text-[var(--accent)]">
           Inspect proposed sessions

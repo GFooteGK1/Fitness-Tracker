@@ -462,6 +462,7 @@ function buildEligibilityContext(
     (id): id is MovementEquipmentId => knownEquipment.has(id)
   )
   return {
+    avoidedMovementIds: profile.preferences.filter(item => item.preference === 'avoid').map(item => item.movementId),
     availableEquipmentIds,
     trainingExperience: profile.trainingExperience,
     assessedMovementIds,

@@ -1,3 +1,4 @@
+import { explainPreferenceUse } from './exercise-preferences'
 import { MOVEMENT_CATALOG_VERSION } from './movement-catalog'
 import { COMPLETE_PROGRAMMING_POLICY_VERSION } from './programming-policy'
 import { COMPLETE_PROGRAMMING_REFERENCE } from './programming-reference'
@@ -185,6 +186,7 @@ export function buildRollingWeeklyPlan(
     changedVariables.push(`assessment:${assessmentSignal.protocolId}`)
   }
 
+  if (profile.exercisePreferences) profile.preferenceNotes = explainPreferenceUse(profile, sessions)
   const weeklyValidation = validateCompleteProgrammingWeekDose(profile, schedule, sessions)
   if (!weeklyValidation.ok) throw new Error(weeklyValidation.errors.join('; '))
 

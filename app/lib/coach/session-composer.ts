@@ -442,6 +442,7 @@ function buildEligibilityContext(
 ): MovementEligibilityContext {
   const knownEquipment = new Set<string>(MOVEMENT_EQUIPMENT_IDS)
   return {
+    avoidedMovementIds: profile.preferences.filter(item => item.preference === 'avoid').map(item => item.movementId),
     availableEquipmentIds: profile.equipment.resolvedIds.filter(
       (id): id is MovementEquipmentId => knownEquipment.has(id)
     ),

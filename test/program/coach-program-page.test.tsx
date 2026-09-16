@@ -136,7 +136,7 @@ describe('ProgramPage adaptive coach workflow', () => {
     fireEvent.click(screen.getByLabelText('Rack'))
     fireEvent.click(screen.getByLabelText('Dumbbells'))
     fireEvent.click(screen.getByLabelText('Bike'))
-    fireEvent.change(screen.getByLabelText('Constraints or preferences'), {
+    fireEvent.change(screen.getByLabelText('Constraints and movements to avoid'), {
       target: { value: 'Keep Saturday free' }
     })
     fireEvent.click(screen.getByRole('button', { name: 'Save coach setup' }))
