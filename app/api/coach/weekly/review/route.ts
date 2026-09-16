@@ -1,3 +1,4 @@
+import { refreshExercisePreferencesForDraft } from '@/app/lib/coach/exercise-preferences-context'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -296,6 +297,7 @@ export async function POST(request: Request) {
       return apiError('A valid proposal idempotency key is required', 400)
     }
     const nextWeek = await buildNextWeek({
+      supabase, userId: user.id,
       body,
       review,
       reviewId: reviewRow.review_id,
@@ -386,6 +388,8 @@ export async function POST(request: Request) {
 }
 
 async function buildNextWeek(input: {
+  supabase: Awaited<ReturnType<typeof createServerClient>>
+  userId: string
   body: WeeklyReviewRequest
   review: Extract<ReturnType<typeof buildRollingWeeklyReview>, { status: 'ready' }>
   reviewId: string
@@ -428,6 +432,7 @@ async function buildNextWeek(input: {
     if (hypothesis.length < 5 || hypothesis.length > 500) {
       return { ok: false, error: 'Confirm a concise hypothesis for the replacement direction' }
     }
+    profile = await refreshExercisePreferencesForDraft(input.supabase, input.userId, profile)
     direction = buildRollingTrainingDirection(profile, { hypothesis, goalTargetDate })
   }
 

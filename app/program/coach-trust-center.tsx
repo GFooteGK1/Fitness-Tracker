@@ -9,6 +9,8 @@ import type {
   CoachTrustProposal,
   CoachTrustObservationValue
 } from '@/app/lib/coach/trust-center'
+import { validateExercisePreferences } from '@/app/lib/coach/exercise-preferences'
+import { ExercisePreferencesEditor, PREFERENCES_CHANGED_EVENT } from './exercise-preferences-editor'
 import { QwikImportPanel } from './qwik-import-panel'
 
 interface CoachTrustCenterProps {
@@ -34,6 +36,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
   const [trust, setTrust] = useState<CoachTrustCenterModel | null>(null)
+  const [preferencesEnabled, setPreferencesEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
@@ -53,6 +56,7 @@ export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
       const body = await response.json()
       if (!response.ok && !body.trust) throw new Error(errorMessage(body, 'Trust center unavailable'))
       setTrust(body.trust as CoachTrustCenterModel)
+      setPreferencesEnabled(body.exercisePreferencesEnabled === true)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Trust center unavailable')
     } finally {
@@ -91,6 +95,9 @@ export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
       setEditMemoryId(null)
       setReasonFor(null)
       setStatus(successMessage)
+      if (trust?.memories.some(memory => memory.id === resourceId && memory.memoryKey === 'exercise_preferences')) {
+        window.dispatchEvent(new Event(PREFERENCES_CHANGED_EVENT))
+      }
       if (action === 'accept_proposal') await onPlanChanged?.()
     } catch (caught) {
       const prefix = typeof navigator !== 'undefined' && navigator.onLine === false
@@ -144,7 +151,7 @@ export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
 
             <div className="mt-3 flex flex-wrap gap-2">
               <button type="button" disabled={busy !== null} onClick={() => void act('reaffirm_memory', memory.id, {}, 'Coach memory reaffirmed.')} className={secondaryButton}>Still correct</button>
-              <button type="button" disabled={busy !== null} onClick={() => {
+              <button type="button" disabled={busy !== null || (memory.memoryKey === 'exercise_preferences' && !preferencesEnabled)} onClick={() => {
                 setMemoryDrafts(current => ({ ...current, [memory.id]: { ...memory.content } }))
                 setEditMemoryId(memory.id)
                 setReasonFor(null)
@@ -159,7 +166,10 @@ export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
               <MemoryCorrectionForm
                 memory={memory}
                 value={memoryDrafts[memory.id] ?? memory.content}
-                onChange={content => setMemoryDrafts(current => ({ ...current, [memory.id]: content }))}
+                onChange={content => {
+                  retryKeys.current.delete(`correct_memory:${memory.id}`)
+                  setMemoryDrafts(current => ({ ...current, [memory.id]: content }))
+                }}
                 onCancel={() => setEditMemoryId(null)}
                 onSave={content => void act('correct_memory', memory.id, { content }, 'Coach memory corrected as a new version.')}
                 saving={busy === `correct_memory:${memory.id}`}
@@ -356,6 +366,17 @@ function MemoryCorrectionForm(props: {
   onSave: (value: Record<string, unknown>) => void
   saving: boolean
 }) {
+  if (props.memory.memoryKey === 'exercise_preferences') {
+    const valid = validateExercisePreferences(props.value)
+    return <form className="mt-4 space-y-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700" onSubmit={event => { event.preventDefault(); if (valid) props.onSave(props.value) }}>
+      <ExercisePreferencesEditor value={validateExercisePreferences(props.value) ? props.value : undefined} disabled={props.saving} onChange={value => props.onChange(value ? { ...value } : {})} />
+      <p className="text-sm">Favorites influence new-program and changed-direction drafts. Accepted exercises stay in place until a reviewed change.</p>
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" disabled={props.saving || !valid} className={primaryButton}>{props.saving ? 'Saving…' : 'Save correction'}</button>
+        <button type="button" disabled={props.saving} onClick={props.onCancel} className={secondaryButton}>Cancel</button>
+      </div>
+    </form>
+  }
   const fields = Object.entries(props.value).filter(([, value]) => (
     typeof value === 'string' || typeof value === 'number' || isStringArray(value)
   ))

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/app/lib/auth/supabase-server', () => ({ createServerClient: vi.fn() }))
 vi.mock('@/app/lib/coach/trust-center', async importOriginal => {
@@ -15,12 +15,27 @@ const importId = '31111111-1111-4111-8111-111111111111'
 const groupId = '71111111-1111-4111-8111-111111111111'
 
 describe('/api/coach/trust', () => {
+  afterEach(() => vi.unstubAllEnvs())
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(fetchCoachTrustCenter).mockResolvedValue({
       generatedAt: '2026-09-01T18:00:00.000Z', available: true, unavailableReason: null,
       memories: [], imports: [], goals: [], qualities: [], signalSummary: [], proposals: []
     })
+  })
+
+  it('allows owned correction replay against a superseded original but denies another owner', async () => {
+    vi.stubEnv('COACH_EXERCISE_PREFERENCES_ENABLED', 'true')
+    const memoryId = '51111111-1111-4111-8111-111111111111'
+    const db = client({tables:{coach_memories:[{id:memoryId,user_id:userId,memory_key:'exercise_preferences',kind:'preference',status:'superseded'}]}})
+    vi.mocked(createServerClient).mockResolvedValue(db as never)
+    const body = {action:'correct_memory',resourceId:memoryId,content:{schemaVersion:1,state:'none',entries:[]},idempotencyKey:'favorite-replay-1'}
+    expect((await POST(request(body))).status).toBe(200)
+    expect(db.rpc).toHaveBeenCalledWith('correct_coach_memory_with_review',expect.objectContaining({p_memory_id:memoryId,p_content:body.content}))
+    const other = client({tables:{coach_memories:[{id:memoryId,user_id:'other',memory_key:'exercise_preferences',kind:'preference',status:'confirmed'}]}})
+    vi.mocked(createServerClient).mockResolvedValue(other as never)
+    expect((await POST(request(body))).status).toBe(404)
+    expect(other.rpc).not.toHaveBeenCalled()
   })
 
   it('returns the user-scoped trust read model without caching', async () => {

@@ -6,6 +6,7 @@ import type { RollingTrainingDirection } from '@/app/lib/coach/rolling-weekly-co
 import type { RollingWeeklyPlanDraft } from '@/app/lib/coach/rolling-weekly-plan'
 import type { RollingWeeklyReview } from '@/app/lib/coach/weekly-review'
 import { getLocalDate, parseDateString } from '@/app/lib/timezone-utils'
+import { ExercisePreferenceNotes } from './exercise-preferences-editor'
 import { CompleteSessionCard } from './coach-program-components'
 import {
   selectTodaySession,
@@ -322,6 +323,7 @@ function NextWeekProposal({ proposal }: { proposal: RollingWeeklyPlanDraft }) {
       <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
         {actionLabel(action)} · {proposal.sessions.length} sessions · acceptance required
       </p>
+      <ExercisePreferenceNotes notes={proposal.profileSnapshot.preferenceNotes} />
       {proposal.changeSummary.changedVariables.length > 0 && (
         <ul className="mt-3 space-y-1 text-sm text-gray-700 dark:text-gray-200">
           {proposal.changeSummary.changedVariables.map(change => (

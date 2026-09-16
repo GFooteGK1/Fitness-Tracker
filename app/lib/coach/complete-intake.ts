@@ -1,3 +1,4 @@
+import { validateExercisePreferences, type ExercisePreferences } from './exercise-preferences'
 import {
   MOVEMENT_EQUIPMENT_IDS,
   type MovementEquipmentId
@@ -26,6 +27,7 @@ export interface CompleteCoachSecondaryGoalInput {
 
 export interface CompleteCoachPlanningInput extends CoachPlanningInput {
   format: 'complete_programming_intake_v0_3'
+  exercisePreferences?: ExercisePreferences
   resolvedEquipmentIds: MovementEquipmentId[]
   constraintKinds: Array<ProgrammingConstraint['kind']>
   secondaryGoals: CompleteCoachSecondaryGoalInput[]
@@ -85,12 +87,17 @@ export function validateCompleteCoachPlanningInput(
     errors.push('Secondary goal domains must be different')
   }
 
+  if (value.exercisePreferences !== undefined && !validateExercisePreferences(value.exercisePreferences)) {
+    errors.push('Exercise preferences are invalid')
+  }
+
   if (errors.length > 0) return { ok: false, errors }
 
   return {
     ok: true,
     value: {
       ...base.value,
+      ...(value.exercisePreferences === undefined ? {} : { exercisePreferences: value.exercisePreferences as ExercisePreferences }),
       format: 'complete_programming_intake_v0_3',
       resolvedEquipmentIds: equipment as MovementEquipmentId[],
       constraintKinds: constraintKinds as Array<ProgrammingConstraint['kind']>,

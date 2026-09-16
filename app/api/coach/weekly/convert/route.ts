@@ -1,3 +1,4 @@
+import { refreshExercisePreferencesForDraft } from '@/app/lib/coach/exercise-preferences-context'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
     if (!basePlan) return apiError('The active legacy plan changed; refresh and try again', 409)
     if (!runtimeContext.storageAvailable) return apiError('Coach storage is unavailable', 503)
 
-    const baseProfile = buildProgrammingProfile(validated.value, runtimeContext.assessments)
+    const baseProfile = await refreshExercisePreferencesForDraft(supabase, user.id, buildProgrammingProfile(validated.value, runtimeContext.assessments))
     const profile = profileForDirectionHorizon(
       baseProfile,
       validated.value.startDate,

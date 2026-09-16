@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, type FormEvent } from 'react'
+import { SetupExercisePreferences, ExercisePreferenceNotes } from './exercise-preferences-editor'
 import type {
   ActiveCoachProgramSummary,
   CoachSessionPrescription,
@@ -347,16 +348,22 @@ export function CoachSetupForm({
       </fieldset>
 
       <label className="mt-5 block text-sm font-medium text-gray-800 dark:text-gray-200">
-        Constraints or preferences
+        Constraints and movements to avoid
         <textarea
-          aria-label="Constraints or preferences"
+          aria-label="Constraints and movements to avoid"
           value={value.constraints}
           onChange={event => onChange({ ...value, constraints: event.target.value })}
           rows={2}
-          placeholder="Optional: schedule limits, movements you avoid, or preferences to preserve."
+          placeholder="Optional: schedule limits or movements you need to avoid."
           className={FIELD_CLASS}
         />
       </label>
+
+      <SetupExercisePreferences
+        value={value.exercisePreferences}
+        onChange={exercisePreferences => onChange({ ...value, exercisePreferences })}
+        disabled={saving}
+      />
 
       {beforeAction}
 
@@ -571,6 +578,7 @@ export function ProposalPreview({
         {proposal.title} · {formatDate(proposal.startDate)} to {formatDate(proposal.endDate)}
       </p>
 
+      <ExercisePreferenceNotes notes={proposal.profileSnapshot.preferenceNotes} />
       <div className="mt-6 space-y-3">
         {proposal.weeks.map(week => {
           const sessions = week.sessions

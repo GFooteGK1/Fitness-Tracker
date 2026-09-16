@@ -1,3 +1,4 @@
+import { exercisePreferencesEnabled } from './exercise-preferences-server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   ADAPTIVE_EVIDENCE_POLICY_VERSION,
@@ -221,6 +222,7 @@ export interface CoachEvidenceContextSource {
   programs: CoachEvidenceProgramRow[]
   planVersions: CoachEvidencePlanVersionRow[]
   sessions: CoachEvidenceSessionRow[]
+  exercisePreferenceSnapshot?: CoachEvidenceMemoryRow | null
   memories: CoachEvidenceMemoryRow[]
   strengthAssessments: CoachEvidenceStrengthAssessmentRow[]
   imports: CoachEvidenceImportRow[]
@@ -339,6 +341,7 @@ export interface CoachEvidenceContextPacket {
     completedWorkoutId: string | null
     prescription: Record<string, unknown>
   } | null
+  exercisePreferenceSnapshotSeen?: boolean
   memories: CoachEvidenceMemory[]
   strengthBaselines: CoachEvidenceStrengthBaseline[]
   evidenceSeries: CoachEvidenceSeries[]
@@ -488,6 +491,12 @@ export async function fetchCoachEvidenceContext(
     .lte('confirmed_at', normalized.asOf)
     .order('confirmed_at', { ascending: false })
     .limit(config.maxMemories * 2 + 1)
+  const preferenceSnapshotPromise = exercisePreferencesEnabled() ? supabase
+    .from('coach_memories')
+    .select('id, user_id, memory_key, kind, content, provenance, confidence, confirmed_at, version, status, effective_from, effective_until, review_after, last_reviewed_at')
+    .eq('user_id', userId).eq('memory_key', 'exercise_preferences')
+    .lte('confirmed_at', normalized.asOf).order('version', { ascending: false }).limit(1)
+    : Promise.resolve({ data: [], error: null })
   const assessmentPromise = supabase
     .from('coach_strength_assessments')
     .select('id, user_id, movement, variation, load, unit, reps, assessed_on, estimated_1rm, estimate_kind, athlete_confidence, calculator_version')
@@ -510,16 +519,18 @@ export async function fetchCoachEvidenceContext(
     .order('observed_at', { ascending: false })
     .limit(config.maxObservationSamples * 2 + 1)
 
-  const [planResult, sessionsResult, memoryResult, assessmentResult, groupResult] = await Promise.all([
+  const [planResult, sessionsResult, memoryResult, assessmentResult, groupResult, preferenceSnapshotResult] = await Promise.all([
     planPromise,
     sessionsPromise,
     memoryPromise,
     assessmentPromise,
-    groupPromise
+    groupPromise,
+    preferenceSnapshotPromise
   ])
 
   if (planResult.error) errors.push('active_plan_version_unavailable')
   if (sessionsResult.error) errors.push('active_plan_sessions_unavailable')
+  if (preferenceSnapshotResult.error) errors.push('exercise_preferences_unavailable')
   if (memoryResult.error) errors.push('coach_memories_unavailable')
   if (assessmentResult.error) errors.push('strength_assessments_unavailable')
   if (groupResult.error) errors.push('performance_observations_unavailable')
@@ -558,6 +569,7 @@ export async function fetchCoachEvidenceContext(
     programs,
     planVersions: (planResult.data ?? []) as CoachEvidencePlanVersionRow[],
     sessions: (sessionsResult.data ?? []) as CoachEvidenceSessionRow[],
+    exercisePreferenceSnapshot: (preferenceSnapshotResult.data?.[0] ?? null) as CoachEvidenceMemoryRow | null,
     memories: (memoryResult.data ?? []) as CoachEvidenceMemoryRow[],
     strengthAssessments: (assessmentResult.data ?? []) as CoachEvidenceStrengthAssessmentRow[],
     imports: (importResult.data ?? []) as CoachEvidenceImportRow[],
@@ -617,7 +629,13 @@ export function assembleCoachEvidenceContext(
   const adaptiveScope = extractAdaptiveScope(activePlan?.intent, normalized.goalId)
   if (normalized.goalId && !adaptiveScope.goalFound) missing.push('goal_not_in_active_plan')
 
-  const memoryCandidates = source.memories
+  const snapshot = exercisePreferencesEnabled() ? [source.exercisePreferenceSnapshot, ...source.memories]
+    .filter((row): row is CoachEvidenceMemoryRow => Boolean(row && row.user_id === userId
+      && row.memory_key === 'exercise_preferences' && Date.parse(row.confirmed_at) <= asOfMs))
+    .sort((a, b) => Number(b.version) - Number(a.version))[0] : undefined
+  const sourceMemories = source.memories.filter(row => row.memory_key !== 'exercise_preferences')
+  if (snapshot) sourceMemories.push(snapshot)
+  const memoryCandidates = sourceMemories
     .filter(row => row.user_id === userId)
     .filter(row => isActiveMemory(row, config.memoryKinds, asOfMs))
     .sort((a, b) => compareDateDesc(a.confirmed_at, b.confirmed_at)
@@ -715,6 +733,7 @@ export function assembleCoachEvidenceContext(
     },
     activePlan: activePlanPacket,
     session: sessionPacket,
+    ...(exercisePreferencesEnabled() ? { exercisePreferenceSnapshotSeen: Boolean(snapshot) } : {}),
     memories,
     strengthBaselines,
     evidenceSeries,

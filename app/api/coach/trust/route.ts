@@ -1,3 +1,5 @@
+import { exercisePreferencesEnabled } from '@/app/lib/coach/exercise-preferences-server'
+import { validateExercisePreferences } from '@/app/lib/coach/exercise-preferences'
 import { NextResponse } from 'next/server'
 
 import { apiError } from '@/app/lib/api-response'
@@ -59,7 +61,7 @@ export async function GET() {
     if (authError || !user) return apiError('Unauthorized', 401)
 
     const trust = await fetchCoachTrustCenter(supabase, user.id)
-    return NextResponse.json({ trust }, {
+    return NextResponse.json({ trust, exercisePreferencesEnabled: exercisePreferencesEnabled() }, {
       status: trust.available ? 200 : 503,
       headers: { 'Cache-Control': 'private, no-store' }
     })
@@ -103,7 +105,7 @@ export async function POST(request: Request) {
 
     if (result) return result
     const trust = await fetchCoachTrustCenter(supabase, user.id)
-    return NextResponse.json({ saved: true, trust }, {
+    return NextResponse.json({ saved: true, trust, exercisePreferencesEnabled: exercisePreferencesEnabled() }, {
       headers: { 'Cache-Control': 'private, no-store' }
     })
   } catch (error) {
@@ -147,7 +149,6 @@ async function correctMemory(
     .select('id, memory_key, kind')
     .eq('user_id', userId)
     .eq('id', memoryId)
-    .eq('status', 'confirmed')
     .limit(1)
   const memory = ((data ?? [])[0] ?? null) as MemoryRow | null
   if (readError) return apiError('Unable to verify coach memory', 503)
@@ -346,6 +347,7 @@ function selectedMappings(value: unknown): SelectedMapping[] | null {
 }
 
 function validMemoryContent(memoryKey: string, content: Record<string, unknown>): boolean {
+  if (memoryKey === 'exercise_preferences') return exercisePreferencesEnabled() && validateExercisePreferences(content)
   const allowed: Record<string, readonly string[]> = {
     primary_goal: ['goal', 'primaryDomain', 'secondaryGoals'],
     training_schedule: ['experience', 'trainingDays', 'sessionMinutes', 'startDate'],

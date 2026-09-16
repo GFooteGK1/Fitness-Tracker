@@ -892,3 +892,15 @@ canaries remain a release step. See `docs/releases/app-quality-2026-09-04.md`.
 ## Low-touch entry and feature retirement (September 2026)
 
 See [ADR-0010](../decisions/ADR-0010-low-touch-entry-and-feature-retirement.md). Coach now uses shared navigation. Onboarding completion uses the shared age-and-goal predicate in app/lib/auth/onboarding.ts. Template reuse is account-scoped local draft preference data. Leaderboard pages and APIs are retired without database deletion. PR baselines remain stored but are excluded from celebration and default record counts.
+
+### Exercise preferences (ADR-0014)
+
+The optional favorites editor saves a bounded `exercise_preferences` snapshot in
+existing coach memory. `exercise-preferences.ts` owns validation and curated
+interest mappings; `exercise-preferences-context.ts` applies confirmed preferences
+to newly composed drafts. Evidence selection reads the latest snapshot including
+inactive versions to prevent stale positive preferences returning after withdrawal.
+Avoidance participates in movement eligibility, including substitutions.
+`COACH_EXERCISE_PREFERENCES_ENABLED` gates collection and fresh interpretation.
+Apply `20260915220000_exercise_preferences.sql` before enabling the flag. Existing
+accepted plans and ordinary weekly continuation keep their anchors.

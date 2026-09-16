@@ -163,6 +163,36 @@ describe('rolling weekly Program experience', () => {
     })
   })
 
+  it('saves edited favorites before a changed-direction draft and stops on intake failure', async () => {
+    const current = weeklyPlan('2026-08-31', '2026-12-31')
+    const state = weeklyState(current)
+    if (!Array.isArray(state.history)) state.history.reviews[0].action = 'shift_emphasis'
+    const writes: Array<{ url: string; body: Record<string, unknown> }> = []
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (!init) {
+        if (url === '/api/coach') return response({ context: { ...emptyContext, activeProgram: activeProgram(current) } })
+        if (url === '/api/coach/weekly') return response(state)
+        if (url === '/api/coach/intake') return response({ exercisePreferencesEnabled: true, exercisePreferences: null })
+        return response({ trust: { available: false, memories: [], imports: [], proposals: [] } })
+      }
+      writes.push({ url, body: JSON.parse(String(init.body)) })
+      if (url === '/api/coach/intake') return writes.length === 1 ? response({ error: 'Intake interrupted' }, false, 503) : response({ saved: true })
+      return response({ proposalId: 'replacement', idempotencyKey: 'replacement-key', proposal: current })
+    }))
+    await act(async () => render(<ProgramPage />))
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm replacement direction' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'No preference' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Build replacement week' }))
+    expect(await screen.findByText('Intake interrupted')).toBeInTheDocument()
+    expect(writes).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Build replacement week' }))
+    await waitFor(() => expect(writes).toHaveLength(3))
+    expect(writes[0].body.idempotencyKey).toBe(writes[1].body.idempotencyKey)
+    expect(writes[1].body.planningInput).toMatchObject({ exercisePreferences: { schemaVersion: 1, state: 'none', entries: [] } })
+    expect(writes[2].url).toBe('/api/coach/weekly/reviews/review-1/proposal')
+  })
+
   it('shows one accepted week, the next proposal, and explicit acceptance', () => {
     const current = weeklyPlan('2026-08-31', '2026-12-31')
     const decision: RollingWeeklyPlanningDecision = {

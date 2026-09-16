@@ -1,3 +1,4 @@
+import { refreshExercisePreferencesForDraft } from '@/app/lib/coach/exercise-preferences-context'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -159,6 +160,7 @@ export async function POST(
         nextWindowStart,
         goalTargetDate
       )
+      profile = await refreshExercisePreferencesForDraft(supabase,user.id,profile)
       direction = buildRollingTrainingDirection(profile, { hypothesis, goalTargetDate })
     } else if (body.replacementPlanningInput !== undefined) {
       return apiError('Only a material emphasis decision can replace the planning direction', 400)
