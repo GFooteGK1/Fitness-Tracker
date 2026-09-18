@@ -106,7 +106,7 @@ function makeContext(overrides?: Partial<SociusContext>): SociusContext {
 // ─── checkCaloricDeficit ─────────────────────────────────────────────
 
 describe('checkCaloricDeficit', () => {
-  it('returns urgent when strain >= 14 and calories < 1500', () => {
+  it('does not infer deficit from a partially logged high-strain day', () => {
     const ctx = makeContext({
       today: makeDefaultToday({
         latest_whoop_strain: 16,
@@ -114,11 +114,7 @@ describe('checkCaloricDeficit', () => {
       }),
     })
     const result = checkCaloricDeficit(ctx)
-    expect(result).not.toBeNull()
-    expect(result!.pattern_id).toBe('CAL_DEF')
-    expect(result!.priority).toBe('urgent')
-    expect(result!.confidence).toBe(0.8)
-    expect(result!.data_context).toEqual({ strain: 16, calories: 1200 })
+    expect(result).toBeNull()
   })
 
   it('returns null when strain is null', () => {
@@ -158,7 +154,7 @@ describe('checkCaloricDeficit', () => {
     expect(checkCaloricDeficit(ctx)).toBeNull()
   })
 
-  it('returns urgent at exact boundary (strain=14, calories=1499)', () => {
+  it('withholds retired deficit inference at the old boundary', () => {
     const ctx = makeContext({
       today: makeDefaultToday({
         latest_whoop_strain: 14,
@@ -166,8 +162,7 @@ describe('checkCaloricDeficit', () => {
       }),
     })
     const result = checkCaloricDeficit(ctx)
-    expect(result).not.toBeNull()
-    expect(result!.priority).toBe('urgent')
+    expect(result).toBeNull()
   })
 })
 
@@ -230,7 +225,7 @@ describe('checkOvertraining', () => {
 // ─── checkNutritionPerformance ───────────────────────────────────────
 
 describe('checkNutritionPerformance', () => {
-  it('returns informational when adherence >= 90% and workouts >= 8', () => {
+  it('does not turn adherence and workout counts into a nutrition-performance link', () => {
     const ctx = makeContext({
       targets: makeDefaultTargets({ protein: 150, calories: 2000 }),
       thirty_day_summary: makeDefaultSummary({
@@ -240,10 +235,7 @@ describe('checkNutritionPerformance', () => {
       }),
     })
     const result = checkNutritionPerformance(ctx)
-    expect(result).not.toBeNull()
-    expect(result!.pattern_id).toBe('NUT_PERF')
-    expect(result!.priority).toBe('informational')
-    expect(result!.confidence).toBe(0.7)
+    expect(result).toBeNull()
   })
 
   it('returns null when workout_count < 8', () => {
@@ -314,7 +306,7 @@ describe('checkRecoveryVolume', () => {
 // ─── checkProteinRecovery ────────────────────────────────────────────
 
 describe('checkProteinRecovery', () => {
-  it('returns notable when recovery < 50 and protein < 80% target', () => {
+  it('does not infer a protein-recovery effect from partial meal logs', () => {
     const ctx = makeContext({
       targets: makeDefaultTargets({ protein: 150 }),
       today: makeDefaultToday({
@@ -323,10 +315,7 @@ describe('checkProteinRecovery', () => {
       }),
     })
     const result = checkProteinRecovery(ctx)
-    expect(result).not.toBeNull()
-    expect(result!.pattern_id).toBe('PRO_REC')
-    expect(result!.priority).toBe('notable')
-    expect(result!.confidence).toBe(0.7)
+    expect(result).toBeNull()
   })
 
   it('returns null when recovery is null', () => {
@@ -409,15 +398,12 @@ describe('checkSleepPerformance', () => {
 // ─── checkHRVTrend ───────────────────────────────────────────────────
 
 describe('checkHRVTrend', () => {
-  it('returns informational when avg recovery < 50', () => {
+  it('does not turn recovery scores into an HRV trend', () => {
     const ctx = makeContext({
       thirty_day_summary: makeDefaultSummary({ whoop_avg_recovery: 42 }),
     })
     const result = checkHRVTrend(ctx)
-    expect(result).not.toBeNull()
-    expect(result!.pattern_id).toBe('HRV_TREND')
-    expect(result!.priority).toBe('informational')
-    expect(result!.confidence).toBe(0.65)
+    expect(result).toBeNull()
   })
 
   it('returns null when avg recovery is null', () => {
@@ -438,7 +424,7 @@ describe('checkHRVTrend', () => {
 // ─── checkStrainNutrition ────────────────────────────────────────────
 
 describe('checkStrainNutrition', () => {
-  it('returns notable when strain >= 14 and calorie adherence < 70%', () => {
+  it('does not infer underfueling from strain and partial logged intake', () => {
     const ctx = makeContext({
       targets: makeDefaultTargets({ calories: 2000 }),
       today: makeDefaultToday({
@@ -447,10 +433,7 @@ describe('checkStrainNutrition', () => {
       }),
     })
     const result = checkStrainNutrition(ctx)
-    expect(result).not.toBeNull()
-    expect(result!.pattern_id).toBe('STRAIN_NUT')
-    expect(result!.priority).toBe('notable')
-    expect(result!.confidence).toBe(0.75)
+    expect(result).toBeNull()
   })
 
   it('returns null when strain is null', () => {

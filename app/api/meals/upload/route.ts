@@ -1,6 +1,8 @@
-import { beginRequest, finishRequest, loggingContext, saveActivity, validRequestId } from '@/app/lib/logging/server'
+import { beginRequest, finishRequest, loggingContext, saveActivity, validRequestId, validRecommendationId } from '@/app/lib/logging/server'
 import { createHash } from 'node:crypto'
 import { randomUUID } from 'node:crypto'
+import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
+import { validCorrection } from '@/app/lib/capture/corrections'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
@@ -145,15 +147,22 @@ export async function POST(request: NextRequest) {
   if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) return apiError('Unsupported photo format', 400)
   if (typeof timestamp !== 'string' || !Number.isFinite(Date.parse(timestamp))) return apiError('Invalid timestamp', 400)
   const requestId = form.get('requestId')
+  const recommendationId = form.get('recommendationId')
+  if (recommendationId && !validRecommendationId(recommendationId)) return apiError('Invalid recommendation origin', 422)
+  let correction
+  try { correction = form.get('correction') ? JSON.parse(String(form.get('correction'))) : undefined } catch { return apiError('Invalid correction', 400) }
+  if (correction && !validCorrection(correction)) return apiError('Invalid correction revision', 422)
   if (!validRequestId(requestId)) return apiError('A requestId is required. Refresh the app and try again.', 400)
   const hash = createHash('sha256').update(Buffer.from(await file.arrayBuffer())).digest('hex')
-  const claim = await beginRequest(supabase, `photo:${requestId}`, JSON.stringify([hash, file.type, timestamp]))
+  const claim = await beginRequest(supabase, `photo:${requestId}`, JSON.stringify([hash, file.type, timestamp, ...(correction ? [correction] : []), ...(recommendationId ? [{recommendationId}] : [])]))
   if (claim.response) return claim.response
   try {
-    return await loggingContext.run({ id: claim.id! }, async () => {
-      const response = await processUpload(request)
+    return await loggingContext.run({ id: claim.id!, inputMethod: 'photo', userId: user.id, recommendationId: recommendationId as string | null, correction }, async () => {
+      let response = await processUpload(request)
+      const capture = loggingContext.getStore()
+      if (!response.ok && (!capture?.writeAttempted || capture.canonicalNoWriteConfirmed)) response = NextResponse.json({ ...await response.json(), retrySafe: true, ...(capture?.correction ? { correctionRequired: true, correction: capture.correction } : {}) }, { status: response.status })
       // Successful photo responses are committed atomically with the meal.
-      return response.ok ? response : await finishRequest(supabase, claim.id!, response)
+      return response.ok && !personalizedCoachingCapabilities().captureReceiptsV2 ? response : await finishRequest(supabase, claim.id!, response)
     })
   } catch {
     return apiError('The upload result is uncertain. Retry the same photo or check meal history before logging again.', 503)

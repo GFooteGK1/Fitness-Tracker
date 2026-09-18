@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, type FormEvent, type ReactNode } from 'react'
+import React, { useCallback, useState, type FormEvent, type ReactNode } from 'react'
 import {
   findAssessmentDefinition,
   type MetricUnit
@@ -21,6 +21,7 @@ import type {
 } from '@/app/lib/coach/execution-feedback'
 import type { CompleteProgrammingSessionPrescription } from '@/app/lib/coach/programming-schema'
 import { getLocalDate, parseDateString } from '@/app/lib/timezone-utils'
+import { SessionSignalPanel } from './session-signal-panel'
 
 type ProgramSession = ActiveCoachProgramSummary['upcomingSessions'][number]
 
@@ -35,6 +36,8 @@ interface TodaySessionCardProps {
   onEditFailedEntry: (sessionId: string) => void
   onRefreshPlan: () => Promise<void>
   children: ReactNode
+  feedbackV2?: boolean
+  exerciseSignalsEnabled?: boolean
 }
 
 const FIELD_CLASS = 'mt-2 block min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-base text-gray-900 shadow-sm focus:border-[var(--accent-line)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100'
@@ -47,19 +50,32 @@ export function TodaySessionCard({
   onSubmit,
   onEditFailedEntry,
   onRefreshPlan,
-  children
+  children,
+  feedbackV2: requestedFeedbackV2 = false,
+  exerciseSignalsEnabled = false
 }: TodaySessionCardProps) {
+  // A capability refresh cannot relabel an already-open legacy draft as explicit v2.
+  const [feedbackV2] = useState(requestedFeedbackV2)
   const [readiness, setReadiness] = useState<number | null>(null)
   const [readinessObservedAt, setReadinessObservedAt] = useState<string | null>(null)
   const [showConstraint, setShowConstraint] = useState(false)
-  const [pain, setPain] = useState<CoachSessionPain>('none')
+  const [pain, setPain] = useState<CoachSessionPain | null>(feedbackV2 ? null : 'none')
   const [constraint, setConstraint] = useState('')
   const [finishing, setFinishing] = useState(false)
   const [outcome, setOutcome] = useState<CoachSessionOutcome>('as_planned')
   const [confirmedAsPrescribed, setConfirmedAsPrescribed] = useState(false)
-  const [sessionRpe, setSessionRpe] = useState('7')
-  const [energy, setEnergy] = useState<CoachSessionEnergy>('okay')
+  const [sessionRpe, setSessionRpe] = useState(feedbackV2 ? '' : '7')
+  const [energy, setEnergy] = useState<CoachSessionEnergy | null>(feedbackV2 ? null : 'okay')
   const [actualWorkSummary, setActualWorkSummary] = useState('')
+  const [savedSummary, setSavedSummary] = useState('')
+  const [mergedSummary, setMergedSummary] = useState('')
+  const [summaryEdited, setSummaryEdited] = useState(false)
+  const [signalsLoaded, setSignalsLoaded] = useState(false)
+  const [signalDraft, setSignalDraft] = useState(false)
+  const receiveSignals = useCallback((loaded: boolean, summary: string, hasDraft: boolean) => {
+    setSignalsLoaded(loaded); setSavedSummary(summary); setSignalDraft(hasDraft)
+    if (summary) { setOutcome(current => current === 'as_planned' ? 'modified' : current); setConfirmedAsPrescribed(false) }
+  }, [])
   const [duration, setDuration] = useState('')
   const [note, setNote] = useState('')
   const [measurements, setMeasurements] = useState<TodayScheduledMeasurementDraft[]>(() => (
@@ -93,6 +109,10 @@ export function TodaySessionCard({
     event.preventDefault()
     setError(null)
 
+    if (feedbackV2 && exerciseSignalsEnabled && signalDraft) { setError('Save the exercise feedback before finishing, or clear its draft fields.'); return }
+    if (feedbackV2 && exerciseSignalsEnabled && outcome === 'as_planned' && !signalsLoaded) { setError('Refresh saved exercise feedback before confirming prescribed work.'); return }
+    if (feedbackV2 && summaryEdited && savedSummary !== mergedSummary) { setError('Review and merge the new saved exercise details before finishing.'); return }
+
     if (outcome === 'as_planned' && !confirmedAsPrescribed) {
       setError('Confirm that you completed the accepted prescription before saving.')
       return
@@ -109,15 +129,16 @@ export function TodaySessionCard({
       note.trim()
     ].filter(Boolean).join(' ') || null
     const validation = buildTodaySessionCompletion({
+      feedbackVersion: feedbackV2 ? 2 : 1,
       sessionId: session.id,
       prescription,
       workoutDate: getLocalDate(),
       outcome,
-      sessionRpe: outcome === 'skipped' ? null : Number(sessionRpe),
+      sessionRpe: outcome === 'skipped' || sessionRpe.trim() === '' ? null : Number(sessionRpe),
       energy,
       pain,
       note: combinedNote,
-      actualWorkSummary: actualWorkSummary.trim() || null,
+      actualWorkSummary: (summaryEdited ? actualWorkSummary : savedSummary || actualWorkSummary).trim() || null,
       totalDurationMinutes: duration ? Number(duration) : null,
       occurredAt,
       readiness,
@@ -207,7 +228,7 @@ export function TodaySessionCard({
         <div className="mt-2 flex justify-between text-[11px] text-gray-500 dark:text-gray-400">
           <span>Very low</span><span>Ready</span>
         </div>
-        {(lowReadiness || pain !== 'none') && (
+        {(lowReadiness || (pain !== null && pain !== 'none')) && (
           <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
             Protect the training target. Use the stop rules and log Modified, Stopped early, or Skipped if quality is not there.
           </p>
@@ -227,12 +248,13 @@ export function TodaySessionCard({
               Pain signal
               <select
                 aria-label="Pain signal"
-                value={pain}
+                value={pain ?? ''}
                 disabled={pending !== null || saving}
-                onChange={event => setPain(event.target.value as CoachSessionPain)}
+                onChange={event => setPain(event.target.value ? event.target.value as CoachSessionPain : null)}
                 className={FIELD_CLASS}
               >
-                <option value="none">None</option>
+                {feedbackV2 && <option value="">Not answered</option>}
+                <option value="none">No pain</option>
                 <option value="mild">Mild</option>
                 <option value="concerning">Concerning</option>
               </select>
@@ -280,6 +302,9 @@ export function TodaySessionCard({
           </div>
         </section>
       )}
+
+      {feedbackV2 && exerciseSignalsEnabled && <SessionSignalPanel sessionId={session.id} prescription={prescription}
+        disabled={saving || pending !== null} onEvidence={receiveSignals} />}
 
       <details className="mt-5 border-t border-gray-200 pt-3 dark:border-gray-700">
         <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-[var(--accent)]">
@@ -343,25 +368,34 @@ export function TodaySessionCard({
                   minLength={3}
                   maxLength={5000}
                   rows={3}
-                  value={actualWorkSummary}
-                  onChange={event => setActualWorkSummary(event.target.value)}
+                  value={summaryEdited ? actualWorkSummary : savedSummary || actualWorkSummary}
+                  onChange={event => { setActualWorkSummary(event.target.value); setSummaryEdited(true); setMergedSummary(savedSummary) }}
                   placeholder="Example: Completed the first three sets, then reduced the final set to six reps."
                   className={FIELD_CLASS}
                 />
               </label>
             )}
 
+            {summaryEdited && savedSummary !== mergedSummary && <div className="rounded-lg border border-amber-300 p-3">
+              <p className="whitespace-pre-line text-sm">New saved exercise details: {savedSummary}</p>
+              <button type="button" className="app-secondary mt-2" onClick={() => {
+                const added = savedSummary.startsWith(mergedSummary) ? savedSummary.slice(mergedSummary.length).trim() : savedSummary
+                setActualWorkSummary(current => [current, added].filter(Boolean).join('\n'))
+                setMergedSummary(savedSummary)
+              }}>Add saved details to my summary</button>
+            </div>}
+
             {outcome !== 'skipped' && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
-                  Session RPE
+                  Session RPE{feedbackV2 ? ' (optional)' : ''}
                   <input
                     aria-label="Session RPE"
                     type="number"
                     min="1"
                     max="10"
                     step="0.5"
-                    required
+                    required={!feedbackV2}
                     value={sessionRpe}
                     onChange={event => setSessionRpe(event.target.value)}
                     className={FIELD_CLASS}
@@ -384,14 +418,14 @@ export function TodaySessionCard({
             )}
 
             <div>
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Session energy</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Session energy{feedbackV2 ? ' (optional)' : ''}</p>
               <div className="mt-2 grid grid-cols-3 gap-2" role="group" aria-label="Session energy">
                 {(['low', 'okay', 'high'] as CoachSessionEnergy[]).map(value => (
                   <button
                     key={value}
                     type="button"
                     aria-pressed={energy === value}
-                    onClick={() => setEnergy(value)}
+                    onClick={() => setEnergy(current => feedbackV2 && current === value ? null : value)}
                     className={`${CHOICE_CLASS} capitalize ${energy === value
                       ? 'border-[var(--accent)] bg-[var(--action)] text-[var(--action-text)]'
                       : 'border-gray-300 bg-white text-gray-800 hover:border-[var(--accent-line)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'}`}
@@ -428,15 +462,15 @@ export function TodaySessionCard({
                   >
                     {saving ? 'Retrying…' : 'Retry same entry'}
                   </button>
-                  <button
+                  {(!feedbackV2 || /active plan changed|conflicts|not found|not enabled|invalid/i.test(error)) && <button
                     type="button"
                     disabled={saving}
                     onClick={editFailedEntry}
                     className="min-h-11 rounded-xl border border-red-300 px-4 py-2 font-semibold text-red-800 dark:border-red-800 dark:text-red-200"
                   >
                     Edit entry
-                  </button>
-                  {error.toLowerCase().includes('active plan changed') && (
+                  </button>}
+                  {(feedbackV2 || error.toLowerCase().includes('active plan changed')) && (
                     <button
                       type="button"
                       disabled={saving}

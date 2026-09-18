@@ -132,7 +132,11 @@ function createCompactionMock(opts: {
   const inFn = vi.fn().mockReturnValue({ error: null })
 
   let fromCallIndex = 0
-  const fromFn = vi.fn(() => {
+  const fromFn = vi.fn((table: string) => {
+    if (table === 'insights') {
+      const chain: any = { select: () => chain, eq: () => chain, in: () => chain, limit: () => ({ data: [], error: null }) }
+      return chain
+    }
     const idx = fromCallIndex++
     if (idx === 0) {
       // Count query
@@ -293,7 +297,8 @@ describe('Property 21: Chat compaction threshold', () => {
       await compactOldMessages(mock as any, 'user-1', threshold)
 
       // from() should be called 4 times: count, select, insert, update
-      expect(mock.from).toHaveBeenCalledTimes(4)
+      const needsInsightRead = messages.some(m => m.role !== 'user' && m.related_entity_type === 'insight' && m.related_entity_id)
+      expect(mock.from).toHaveBeenCalledTimes(needsInsightRead ? 5 : 4)
 
       // Insert was called with a system summary message
       const insertCall = mock._insertFn.mock.calls[0]?.[0]

@@ -1,4 +1,7 @@
 import { validateExercisePreferences, type ExercisePreferences } from './exercise-preferences'
+import { validatePlanningIntentSnapshot } from './planning-intent'
+import { validateFactualPlanningContext } from './planning-context'
+import { validatePrescriptionBasis } from './prescription-basis'
 import type {
   CoachPlanningContext,
   CoachPlanningInput,
@@ -88,6 +91,11 @@ export type ProgrammingInputSource =
  * snapshot and prescription JSON; this profile is used only by the new kernel.
  */
 export interface ProgrammingProfile {
+  executionPriority?: import('./execution-priority').ExecutionPriorityIntent
+  planningContext?: import('./planning-context').FactualPlanningContext
+  prescriptionBasis?: import('./prescription-basis').PrescriptionBasis
+  /** Optional additive confirmed-outcome snapshot. Legacy accepted profiles omit it. */
+  trainingIntent?: import('./planning-intent').PlanningIntentSnapshot
   schemaVersion: typeof PROGRAMMING_SCHEMA_VERSION
   kernelVersion: typeof PROGRAMMING_KERNEL_VERSION
   athleteGoalSummary: string
@@ -338,6 +346,13 @@ export function validateProgrammingProfile(
   profile: ProgrammingProfile
 ): ProgrammingSchemaValidation {
   const errors: string[] = []
+  if (profile.trainingIntent !== undefined && !validatePlanningIntentSnapshot(profile.trainingIntent)) errors.push('Confirmed training intent snapshot is invalid')
+  if (profile.executionPriority !== undefined && (!profile.executionPriority || typeof profile.executionPriority.goalId !== 'string'
+    || typeof profile.executionPriority.movementId !== 'string')) errors.push('Execution priority is invalid')
+  if (profile.planningContext !== undefined && !validateFactualPlanningContext(profile.planningContext)) errors.push('Factual planning context snapshot is invalid')
+  if (profile.prescriptionBasis !== undefined && !validatePrescriptionBasis(profile.prescriptionBasis, profile.planningContext)) errors.push('Prescription basis snapshot is invalid')
+  if (profile.prescriptionBasis && Array.isArray(profile.prescriptionBasis.familiarityMovementIds)
+    && JSON.stringify(profile.prescriptionBasis.familiarityMovementIds) !== JSON.stringify(profile.recentTraining.performedMovementIds)) errors.push('Prescription basis familiarity does not match the profile')
   if (profile.exercisePreferences !== undefined && !validateExercisePreferences(profile.exercisePreferences)) errors.push('Exercise preferences are invalid')
   const goals: ProgrammingGoalAllocation[] = [profile.primaryGoal, ...profile.secondaryGoals]
 

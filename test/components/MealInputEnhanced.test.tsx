@@ -3,6 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
 
+vi.mock('@/app/lib/auth/AuthContext', () => ({ useAuth: () => ({ user: { id: 'athlete-a' } }) }))
+vi.mock('@/app/lib/auth/supabase', () => ({ createClient: () => ({ auth: { getUser: async () => ({ data: { user: { id: 'athlete-a' } } }) } }) }))
+vi.mock('@/app/components/capture/CaptureRecovery', () => ({ CaptureRecovery: () => null }))
 vi.mock('@/app/components/FastMealLogger', () => ({ default: () => <div>Recent meal choices</div> }))
 vi.mock('@/app/components/MealCameraCapture', () => ({ default: () => <div>Meal camera</div> }))
 
@@ -23,7 +26,7 @@ class MockSpeechRecognition {
 
 describe('MealInputEnhanced', () => {
   it('opens the requested meal mode and can reveal the other inputs', () => {
-    render(<MealInputEnhanced initialMode="recent" />)
+    render(<MealInputEnhanced userId="athlete-a" initialMode="recent" />)
     expect(screen.queryByText('Recent meal choices')).not.toBeNull()
     expect(screen.queryByText('Meal camera')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Show all meal options' }))
@@ -40,7 +43,7 @@ describe('MealInputEnhanced', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       new Response('upstream unavailable', { status: 502 })
     ))
-    render(<MealInputEnhanced onError={onError} />)
+    render(<MealInputEnhanced userId="athlete-a" onError={onError} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Show text input' }))
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'granola' } })
@@ -62,7 +65,7 @@ describe('MealInputEnhanced', () => {
       value: CapturingSpeechRecognition,
     })
     const onError = vi.fn()
-    render(<MealInputEnhanced onError={onError} />)
+    render(<MealInputEnhanced userId="athlete-a" onError={onError} />)
 
     const voiceButton = await screen.findByRole('button', { name: 'Voice input' })
     fireEvent.click(voiceButton)

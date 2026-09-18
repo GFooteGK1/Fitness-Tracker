@@ -7,11 +7,20 @@ export type CoachSessionOutcome =
 export type CoachSessionEnergy = 'low' | 'okay' | 'high'
 export type CoachSessionPain = 'none' | 'mild' | 'concerning'
 
+export type FeedbackField = 'sessionRpe' | 'energy' | 'pain'
+export interface FeedbackFieldProvenance {
+  origin: 'athlete_reported' | 'unknown' | 'legacy_unknown'
+  reviewState: 'athlete_confirmed' | 'unreviewed'
+}
+export type FeedbackProvenance = Record<FeedbackField, FeedbackFieldProvenance>
+
 export interface CoachSessionCheckinInput {
+  feedbackVersion?: 1 | 2
+  provenance?: FeedbackProvenance
   outcome: CoachSessionOutcome
   sessionRpe: number | null
-  energy: CoachSessionEnergy
-  pain: CoachSessionPain
+  energy: CoachSessionEnergy | null
+  pain: CoachSessionPain | null
   note: string | null
   occurredAt: string
 }
@@ -55,6 +64,8 @@ export interface CoachWeeklyReview {
   completionRate: number
   checkinCount: number
   averageSessionRpe: number | null
+  explicitRpeCount?: number
+  eligibleCompletionCount?: number
   signals: string[]
   adaptationProposal: CoachAdaptationProposalPreview | null
 }
@@ -65,6 +76,12 @@ type CheckinValidation =
 
 export function validateCoachSessionCheckinInput(value: unknown): CheckinValidation {
   if (!isRecord(value)) return { ok: false, errors: ['Session check-in must be an object'] }
+
+  if (value.feedbackVersion === 2) return validateV2Checkin(value)
+  if ((value.feedbackVersion !== undefined && value.feedbackVersion !== 1)
+    || (value.schemaVersion !== undefined && value.schemaVersion !== 1)) {
+    return { ok: false, errors: ['Session feedback version is unsupported or conflicting'] }
+  }
 
   const errors: string[] = []
   const outcome = isSessionOutcome(value.outcome) ? value.outcome : null
@@ -116,7 +133,8 @@ export function validateCoachSessionCheckinInput(value: unknown): CheckinValidat
 
 export function validateStoredCoachSessionCheckin(
   responses: unknown,
-  occurredAt: unknown
+  occurredAt: unknown,
+  checkinId?: string
 ): CheckinValidation {
   const parsedOccurredAt = typeof occurredAt === 'string'
     ? new Date(occurredAt)
@@ -125,9 +143,87 @@ export function validateStoredCoachSessionCheckin(
     ? parsedOccurredAt.toISOString()
     : ''
 
-  return validateCoachSessionCheckinInput({
-    ...(isRecord(responses) ? responses : {}),
+  if (!isRecord(responses)) return { ok: false, errors: ['Stored feedback must be an object'] }
+  if (responses.schemaVersion === 2 && responses.feedbackVersion !== 2) {
+    return { ok: false, errors: ['Stored feedback version is conflicting'] }
+  }
+  const validation = validateCoachSessionCheckinInput({
+    ...responses,
     occurredAt: normalizedOccurredAt
+  })
+  if (!validation.ok) return validation
+  if (responses.schemaVersion === 2) {
+    if (!sameProvenance(responses.provenance, reportedFeedbackProvenance(validation.value))) {
+      return { ok: false, errors: ['Stored feedback field provenance is missing or invalid'] }
+    }
+    const binding = isRecord(responses.feedbackProvenance) ? responses.feedbackProvenance : {}
+    if (!checkinId || binding.checkinId !== checkinId || binding.revision !== 1) {
+      return { ok: false, errors: ['Stored feedback provenance does not match its check-in'] }
+    }
+    return validation
+  }
+  return { ok: true, value: { ...validation.value, feedbackVersion: 1,
+    provenance: legacyFeedbackProvenance() } }
+}
+
+export function hasExplicitFeedback(checkin: CoachSessionCheckinInput, field: FeedbackField): boolean {
+  return checkin.feedbackVersion === 2 && checkin[field] !== null
+    && checkin.provenance?.[field].origin === 'athlete_reported'
+    && checkin.provenance?.[field].reviewState === 'athlete_confirmed'
+}
+
+export function reportedFeedbackProvenance(values: Pick<CoachSessionCheckinInput, FeedbackField>): FeedbackProvenance {
+  const field = (value: unknown): FeedbackFieldProvenance => value === null || value === undefined
+    ? { origin: 'unknown', reviewState: 'unreviewed' }
+    : { origin: 'athlete_reported', reviewState: 'athlete_confirmed' }
+  return { sessionRpe: field(values.sessionRpe), energy: field(values.energy), pain: field(values.pain) }
+}
+
+function legacyFeedbackProvenance(): FeedbackProvenance {
+  return {
+    sessionRpe: { origin: 'legacy_unknown', reviewState: 'unreviewed' },
+    energy: { origin: 'legacy_unknown', reviewState: 'unreviewed' },
+    pain: { origin: 'legacy_unknown', reviewState: 'unreviewed' }
+  }
+}
+
+function validateV2Checkin(value: Record<string, unknown>): CheckinValidation {
+  const errors: string[] = []
+  if (value.schemaVersion !== undefined && value.schemaVersion !== 2) errors.push('Session feedback version is conflicting')
+  const outcome = isSessionOutcome(value.outcome) ? value.outcome : null
+  const sessionRpe = value.sessionRpe === null || value.sessionRpe === undefined ? null : value.sessionRpe
+  const energy = value.energy === null || value.energy === undefined ? null : value.energy
+  const pain = value.pain === null || value.pain === undefined ? null : value.pain
+  const note = value.note === null || value.note === undefined ? null
+    : typeof value.note === 'string' ? value.note.trim() || null : undefined
+  const occurredAt = typeof value.occurredAt === 'string' ? value.occurredAt : ''
+  if (!outcome) errors.push('Choose how the session went')
+  if (sessionRpe !== null && (typeof sessionRpe !== 'number' || !Number.isFinite(sessionRpe)
+    || sessionRpe < 1 || sessionRpe > 10 || !Number.isInteger(sessionRpe * 2))) errors.push('Session RPE must be from 1 through 10 in half-point steps')
+  if (outcome === 'skipped' && sessionRpe !== null) errors.push('Skipped sessions cannot include session RPE')
+  if (energy !== null && !isSessionEnergy(energy)) errors.push('Choose a valid session energy or leave it unanswered')
+  if (pain !== null && !isSessionPain(pain)) errors.push('Choose a valid pain signal or leave it unanswered')
+  if (note === undefined || (note !== null && note.length > 500)) errors.push('Session note must be text of 500 characters or fewer')
+  if (!isIsoTimestamp(occurredAt)) errors.push('Completion time must be an ISO timestamp')
+  if (errors.length || !outcome) return { ok: false, errors }
+  const result: CoachSessionCheckinInput = {
+    feedbackVersion: 2, outcome, sessionRpe: sessionRpe as number | null,
+    energy: energy as CoachSessionEnergy | null, pain: pain as CoachSessionPain | null,
+    note: note ?? null, occurredAt
+  }
+  result.provenance = reportedFeedbackProvenance(result)
+  if (value.provenance !== undefined && !sameProvenance(value.provenance, result.provenance)) {
+    return { ok: false, errors: ['Feedback provenance must match the supplied reports'] }
+  }
+  return { ok: true, value: result }
+}
+
+function sameProvenance(value: unknown, expected: FeedbackProvenance): boolean {
+  if (!isRecord(value) || Object.keys(value).length !== 3) return false
+  return (['sessionRpe', 'energy', 'pain'] as const).every(key => {
+    const field = value[key]
+    return isRecord(field) && Object.keys(field).length === 2
+      && field.origin === expected[key].origin && field.reviewState === expected[key].reviewState
   })
 }
 
@@ -157,7 +253,7 @@ export function buildCoachWeeklyReview({
       ? 'in_progress'
       : 'ready'
   const completedRpes = weekCheckins
-    .filter(checkin => checkin.outcome !== 'skipped' && checkin.sessionRpe !== null)
+    .filter(checkin => checkin.outcome !== 'skipped' && hasExplicitFeedback(checkin, 'sessionRpe'))
     .map(checkin => checkin.sessionRpe as number)
   const averageSessionRpe = completedRpes.length > 0
     ? roundToHalf(completedRpes.reduce((sum, value) => sum + value, 0) / completedRpes.length)
@@ -183,6 +279,8 @@ export function buildCoachWeeklyReview({
     completionRate,
     checkinCount: weekCheckins.length,
     averageSessionRpe,
+    explicitRpeCount: completedRpes.length,
+    eligibleCompletionCount: completedSessions,
     signals,
     adaptationProposal: status === 'ready'
       ? buildAdaptationProposal({
@@ -217,8 +315,9 @@ function buildSignals({
 
   const modified = checkins.filter(checkin => checkin.outcome === 'modified').length
   const stoppedEarly = checkins.filter(checkin => checkin.outcome === 'stopped_early').length
-  const lowEnergy = checkins.filter(checkin => checkin.energy === 'low').length
-  const painSignals = checkins.filter(checkin => checkin.pain !== 'none').length
+  const lowEnergy = checkins.filter(checkin => checkin.energy === 'low' && hasExplicitFeedback(checkin, 'energy')).length
+  const painSignals = checkins.filter(checkin => checkin.pain === 'concerning'
+    || (checkin.pain === 'mild' && hasExplicitFeedback(checkin, 'pain'))).length
   if (modified > 0) signals.push(`${modified} session${modified === 1 ? '' : 's'} modified`)
   if (stoppedEarly > 0) signals.push(`${stoppedEarly} session${stoppedEarly === 1 ? '' : 's'} stopped early`)
   if (lowEnergy > 0) signals.push(`Low energy reported ${lowEnergy} time${lowEnergy === 1 ? '' : 's'}`)
@@ -239,7 +338,7 @@ function buildAdaptationProposal({
   averageSessionRpe: number | null
   reviewRequired: boolean
 }): CoachAdaptationProposalPreview {
-  if (checkins.length < terminalSessions) {
+  if (checkins.length < terminalSessions && !checkins.some(checkin => checkin.pain === 'concerning')) {
     return {
       status: 'preview',
       action: 'hold_and_review',
@@ -267,7 +366,7 @@ function buildAdaptationProposal({
   }
 
   const stoppedEarly = checkins.filter(checkin => checkin.outcome === 'stopped_early').length
-  const lowEnergy = checkins.filter(checkin => checkin.energy === 'low').length
+  const lowEnergy = checkins.filter(checkin => checkin.energy === 'low' && hasExplicitFeedback(checkin, 'energy')).length
   if (
     completionRate < 0.67
     || stoppedEarly >= 1
@@ -290,7 +389,7 @@ function buildAdaptationProposal({
   }
 
   const allAsPlanned = checkins.every(checkin => checkin.outcome === 'as_planned')
-  const noPain = checkins.every(checkin => checkin.pain === 'none')
+  const noPain = checkins.every(checkin => checkin.pain === 'none' && hasExplicitFeedback(checkin, 'pain'))
   if (
     completionRate === 1
     && allAsPlanned

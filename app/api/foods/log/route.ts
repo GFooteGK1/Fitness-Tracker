@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { buildFoodCorrections, parseReviewedFoodRequest, scaleNutrition } from '@/app/lib/nutrition/reviewed-food'
+import { replayJsonRequest, saveActivity, loggingContext } from '@/app/lib/logging/server'
+import { captureProvenance } from '@/app/lib/capture/contracts'
+import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
 
-export async function POST(request: NextRequest) {
+async function processReviewedFood(request: NextRequest) {
   const supabase = await createServerClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -27,7 +30,7 @@ export async function POST(request: NextRequest) {
     console.error('Fast-log idempotency check failed:', existingError)
     return NextResponse.json({ error: 'Failed to verify meal request' }, { status: 500 })
   }
-  if (existingRequest) return NextResponse.json({ success: true, mealId: existingRequest.id, reusedRequest: true })
+  if (existingRequest && !personalizedCoachingCapabilities().captureReceiptsV2) return NextResponse.json({ success: true, mealId: existingRequest.id, reusedRequest: true })
 
   const sourceDraft = input.food.catalogEntryId
     ? { ...input.food, nutrition: input.food.sourceNutrition }
@@ -68,6 +71,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to save reviewed food' }, { status: 500 })
   }
 
+  const logging = loggingContext.getStore()
+  if (logging) logging.partialResult = { catalogSaved: true, catalogEntryId: catalogEntry.id, mealSaved: false }
+
   const totals = scaleNutrition(input.food.nutrition, input.servings)
   const portion = input.servings === 1 ? input.food.servingLabel : `${input.servings} × ${input.food.servingLabel}`
   const item = {
@@ -82,6 +88,13 @@ export async function POST(request: NextRequest) {
       servingUnit: input.food.servingUnit,
       servings: input.servings,
     },
+  }
+
+  if (personalizedCoachingCapabilities().captureReceiptsV2) {
+    const mealId = await saveActivity(supabase, 'meal', { meal_timestamp: input.timestamp, items: [item],
+      needs_review: false, manual_override: true, reviewed_at: now, entry_method: 'manual_label' }, [], { catalogSaved: true, catalogEntryId: catalogEntry.id },
+      { inputMethod: 'catalog', provenance: captureProvenance('meal', 'athlete_reported', 'athlete_confirmed', [`catalog:${catalogEntry.id}:manual_label`]) })
+    return NextResponse.json({ success: true, mealId, mealSaved: true, catalogSaved: true, catalogEntryId: catalogEntry.id })
   }
 
   const { data: meal, error: mealError } = await supabase
@@ -120,3 +133,6 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ success: true, mealId: meal.id, catalogEntryId: catalogEntry.id })
 }
+
+export const POST = (request: NextRequest) => personalizedCoachingCapabilities().captureReceiptsV2
+  ? replayJsonRequest(request, 'reviewed-food', processReviewedFood) : processReviewedFood(request)

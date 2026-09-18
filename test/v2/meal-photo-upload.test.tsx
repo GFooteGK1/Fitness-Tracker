@@ -20,6 +20,8 @@ vi.mock('@/app/lib/auth/AuthContext', () => ({
     signOut: mockSignOut,
   })),
 }))
+vi.mock('@/app/lib/auth/supabase', () => ({ createClient: () => ({ auth: { getUser: async () => ({ data: { user: { id: 'user-123' } } }) } }) }))
+vi.mock('@/app/lib/offline-queue', () => ({ offlineQueue: { captureNeedsReconciliation: async () => false } }))
 
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(() => ({ push: mockPush })),
@@ -51,6 +53,7 @@ function jsonResponse(body: unknown, ok = true) {
 
 describe('V2 meal photo upload', () => {
   beforeEach(() => {
+    sessionStorage.clear(); localStorage.clear()
     Element.prototype.scrollIntoView = vi.fn()
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -65,6 +68,7 @@ describe('V2 meal photo upload', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('sends a timestamp with meal photo uploads', async () => {

@@ -211,6 +211,8 @@ export interface AdaptiveCoverageTrace {
 }
 
 export interface AdaptivePlanContract {
+  /** Outcome identity is separate from shared domain allocations and legacy coverage traces. */
+  confirmedOutcomes?: import('./planning-intent').PlanningIntentSnapshot
   schemaVersion: typeof ADAPTIVE_PROGRAMMING_SCHEMA_VERSION
   contractVersion: typeof ADAPTIVE_PLAN_CONTRACT_VERSION
   assessmentCatalogVersion: typeof ADAPTIVE_ASSESSMENT_CATALOG_VERSION
@@ -280,7 +282,8 @@ export function buildAdaptivePlanContract(
     scheduledAssessments,
     expectedSignals,
     evaluationPolicies,
-    coverageTraces
+    coverageTraces,
+    ...(profile.trainingIntent ? { confirmedOutcomes: structuredClone(profile.trainingIntent) } : {})
   }
 }
 
@@ -291,6 +294,7 @@ export function validateAdaptivePlanContract(
 ): AdaptivePlanValidation {
   const errors: string[] = []
   const allocations: GoalAllocation[] = [profile.primaryGoal, ...profile.secondaryGoals]
+  if (JSON.stringify(contract.confirmedOutcomes ?? null) !== JSON.stringify(profile.trainingIntent ?? null)) errors.push('Adaptive confirmed outcomes do not match the immutable profile snapshot')
   const allocationIds = new Set(allocations.map(goal => goal.id))
   const defaultDirectionEndDate = addDays(profile.startDate, 55)
 

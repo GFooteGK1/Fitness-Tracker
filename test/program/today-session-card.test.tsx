@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import {
@@ -15,6 +15,70 @@ import type { ActiveCoachProgramSummary } from '@/app/lib/coach/types'
 const sessionId = '11111111-1111-4111-8111-111111111111'
 
 describe('TodaySessionCard', () => {
+  beforeEach(() => vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ signals: [], userId: 'user-1' })))))
+  afterEach(() => vi.unstubAllGlobals())
+  it('does not relabel legacy defaults as v2 reports when the capability changes mid-entry', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(null)
+    const props = { session: session(), prescription: prescription(), saving: false, onSubmit,
+      onEditFailedEntry: vi.fn(), onRefreshPlan: vi.fn() }
+    const view = render(<TodaySessionCard {...props} feedbackV2={false}><p>Accepted work</p></TodaySessionCard>)
+    view.rerender(<TodaySessionCard {...props} feedbackV2><p>Accepted work</p></TodaySessionCard>)
+    fireEvent.click(screen.getByRole('button', { name: 'Finish or skip session' }))
+    fireEvent.click(screen.getByLabelText('Confirm completed prescribed work'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save workout' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
+    expect(onSubmit.mock.calls[0][1].feedback.feedbackVersion).toBeUndefined()
+    expect(onSubmit.mock.calls[0][1].feedback.provenance).toBeUndefined()
+  })
+
+  it('keeps an uncertain v2 completion frozen until retry or state refresh', async () => {
+    const onSubmit = vi.fn().mockResolvedValue('The save response was interrupted. Retry will reuse the same save key.')
+    render(<TodaySessionCard session={session()} prescription={prescription()} saving={false} feedbackV2
+      onSubmit={onSubmit} onEditFailedEntry={vi.fn()} onRefreshPlan={vi.fn()}><p>Accepted work</p></TodaySessionCard>)
+    fireEvent.click(screen.getByRole('button', { name: 'Finish or skip session' }))
+    fireEvent.click(screen.getByLabelText('Confirm completed prescribed work'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save workout' }))
+    await screen.findByRole('button', { name: 'Retry same entry' })
+    expect(screen.queryByRole('button', { name: 'Edit entry' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Refresh active plan' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry same entry' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2))
+    expect(onSubmit.mock.calls[0]).toEqual(onSubmit.mock.calls[1])
+  })
+  it('saves v2 without optional feedback and does not mistake unknown pain for a warning', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(null)
+    render(<TodaySessionCard session={session()} prescription={prescription()} saving={false}
+      feedbackV2 onSubmit={onSubmit} onEditFailedEntry={vi.fn()} onRefreshPlan={vi.fn()}><p>Accepted work</p></TodaySessionCard>)
+    expect(screen.queryByText(/Protect the training target/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Exercise feedback (optional)')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Finish or skip session' }))
+    expect(screen.getByLabelText('Session RPE')).toHaveValue(null)
+    expect(screen.getByRole('button', { name: 'okay' })).toHaveAttribute('aria-pressed', 'false')
+    await waitFor(() => expect(screen.queryByText('Loading saved exercise feedback…')).not.toBeInTheDocument())
+    fireEvent.click(screen.getByLabelText('Confirm completed prescribed work'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save workout' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
+    expect(onSubmit.mock.calls[0][1].feedback).toMatchObject({ feedbackVersion: 2, sessionRpe: null, pain: null, energy: null })
+    expect(onSubmit.mock.calls[0][1].observations).toEqual([])
+  })
+
+  it('preserves fractional effort and explicit no pain while energy can be cleared', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(null)
+    render(<TodaySessionCard session={session()} prescription={prescription()} saving={false}
+      feedbackV2 onSubmit={onSubmit} onEditFailedEntry={vi.fn()} onRefreshPlan={vi.fn()}><p>Accepted work</p></TodaySessionCard>)
+    fireEvent.click(screen.getByRole('button', { name: 'Something changed' }))
+    fireEvent.change(screen.getByLabelText('Pain signal'), { target: { value: 'none' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Finish or skip session' }))
+    fireEvent.change(screen.getByLabelText('Session RPE'), { target: { value: '7.5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'okay' }))
+    fireEvent.click(screen.getByRole('button', { name: 'okay' }))
+    await waitFor(() => expect(screen.queryByText('Loading saved exercise feedback…')).not.toBeInTheDocument())
+    fireEvent.click(screen.getByLabelText('Confirm completed prescribed work'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save workout' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
+    expect(onSubmit.mock.calls[0][1].feedback).toMatchObject({ sessionRpe: 7.5, pain: 'none', energy: null,
+      provenance: { pain: { origin: 'athlete_reported', reviewState: 'athlete_confirmed' } } })
+  })
   it('retries the exact frozen completion payload after an interrupted response', async () => {
     const onSubmit = vi.fn()
       .mockResolvedValueOnce('The save response was interrupted. Your entry is still here.')

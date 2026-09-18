@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { DailyTargets } from '@/app/lib/types/food-tracking'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import { calculateTargetCalories } from '@/app/lib/target-management'
+import { refreshAfterCanonicalSave } from '@/app/lib/client/recommendations'
 
 interface TargetManagementProps {
   onTargetsUpdated?: (targets: DailyTargets) => void
@@ -92,6 +93,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
       }
 
       const savedTargets: DailyTargets = await response.json()
+      if (user?.id) refreshAfterCanonicalSave(user.id)
       setTargets(savedTargets)
       setIsEditing(false)
 

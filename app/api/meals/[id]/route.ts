@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { MealUpdates, MealEntry } from '@/app/lib/types/food-tracking'
+import { amendActivity, validCorrection } from '@/app/lib/capture/corrections'
+import { auditedCaptureInstalled } from '@/app/lib/capture/compatibility'
+import { CaptureError } from '@/app/lib/capture/service'
 
 export async function PUT(
   request: NextRequest,
@@ -21,6 +24,21 @@ export async function PUT(
 
     const { id: mealId } = await params
     const updates: MealUpdates = await request.json()
+    if (await auditedCaptureInstalled(supabase)) {
+      if (updates.expectedUserId !== user.id) return NextResponse.json({ error: 'The signed-in account changed.' }, { status: 403 })
+      const identity = { entityId: mealId, expectedRevision: updates.expectedRevision, requestId: updates.requestId }
+      if (!validCorrection(identity) || !updates.items) return NextResponse.json({ error: 'Reload the meal, then correct its food quantities.' }, { status: 422 })
+      try {
+        const receipt = await amendActivity(supabase, user.id, 'meal', identity, { items: updates.items, manual_override: true, needs_review: false })
+        const { data: meal } = await supabase.from('meals').select('*').eq('id', mealId).eq('user_id', user.id).single()
+        return NextResponse.json({ success: true, receipts: [receipt], receipt, meal: meal ? {
+          id: meal.id, userId: meal.user_id, mealTimestamp: meal.meal_timestamp, items: meal.items,
+          totalProtein: meal.total_protein, totalCarbs: meal.total_carbs, totalFat: meal.total_fat, totalCalories: meal.total_calories,
+          captureRevision: meal.capture_revision, captureProvenance: meal.capture_provenance, needsReview: meal.needs_review,
+          manualOverride: meal.manual_override, createdAt: meal.created_at, updatedAt: meal.updated_at,
+        } : null })
+      } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Correction unavailable', state: 'correction_pending', retryAllowed: error instanceof CaptureError && error.code === '40001' }, { status: error instanceof CaptureError && ['40001','22023','42501','55000'].includes(error.code) ? 409 : 503 }) }
+    }
 
     // Validate required fields
     if (!mealId) {
@@ -227,6 +245,8 @@ export async function GET(
     // Convert snake_case to camelCase for response
     const responseData: MealEntry = {
       id: meal.id,
+      captureRevision: meal.capture_revision,
+      captureProvenance: meal.capture_provenance,
       userId: meal.user_id,
       mealTimestamp: new Date(meal.meal_timestamp),
       photoUrl: meal.photo_url,
@@ -276,6 +296,16 @@ export async function DELETE(
 
     if (!mealId) {
       return NextResponse.json({ error: 'Meal ID is required' }, { status: 400 })
+    }
+
+    if (await auditedCaptureInstalled(supabase)) {
+      const input = await request.json().catch(() => null)
+      const identity = { entityId: mealId, expectedRevision: input?.expectedRevision, requestId: input?.requestId }
+      if (input?.expectedUserId !== user.id) return NextResponse.json({ error: 'The signed-in account changed.' }, { status: 403 })
+      if (!validCorrection(identity)) return NextResponse.json({ error: 'Reload the meal before deleting it.' }, { status: 422 })
+      const { data, error } = await supabase.rpc('delete_logged_activity', { p_kind: 'meal', p_entity_id: mealId, p_expected_revision: identity.expectedRevision, p_request_id: identity.requestId })
+      if (error) return NextResponse.json({ error: 'Deletion could not be confirmed; retry the same request.' }, { status: error.code === '40001' ? 409 : 503 })
+      return NextResponse.json({ success: true, receipt: data })
     }
 
     // Delete the meal (RLS ensures user can only delete their own meals)

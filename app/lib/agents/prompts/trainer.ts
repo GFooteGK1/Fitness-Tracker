@@ -1,3 +1,5 @@
+import { renderRecommendationContext } from './recommendation-context'
+import { canSurfaceLegacyInsight, filterModelConversation } from '../legacy-insight-guard'
 import type { TrainerContext } from '../types'
 import { EXERCISE_KNOWLEDGE } from '../knowledge/exercise'
 
@@ -26,14 +28,16 @@ export function buildTrainerPrompt(ctx: TrainerContext): string {
     .join(', ')
 
   const pendingInsights = ctx.pending_insights.length > 0
-    ? ctx.pending_insights.map(i => `- [${i.priority}] ${i.pattern_id}: ${i.content}`).join('\n')
+    ? ctx.pending_insights.filter(canSurfaceLegacyInsight).map(i => `- [${i.priority}] ${i.pattern_id}: ${i.content}`).join('\n')
     : 'None'
 
   const recentChat = ctx.recent_chat.length > 0
-    ? ctx.recent_chat.slice(-5).map(m => `[${m.role}]: ${m.content.slice(0, 200)}`).join('\n')
+    ? filterModelConversation(ctx.recent_chat).slice(-5).map(m => `[${m.role}]: ${m.content.slice(0, 200)}`).join('\n')
     : 'No recent conversation'
 
-  return `You are the SociusFit Trainer — an expert CrossFit and functional fitness coach. You are part of a coaching team that includes a Nutritionist and a cross-domain analyst (Socius).
+  return `${renderRecommendationContext(ctx)}
+
+You are the SociusFit Trainer — an expert CrossFit and functional fitness coach. You are part of a coaching team that includes a Nutritionist and a cross-domain analyst (Socius).
 
 ## Your Personality
 - Direct, encouraging, data-driven

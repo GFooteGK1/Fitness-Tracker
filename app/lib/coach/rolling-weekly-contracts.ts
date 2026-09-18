@@ -6,7 +6,7 @@ import type {
 export const ROLLING_WEEKLY_SCHEMA_VERSION = 1 as const
 export const ROLLING_WEEKLY_KERNEL_VERSION = '0.1.0'
 export const ROLLING_WEEKLY_POLICY_VERSION = 'rolling-weekly-0.1.0'
-export const ROLLING_WEEKLY_REVIEW_ALGORITHM_VERSION = 'weekly-review-0.1.0'
+export const ROLLING_WEEKLY_REVIEW_ALGORITHM_VERSION = 'weekly-review-0.3.0'
 
 export type RollingWeeklyAction =
   | 'continue'
@@ -35,6 +35,7 @@ export interface RollingWeeklyEmphasis {
 }
 
 export interface RollingTrainingDirection {
+  trainingIntent?: import('./planning-intent').PlanningIntentSnapshot
   schemaVersion: typeof ROLLING_WEEKLY_SCHEMA_VERSION
   goalSummary: string
   goalTargetDate: string | null
@@ -88,6 +89,7 @@ export function buildRollingTrainingDirection(
 ): RollingTrainingDirection {
   return {
     schemaVersion: ROLLING_WEEKLY_SCHEMA_VERSION,
+    ...(profile.trainingIntent ? { trainingIntent: structuredClone(profile.trainingIntent) } : {}),
     goalSummary: profile.athleteGoalSummary,
     goalTargetDate: options.goalTargetDate ?? profile.primaryGoal.outcome?.horizon.endsOn ?? null,
     currentEmphasis: [
@@ -112,6 +114,7 @@ export function validateRollingTrainingDirection(
   profile: ProgrammingProfile
 ): string[] {
   const errors: string[] = []
+  if (stableStringify(direction.trainingIntent ?? null) !== stableStringify(profile.trainingIntent ?? null)) errors.push('Training direction intent snapshot does not match the planning profile')
   if (direction.schemaVersion !== ROLLING_WEEKLY_SCHEMA_VERSION) {
     errors.push('Rolling training direction schema version is unsupported')
   }

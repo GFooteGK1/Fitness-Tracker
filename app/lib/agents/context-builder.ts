@@ -1,3 +1,6 @@
+import { freshCoachRecommendation } from '@/app/lib/recommendations/coach-context'
+import { isWhoopSyncEligible } from './whoop-context-eligibility'
+import { canSurfaceLegacyInsight } from './legacy-insight-guard'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import {
@@ -21,7 +24,7 @@ import { fetchCoachEvidenceContext } from '@/app/lib/coach/evidence-context'
 // 30-second TTL keeps data fresh enough for interactive use.
 
 const PASSIVE_CACHE_TTL_MS = 30_000
-interface PassiveCacheEntry { context: PassiveContext; expiresAt: number }
+interface PassiveCacheEntry { context: PassiveContext; expiresAt: number; tzOffset: number }
 const passiveContextCache = new Map<string, PassiveCacheEntry>()
 
 /** Invalidate cache for a user — call after a workout or meal is persisted. */
@@ -31,13 +34,8 @@ export function invalidatePassiveCache(userId: string): void {
 
 // ─── Default Targets ─────────────────────────────────────────────────
 
-const DEFAULT_TARGETS: MacroTargets = {
-  protein: 150,
-  carbs: 200,
-  fat: 65,
-  calories: 2000,
-  tolerance_pct: 10
-}
+// Numeric placeholders preserve arithmetic compatibility. They are never confirmed targets.
+const UNKNOWN_TARGETS: MacroTargets = { protein: 0, carbs: 0, fat: 0, calories: 0, tolerance_pct: 0 }
 
 // ─── Base Context Builder ────────────────────────────────────────────
 
@@ -52,25 +50,32 @@ const DEFAULT_TARGETS: MacroTargets = {
 export async function buildPassiveContext(userId: string, tzOffset = 0): Promise<PassiveContext> {
   const cacheNow = Date.now()
   const cached = passiveContextCache.get(userId)
-  if (cached && cacheNow < cached.expiresAt) return cached.context
+  const currentLocal = new Date(cacheNow + tzOffset * 60_000)
+  const currentDate = `${currentLocal.getUTCFullYear()}-${String(currentLocal.getUTCMonth() + 1).padStart(2, '0')}-${String(currentLocal.getUTCDate()).padStart(2, '0')}`
 
   const supabase = await createServerClient()
 
-  const [targets, todaysMeals, todaysWorkouts, whoopRecovery, whoopStrain,
+  // Connection/sync state is refreshed even when other passive data is cached.
+  const [whoop, currentRecommendation] = await Promise.all([fetchCurrentWhoop(supabase, userId, currentDate, cacheNow),freshCoachRecommendation(supabase,userId,tzOffset)])
+  if (cached && cacheNow < cached.expiresAt && cached.tzOffset === tzOffset && cached.context.current_date === currentDate) {
+    return { ...cached.context, ...currentRecommendation, whoop_context: whoop.context, has_whoop: whoop.connected,
+      today: { ...cached.context.today, latest_whoop_recovery: whoop.recovery, latest_whoop_strain: whoop.strain } }
+  }
+
+  const [targetState, todaysMeals, todaysWorkouts,
          recentChat, pendingInsights, weekSummaries, userProfile] = await Promise.all([
     fetchDailyTargets(supabase, userId),
     fetchTodaysMeals(supabase, userId, tzOffset),
     fetchTodaysWorkouts(supabase, userId, tzOffset),
-    fetchLatestWhoopRecovery(supabase, userId),
-    fetchLatestWhoopStrain(supabase, userId),
     fetchRecentChat(supabase, userId, 20),
     fetchPendingInsightsForContext(supabase, userId),
     fetchWeekToDateSummaries(supabase, userId, tzOffset),
     fetchUserProfile(supabase, userId)
   ])
 
+  const targets = targetState.targets
   const consumed = aggregateMacros(todaysMeals)
-  const remaining = calculateRemaining(consumed, targets)
+  const remaining = targetState.confirmed ? calculateRemaining(consumed, targets) : { protein: 0, carbs: 0, fat: 0, calories: 0 }
   const week = calculateWeekAdherence(weekSummaries, targets)
 
   // Compute user's local time by shifting UTC server time by tzOffset.
@@ -86,15 +91,18 @@ export async function buildPassiveContext(userId: string, tzOffset = 0): Promise
   const localDateStr = `${localNow.getUTCFullYear()}-${String(localNow.getUTCMonth() + 1).padStart(2, '0')}-${String(localNow.getUTCDate()).padStart(2, '0')}`
 
   const context: PassiveContext = {
+    ...currentRecommendation,
     user_id: userId,
     targets,
+    targets_confirmed: targetState.confirmed,
+    whoop_context: whoop.context,
     today: {
       meals_logged: todaysMeals.length,
       macros_consumed: consumed,
       macros_remaining: remaining,
       workouts_logged: todaysWorkouts.length,
-      latest_whoop_recovery: whoopRecovery?.score ?? null,
-      latest_whoop_strain: whoopStrain?.score ?? null
+      latest_whoop_recovery: whoop.recovery,
+      latest_whoop_strain: whoop.strain
     },
     week,
     recent_chat: recentChat,
@@ -102,11 +110,11 @@ export async function buildPassiveContext(userId: string, tzOffset = 0): Promise
     current_time: localTimeStr,                // e.g. "6:30 PM" (local time)
     day_of_week: dayOfWeek,                    // e.g. "Wednesday" (local day)
     current_date: localDateStr,                // e.g. "2026-02-28" (local date)
-    has_whoop: whoopRecovery !== null || whoopStrain !== null,
+    has_whoop: whoop.connected,
     user_profile: userProfile ?? undefined
   }
 
-  passiveContextCache.set(userId, { context, expiresAt: Date.now() + PASSIVE_CACHE_TTL_MS })
+  passiveContextCache.set(userId, { context, expiresAt: Date.now() + PASSIVE_CACHE_TTL_MS, tzOffset })
   return context
 }
 
@@ -135,22 +143,20 @@ async function fetchUserProfile(
 async function fetchDailyTargets(
   supabase: SupabaseClient,
   userId: string
-): Promise<MacroTargets> {
+): Promise<{ targets: MacroTargets; confirmed: boolean }> {
   const { data, error } = await supabase
     .from('daily_targets')
     .select('target_protein, target_carbs, target_fat, target_calories, tolerance_pct')
     .eq('user_id', userId)
     .single()
 
-  if (error || !data) return { ...DEFAULT_TARGETS }
-
-  return {
-    protein: parseFloat(data.target_protein) || DEFAULT_TARGETS.protein,
-    carbs: parseFloat(data.target_carbs) || DEFAULT_TARGETS.carbs,
-    fat: parseFloat(data.target_fat) || DEFAULT_TARGETS.fat,
-    calories: parseFloat(data.target_calories) || DEFAULT_TARGETS.calories,
-    tolerance_pct: parseFloat(data.tolerance_pct) || DEFAULT_TARGETS.tolerance_pct
+  const values = (['target_protein', 'target_carbs', 'target_fat', 'target_calories'] as const).map(key =>
+    data?.[key] !== null && data?.[key] !== undefined && data?.[key] !== '' ? Number(data[key]) : NaN)
+  if (error || !data || values.some(value => !Number.isFinite(value) || value < 0)) {
+    return { targets: { ...UNKNOWN_TARGETS }, confirmed: false }
   }
+  return { targets: { protein: values[0], carbs: values[1], fat: values[2], calories: values[3],
+    tolerance_pct: Number.isFinite(Number(data.tolerance_pct)) && Number(data.tolerance_pct) >= 0 ? Number(data.tolerance_pct) : 0 }, confirmed: true }
 }
 
 async function fetchTodaysMeals(
@@ -214,36 +220,29 @@ async function fetchTodaysWorkouts(
   return data
 }
 
-async function fetchLatestWhoopRecovery(
-  supabase: SupabaseClient,
-  userId: string
-): Promise<{ score: number } | null> {
-  const { data, error } = await supabase
-    .from('whoop_recovery')
-    .select('recovery_score')
-    .eq('user_id', userId)
-    .order('date', { ascending: false })
-    .limit(1)
-    .single()
-
-  if (error || !data) return null
-  return { score: data.recovery_score }
-}
-
-async function fetchLatestWhoopStrain(
-  supabase: SupabaseClient,
-  userId: string
-): Promise<{ score: number } | null> {
-  const { data, error } = await supabase
-    .from('whoop_cycles')
-    .select('strain')
-    .eq('user_id', userId)
-    .order('date', { ascending: false })
-    .limit(1)
-    .single()
-
-  if (error || !data) return null
-  return { score: data.strain }
+/** Current context requires a connected, completely synced, fresh source. Dates are retained. */
+async function fetchCurrentWhoop(supabase: SupabaseClient, userId: string, currentDate: string, asOf: number) {
+  const [connection, sync, recovery, strain] = await Promise.all([
+    supabase.from('whoop_tokens').select('id').eq('user_id', userId).single(),
+    supabase.from('whoop_sync_status').select('status,last_sync_at,error_message').eq('user_id', userId).single(),
+    supabase.from('whoop_recovery').select('recovery_score,date').eq('user_id', userId).order('date', { ascending: false }).limit(1).single(),
+    supabase.from('whoop_cycles').select('strain,date').eq('user_id', userId).order('date', { ascending: false }).limit(1).single(),
+  ])
+  const connected = !connection.error && Boolean(connection.data?.id)
+  const syncAfter = await supabase.from('whoop_sync_status').select('status,last_sync_at,error_message').eq('user_id', userId).single()
+  const complete = !sync.error && !syncAfter.error && sync.data?.last_sync_at === syncAfter.data?.last_sync_at
+    && isWhoopSyncEligible(connected, sync.data, asOf) && isWhoopSyncEligible(connected, syncAfter.data, asOf)
+  const recoveryDate = typeof recovery.data?.date === 'string' ? recovery.data.date : null
+  const strainDate = typeof strain.data?.date === 'string' ? strain.data.date : null
+  const recoveryValue = complete && !recovery.error && recoveryDate === currentDate && typeof recovery.data?.recovery_score === 'number'
+    && Number.isFinite(recovery.data.recovery_score) ? recovery.data.recovery_score : null
+  const strainValue = complete && !strain.error && strainDate === currentDate && typeof strain.data?.strain === 'number'
+    && Number.isFinite(strain.data.strain) ? strain.data.strain : null
+  return { connected, recovery: recoveryValue, strain: strainValue, context: {
+    syncEligible: complete,
+    status: recoveryValue !== null || strainValue !== null ? 'current' as const : 'unavailable' as const,
+    recoveryDate, strainDate, lastSyncAt: typeof sync.data?.last_sync_at === 'string' ? sync.data.last_sync_at : null,
+  } }
 }
 
 async function fetchPendingInsightsForContext(
@@ -259,7 +258,7 @@ async function fetchPendingInsightsForContext(
     .limit(10)
 
   if (error || !data) return []
-  return data as RecentInsight[]
+  return (data as RecentInsight[]).filter(canSurfaceLegacyInsight)
 }
 
 async function fetchWeekToDateSummaries(
@@ -373,9 +372,20 @@ export async function buildSociusContext(
       : Promise.resolve(undefined)
   ])
 
+  // History retrieval may outlast the passive source read. Require the same completed
+  // generation after all aggregate queries before combining them into model context.
+  const finalSync = await supabase.from('whoop_sync_status').select('status,last_sync_at,error_message').eq('user_id', userId).single()
+  const aggregateWhoopEligible = passive.whoop_context?.syncEligible === true && !finalSync.error
+    && passive.whoop_context.lastSyncAt === finalSync.data?.last_sync_at
+    && isWhoopSyncEligible(passive.has_whoop, finalSync.data, Date.now())
   return {
     ...passive,
-    thirty_day_summary: thirtyDaySummary,
+    ...(!aggregateWhoopEligible ? {
+      today: { ...passive.today, latest_whoop_recovery: null, latest_whoop_strain: null },
+      whoop_context: passive.whoop_context ? { ...passive.whoop_context, status: 'unavailable' as const, syncEligible: false } : undefined,
+    } : {}),
+    thirty_day_summary: aggregateWhoopEligible ? thirtyDaySummary
+      : { ...thirtyDaySummary, whoop_avg_recovery: null, whoop_avg_sleep_score: null },
     recent_insights: recentInsights,
     data_availability: dataAvailability,
     programming_context: programmingContext,
@@ -503,7 +513,7 @@ async function fetchRecentInsightsDetailed(
     .limit(20)
 
   if (error || !data) return []
-  return data as RecentInsight[]
+  return (data as RecentInsight[]).filter(canSurfaceLegacyInsight)
 }
 
 async function fetchDataAvailability(

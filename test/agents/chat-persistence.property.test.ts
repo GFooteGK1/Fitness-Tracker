@@ -103,7 +103,9 @@ function createFetchMock(data: unknown[]) {
     insert: vi.fn().mockReturnValue({ error: null }),
   }
 
-  return { from: vi.fn().mockReturnValue(chainable), _chain: chainable }
+  const insightChain: any = { select: vi.fn(() => insightChain), eq: vi.fn(() => insightChain), in: vi.fn(() => insightChain),
+    limit: vi.fn(() => ({ data: (data as ChatMessage[]).filter(m => m.related_entity_id).map(m => ({ id: m.related_entity_id, pattern_id: 'CON_PROG' })), error: null })) }
+  return { from: vi.fn((table: string) => table === 'insights' ? insightChain : chainable), _chain: chainable }
 }
 
 // ─── Property 19: Chat message persistence round-trip ────────────────
@@ -364,11 +366,12 @@ describe('Property 20: Chat retrieval ordering', () => {
       const mock = createFetchMock(descMessages)
       const result = await fetchRecentChat(mock as any, 'user-1')
 
-      // Same number of messages
-      expect(result.length).toBe(messages.length)
+      // Unresolved typed insight messages are withheld; ordinary content is preserved.
+      const visible = messages.filter(m => (m.role === 'user' || m.related_entity_type !== 'insight' || m.related_entity_id) && (m.role !== 'socius' || m.related_entity_type === 'insight'))
+      expect(result.length).toBe(visible.length)
 
       // Same set of IDs (content preserved, just reordered)
-      const inputIds = new Set(messages.map(m => m.id))
+      const inputIds = new Set(visible.map(m => m.id))
       const outputIds = new Set(result.map(m => m.id))
       expect(outputIds).toEqual(inputIds)
     }

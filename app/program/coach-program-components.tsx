@@ -2,6 +2,7 @@
 
 import React, { useState, type FormEvent } from 'react'
 import { SetupExercisePreferences, ExercisePreferenceNotes } from './exercise-preferences-editor'
+import { PrescriptionBasisDetails } from './prescription-basis-details'
 import type {
   ActiveCoachProgramSummary,
   CoachSessionPrescription,
@@ -366,11 +367,15 @@ export function CoachSetupForm({
       />
 
       {beforeAction}
+      {value.setupConfirmed !== undefined && <label className="mt-4 flex min-h-11 items-center gap-3 text-sm">
+        <input type="checkbox" checked={value.setupConfirmed} onChange={e => onChange({ ...value, setupConfirmed: e.target.checked })} />
+        These training days, session duration and equipment are accurate.
+      </label>}
 
       <button
         type="button"
         onClick={onSave}
-        disabled={saving}
+        disabled={saving || value.setupConfirmed === false}
         className="app-primary mt-6 w-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
         {saving ? 'Saving setup…' : saved ? 'Save updated setup' : actionLabel}
@@ -579,6 +584,7 @@ export function ProposalPreview({
       </p>
 
       <ExercisePreferenceNotes notes={proposal.profileSnapshot.preferenceNotes} />
+      <PrescriptionBasisDetails basis={proposal.profileSnapshot.prescriptionBasis} />
       <div className="mt-6 space-y-3">
         {proposal.weeks.map(week => {
           const sessions = week.sessions
@@ -652,6 +658,7 @@ export function ProposalPreview({
 }
 
 interface ActiveProgramViewProps {
+  feedbackV2?: boolean
   program: ActiveCoachProgramSummary
   onRecordSessionResult?: (
     sessionId: string,
@@ -667,7 +674,8 @@ export function ActiveProgramView({
   onRecordSessionResult,
   onEditFailedSessionResult = () => undefined,
   onRefreshPlan = async () => undefined,
-  savingSessionId = null
+  savingSessionId = null,
+  feedbackV2 = false
 }: ActiveProgramViewProps) {
   const todaySession = selectTodaySession(program)
   const todayPrescription = todaySession && isCompletePrescription(todaySession.prescription)
@@ -703,6 +711,7 @@ export function ActiveProgramView({
       <div className="mt-6">
         {todayIsActionable && todayPrescription ? (
           <TodaySessionCard
+            feedbackV2={feedbackV2}
             key={todaySession.id}
             session={todaySession}
             prescription={todayPrescription}
@@ -828,6 +837,11 @@ function WeeklyReviewCard({ review }: { review: CoachWeeklyReview }) {
           {review.signals.map(signal => <li key={signal}>• {signal}</li>)}
         </ul>
       )}
+      {review.explicitRpeCount !== undefined && (
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+          Session effort reported for {review.explicitRpeCount} of {review.eligibleCompletionCount ?? review.completedSessions} completed sessions.
+        </p>
+      )}
       {proposal && (
         <div className="mt-4 border-t border-[var(--accent-line)] pt-4">
           <h4 className="font-semibold text-gray-900 dark:text-white">{proposal.title}</h4>
@@ -851,9 +865,10 @@ function WeeklyReviewCard({ review }: { review: CoachWeeklyReview }) {
 function SessionCheckinSummaryCard({ checkin }: { checkin: CoachSessionCheckinSummary }) {
   return (
     <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-gray-950/50 dark:text-gray-300">
-      {checkin.outcome === 'skipped' ? 'Skipped' : `Session RPE ${checkin.sessionRpe}`}
-      {' · '}{energyLabel(checkin.energy)} energy
-      {checkin.pain !== 'none' ? ` · ${painLabel(checkin.pain)}` : ''}
+      {checkin.outcome === 'skipped' ? 'Skipped' : checkin.sessionRpe === null ? 'Completed' : `Session RPE ${checkin.sessionRpe}`}
+      {checkin.energy !== null && <> · {energyLabel(checkin.energy)} energy</>}
+      {checkin.pain !== null && checkin.pain !== 'none' ? ` · ${painLabel(checkin.pain)}` : ''}
+      {checkin.feedbackVersion !== 2 && <span> · Earlier feedback; explicit reporting unknown</span>}
       {checkin.note && <p className="mt-1">{checkin.note}</p>}
     </div>
   )
@@ -866,10 +881,12 @@ function sessionStatusLabel(status: 'planned' | 'completed' | 'skipped'): string
 }
 
 function energyLabel(energy: CoachSessionCheckinInput['energy']): string {
+  if (energy === null) return 'Unanswered'
   return energy === 'okay' ? 'Okay' : energy.charAt(0).toUpperCase() + energy.slice(1)
 }
 
 function painLabel(pain: CoachSessionCheckinInput['pain']): string {
+  if (pain === null) return 'Unanswered'
   return pain === 'mild' ? 'Mild pain signal' : 'Concerning pain signal'
 }
 

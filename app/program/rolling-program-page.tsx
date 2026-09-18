@@ -1,8 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { recommendationOrigin, refreshAfterCanonicalSave } from '@/app/lib/client/recommendations'
+import { sendCaptureCorrection } from '@/app/lib/client/logging-request'
+import { CaptureReceiptPanel, type ReceiptResult } from '@/app/components/capture/CaptureReceiptPanel'
+import { CaptureRecovery } from '@/app/components/capture/CaptureRecovery'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
-import type { CompleteCoachPlanningInput } from '@/app/lib/coach/complete-intake'
+import { useAuth } from '@/app/lib/auth/AuthContext'
+import { savedSetupIsConfirmed, type CompleteCoachPlanningInput } from '@/app/lib/coach/complete-intake'
 import type { AtomicSessionCompletionInput } from '@/app/lib/coach/session-completion'
 import type {
   CoachRuntimeContext,
@@ -17,6 +22,8 @@ import {
   StrengthAssessmentPanel
 } from './coach-program-components'
 import { ExercisePreferenceNotes } from './exercise-preferences-editor'
+import { PrescriptionBasisDetails } from './prescription-basis-details'
+import { TrainingIntentPanel } from './training-intent-editor'
 import { CoachTrustCenter } from './coach-trust-center'
 import {
   WeeklyProgramView,
@@ -29,10 +36,11 @@ const INITIAL_PLANNING_INPUT: CompleteCoachPlanningInput = {
   primaryDomain: 'strength',
   goal: '',
   experience: 'consistent',
-  trainingDays: ['monday', 'wednesday', 'friday'],
+  trainingDays: [],
+  setupConfirmed: false,
   sessionMinutes: 60,
-  equipment: 'Bodyweight',
-  resolvedEquipmentIds: ['bodyweight'],
+  equipment: '',
+  resolvedEquipmentIds: [],
   constraints: '',
   constraintKinds: [],
   secondaryGoals: [],
@@ -42,6 +50,10 @@ const INITIAL_PLANNING_INPUT: CompleteCoachPlanningInput = {
 type ReviewWithId = RollingWeeklyReview & { id?: string }
 
 export default function RollingProgramPage() {
+  const { user, profile } = useAuth()
+  const authenticatedUserId = useRef(user?.id)
+  authenticatedUserId.current = user?.id
+  const [captureResult, setCaptureResult] = useState<ReceiptResult | null>(null)
   const [context, setContext] = useState<CoachRuntimeContext | null>(null)
   const [weeklyState, setWeeklyState] = useState<WeeklyCoachState | null>(null)
   const [planningInput, setPlanningInput] = useState<CompleteCoachPlanningInput>(INITIAL_PLANNING_INPUT)
@@ -65,8 +77,16 @@ export default function RollingProgramPage() {
   const reviewKey = useRef<string | null>(null)
   const assessmentKey = useRef<string | null>(null)
   const sessionResultKeys = useRef(new Map<string, string>())
+  const sessionResultOwners = useRef(new Map<string, string>())
+  const sessionOrigins = useRef(new Map<string, string | undefined>())
+  const loadGeneration = useRef(0)
+  const loadedOwner = useRef<string | null>(null)
 
   const loadState = useCallback(async () => {
+    const requestOwner = authenticatedUserId.current
+    if (!requestOwner || (loadedOwner.current && loadedOwner.current !== requestOwner)) return
+    const generation = ++loadGeneration.current
+    const currentRequest = () => authenticatedUserId.current === requestOwner && loadGeneration.current === generation
     setLoading(true)
     setError(null)
     try {
@@ -74,13 +94,16 @@ export default function RollingProgramPage() {
         fetch('/api/coach'),
         fetch('/api/coach/weekly')
       ])
-      const coachBody = await coachResponse.json()
+      const [coachBody, weeklyBody] = await Promise.all([coachResponse.json(), weeklyResponse.json()])
+      if (!currentRequest()) return
       if (!coachResponse.ok) throw new Error(errorMessage(coachBody, 'Coach state unavailable'))
       const nextContext = coachBody.context as CoachRuntimeContext
+      if (nextContext.userId !== undefined && nextContext.userId !== requestOwner) throw new Error('The signed-in account changed. Refresh your account.')
+      if (nextContext.capabilities?.feedbackV2 && nextContext.userId !== requestOwner) throw new Error('Coach account identity is unavailable. Refresh before logging.')
+      loadedOwner.current = requestOwner
       setContext(nextContext)
       setPlanningInput(current => hydratePlanningInput(current, nextContext))
 
-      const weeklyBody = await weeklyResponse.json()
       if (weeklyResponse.ok) {
         const nextWeeklyState = weeklyBody as WeeklyCoachState
         setWeeklyState(nextWeeklyState)
@@ -92,17 +115,23 @@ export default function RollingProgramPage() {
           : nextWeeklyState.history.reviews.find(item => (
               item.base_plan_version_id === nextWeeklyState.currentWeek?.id
             )) ?? null
-        setProposalReviewId(currentReview?.id ?? null)
-        setProposalReviewAction(currentReview?.action ?? null)
+        if (currentReview?.sourceInvalidated) {
+          reviewKey.current = null
+          proposalKey.current = null
+          setReview(null)
+          setProposal(null)
+        }
+        setProposalReviewId(currentReview?.sourceInvalidated ? null : currentReview?.id ?? null)
+        setProposalReviewAction(currentReview?.sourceInvalidated ? null : currentReview?.action ?? null)
       } else {
         setWeeklyState(null)
         setProposalReviewId(null)
         setProposalReviewAction(null)
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Coach state unavailable')
+      if (currentRequest()) setError(caught instanceof Error ? caught.message : 'Coach state unavailable')
     } finally {
-      setLoading(false)
+      if (currentRequest()) setLoading(false)
     }
   }, [])
 
@@ -111,10 +140,11 @@ export default function RollingProgramPage() {
     setPlanningInput(current => current.startDate ? current : { ...current, startDate })
     setGoalTargetDate(current => current || addLocalDays(startDate, 90))
     void loadState()
-  }, [loadState])
+  }, [loadState, user?.id])
 
   const updatePlanningInput = (next: CompleteCoachPlanningInput) => {
-    setPlanningInput(next)
+    const setupChanged = JSON.stringify([next.trainingDays,next.sessionMinutes,next.resolvedEquipmentIds,next.equipment]) !== JSON.stringify([planningInput.trainingDays,planningInput.sessionMinutes,planningInput.resolvedEquipmentIds,planningInput.equipment])
+    setPlanningInput(setupChanged ? { ...next, setupConfirmed: false } : next)
     setProposal(null)
     setStatus(null)
     setError(null)
@@ -171,6 +201,7 @@ export default function RollingProgramPage() {
         body: JSON.stringify({
           planningInput,
           goalTargetDate,
+          tzOffset: getTimezoneOffset(),
           idempotencyKey: proposalKey.current
         })
       })
@@ -251,6 +282,7 @@ export default function RollingProgramPage() {
           ? {
               idempotencyKey: proposalKey.current,
               replacementPlanningInput: planningInput,
+              tzOffset: getTimezoneOffset(),
               replacementGoalTargetDate: goalTargetDate,
               replacementHypothesis
             }
@@ -282,6 +314,7 @@ export default function RollingProgramPage() {
           planningInput,
           goalTargetDate,
           hypothesis: replacementHypothesis,
+          tzOffset: getTimezoneOffset(),
           idempotencyKey: proposalKey.current
         })
       })
@@ -310,7 +343,10 @@ export default function RollingProgramPage() {
         body: JSON.stringify({ idempotencyKey: selected.idempotencyKey })
       })
       const body = await response.json()
-      if (!response.ok) throw new Error(errorMessage(body, 'Unable to accept the weekly proposal'))
+      if (!response.ok) {
+        if (response.status === 409) await loadState()
+        throw new Error(errorMessage(body, 'Unable to accept the weekly proposal'))
+      }
       setContext(body.context as CoachRuntimeContext)
       setProposal(null)
       setReview(null)
@@ -321,6 +357,7 @@ export default function RollingProgramPage() {
       proposalKey.current = null
       reviewKey.current = null
       setStatus('Next week accepted.')
+      if (user?.id) refreshAfterCanonicalSave(user.id)
       await loadState()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to accept the weekly proposal')
@@ -333,22 +370,28 @@ export default function RollingProgramPage() {
     sessionId: string,
     completion: AtomicSessionCompletionInput
   ): Promise<string | null> => {
+    const expectedUserId = sessionResultOwners.current.get(sessionId) ?? context?.userId
+    if (expectedUserId && authenticatedUserId.current !== expectedUserId) return 'The signed-in account changed. Restore the original account before retrying.'
+    if (completion.feedback.feedbackVersion === 2 && !expectedUserId) return 'Refresh your account before saving this session.'
+    if (expectedUserId) sessionResultOwners.current.set(sessionId, expectedUserId)
     setSavingSessionId(sessionId)
     setStatus(null)
     setError(null)
     const idempotencyKey = sessionResultKeys.current.get(sessionId)
       ?? createIdempotencyKey('coach-session')
     sessionResultKeys.current.set(sessionId, idempotencyKey)
+    if (!sessionOrigins.current.has(sessionId)) sessionOrigins.current.set(sessionId, completion.feedback.feedbackVersion === 2 ? recommendationOrigin() : undefined)
     try {
-      const response = await fetch(`/api/coach/sessions/${sessionId}/complete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idempotencyKey, ...completion })
-      })
+      const response = await sendCaptureCorrection(`/api/coach/sessions/${sessionId}/complete`, 'POST',
+        { idempotencyKey, expectedUserId, recommendationId: sessionOrigins.current.get(sessionId), ...completion }, expectedUserId ?? '')
       const body = await response.json()
       if (!response.ok) return errorMessage(body, 'Unable to save session result')
-      setContext(body.context as CoachRuntimeContext)
+      if (expectedUserId && authenticatedUserId.current !== expectedUserId) return 'The signed-in account changed. Restore the original account to reconcile this save.'
+      if (body.context) setContext(body.context as CoachRuntimeContext)
+      setCaptureResult(body)
       sessionResultKeys.current.delete(sessionId)
+      sessionResultOwners.current.delete(sessionId)
+      sessionOrigins.current.delete(sessionId)
       setStatus(body.result?.workout_id
         ? 'Session and performance evidence saved.'
         : 'Skipped session saved as review evidence.')
@@ -378,6 +421,7 @@ export default function RollingProgramPage() {
         assessments: [assessment, ...current.assessments.filter(item => item.id !== assessment.id)]
       } : current)
       assessmentKey.current = null
+      if (user?.id) refreshAfterCanonicalSave(user.id)
       return null
     } catch {
       return 'Unable to save baseline'
@@ -387,10 +431,12 @@ export default function RollingProgramPage() {
   const weeklyProgram = weeklyState?.program && context?.activeProgram
     ? { state: weeklyState, activeProgram: context.activeProgram }
     : null
+  const accountChanged = Boolean(context?.userId && user?.id !== context.userId)
 
   return (
     <ProtectedRoute>
-      <main className="mx-auto max-w-5xl space-y-5 pb-10">
+      {accountChanged && <p role="alert" className="app-notice app-notice-error">The signed-in account changed. Restore the original account to continue this entry, or reload to open the current account.</p>}
+      <main hidden={accountChanged} className="mx-auto max-w-5xl space-y-5 pb-10">
         <header className="py-2">
           <p className="app-eyebrow">Made for your week</p>
           <h1 className="app-title">Your training plan</h1>
@@ -399,8 +445,11 @@ export default function RollingProgramPage() {
           </p>
         </header>
 
+        {captureResult && <CaptureReceiptPanel result={captureResult} />}
+        <CaptureRecovery />
         {status && <p role="status" className="app-notice app-notice-success text-sm font-medium">{status}</p>}
         {error && <p role="alert" className="app-notice app-notice-error text-sm">{error}</p>}
+        {!loading && context?.storageAvailable && <TrainingIntentPanel profileGoals={profile?.fitnessGoals} goal={planningInput.goal} />}
 
         {loading ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
@@ -413,6 +462,7 @@ export default function RollingProgramPage() {
           </section>
         ) : weeklyProgram ? (
           <WeeklyProgramView
+            feedbackV2={context.capabilities?.feedbackV2 === true}
             state={weeklyProgram.state}
             activeProgram={weeklyProgram.activeProgram}
             review={review}
@@ -441,6 +491,7 @@ export default function RollingProgramPage() {
               />
             )}
             <ActiveProgramView
+              feedbackV2={context.capabilities?.feedbackV2 === true}
               program={context.activeProgram}
               onRecordSessionResult={recordSessionResult}
               onEditFailedSessionResult={sessionId => sessionResultKeys.current.delete(sessionId)}
@@ -549,6 +600,7 @@ function WeeklyProposalCard({
         Nothing changes until you accept this week.
       </p>
       <ExercisePreferenceNotes notes={proposal.proposal.profileSnapshot.preferenceNotes} />
+      <PrescriptionBasisDetails basis={proposal.proposal.profileSnapshot.prescriptionBasis} />
       <details className="mt-4 rounded-xl border border-[var(--accent-line)] bg-white/70 dark:bg-gray-900/70">
         <summary className="flex min-h-11 cursor-pointer items-center px-4 py-3 font-semibold text-[var(--accent)]">
           Inspect proposed sessions
@@ -635,8 +687,10 @@ function hydratePlanningInput(
   const schedule = memory('training_schedule')
   const equipment = memory('available_equipment')
   const constraints = memory('training_constraints')
-  return {
+  const hydrated: CompleteCoachPlanningInput = {
     ...current,
+    setupConfirmed: true,
+    secondaryGoals: Array.isArray(goal?.secondaryGoals) ? goal.secondaryGoals as CompleteCoachPlanningInput['secondaryGoals'] : current.secondaryGoals,
     primaryDomain: isDomain(goal?.primaryDomain) ? goal.primaryDomain : current.primaryDomain,
     goal: typeof goal?.goal === 'string' ? goal.goal : current.goal,
     experience: ['new_or_returning', 'consistent', 'experienced'].includes(String(schedule?.experience))
@@ -658,6 +712,7 @@ function hydratePlanningInput(
       : current.constraintKinds,
     startDate: current.startDate || nextMonday()
   }
+  return { ...hydrated, setupConfirmed: savedSetupIsConfirmed(schedule, equipment) }
 }
 
 function isDomain(value: unknown): value is CompleteCoachPlanningInput['primaryDomain'] {

@@ -1,3 +1,5 @@
+import { renderRecommendationContext } from './recommendation-context'
+import { canSurfaceLegacyInsight, filterModelConversation } from '../legacy-insight-guard'
 import type { SociusContext } from '../types'
 import { COACH_REFERENCE_MANIFEST } from '@/app/lib/coach/reference'
 import { COACH_POLICY_VERSION } from '@/app/lib/coach/policy'
@@ -13,15 +15,15 @@ export function buildSociusPrompt(ctx: SociusContext): string {
   const workoutTypesBreakdown = `Metcon: ${summary.workout_types.metcon}, Strength: ${summary.workout_types.strength}, Cardio: ${summary.workout_types.cardio}, EMOM: ${summary.workout_types.emom}`
 
   const insightList = ctx.recent_insights.length > 0
-    ? ctx.recent_insights.map(i => `- [${i.priority}] ${i.pattern_id}: ${i.content}`).join('\n')
+    ? ctx.recent_insights.filter(canSurfaceLegacyInsight).map(i => `- [${i.priority}] ${i.pattern_id}: ${i.content}`).join('\n')
     : 'No recent insights'
 
   const pendingInsights = ctx.pending_insights.length > 0
-    ? ctx.pending_insights.map(i => `- [${i.priority}] ${i.pattern_id}: ${i.content}`).join('\n')
+    ? ctx.pending_insights.filter(canSurfaceLegacyInsight).map(i => `- [${i.priority}] ${i.pattern_id}: ${i.content}`).join('\n')
     : 'None'
 
   const recentChat = ctx.recent_chat.length > 0
-    ? ctx.recent_chat.slice(-5).map(m => `[${m.role}]: ${m.content.slice(0, 200)}`).join('\n')
+    ? filterModelConversation(ctx.recent_chat).slice(-5).map(m => `[${m.role}]: ${m.content.slice(0, 200)}`).join('\n')
     : 'No recent conversation'
 
   const userGoals = ctx.user_profile
@@ -94,7 +96,9 @@ ${ctx.user_profile.body_metrics && Object.keys(ctx.user_profile.body_metrics).le
     ? 'Available'
     : 'Unavailable or not migrated; do not imply that coach state was saved'
 
-  return `You are Socius, the SociusFit cross-domain analyst. You are part of a coaching team that includes a Trainer and a Nutritionist.
+  return `${renderRecommendationContext(ctx)}
+
+You are Socius, the SociusFit cross-domain analyst. You are part of a coaching team that includes a Trainer and a Nutritionist.
 
 ## Your Job
 - Synthesize workouts, nutrition, recovery, sleep, strain, and user goals.
@@ -149,7 +153,7 @@ ${activeProgramSummary}
 - Workouts: ${avail.has_workouts ? `Yes (${avail.workout_days} days)` : 'No data'}
 - Meals: ${avail.has_meals ? `Yes (${avail.meal_days} days)` : 'No data'}
 - WHOOP: ${avail.has_whoop ? 'Connected' : 'Not connected'}
-- Targets: ${avail.has_targets ? 'Set' : 'Not set'}
+- Targets: ${ctx.targets_confirmed === true ? 'Set' : 'Unknown'}
 
 ## 30-Day Summary
 - Workouts: ${summary.workout_count} total (${workoutTypesBreakdown})
@@ -160,10 +164,10 @@ ${activeProgramSummary}
 - WHOOP Avg Sleep Score: ${summary.whoop_avg_sleep_score !== null ? `${summary.whoop_avg_sleep_score.toFixed(0)}` : 'N/A'}
 
 ## Week-to-Date (${ctx.week.days_elapsed} days)
-- Status: ${ctx.week.overall_status}
+- Status: ${ctx.targets_confirmed === true ? ctx.week.overall_status : 'Unknown: no confirmed targets'}
 - Actual: P:${ctx.week.actual.protein}g C:${ctx.week.actual.carbs}g F:${ctx.week.actual.fat}g Cal:${ctx.week.actual.calories}
-- Prorated Target: P:${ctx.week.prorated_target.protein}g C:${ctx.week.prorated_target.carbs}g F:${ctx.week.prorated_target.fat}g Cal:${ctx.week.prorated_target.calories}
-- Adherence: P:${ctx.week.adherence_pct.protein.toFixed(0)}% C:${ctx.week.adherence_pct.carbs.toFixed(0)}% F:${ctx.week.adherence_pct.fat.toFixed(0)}% Cal:${ctx.week.adherence_pct.calories.toFixed(0)}%
+${ctx.targets_confirmed === true ? `- Prorated Target: P:${ctx.week.prorated_target.protein}g C:${ctx.week.prorated_target.carbs}g F:${ctx.week.prorated_target.fat}g Cal:${ctx.week.prorated_target.calories}
+- Adherence: P:${ctx.week.adherence_pct.protein.toFixed(0)}% C:${ctx.week.adherence_pct.carbs.toFixed(0)}% F:${ctx.week.adherence_pct.fat.toFixed(0)}% Cal:${ctx.week.adherence_pct.calories.toFixed(0)}%` : 'Target comparison and adherence unavailable: no confirmed targets.'}
 
 ## Programming Readiness Summary
 ${programmingSummary}
@@ -181,16 +185,14 @@ ${pendingInsights}
 ${recentChat}
 
 ## Pattern Library
-- CAL_DEF: Caloric Deficit on High-Strain Day. Detection: strain and calorie intake mismatch. Urgency: URGENT when strain >= 14 and calories < 1500. Impact: under-fueling can degrade recovery and next-day readiness.
 - OVER_TRN: Overtraining Indicators. Detection: high training volume with declining recovery. Urgency: higher when recovery drops across multiple hard sessions. Impact: injury and performance risk.
-- NUT_PERF: Nutrition-Performance Correlation. Detection: macro adherence and workout performance relationship. Urgency: higher when fueling repeatedly precedes poor performance. Impact: better nutrition timing can improve output.
 - REC_VOL: Recovery-Volume Balance. Detection: recovery score mismatch with planned training volume. Urgency: higher when recovery is low and training demand is high. Impact: adjust intensity or volume.
-- PRO_REC: Protein Intake vs Recovery. Detection: protein intake and recovery relationship. Urgency: higher when protein is consistently below target. Impact: muscle repair and adaptation.
 - SLEEP_PERF: Sleep Quality Impact on Performance. Detection: sleep score relationship with next-day performance. Urgency: higher after poor sleep before hard training. Impact: readiness and pacing.
-- HRV_TREND: HRV Trend Analysis. Detection: HRV trend over recent days. Urgency: higher on sharp or persistent downward trends. Impact: recovery signal.
-- STRAIN_NUT: Strain-Nutrition Balance. Detection: mismatch between daily strain and fueling. Urgency: higher when high strain combines with low calories or carbs. Impact: replenishment and adaptation.
 - HYDRA: Hydration Indicators. Detection: elevated resting HR, low HRV, or high skin temp. Urgency: higher when multiple indicators align. Impact: hydration and recovery.
 - CON_PROG: Consistent Progression Tracking. Detection: consistent progression in training frequency, volume, or benchmarks. Urgency: informational unless progress stalls. Impact: reinforce what is working.
+
+## Evidence limits
+Do not infer nutrition-performance links from adherence or workout counts. Do not infer an HRV trend from recovery scores. Partial-day or unreviewed food logs cannot establish under-fueling. These retired insight classes remain unavailable regardless of confidence. Preserve raw observations and acknowledge missing source evidence.
 
 ## Instructions
 1. For programming questions, explicitly consider goals, recent training load, current recovery, sleep, strain, and fueling.
@@ -214,7 +216,7 @@ You MUST respond with valid JSON only. No markdown, no backticks, no other text.
   "insights": [
     {
       "id": "generated-uuid",
-      "pattern_id": "CAL_DEF|OVER_TRN|NUT_PERF|REC_VOL|PRO_REC|SLEEP_PERF|HRV_TREND|STRAIN_NUT|HYDRA|CON_PROG",
+      "pattern_id": "OVER_TRN|REC_VOL|SLEEP_PERF|HYDRA|CON_PROG",
       "priority": "urgent|notable|informational",
       "confidence": 0.0,
       "content": "Human-readable description of the detected pattern",

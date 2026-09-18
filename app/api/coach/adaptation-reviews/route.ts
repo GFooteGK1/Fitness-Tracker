@@ -15,6 +15,7 @@ import {
 import { buildCompleteEightWeekPlan } from '@/app/lib/coach/complete-program'
 import { fetchCoachEvidenceContext } from '@/app/lib/coach/evidence-context'
 import type { CoachSessionCheckinSummary } from '@/app/lib/coach/execution-feedback'
+import { hasExplicitFeedback } from '@/app/lib/coach/execution-feedback'
 import { validateCompleteProgrammingPlan } from '@/app/lib/coach/program-validator'
 import type {
   ActiveCoachProgramSummary,
@@ -140,7 +141,7 @@ export async function POST(request: Request) {
 
     let proposal
     try {
-      const profile = buildProgrammingProfile(validated.value, runtimeContext.assessments)
+      const profile = await refreshConfirmedPlanningContext(supabase, user.id, buildProgrammingProfile(validated.value, runtimeContext.assessments))
       proposal = buildCompleteEightWeekPlan(profile)
       const validation = validateCompleteProgrammingPlan(proposal)
       if (!validation.ok) throw new Error(validation.errors.join('; '))
@@ -281,7 +282,7 @@ function buildExecutionSummary(
     && checkin.occurredAt >= startsAt
     && checkin.occurredAt <= asOf
   ))
-  const rpes = checkins.flatMap(checkin => checkin.sessionRpe === null ? [] : [checkin.sessionRpe])
+  const rpes = checkins.flatMap(checkin => checkin.sessionRpe === null || !hasExplicitFeedback(checkin, 'sessionRpe') ? [] : [checkin.sessionRpe])
   const completedSessionIds = sessions.filter(session => session.status === 'completed').map(session => session.id)
   const skippedSessionIds = sessions.filter(session => session.status === 'skipped').map(session => session.id)
   return {
@@ -314,7 +315,7 @@ function buildSafetySignals(
           severity: 'pause',
           occurredAt: checkin.occurredAt
         })
-      } else if (checkin.pain === 'mild') {
+    } else if (checkin.pain === 'mild' && hasExplicitFeedback(checkin, 'pain')) {
         signals.push({
           id: `${checkin.id}:pain`,
           kind: 'repeated_pain',
@@ -330,7 +331,7 @@ function buildSafetySignals(
           occurredAt: checkin.occurredAt
         })
       }
-      if (checkin.energy === 'low') {
+    if (checkin.energy === 'low' && hasExplicitFeedback(checkin, 'energy')) {
         signals.push({
           id: `${checkin.id}:energy`,
           kind: 'low_energy',
@@ -406,3 +407,4 @@ function stableStringify(value: unknown): string {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
+import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'

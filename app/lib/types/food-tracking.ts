@@ -50,6 +50,8 @@ export interface FoodItem {
 
 // Main meal entry interface matching the meals table
 export interface MealEntry {
+  captureRevision?: number;
+  captureProvenance?: import('../capture/contracts').CaptureProvenance;
   id: string;
   userId: string;
   mealTimestamp: Date;
@@ -119,6 +121,9 @@ export interface AdherenceStatus {
 
 // Meal updates interface for manual overrides
 export interface MealUpdates {
+  expectedRevision?: number;
+  expectedUserId?: string;
+  requestId?: string;
   totalProtein?: number;
   totalCarbs?: number;
   totalFat?: number;
@@ -156,7 +161,11 @@ export interface DailyTargetsInsert {
 
 // API response interfaces
 export interface MealUploadResponse {
-  mealId: string;
+  receipt?: import('../capture/contracts').CaptureReceipt;
+  receipts?: import('../capture/contracts').CaptureReceipt[];
+  receiptBundle?: import('../capture/contracts').CaptureReceiptBundle;
+  state?: import('../capture/contracts').CaptureState;
+  mealId?: string;
   analysisStatus: 'processing' | 'complete' | 'failed';
   photoUrl?: string | null;
   expiresAt?: string;

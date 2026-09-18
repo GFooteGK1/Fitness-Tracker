@@ -6,14 +6,16 @@ import '@testing-library/jest-dom'
 
 import FastMealLogger from '@/app/components/FastMealLogger'
 
+vi.mock('@/app/lib/auth/AuthContext', () => ({ useAuth: () => ({ user: { id: 'athlete-a' } }) }))
+vi.mock('@/app/lib/auth/supabase', () => ({ createClient: () => ({ auth: { getUser: async () => ({ data: { user: { id: 'athlete-a' } } }) } }) }))
 const requestId = '33333333-3333-4333-8333-333333333333'
 
 function jsonResponse(body: unknown, ok = true) {
-  return { ok, json: vi.fn().mockResolvedValue(body) }
+  return new Response(JSON.stringify(body), { status: ok ? 200 : 503 })
 }
 
 describe('FastMealLogger', () => {
-  beforeEach(() => vi.stubGlobal('crypto', { randomUUID: vi.fn(() => requestId) }))
+  beforeEach(() => { sessionStorage.clear(); vi.stubGlobal('crypto', { randomUUID: vi.fn(() => requestId) }) })
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
   it('distinguishes an unavailable recent-meal history from an empty one', async () => {

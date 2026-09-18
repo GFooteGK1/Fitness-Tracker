@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
 import { detectPRsFromBlocks, type WorkoutBlock } from '@/app/lib/pr-detection'
+import { auditedCaptureInstalled } from '@/app/lib/capture/compatibility'
 
 export async function POST(request: Request) {
   try {
@@ -15,6 +16,17 @@ export async function POST(request: Request) {
     const { workoutId, blocks } = await request.json() as {
       workoutId: string;
       blocks: WorkoutBlock[];
+    }
+
+    if (await auditedCaptureInstalled(supabase)) {
+      const { data: workout, error } = await supabase.from('workouts').select('id,capture_revision').eq('id', workoutId).eq('user_id', user.id).maybeSingle()
+      if (error || !workout) return apiError('Workout unavailable', 404)
+      const { data: records, error: recordsError } = await supabase.from('personal_records').select('*').eq('user_id', user.id).eq('workout_id', workoutId)
+      if (recordsError) return apiError('Record projections unavailable', 503)
+      // Canonical save/amend transactions own projections. Stale client blocks cannot recreate an old record.
+      return NextResponse.json({ prs: (records ?? []).map(record => ({ exercise: record.exercise, prType: record.pr_type,
+        newRecord: Number(record.value), previousBest: Number(record.previous_value ?? 0), isPR: record.previous_value !== null })),
+        captureRevision: workout.capture_revision, projectionsStatus: 'supported_reported_quantities_only' })
     }
 
     if (!workoutId || !blocks || !Array.isArray(blocks)) {

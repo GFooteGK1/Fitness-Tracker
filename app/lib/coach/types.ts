@@ -288,6 +288,8 @@ export interface ActiveCoachProgramSummary {
 }
 
 export interface CoachRuntimeContext {
+  userId?: string
+  capabilities?: { feedbackV2: boolean }
   generatedAt: string
   storageAvailable: boolean
   doctrineVersion: string

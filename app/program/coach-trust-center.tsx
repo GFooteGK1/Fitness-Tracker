@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useAuth } from '@/app/lib/auth/AuthContext'
+import { refreshAfterCanonicalSave } from '@/app/lib/client/recommendations'
 
 import type {
   CoachTrustCenter as CoachTrustCenterModel,
@@ -11,6 +13,8 @@ import type {
 } from '@/app/lib/coach/trust-center'
 import { validateExercisePreferences, type ExercisePreferences } from '@/app/lib/coach/exercise-preferences'
 import { ExercisePreferencesEditor, PREFERENCES_CHANGED_EVENT } from './exercise-preferences-editor'
+import { PlanningIntentEditor } from './training-intent-editor'
+import { validatePlanningIntent } from '@/app/lib/coach/planning-intent'
 import { QwikImportPanel } from './qwik-import-panel'
 
 interface CoachTrustCenterProps {
@@ -35,6 +39,7 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
+  const { user } = useAuth()
   const [trust, setTrust] = useState<CoachTrustCenterModel | null>(null)
   const [preferencesEnabled, setPreferencesEnabled] = useState(false)
   const [addingPreferences, setAddingPreferences] = useState(false)
@@ -93,6 +98,7 @@ export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
       })
       const body = await response.json()
       if (!response.ok) throw new Error(errorMessage(body, 'Unable to save review'))
+      if (user?.id) refreshAfterCanonicalSave(user.id)
       setTrust(body.trust as CoachTrustCenterModel)
       retryKeys.current.delete(actionKey)
       setEditMemoryId(null)
@@ -411,6 +417,16 @@ function MemoryCorrectionForm(props: {
   onSave: (value: Record<string, unknown>) => void
   saving: boolean
 }) {
+  if (props.memory.memoryKey === 'training_intent') {
+    const parsed = validatePlanningIntent(props.value)
+    if (!validatePlanningIntent(props.memory.content).ok) return <p role="alert">Saved outcomes need review in Program before correction.</p>
+    return <form className="mt-4 space-y-3 rounded-xl border p-4" onSubmit={e => { e.preventDefault(); if (parsed.ok) props.onSave(props.value) }}>
+      <PlanningIntentEditor value={props.value as unknown as import('@/app/lib/coach/planning-intent').PlanningIntentV1} onChange={v => props.onChange({ ...v })} disabled={props.saving} />
+      {!parsed.ok && <p role="status">{parsed.errors.join('. ')}</p>}
+      <button className={primaryButton} disabled={props.saving || !parsed.ok} type="submit">Confirm corrected outcomes</button>
+      <button className={secondaryButton} disabled={props.saving} type="button" onClick={props.onCancel}>Cancel</button>
+    </form>
+  }
   if (props.memory.memoryKey === 'exercise_preferences') {
     const valid = validateExercisePreferences(props.value)
     return <form className="mt-4 space-y-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700" onSubmit={event => { event.preventDefault(); if (valid) props.onSave(props.value) }}>

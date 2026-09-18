@@ -1,7 +1,14 @@
-import { beginRequest, finishRequest, loggingContext, validRequestId } from '@/app/lib/logging/server'
+import { canSurfaceLegacyInsight } from '@/app/lib/agents/legacy-insight-guard'
+import { beginRequest, finishRequest, loggingContext, validRequestId, validRecommendationId } from '@/app/lib/logging/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
+import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
+import { authorizedCoachOccurrences } from '@/app/lib/capture/intent'
+import { freezeCapture, commitCaptureBundle } from '@/app/lib/capture/service'
+import { stageCaptureDraft } from '@/app/lib/capture/drafts'
+import { formatUTCAsLocalDateWithOffset } from '@/app/lib/timezone-utils'
+import { validCorrection } from '@/app/lib/capture/corrections'
 
 // ─── Rate Limiting ────────────────────────────────────────────────────────────
 // Per-user in-memory limit: 20 requests per 60-second window.
@@ -109,6 +116,36 @@ async function processRequest(request: NextRequest) {
       agentCallers
     )
 
+    const capture = loggingContext.getStore()
+    if (capture?.canonicalNoWriteConfirmed && capture.correction) return NextResponse.json({ error: 'This activity changed. Reload its latest revision before correcting it.', correctionRequired: true, correction: capture.correction, retrySafe: true }, { status: 409 })
+    if (capture?.captureCollector) {
+      const collector = capture.captureCollector
+      if (capture.receipts?.length) return NextResponse.json({ messages: capture.receipts.map(receipt => ({ role: 'socius', content: 'Correction saved. The earlier revision remains in the audit history.', related_entity_id: receipt.entityId, related_entity_type: receipt.entityKind })), receipts: capture.receipts, classification })
+      if (collector.operations.length !== collector.authorizedSources.size) {
+        return NextResponse.json({ messages: [{ role: 'socius', content: 'The activities need clarification before saving. No activity was logged.' }],
+          requestStatus: 'draft', retrySafe: true, drafts: collector.operations, classification }, { status: 422 })
+      }
+      if (collector.operations.length) {
+        capture.writeAttempted = true
+        const items = await freezeCapture(supabase, capture.id, collector.operations)
+        const receiptBundle = await commitCaptureBundle(supabase, capture.id, items)
+        capture.receipts = receiptBundle.receipts
+        const messages: AgentMessage[] = receiptBundle.receipts.map(receipt => ({ role: 'socius',
+          content: `${receipt.entityKind === 'meal' ? 'Meal' : 'Workout'} saved. Estimated quantities remain labeled in the receipt.`,
+          related_entity_id: receipt.entityId, related_entity_type: receipt.entityKind }))
+        if (receiptBundle.unresolved.length) messages.push({ role: 'socius', content: 'Some activities are not confirmed. Reconcile those entries before editing or starting another save.' })
+        await persistChatMessages(supabase, user.id, body, messages, classification)
+        return NextResponse.json({ messages, classification, receiptBundle, receipts: receiptBundle.receipts, processing_time_ms: Date.now() - startTime },
+          { status: receiptBundle.unresolved.length ? 207 : 200 })
+      }
+      for (const message of agentMessages) {
+        delete message.related_entity_id; delete message.related_entity_type
+        if (/\b(?:saved|logged|recorded|done)\b/i.test(message.content)) message.content = capture.drafts?.length
+          ? 'This is an estimate for review. No activity was logged. Choose Save this estimate to record it.'
+          : 'No activity was logged. Use an explicit Log request to save an activity, or continue reviewing it here.'
+      }
+    }
+
     // 10. Prepend urgent insight messages
     const messages: AgentMessage[] = []
     for (const insight of urgentInsights) {
@@ -132,7 +169,7 @@ async function processRequest(request: NextRequest) {
 
     // 12. Trigger background pattern detection (fire-and-forget)
     // Only trigger after workout or meal logs
-    if (classification.input_type === 'workout_log' || classification.input_type === 'meal_log') {
+    if (!capture?.captureCollector && (classification.input_type === 'workout_log' || classification.input_type === 'meal_log')) {
       triggerSociusBackground(user.id).catch(err => {
         console.error('Background pattern detection failed:', err)
         // Don't fail the request if background analysis fails
@@ -148,7 +185,7 @@ async function processRequest(request: NextRequest) {
       processing_time_ms: elapsed
     }
 
-    return NextResponse.json(response)
+    return NextResponse.json({ ...response, ...(capture?.drafts?.length ? { drafts: capture.drafts, canonicalChanged: false } : {}) })
   } catch (error) {
     console.error('Agent process error:', error)
     return apiError(
@@ -178,21 +215,30 @@ function createTrainerCaller(
       let workoutId: string | null = (toolPersistedWorkout?.result.data?.workout_id as string) ?? null
 
       // Fallback: if no tools were used but agent returned workout data, persist manually
-      if (!workoutId && !response._toolCalls?.length && response.workout && response.workout.blocks.length > 0) {
+      const mayLog = !loggingContext.getStore()?.captureCollector || [...loggingContext.getStore()!.captureCollector!.authorizedSources.values()].includes('workout')
+      if (mayLog && !workoutId && !response._toolCalls?.length && response.workout && response.workout.blocks.length > 0) {
         workoutId = await persistWorkout(response, userId, content, supabase)
 
-        if (workoutId && response.new_prs && response.new_prs.length > 0) {
+        if (workoutId && !workoutId.startsWith('draft:') && response.new_prs && response.new_prs.length > 0) {
           await persistNewPRs(response.new_prs, userId, workoutId, supabase)
         }
 
         if (workoutId) invalidatePassiveCache(userId)
       }
 
-      if (response._toolCalls?.some(tc => !tc.result.success)) throw new Error('A workout action was not saved')
-      if (response.workout?.blocks.length && !workoutId) throw new Error('Workout save was not confirmed')
+      if (!mayLog && response.workout?.blocks.length) {
+        const capture = loggingContext.getStore()!
+        capture.writeAttempted = true
+        const draft = await stageCaptureDraft(supabase, `${capture.id}:preview:workout`, 'workout', {
+          ...response.workout, workout_date: formatUTCAsLocalDateWithOffset(capture.submittedAt!, -(capture.tzOffset ?? 0)), input_text: content
+        },capture.recommendationId)
+        capture.drafts = [...(capture.drafts ?? []), draft]
+      }
+      if (mayLog && response._toolCalls?.some(tc => !tc.result.success)) throw new Error('A workout action was not saved')
+      if (mayLog && response.workout?.blocks.length && !workoutId) throw new Error('Workout save was not confirmed')
       const message: AgentMessage = {
         role: 'trainer',
-        content: response.message,
+        content: !mayLog && response.workout ? `${response.message}\n\nThis is a preview. No workout was logged.` : response.message,
         domain: 'trainer',
         confidence: response.confidence,
         smart_defaults: response.smart_defaults,
@@ -226,7 +272,8 @@ function createNutritionistCaller(
       let mealId: string | null = (toolPersistedMeal?.result.data?.meal_id as string) ?? null
 
       // Fallback: if no tools were used but agent returned meal data, persist manually
-      if (!mealId && !response._toolCalls?.length && response.meal && response.meal.items.length > 0) {
+      const mayLog = !loggingContext.getStore()?.captureCollector || [...loggingContext.getStore()!.captureCollector!.authorizedSources.values()].includes('meal')
+      if (mayLog && !mealId && !response._toolCalls?.length && response.meal && response.meal.items.length > 0) {
         console.log('[nutritionist] fallback persist — meal parsed:',
           'items:', response.meal.items.length,
           'confidence:', response.confidence)
@@ -234,11 +281,19 @@ function createNutritionistCaller(
         if (mealId) invalidatePassiveCache(userId)
       }
 
-      if (response._toolCalls?.some(tc => !tc.result.success)) throw new Error('A meal action was not saved')
-      if (response.meal?.items.length && !mealId) throw new Error('Meal save was not confirmed')
+      if (!mayLog && response.meal?.items.length) {
+        const capture = loggingContext.getStore()!
+        capture.writeAttempted = true
+        const draft = await stageCaptureDraft(supabase, `${capture.id}:preview:meal`, 'meal', {
+          meal_timestamp: capture.submittedAt, items: response.meal.items, needs_review: true, input_text: content
+        },capture.recommendationId)
+        capture.drafts = [...(capture.drafts ?? []), draft]
+      }
+      if (mayLog && response._toolCalls?.some(tc => !tc.result.success)) throw new Error('A meal action was not saved')
+      if (mayLog && response.meal?.items.length && !mealId) throw new Error('Meal save was not confirmed')
       const message: AgentMessage = {
         role: 'nutritionist',
-        content: response.message,
+        content: !mayLog && response.meal ? `${response.message}\n\nThis is a preview. No meal was logged.` : response.message,
         domain: 'nutritionist',
         confidence: response.confidence,
         smart_defaults: response.smart_defaults,
@@ -270,7 +325,7 @@ function createSociusCaller(
 
       // Persist any new insights above the confidence threshold
       if (response.insights && response.insights.length > 0) {
-        await persistInsights(response.insights, userId, supabase)
+        await persistInsights(response.insights.filter(canSurfaceLegacyInsight), userId, supabase)
       }
 
       const message: AgentMessage = {
@@ -310,7 +365,7 @@ async function fetchPendingUrgentInsights(
 
   if (error || !data) return []
 
-  return data.map((row: Record<string, unknown>) => ({
+  return data.filter(canSurfaceLegacyInsight).map((row: Record<string, unknown>) => ({
     id: row.id as string,
     pattern_id: row.pattern_id as RecentInsight['pattern_id'],
     priority: row.priority as RecentInsight['priority'],
@@ -374,16 +429,27 @@ export async function POST(request: NextRequest) {
   let body: AgentRequest
   try { body = await request.clone().json() } catch { return apiError('Invalid JSON body', 400) }
   if (body?.expectedUserId && body.expectedUserId !== user.id) return apiError('The signed-in account changed. Sign back in to the original account to retry.', 403)
+  if (body.recommendationId != null && !validRecommendationId(body.recommendationId)) return apiError('Invalid recommendation origin.', 422)
+  if (body.correction && (!validCorrection(body.correction) || !['meal','workout'].includes(body.correction.kind)
+    || !/^(?:please\s+)?(?:correct|update|change|amend)\b/i.test(body.content))) return apiError('Select the saved activity and explicitly request its correction.', 422)
   const invalid = validateRequest(body)
   if (invalid) return apiError(invalid, 400)
   if (!validRequestId(body.requestId) || typeof body.submittedAt !== 'string' || !Number.isFinite(Date.parse(body.submittedAt))) {
     return apiError('A requestId and submittedAt timestamp are required. Refresh the app and try again.', 400)
   }
+  if (body.correction && authorizedCoachOccurrences(body.content).length) return apiError('Correct one saved activity separately from a new log.', 422)
   const claim = await beginRequest(supabase, `agent:${body.requestId}`, JSON.stringify(body))
   if (claim.response) return claim.response
   try {
-    return await loggingContext.run({ id: claim.id!, submittedAt: body.submittedAt, tzOffset: body.tz_offset }, async () =>
-      finishRequest(supabase, claim.id!, await processRequest(request)))
+    const sources = authorizedCoachOccurrences(body.content)
+    return await loggingContext.run({ id: claim.id!, submittedAt: body.submittedAt, tzOffset: body.tz_offset, inputMethod: 'coach', userId: user.id, recommendationId: body.recommendationId ?? null,
+      correction: body.correction, correctionKind: body.correction?.kind, correctionAuthorized: !!body.correction,
+      ...(personalizedCoachingCapabilities().captureReceiptsV2 ? { captureCollector: { operations: [], authorizedSources: new Map(sources.map(item => [item.sourceItemId, item.kind])) } } : {}) }, async () => {
+      let response = await processRequest(request)
+      const capture = loggingContext.getStore()
+      if (!response.ok && (!capture?.writeAttempted || capture.canonicalNoWriteConfirmed)) response = NextResponse.json({ ...await response.json(), retrySafe: true, ...(capture?.correction ? { correctionRequired: true, correction: capture.correction } : {}) }, { status: response.status })
+      return finishRequest(supabase, claim.id!, response)
+    })
   } catch {
     return apiError('The result could not be confirmed. Retry this same request or check history; do not create a new log.', 503)
   }

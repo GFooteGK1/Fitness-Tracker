@@ -31,7 +31,8 @@ function supabaseWithUpdateSpy(userId = 'user-1') {
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: { id: userId } }, error: null }),
     },
-    from: vi.fn(() => ({ update: updateSpy })),
+    // This suite covers the pre-migration compatibility path. Installed-schema revisions have separate capture tests.
+    from: vi.fn(() => ({ update: updateSpy, select: vi.fn(() => ({ limit: vi.fn().mockResolvedValue({ error: { code: '42703' } }) })) })),
   }
   return { client, updateSpy }
 }

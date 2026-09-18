@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { personalizedCoachingCapabilities } from '../personalized-coaching-capabilities'
 import { COACH_REFERENCE_MANIFEST } from './reference'
 import { COMPLETE_PROGRAMMING_POLICY_VERSION } from './programming-policy'
 import {
@@ -166,6 +167,8 @@ export async function fetchCoachRuntimeContext(
 
   return {
     generatedAt: new Date().toISOString(),
+    userId,
+    capabilities: { feedbackV2: personalizedCoachingCapabilities().captureReceiptsV2 },
     storageAvailable: storageAvailable && (!program?.active_plan_version_id || activeProgram !== null),
     doctrineVersion: COACH_REFERENCE_MANIFEST.doctrineVersion,
     policyVersion: COMPLETE_PROGRAMMING_POLICY_VERSION,
@@ -178,6 +181,7 @@ export async function fetchCoachRuntimeContext(
 export function emptyCoachRuntimeContext(): CoachRuntimeContext {
   return {
     generatedAt: new Date().toISOString(),
+    capabilities: { feedbackV2: personalizedCoachingCapabilities().captureReceiptsV2 },
     storageAvailable: false,
     doctrineVersion: COACH_REFERENCE_MANIFEST.doctrineVersion,
     policyVersion: COMPLETE_PROGRAMMING_POLICY_VERSION,
@@ -562,7 +566,7 @@ function normalizeSession(
 
 function normalizeSessionCheckin(row: CoachCheckinRow): CoachSessionCheckinSummary | null {
   if (!row.id || !row.prescribed_session_id) return null
-  const validation = validateStoredCoachSessionCheckin(row.responses, row.occurred_at)
+  const validation = validateStoredCoachSessionCheckin(row.responses, row.occurred_at, row.id)
   if (!validation.ok) return null
 
   return {

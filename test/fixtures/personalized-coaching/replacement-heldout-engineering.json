@@ -1,0 +1,562 @@
+{
+  "schemaVersion": "engineering-scenarios-v2",
+  "split": "heldout_engineering",
+  "source": "new_synthetic",
+  "exposure": "author_only_until_integrated_verification",
+  "scenarios": [
+    {
+      "id": "replacement-plan-01",
+      "athlete": "synthetic-azalea",
+      "rule": "accepted_plan",
+      "title": "Completing execution does not dispose of an existing concerning-pain review",
+      "facts": {
+        "planId": "plan-azalea-accepted",
+        "planStatus": "accepted",
+        "sessionId": "session-azalea-completed",
+        "sessionStatus": "completed",
+        "canonicalWorkoutId": "workout-azalea-completed",
+        "existingSafetyReview": "pause_and_seek_support",
+        "painOrigin": "legacy_unknown"
+      },
+      "expected": {
+        "decision": "action",
+        "assertions": [
+          "Navigate to the existing safety review even though canonical execution is completed",
+          "Keep the completed session and original workout unchanged"
+        ],
+        "forbidden": [
+          "Prompt duplicate execution",
+          "Treat completion as resolution of the concerning-pain review",
+          "Invent a new safety dose policy"
+        ]
+      },
+      "counterfactual": {
+        "field": "existingSafetyReview",
+        "value": null,
+        "expected": {
+          "decision": "abstain",
+          "assertions": [
+            "Without an existing safety review the completed session supplies no new execution action"
+          ],
+          "forbidden": [
+            "Reopen the completed session",
+            "Fabricate a safety review from unknown provenance alone"
+          ]
+        }
+      },
+      "qualifiedCoachLabel": "not_reviewed"
+    },
+    {
+      "id": "replacement-plan-02",
+      "athlete": "synthetic-bellflower",
+      "rule": "accepted_plan",
+      "title": "A current proposal remains reviewable after the linked session day has passed",
+      "facts": {
+        "planId": "plan-bellflower-v3",
+        "planStatus": "accepted",
+        "sessionId": "session-bellflower-yesterday",
+        "sessionStatus": "completed",
+        "sessionDate": "2026-09-16",
+        "localDate": "2026-09-17",
+        "canonicalWorkoutId": "workout-bellflower-yesterday",
+        "reviewId": "review-bellflower-current",
+        "reviewState": "proposal_ready",
+        "reviewBasisPlanId": "plan-bellflower-v3",
+        "retrieval": "complete"
+      },
+      "expected": {
+        "decision": "action",
+        "assertions": [
+          "Navigate to review-bellflower-current using its current accepted-plan basis",
+          "Keep proposal acceptance separate from navigation",
+          "Do not present yesterday's completed session as today's execution"
+        ],
+        "forbidden": [
+          "Expire a current proposal solely because its linked session is in the past",
+          "Automatically activate the proposal"
+        ]
+      },
+      "counterfactual": {
+        "field": "reviewBasisPlanId",
+        "value": "plan-bellflower-v2",
+        "expected": {
+          "decision": "abstain",
+          "assertions": [
+            "The stale proposal basis cannot authorize review guidance and the completed past session supplies no fallback execution action"
+          ],
+          "forbidden": [
+            "Use an old accepted-plan basis",
+            "Resurrect yesterday's session as an alternative"
+          ]
+        }
+      },
+      "qualifiedCoachLabel": "not_reviewed"
+    },
+    {
+      "id": "replacement-plan-03",
+      "athlete": "synthetic-camellia",
+      "rule": "accepted_plan",
+      "title": "Ownership remains mandatory when current intent is absent and preferences have changed",
+      "facts": {
+        "requestOwner": "synthetic-camellia",
+        "evidenceOwner": "synthetic-camellia",
+        "planId": "plan-camellia-v1",
+        "planStatus": "accepted",
+        "sessionId": "session-camellia-today",
+        "sessionStatus": "planned",
+        "sessionDate": "2026-09-17",
+        "localDate": "2026-09-17",
+        "confirmedGoalId": null,
+        "snapshotPreferenceVersion": 2,
+        "currentPreferenceVersion": 4,
+        "snapshotMovement": "barbell_back_squat"
+      },
+      "expected": {
+        "decision": "action",
+        "assertions": [
+          "Navigate to the owned accepted session using its immutable barbell-back-squat snapshot",
+          "Missing current goal confirmation does not erase an accepted plan",
+          "Changed current preferences apply only to a future proposal"
+        ],
+        "forbidden": [
+          "Compile a replacement plan from current preferences",
+          "Invent a confirmed goal"
+        ]
+      },
+      "counterfactual": {
+        "field": "evidenceOwner",
+        "value": "synthetic-other-owner",
+        "expected": {
+          "decision": "abstain",
+          "assertions": [
+            "Exclude the foreign accepted-plan evidence before presenting its contents"
+          ],
+          "forbidden": [
+            "Disclose another athlete's accepted prescription",
+            "Use current preferences to recreate a foreign plan"
+          ]
+        }
+      },
+      "qualifiedCoachLabel": "not_reviewed"
+    },
+    {
+      "id": "replacement-plan-04",
+      "athlete": "synthetic-dogwood",
+      "rule": "accepted_plan",
+      "title": "A valid lease and unchanged responses cannot publish against a newer canonical source",
+      "facts": {
+        "planId": "plan-dogwood-v1",
+        "planStatus": "accepted",
+        "sessionStatus": "planned",
+        "workerLeaseToken": "lease-dogwood-current",
+        "currentLeaseToken": "lease-dogwood-current",
+        "sourceRevision": 8,
+        "workerSourceRevision": 6,
+        "responseRevision": 0,
+        "workerResponseRevision": 0
+      },
+      "expected": {
+        "decision": "abstain",
+        "assertions": [
+          "Reject publication by the worker whose canonical source revision is stale despite its current lease and response revision",
+          "Retain current canonical source revision 8"
+        ],
+        "forbidden": [
+          "Publish revision-6 advice under revision 8",
+          "Treat lease ownership as source freshness"
+        ]
+      },
+      "counterfactual": {
+        "field": "workerSourceRevision",
+        "value": 8,
+        "expected": {
+          "decision": "action",
+          "assertions": [
+            "The worker with matching lease, source and response revisions may publish accepted-plan navigation"
+          ],
+          "forbidden": [
+            "Accept or rewrite the plan during publication",
+            "Fabricate an athlete response"
+          ]
+        }
+      },
+      "qualifiedCoachLabel": "not_reviewed"
+    },
+    {
+      "id": "replacement-signal-01",
+      "athlete": "synthetic-echinacea",
+      "rule": "missing_signal",
+      "title": "A protocol gap does not manufacture confirmation of a proposed goal",
+      "facts": {
+        "goalId": "goal-echinacea-5000",
+        "goalConfirmed": false,
+        "protocol": "run_5000m_track_elapsed_seconds",
+        "measurementProtocol": "run_1609m_track_elapsed_seconds",
+        "measurementId": "observation-echinacea-mile",
+        "capability": "supported",
+        "collectionChangesDecision": true,
+        "measurementOrigin": "athlete_reported"
+      },
+      "expected": {
+        "decision": "abstain",
+        "assertions": [
+          "Do not issue a personalized baseline request on the authority of an unconfirmed goal",
+          "Keep the mile observation distinct from a 5000-meter measurement"
+        ],
+        "forbidden": [
+          "Silently confirm the goal",
+          "Promote a mile time to a 5000-meter baseline"
+        ]
+      },
+      "counterfactual": {
+        "field": "goalConfirmed",
+        "value": true,
+        "expected": {
+          "decision": "collect_signal",
+          "assertions": [
+            "Request the confirmed goal's comparable 5000-meter elapsed-time baseline",
+            "Exclude observation-echinacea-mile from the direct 5000-meter baseline"
+          ],
+          "forbidden": [
+            "Derive an initial numerical dose",
+            "Use matching metric alone as full comparability"
+          ]
+        }
+      },
+      "qualifiedCoachLabel": "not_reviewed"
+    },
+    {
+      "id": "replacement-signal-02",
+      "athlete": "synthetic-forsythia",
+      "rule": "missing_signal",
+      "title": "Confirmed priority chooses between two simultaneously missing same-domain baselines",
+      "facts": {
+        "goalIds": [
+          "goal-forsythia-mile",
+          "goal-forsythia-5000"
+        ],
+        "goalsConfirmed": true,
+        "goalDistancesMeters": [
+          1609,
+          5000
+        ],
+        "firstGoalBaseline": "missing",
+        "secondGoalBaseline": "missing",
+        "goalPriority": [
+          "goal-forsythia-5000",
+          "goal-forsythia-mile"
+        ],
+        "sharedDemandConflict": false,
+        "collectionChangesDecision": true
+      },
+      "expected": {
+        "decision": "collect_signal",
+        "assertions": [
+          "Select the 5000-meter goal's baseline request according to confirmed priority",
+          "Keep the mile baseline separately missing"
+        ],
+        "forbidden": [
+          "Use first-array or sorted-ID order as athlete priority",
+          "Represent one measurement as satisfying both distances"
+        ]
+      },
+      "counterfactual": {
+        "field": "goalPriority",
+        "value": [
+          "goal-forsythia-mile",
+          "goal-forsythia-5000"
+        ],
+        "expected": {
+          "decision": "collect_signal",
+          "assertions": [
+            "Select the mile goal's baseline request after the explicit priority change",
+            "Keep the 5000-meter baseline separately missing"
+          ],
+          "forbidden": [
+            "Reuse the previous goal selection after priority changes",
+            "Infer that either goal or the event is attained"
+          ]
+        }
+      },
+      "qualifiedCoachLabel": "not_reviewed"
+    },
+    {
+      "id": "replacement-signal-03",
+      "athlete": "synthetic-gardenia",
+      "rule": "missing_signal",
+      "title": "Incomplete retrieval takes precedence over an apparent direct-outcome gap beside an improving proxy",
+      "facts": {
+        "goalId": "goal-gardenia-100m",
+        "goalConfirmed": true,
+        "goalProtocol": "sprint_100m_electronic_seconds",
+        "observationId": "observation-gardenia-proxy",
+        "observationRole": "proxy",
+        "proxyTrend": "improving",
+        "directOutcomeStatus": "missing",
+        "collectionChangesDecision": true,
+        "retrieval": "truncated"
+      },
+      "expected": {
+        "decision": "abstain",
+        "assertions": [
+          "Report incomplete retrieval rather than treating an unverified direct-outcome gap as established",
+          "Retain proxy provenance without a transfer claim"
+        ],
+        "forbidden": [
+          "Ask the athlete to recreate a potentially unread direct measurement",
+          "Declare sprint attainment from the proxy"
+        ]
+      },
+      "counterfactual": {
+        "field": "retrieval",
+        "value": "complete",
+        "expected": {
+          "decision": "collect_signal",
+          "assertions": [
+            "With complete retrieval request the missing comparable direct 100-meter sprint outcome",
+            "Keep the improving proxy separate from direct attainment"
+          ],
+          "forbidden": [
+            "Prescribe a new numerical progression from proxy improvement",
+            "Claim demonstrated transfer"
+          ]
+        }
+      },
+      "qualifiedCoachLabel": "not_reviewed"
+    },
+    {
+      "id": "replacement-signal-04",
+      "athlete": "synthetic-hibiscus",
+      "rule": "missing_signal",
+      "title": "Cross-owner equipment evidence cannot resolve or authorize a five-repetition strength baseline",
+      "facts": {
+        "requestOwner": "synthetic-hibiscus",
+        "evidenceOwner": "synthetic-other-owner",
+        "goalId": "goal-hibiscus-squat",
+        "goalConfirmed": true,
+        "measurementId": "observation-hibiscus-smith",
+        "requestedEquipment": "barbell",
+        "observedEquipment": "smith_machine",
+        "movementId": "barbell_back_squat",
+        "repetitions": 5,
+        "metric": "strength.load",
+        "unit": "lb",
+        "transferPolicy": null,
+        "collectionChangesDecision": true
+      },
+      "expected": {
+        "decision": "abstain",
+        "assertions": [
+          "Reject foreign goal/evidence context before producing personalized collection guidance"
+        ],
+        "forbidden": [
+          "Disclose or import another athlete's strength observation",
+          "Treat a shared load metric as ownership or comparability"
+        ]
+      },
+      "counterfactual": {
+        "field": "evidenceOwner",
+        "value": "synthetic-hibiscus",
+        "expected": {
+          "decision": "collect_signal",
+          "assertions": [
+            "Owned Smith-machine evidence still does not supply the confirmed barbell-back-squat five-repetition baseline",
+            "Request the supported full barbell movement, repetition and unit binding"
+          ],
+          "forbidden": [
+            "Transfer Smith-machine load without a supported mapping",
+            "Use a one-repetition bench default for this outcome",
+            "Activate a new numerical dose policy"
+          ]
+        }
+      },
+      "qualifiedCoachLabel": "not_reviewed"
+    },
+    {
+      "id": "replacement-nutrition-01",
+      "athlete": "synthetic-ixora",
+      "rule": "logged_nutrition",
+      "title": "Bounded coverage does not turn a reviewed copied estimate into measured composition",
+      "facts": {
+        "targetId": "target-ixora-1",
+        "targetConfirmed": true,
+        "targetCalories": 2500,
+        "loggedCalories": 1600,
+        "mealOrigin": "copied_template",
+        "templateCompositionOrigin": "model_estimated",
+        "compositionReview": "athlete_confirmed",
+        "occurrenceConfirmed": true,
+        "coverage": "through_09:00_only",
+        "localHour": 12,
+        "localDate": "2026-09-17"
+      },
+      "expected": {
+        "decision": "action",
+        "assertions": [
+          "State approximately 900 remaining against logged calories and the confirmed target",
+          "Retain copied-template and model-estimated composition provenance despite athlete review",
+          "Limit the coverage statement to the reported morning interval"
+        ],
+        "forbidden": [
+          "Describe the remainder as a measured physiological deficit",
+          "Treat morning completeness as full-day intake completeness"
+        ]
+      },
+      "counterfactual": {
+        "field": "coverage",
+        "value": "unknown",
+        "expected": {
+          "decision": "action",
+          "assertions": [
+            "The approximate logged remainder stays 900",
+            "Remove the morning completeness claim and state unknown coverage",
+            "Preserve copied estimate lineage"
+          ],
+          "forbidden": [
+            "Infer coverage from occurrence confirmation",
+            "Promote reviewed composition to a measurement"
+          ]
+        }
+      },
+      "qualifiedCoachLabel": "not_reviewed"
+    },
+    {
+      "id": "replacement-nutrition-02",
+      "athlete": "synthetic-jessamine",
+      "rule": "logged_nutrition",
+      "title": "Repairing evidence ownership cannot authorize an unconfirmed nutrition target",
+      "facts": {
+        "requestOwner": "synthetic-jessamine",
+        "evidenceOwner": "synthetic-other-owner",
+        "targetId": "target-jessamine-proposed",
+        "targetConfirmed": false,
+        "targetCalories": 2250,
+        "loggedCalories": 1500,
+        "origin": "model_estimated",
+        "reviewState": "athlete_confirmed",
+        "coverage": "unknown"
+      },
+      "expected": {
+        "decision": "abstain",
+        "assertions": [
+          "Exclude foreign nutrition evidence and do not use the unconfirmed target"
+        ],
+        "forbidden": [
+          "Disclose foreign meal totals",
+          "Use the proposed target or a fallback target for personalized remainder guidance"
+        ]
+      },
+      "counterfactual": {
+        "field": "evidenceOwner",
+        "value": "synthetic-jessamine",
+        "expected": {
+          "decision": "abstain",
+          "assertions": [
+            "Owned, reviewed logged estimates still do not confirm the proposed target",
+            "Keep target authority separate from meal review"
+          ],
+          "forbidden": [
+            "Calculate personalized target remainder from meal confirmation alone",
+            "Infer a target from logged consumption"
+          ]
+        }
+      },
+      "qualifiedCoachLabel": "not_reviewed"
+    },
+    {
+      "id": "replacement-nutrition-03",
+      "athlete": "synthetic-kalmia",
+      "rule": "logged_nutrition",
+      "title": "An outage cannot turn bounded reviewed meal estimates into an empty-day calculation",
+      "facts": {
+        "targetId": "target-kalmia-1",
+        "targetConfirmed": true,
+        "targetCalories": 2400,
+        "loggedCalories": 1450,
+        "coverage": "complete_through_18:00",
+        "origin": "model_estimated",
+        "reviewState": "athlete_confirmed",
+        "retrieval": "failed",
+        "localHour": 19,
+        "localDate": "2026-09-17"
+      },
+      "expected": {
+        "decision": "abstain",
+        "assertions": [
+          "Report unavailable nutrition evidence rather than assuming zero logged intake",
+          "Do not reuse a current-looking coverage statement while its underlying evidence cannot be read"
+        ],
+        "forbidden": [
+          "Publish a zero-intake or stale remainder during retrieval failure",
+          "Interpret reviewed estimates as independently current measurements"
+        ]
+      },
+      "counterfactual": {
+        "field": "retrieval",
+        "value": "complete",
+        "expected": {
+          "decision": "action",
+          "assertions": [
+            "With complete retrieval show approximately 950 remaining against logged calories",
+            "Limit coverage through 18:00 and preserve model-estimated composition"
+          ],
+          "forbidden": [
+            "Present a measured calorie deficit",
+            "Extend bounded coverage beyond the reported interval"
+          ]
+        }
+      },
+      "qualifiedCoachLabel": "not_reviewed"
+    },
+    {
+      "id": "replacement-nutrition-04",
+      "athlete": "synthetic-lobelia",
+      "rule": "logged_nutrition",
+      "title": "Done suppresses nutrition guidance without confirming food consumption or day coverage",
+      "facts": {
+        "targetId": "target-lobelia-1",
+        "targetConfirmed": true,
+        "targetCalories": 2350,
+        "loggedCalories": 1250,
+        "coverage": "unknown",
+        "origin": "model_estimated",
+        "reviewState": "athlete_confirmed",
+        "response": "done_reported",
+        "monthlyAdherencePercent": 98,
+        "performanceTrend": "improving",
+        "workoutsCount": 18
+      },
+      "expected": {
+        "decision": "abstain",
+        "assertions": [
+          "Suppress the responded nutrition decision",
+          "Done remains a report and does not add a meal, change logged totals or confirm intake coverage",
+          "Keep reviewed composition model-estimated"
+        ],
+        "forbidden": [
+          "Treat Done as proof that the remaining calories were consumed",
+          "Create canonical intake or coverage from the response",
+          "Claim a personal nutrition-performance link"
+        ]
+      },
+      "counterfactual": {
+        "field": "response",
+        "value": null,
+        "expected": {
+          "decision": "action",
+          "assertions": [
+            "Without a suppressing response show approximately 1100 remaining against existing logs and the confirmed target",
+            "Keep coverage unknown and model-estimated composition visible",
+            "Historical adherence and performance co-occurrence do not change the factual remainder"
+          ],
+          "forbidden": [
+            "Claim observed improvement was caused by nutrition adherence",
+            "Prescribe a new target",
+            "Promote the reviewed estimate to measured intake"
+          ]
+        }
+      },
+      "qualifiedCoachLabel": "not_reviewed"
+    }
+  ]
+}

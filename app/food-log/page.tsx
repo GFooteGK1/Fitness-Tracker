@@ -1,4 +1,6 @@
 'use client'
+import { CaptureReceiptPanel, type ReceiptResult } from '@/app/components/capture/CaptureReceiptPanel'
+import { CaptureRecovery } from '@/app/components/capture/CaptureRecovery'
 
 import { sendLoggingRequest, fileFingerprint } from '@/app/lib/client/logging-request'
 
@@ -11,6 +13,7 @@ import { getLocalDate } from '@/app/lib/timezone-utils'
 
 export default function FoodLog() {
   const { user } = useAuth()
+  const [receiptResult, setReceiptResult] = useState<ReceiptResult | null>(null)
   const [mealText, setMealText] = useState('')
   const [mealDate, setMealDate] = useState(getLocalDate())
   const [loading, setLoading] = useState(false)
@@ -129,6 +132,8 @@ export default function FoodLog() {
       }, user?.id ?? '', 60_000, JSON.stringify([mealText, mealDate]))
 
       const result = await response.json()
+      setReceiptResult(result)
+      if (result.state === 'save_unconfirmed' || result.receiptBundle?.state === 'save_unconfirmed') throw new Error('Save unconfirmed. Retry this same entry.')
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to parse meal')
@@ -258,18 +263,16 @@ export default function FoodLog() {
       }, user?.id ?? '', 60_000, JSON.stringify([await fileFingerprint(file), mealDate]))
 
       const data = await uploadResponse.json()
+      setReceiptResult(data)
+      if (!uploadResponse.ok || data.state === 'save_unconfirmed' || data.receiptBundle?.state === 'save_unconfirmed') throw new Error(data.error ?? 'Save unconfirmed. Retry the same photo.')
 
       if (data.analysisStatus === 'complete' && data.analysis) {
         // Photo analysis complete - meal already saved by upload API
         setStatus({
-          message: `✅ Meal logged! ${data.analysis.total_protein}g protein, ${data.analysis.total_carbs}g carbs, ${data.analysis.total_fat}g fat. Redirecting...`,
+          message: `✅ Meal logged! ${data.analysis.total_protein}g protein, ${data.analysis.total_carbs}g carbs, ${data.analysis.total_fat}g fat. You can review or correct it below.`,
           type: 'success'
         })
 
-        // Clear form and redirect after success
-        setTimeout(() => {
-          window.location.href = '/food-progress'
-        }, 2000)
       } else {
         const errorMsg = data.error || 'Could not analyze meal photo'
         setStatus({
@@ -381,7 +384,9 @@ export default function FoodLog() {
             />
           </div>
 
-          {/* Input Method Selection */}
+          <CaptureRecovery />
+      {receiptResult && <CaptureReceiptPanel result={receiptResult} />}
+      {/* Input Method Selection */}
           <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <h3 className="text-center text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Choose how to log your meal:

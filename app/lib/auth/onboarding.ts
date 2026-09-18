@@ -1,5 +1,12 @@
 import { BodyMetrics } from './types'
 
+/** Existing onboarding categories are draft wording only, never a measured or confirmed training target. */
+export function planningGoalPrefill(goals: unknown): string[] {
+  const labels: Record<string, string> = { weight_loss: 'Support my weight-loss goal', muscle_gain: 'Build muscle',
+    performance: 'Improve athletic performance', general_health: 'Improve general health' }
+  return Array.isArray(goals) ? [...new Set(goals.filter((g): g is string => typeof g === 'string').map(g => labels[g]).filter(Boolean))].slice(0, 8) : []
+}
+
 /** Age eligibility and an explicit goal are the minimum setup contract. */
 export function isOnboardingComplete(bodyMetrics: BodyMetrics | undefined, goals: unknown): boolean {
   const age = bodyMetrics?.age

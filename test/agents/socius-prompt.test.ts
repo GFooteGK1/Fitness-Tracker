@@ -8,6 +8,7 @@ import type { SociusContext, ThirtyDaySummary, DataAvailability, RecentInsight, 
 function makeBaseContext(overrides?: Partial<SociusContext>): SociusContext {
   return {
     user_id: 'test-user-123',
+    targets_confirmed: true,
     targets: { protein: 150, carbs: 200, fat: 65, calories: 2000, tolerance_pct: 10 },
     today: {
       meals_logged: 2,
@@ -57,10 +58,10 @@ function makeBaseContext(overrides?: Partial<SociusContext>): SociusContext {
 function makeInsight(overrides?: Partial<RecentInsight>): RecentInsight {
   return {
     id: 'insight-1',
-    pattern_id: 'CAL_DEF',
+    pattern_id: 'REC_VOL',
     priority: 'urgent',
     confidence: 0.85,
-    content: 'Caloric deficit detected on high-strain day',
+    content: 'Recovery and volume records available',
     created_at: '2026-01-20T10:00:00Z',
     ...overrides,
   }
@@ -145,6 +146,7 @@ describe('buildSociusPrompt - data availability', () => {
 
   it('shows "No data" when meals unavailable', () => {
     const ctx = makeBaseContext({
+      targets_confirmed: false,
       data_availability: {
         has_workouts: true,
         has_meals: false,
@@ -156,7 +158,7 @@ describe('buildSociusPrompt - data availability', () => {
     })
     const prompt = buildSociusPrompt(ctx)
     expect(prompt).toContain('Meals: No data')
-    expect(prompt).toContain('Targets: Not set')
+    expect(prompt).toContain('Targets: Unknown')
   })
 
   it('shows WHOOP connected when available', () => {
@@ -251,19 +253,19 @@ describe('buildSociusPrompt - recent insights', () => {
   it('embeds insight details', () => {
     const insight = makeInsight()
     const prompt = buildSociusPrompt(makeBaseContext({ recent_insights: [insight] }))
-    expect(prompt).toContain('CAL_DEF')
+    expect(prompt).toContain('REC_VOL')
     expect(prompt).toContain('urgent')
-    expect(prompt).toContain('Caloric deficit detected on high-strain day')
+    expect(prompt).toContain('Recovery and volume records available')
   })
 
   it('embeds multiple insights', () => {
     const insights: RecentInsight[] = [
-      makeInsight({ pattern_id: 'CAL_DEF', priority: 'urgent', content: 'Caloric deficit detected' }),
+      makeInsight({ pattern_id: 'REC_VOL', priority: 'urgent', content: 'Recovery and volume records available' }),
       makeInsight({ id: 'insight-2', pattern_id: 'OVER_TRN', priority: 'notable', content: 'Overtraining indicators present' }),
       makeInsight({ id: 'insight-3', pattern_id: 'CON_PROG', priority: 'informational', content: 'Consistent progression over 30 days' }),
     ]
     const prompt = buildSociusPrompt(makeBaseContext({ recent_insights: insights }))
-    expect(prompt).toContain('CAL_DEF')
+    expect(prompt).toContain('REC_VOL')
     expect(prompt).toContain('OVER_TRN')
     expect(prompt).toContain('CON_PROG')
     expect(prompt).toContain('Overtraining indicators present')
@@ -309,30 +311,30 @@ describe('buildSociusPrompt - week-to-date adherence', () => {
 // ─── Pattern Library ─────────────────────────────────────────────────
 
 describe('buildSociusPrompt - pattern library', () => {
-  it('includes all 10 pattern IDs', () => {
+  it('includes retained pattern IDs and excludes retired patterns', () => {
     const prompt = buildSociusPrompt(makeBaseContext())
-    expect(prompt).toContain('CAL_DEF')
-    expect(prompt).toContain('OVER_TRN')
-    expect(prompt).toContain('NUT_PERF')
     expect(prompt).toContain('REC_VOL')
-    expect(prompt).toContain('PRO_REC')
+    expect(prompt).toContain('OVER_TRN')
+    expect(prompt).not.toContain('NUT_PERF')
+    expect(prompt).toContain('REC_VOL')
+    expect(prompt).not.toContain('PRO_REC')
     expect(prompt).toContain('SLEEP_PERF')
-    expect(prompt).toContain('HRV_TREND')
-    expect(prompt).toContain('STRAIN_NUT')
+    expect(prompt).not.toContain('HRV_TREND')
+    expect(prompt).not.toContain('STRAIN_NUT')
     expect(prompt).toContain('HYDRA')
     expect(prompt).toContain('CON_PROG')
   })
 
   it('includes pattern descriptions', () => {
     const prompt = buildSociusPrompt(makeBaseContext())
-    expect(prompt).toContain('Caloric Deficit on High-Strain Day')
+    expect(prompt).not.toContain('Caloric Deficit on High-Strain Day')
     expect(prompt).toContain('Overtraining Indicators')
-    expect(prompt).toContain('Nutrition-Performance Correlation')
+    expect(prompt).not.toContain('Nutrition-Performance Correlation')
     expect(prompt).toContain('Recovery-Volume Balance')
-    expect(prompt).toContain('Protein Intake vs Recovery')
+    expect(prompt).not.toContain('Protein Intake vs Recovery')
     expect(prompt).toContain('Sleep Quality Impact on Performance')
-    expect(prompt).toContain('HRV Trend Analysis')
-    expect(prompt).toContain('Strain-Nutrition Balance')
+    expect(prompt).not.toContain('HRV Trend Analysis')
+    expect(prompt).not.toContain('Strain-Nutrition Balance')
     expect(prompt).toContain('Hydration Indicators')
     expect(prompt).toContain('Consistent Progression Tracking')
   })
@@ -344,9 +346,9 @@ describe('buildSociusPrompt - pattern library', () => {
     expect(prompt).toContain('Impact:')
   })
 
-  it('includes CAL_DEF urgency criteria', () => {
+  it('does not teach retired partial-log deficit criteria', () => {
     const prompt = buildSociusPrompt(makeBaseContext())
-    expect(prompt).toContain('URGENT when strain >= 14 and calories < 1500')
+    expect(prompt).not.toContain('URGENT when strain >= 14 and calories < 1500')
   })
 })
 
@@ -561,7 +563,7 @@ describe('buildSociusPrompt - pending insights and chat', () => {
     expect(prompt).toContain('No recent conversation')
   })
 
-  it('embeds recent chat messages (last 5)', () => {
+  it('embeds user conversation while withholding unlinked historical analyst assertions', () => {
     const messages: ChatMessage[] = Array.from({ length: 8 }, (_, i) => ({
       id: `m${i}`,
       user_id: 'test-user-123',
@@ -577,12 +579,9 @@ describe('buildSociusPrompt - pending insights and chat', () => {
       created_at: `2026-01-20T${10 + i}:00:00Z`,
     }))
     const prompt = buildSociusPrompt(makeBaseContext({ recent_chat: messages }))
-    // Should include last 5 messages (indices 3-7)
-    expect(prompt).toContain('Message 3')
-    expect(prompt).toContain('Message 7')
-    // Should NOT include earlier messages
-    expect(prompt).not.toContain('[user]: Message 0')
+    expect(prompt).toContain('[user]: Message 0')
+    expect(prompt).toContain('[user]: Message 6')
     expect(prompt).not.toContain('[socius]: Message 1')
-    expect(prompt).not.toContain('[user]: Message 2')
+    expect(prompt).not.toContain('[socius]: Message 7')
   })
 })

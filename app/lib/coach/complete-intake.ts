@@ -25,7 +25,18 @@ export interface CompleteCoachSecondaryGoalInput {
   athleteIntent: string
 }
 
+/** Validate persisted availability itself before any form fallback can make it appear confirmed. */
+export function savedSetupIsConfirmed(schedule: unknown, equipment: unknown): boolean {
+  if (!isRecord(schedule) || !isRecord(equipment)) return false
+  return validateCompleteCoachPlanningInput({ format: 'complete_programming_intake_v0_3', primaryDomain: 'strength',
+    goal: 'Validate saved availability', experience: schedule.experience, trainingDays: schedule.trainingDays,
+    sessionMinutes: schedule.sessionMinutes, startDate: '2026-09-14', equipment: equipment.equipment,
+    resolvedEquipmentIds: equipment.resolvedEquipmentIds, constraints: '', constraintKinds: [], secondaryGoals: [], setupConfirmed: true }).ok
+}
+
 export interface CompleteCoachPlanningInput extends CoachPlanningInput {
+  /** Explicit schedule/equipment acknowledgement, never inferred from generic defaults. */
+  setupConfirmed?: boolean
   format: 'complete_programming_intake_v0_3'
   exercisePreferences?: ExercisePreferences
   resolvedEquipmentIds: MovementEquipmentId[]
@@ -87,6 +98,8 @@ export function validateCompleteCoachPlanningInput(
     errors.push('Secondary goal domains must be different')
   }
 
+  if (value.setupConfirmed !== undefined && value.setupConfirmed !== true) errors.push('Confirm your current training days, session duration and equipment')
+
   if (value.exercisePreferences !== undefined && !validateExercisePreferences(value.exercisePreferences)) {
     errors.push('Exercise preferences are invalid')
   }
@@ -97,6 +110,7 @@ export function validateCompleteCoachPlanningInput(
     ok: true,
     value: {
       ...base.value,
+      ...(typeof value.setupConfirmed === 'boolean' ? { setupConfirmed: value.setupConfirmed } : {}),
       ...(value.exercisePreferences === undefined ? {} : { exercisePreferences: value.exercisePreferences as ExercisePreferences }),
       format: 'complete_programming_intake_v0_3',
       resolvedEquipmentIds: equipment as MovementEquipmentId[],

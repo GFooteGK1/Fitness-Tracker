@@ -21,8 +21,8 @@ const PRIORITIES: InsightPriority[] = ['urgent', 'notable', 'informational']
 const PRIORITY_RANK: Record<InsightPriority, number> = { urgent: 0, notable: 1, informational: 2 }
 
 const PATTERN_IDS: PatternId[] = [
-  'CAL_DEF', 'OVER_TRN', 'NUT_PERF', 'REC_VOL', 'PRO_REC',
-  'SLEEP_PERF', 'HRV_TREND', 'STRAIN_NUT', 'HYDRA', 'CON_PROG',
+  'OVER_TRN', 'REC_VOL',
+  'SLEEP_PERF', 'HYDRA', 'CON_PROG',
 ]
 
 // ─── Arbitraries ─────────────────────────────────────────────────────

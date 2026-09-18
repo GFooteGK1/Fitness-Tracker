@@ -117,12 +117,13 @@ const arbValidNutritionistJson = fc.record({
   confidence: fc.float({ min: Math.fround(0), max: Math.fround(1), noNaN: true }),
 })
 
+// Preservation applies to supported contracts; retired families are tested separately.
 const arbValidSociusJson = fc.record({
   message: fc.string({ minLength: 1, maxLength: 200 }),
   insights: fc.array(
     fc.record({
       id: fc.uuid(),
-      pattern_id: fc.constantFrom('CAL_DEF', 'OVER_TRN', 'NUT_PERF', 'REC_VOL', 'PRO_REC', 'SLEEP_PERF', 'HRV_TREND', 'STRAIN_NUT', 'HYDRA', 'CON_PROG'),
+      pattern_id: fc.constantFrom('OVER_TRN', 'REC_VOL', 'SLEEP_PERF', 'HYDRA', 'CON_PROG'),
       priority: fc.constantFrom<'urgent' | 'notable' | 'informational'>('urgent', 'notable', 'informational'),
       confidence: fc.float({ min: Math.fround(0.6), max: Math.fround(1), noNaN: true }),
       content: fc.string({ minLength: 10, maxLength: 200 }).filter(s => s.trim().length > 0),
@@ -278,6 +279,14 @@ describe('Preservation: Nutritionist Agent', () => {
 })
 
 describe('Preservation: Socius Agent', () => {
+  test.prop([fc.constantFrom('CAL_DEF', 'NUT_PERF', 'HRV_TREND', 'STRAIN_NUT', 'PRO_REC'), fc.float({ min: 0, max: 1, noNaN: true })], propertyConfig)(
+    'retired claim contracts are not preserved or validated by model confidence', (pattern_id, confidence) => {
+      const result = parseSociusResponse(JSON.stringify({ message: 'Unsupported causal assertion', confidence, data_points: { inferred: 12 },
+        insights: [{ id: 'retired', pattern_id, priority: 'urgent', confidence, content: 'Unsupported causal assertion', created_at: '2026-09-17T12:00:00Z' }] }))
+      expect(result.insights).toEqual([])
+      expect(result.message).toContain('available records do not establish')
+      expect(result.data_points).toEqual({})
+    })
   /**
    * Property: For all valid JSON responses, Socius parsing succeeds identically
    *

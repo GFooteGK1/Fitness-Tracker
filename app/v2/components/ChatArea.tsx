@@ -1,5 +1,7 @@
 'use client'
 
+import { canSurfaceLegacyInsight } from '@/app/lib/agents/legacy-insight-guard'
+
 import React, { useRef, useEffect } from 'react'
 import type { AgentMessage, RecentInsight, ChatRole, AgentDomain } from '@/app/lib/agents/types'
 
@@ -39,6 +41,7 @@ export interface ChatAreaProps {
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function ChatArea({ messages, isLoading, urgentInsights, onDismissInsight }: ChatAreaProps) {
+  urgentInsights = urgentInsights.filter(canSurfaceLegacyInsight)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when messages change or loading state changes

@@ -10,7 +10,7 @@ import {
 } from './adaptive-programming-contracts'
 
 export const COACH_EVIDENCE_CONTEXT_SCHEMA_VERSION = 1 as const
-export const COACH_EVIDENCE_CONTEXT_ALGORITHM_VERSION = 'coach-context-selection-0.1.0' as const
+export const COACH_EVIDENCE_CONTEXT_ALGORITHM_VERSION = 'coach-context-selection-0.3.0' as const
 
 export const COACH_EVIDENCE_CONTEXT_PURPOSES = [
   'today_session',
@@ -219,6 +219,11 @@ export interface CoachEvidenceObservationValueRow {
 }
 
 export interface CoachEvidenceContextSource {
+  workoutRevisions?: Array<{ id: string; user_id: string; capture_revision: number; execution_revision: number }>
+  sessionCheckins?: Array<{
+    id: string; user_id: string; prescribed_session_id: string | null;
+    responses: unknown; occurred_at: string
+  }>
   programs: CoachEvidenceProgramRow[]
   planVersions: CoachEvidencePlanVersionRow[]
   sessions: CoachEvidenceSessionRow[]
@@ -272,7 +277,7 @@ export interface CoachEvidenceSample {
   capturedAt: string
   workoutId: string | null
   prescribedSessionId: string | null
-  assessmentDefinition: { id: string; catalogVersion: string }
+  assessmentDefinition: { id: string; catalogVersion: string; version?: string }
   protocol: { id: string; version: string }
   comparabilityKey: string
   source: {
@@ -301,6 +306,7 @@ export interface CoachEvidenceSeries {
 }
 
 export interface CoachEvidenceContextPacket {
+  executionExclusions?: Array<{ observationId: string; workoutId: string; reason: 'execution_amended_or_deleted' }>
   schemaVersion: typeof COACH_EVIDENCE_CONTEXT_SCHEMA_VERSION
   purpose: CoachEvidenceContextPurpose
   asOf: string
@@ -536,6 +542,26 @@ export async function fetchCoachEvidenceContext(
   if (groupResult.error) errors.push('performance_observations_unavailable')
 
   const groups = (groupResult.data ?? []) as CoachEvidenceObservationGroupRow[]
+  const workoutIds = unique(groups.flatMap(group => group.workout_id ? [group.workout_id] : []))
+  let workoutResult: { data: unknown[] | null; error: unknown } = { data: [], error: null }
+  if (workoutIds.length) {
+    workoutResult = await supabase.from('workouts').select('id,user_id,capture_revision,execution_revision')
+      .eq('user_id', userId).in('id', workoutIds).limit(workoutIds.length)
+    if (workoutResult.error) errors.push('current_execution_revisions_unavailable')
+  }
+  const feedbackCheckinIds = unique(groups.flatMap(group => {
+    const metadata = isRecord(group.metadata) ? group.metadata : {}
+    const provenance = isRecord(metadata.feedbackProvenance) ? metadata.feedbackProvenance : {}
+    return typeof provenance.checkinId === 'string' ? [provenance.checkinId] : []
+  }))
+  let feedbackResult: { data: unknown[] | null; error: unknown } = { data: [], error: null }
+  if (feedbackCheckinIds.length > 0) {
+    feedbackResult = await supabase.from('coach_checkins')
+      .select('id, user_id, prescribed_session_id, responses, occurred_at')
+      .eq('user_id', userId).eq('checkin_type', 'session').in('id', feedbackCheckinIds)
+      .limit(feedbackCheckinIds.length)
+    if (feedbackResult.error) errors.push('session_feedback_provenance_unavailable')
+  }
   const groupIds = groups.map(group => group.id)
   const importIds = unique(groups.flatMap(group => group.source_import_id ? [group.source_import_id] : []))
 
@@ -566,6 +592,8 @@ export async function fetchCoachEvidenceContext(
   }
 
   return assembleCoachEvidenceContext(userId, normalized, {
+    workoutRevisions: (workoutResult.data ?? []) as NonNullable<CoachEvidenceContextSource['workoutRevisions']>,
+    sessionCheckins: (feedbackResult.data ?? []) as NonNullable<CoachEvidenceContextSource['sessionCheckins']>,
     programs,
     planVersions: (planResult.data ?? []) as CoachEvidencePlanVersionRow[],
     sessions: (sessionsResult.data ?? []) as CoachEvidenceSessionRow[],
@@ -664,7 +692,15 @@ export function assembleCoachEvidenceContext(
     row.user_id === userId && row.status === 'complete'
   )), row => row.group_id)
 
+  const executionExclusions = source.workoutRevisions === undefined ? [] : source.observationGroups.flatMap(group => {
+    if (!group.workout_id) return []
+    const current = source.workoutRevisions!.find(row => row.id === group.workout_id && row.user_id === userId)
+    return current && current.capture_revision === 1 && current.execution_revision === 0 ? []
+      : [{ observationId: group.id, workoutId: group.workout_id, reason: 'execution_amended_or_deleted' as const }]
+  })
+  const excludedExecutions = new Set(executionExclusions.map(item => item.observationId))
   const samples = source.observationGroups
+    .filter(group => !excludedExecutions.has(group.id))
     .filter(group => isEligibleGroup({
       group,
       userId,
@@ -677,7 +713,8 @@ export function assembleCoachEvidenceContext(
       adaptiveScope
     }))
     .flatMap(group => (valuesByGroup.get(group.id) ?? []).flatMap(value => (
-      normalizeEvidenceSample(group, value, normalized, adaptiveScope)
+      hasVerifiedCompletionFeedback(group, value, source.sessionCheckins ?? [])
+        ? normalizeEvidenceSample(group, value, normalized, adaptiveScope) : []
     )))
     .sort(compareSamples)
 
@@ -718,6 +755,7 @@ export function assembleCoachEvidenceContext(
     asOf: normalized.asOf,
     window: { startsAt, endsAt: normalized.asOf, days: normalized.windowDays },
     algorithmVersion: COACH_EVIDENCE_CONTEXT_ALGORITHM_VERSION,
+    executionExclusions,
     evidencePolicyVersion: ADAPTIVE_EVIDENCE_POLICY_VERSION,
     storageAvailable: (source.errors ?? []).length === 0,
     selectionComplete: !sourceTruncated && !selectionTruncated && (source.errors ?? []).length === 0,
@@ -821,6 +859,33 @@ function isEligibleGroup(input: {
   return true
 }
 
+/** Legacy completion rows were stamped confirmed even when the form supplied a default. */
+function hasVerifiedCompletionFeedback(
+  group: CoachEvidenceObservationGroupRow,
+  value: CoachEvidenceObservationValueRow,
+  checkins: NonNullable<CoachEvidenceContextSource['sessionCheckins']>
+): boolean {
+  if (value.metric_id !== 'session.rpe' || group.source_kind !== 'coach_completion') return true
+  const metadata = isRecord(group.metadata) ? group.metadata : {}
+  const binding = isRecord(metadata.feedbackProvenance) ? metadata.feedbackProvenance : {}
+  if (binding.feedbackVersion !== 2 || binding.revision !== 1 || binding.field !== 'sessionRpe'
+    || binding.origin !== 'athlete_reported' || binding.reviewState !== 'athlete_confirmed') return false
+  const checkin = checkins.find(row => row.id === binding.checkinId && row.user_id === group.user_id
+    && row.prescribed_session_id === group.prescribed_session_id)
+  if (!checkin || !isRecord(checkin.responses)) return false
+  const responses = checkin.responses
+  const provenance = isRecord(responses.provenance) ? responses.provenance : {}
+  const field = isRecord(provenance.sessionRpe) ? provenance.sessionRpe : {}
+  const responseBinding = isRecord(responses.feedbackProvenance) ? responses.feedbackProvenance : {}
+  return responses.schemaVersion === 2 && responses.feedbackVersion === 2
+    && responseBinding.checkinId === checkin.id && responseBinding.revision === 1
+    && field.origin === 'athlete_reported' && field.reviewState === 'athlete_confirmed'
+    && responses.workoutId === group.workout_id
+    && typeof responses.sessionRpe === 'number' && responses.sessionRpe >= 1 && responses.sessionRpe <= 10
+    && Number.isInteger(responses.sessionRpe * 2) && responses.sessionRpe === finiteNumber(value.value_numeric)
+    && Date.parse(checkin.occurred_at) === Date.parse(group.observed_at)
+}
+
 function normalizeEvidenceSample(
   group: CoachEvidenceObservationGroupRow,
   value: CoachEvidenceObservationValueRow,
@@ -863,6 +928,7 @@ function normalizeEvidenceSample(
     prescribedSessionId: group.prescribed_session_id,
     assessmentDefinition: {
       id: group.assessment_definition_id,
+      ...(isRecord(group.metadata) && typeof group.metadata.assessmentDefinitionVersion === 'string' ? { version: group.metadata.assessmentDefinitionVersion } : {}),
       catalogVersion: group.assessment_catalog_version
     },
     protocol,

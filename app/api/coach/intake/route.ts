@@ -1,3 +1,4 @@
+import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
 import { exercisePreferencesEnabled } from '@/app/lib/coach/exercise-preferences-server'
 import { validateExercisePreferences } from '@/app/lib/coach/exercise-preferences'
 import { fetchCoachEvidenceContext } from '@/app/lib/coach/evidence-context'
@@ -58,7 +59,8 @@ export async function POST(request: Request) {
       if (!exercisePreferencesEnabled()) return apiError('Exercise preferences are not enabled', 409)
       memories = [{ key: 'exercise_preferences', kind: 'preference', content: { ...body.exercisePreferences } }]
     } else {
-      const validated = validateCompleteCoachPlanningInput(body.planningInput)
+      if (personalizedCoachingCapabilities().trainingIntent && (body.planningInput as { setupConfirmed?: boolean } | undefined)?.setupConfirmed !== true) throw new Error('Confirm current training days, session duration and equipment')
+    const validated = validateCompleteCoachPlanningInput(body.planningInput)
       if (!validated.ok) {
         return NextResponse.json(
           { error: 'Invalid coach setup', details: validated.errors },

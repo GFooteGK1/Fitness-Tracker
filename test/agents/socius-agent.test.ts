@@ -19,10 +19,10 @@ function makeValidSociusJSON(overrides?: Record<string, unknown>): string {
     insights: [
       {
         id: 'insight-1',
-        pattern_id: 'NUT_PERF',
+        pattern_id: 'CON_PROG',
         priority: 'informational',
         confidence: 0.75,
-        content: 'Your protein intake correlates with better recovery scores — days with 150g+ protein show 8% higher next-day recovery.',
+        content: 'Logged training frequency was consistent across the selected period.',
         created_at: '2026-01-20T12:00:00Z'
       }
     ],
@@ -40,10 +40,10 @@ function makeValidSociusJSON(overrides?: Record<string, unknown>): string {
 function makeInsight(overrides?: Partial<RecentInsight>): RecentInsight {
   return {
     id: 'insight-test-1',
-    pattern_id: 'CAL_DEF',
+    pattern_id: 'REC_VOL',
     priority: 'urgent',
     confidence: 0.8,
-    content: 'Caloric deficit detected on a high-strain day.',
+    content: 'Recovery and volume records are available.',
     created_at: '2026-01-20T12:00:00Z',
     ...overrides,
   }
@@ -58,7 +58,7 @@ describe('parseSociusResponse', () => {
 
     expect(result.message).toContain('training volume')
     expect(result.insights).toHaveLength(1)
-    expect(result.insights![0].pattern_id).toBe('NUT_PERF')
+    expect(result.insights![0].pattern_id).toBe('CON_PROG')
     expect(result.insights![0].priority).toBe('informational')
     expect(result.insights![0].confidence).toBe(0.75)
     expect(result.data_points).toBeDefined()
@@ -140,7 +140,7 @@ describe('insight normalization', () => {
       message: 'Analysis complete.',
       insights: [
         { pattern_id: 'INVALID_PATTERN', priority: 'notable', confidence: 0.8, content: 'Some insight' },
-        { pattern_id: 'CAL_DEF', priority: 'urgent', confidence: 0.9, content: 'Valid insight' },
+        { pattern_id: 'REC_VOL', priority: 'urgent', confidence: 0.9, content: 'Valid insight' },
       ],
       data_points: {},
       confidence: 0.8,
@@ -148,7 +148,7 @@ describe('insight normalization', () => {
 
     const result = parseSociusResponse(raw)
     expect(result.insights).toHaveLength(1)
-    expect(result.insights![0].pattern_id).toBe('CAL_DEF')
+    expect(result.insights![0].pattern_id).toBe('REC_VOL')
   })
 
   it('defaults invalid priority to informational', () => {
@@ -169,8 +169,8 @@ describe('insight normalization', () => {
     const raw = JSON.stringify({
       message: 'Analysis.',
       insights: [
-        { pattern_id: 'PRO_REC', priority: 'notable', confidence: 1.5, content: 'Protein recovery link' },
-        { pattern_id: 'HRV_TREND', priority: 'notable', confidence: -0.3, content: 'HRV trending down' },
+        { pattern_id: 'REC_VOL', priority: 'notable', confidence: 1.5, content: 'Recovery and volume records' },
+        { pattern_id: 'HYDRA', priority: 'notable', confidence: -0.3, content: 'HRV trending down' },
       ],
       data_points: {},
       confidence: 0.8,
@@ -185,7 +185,7 @@ describe('insight normalization', () => {
     const raw = JSON.stringify({
       message: 'Analysis.',
       insights: [
-        { pattern_id: 'CAL_DEF', priority: 'urgent', confidence: 0.9, content: '' },
+        { pattern_id: 'REC_VOL', priority: 'urgent', confidence: 0.9, content: '' },
         { pattern_id: 'CON_PROG', priority: 'informational', confidence: 0.7, content: 'Good progress' },
       ],
       data_points: {},
@@ -228,8 +228,7 @@ describe('insight normalization', () => {
 
   it('handles all valid pattern IDs', () => {
     const validPatterns: PatternId[] = [
-      'CAL_DEF', 'OVER_TRN', 'NUT_PERF', 'REC_VOL', 'PRO_REC',
-      'SLEEP_PERF', 'HRV_TREND', 'STRAIN_NUT', 'HYDRA', 'CON_PROG'
+      'OVER_TRN', 'REC_VOL', 'SLEEP_PERF', 'HYDRA', 'CON_PROG'
     ]
 
     for (const patternId of validPatterns) {
@@ -251,7 +250,7 @@ describe('insight normalization', () => {
     for (const priority of validPriorities) {
       const raw = JSON.stringify({
         message: 'test',
-        insights: [{ pattern_id: 'CAL_DEF', priority, confidence: 0.7, content: `Priority ${priority}` }],
+        insights: [{ pattern_id: 'REC_VOL', priority, confidence: 0.7, content: `Priority ${priority}` }],
         data_points: {},
         confidence: 0.8,
       })
@@ -330,7 +329,7 @@ describe('persistInsights', () => {
   it('persists insights above confidence threshold', async () => {
     const { supabase, fromFn, insertFn } = createMockSupabase()
     const insights: RecentInsight[] = [
-      makeInsight({ confidence: 0.8, pattern_id: 'CAL_DEF', priority: 'urgent' }),
+      makeInsight({ confidence: 0.8, pattern_id: 'REC_VOL', priority: 'urgent' }),
     ]
 
     await persistInsights(insights, 'user-1', supabase)
@@ -338,7 +337,7 @@ describe('persistInsights', () => {
     expect(insertFn).toHaveBeenCalledWith([
       expect.objectContaining({
         user_id: 'user-1',
-        pattern_id: 'CAL_DEF',
+        pattern_id: 'REC_VOL',
         priority: 'urgent',
         confidence: 0.8,
         data_context: {},

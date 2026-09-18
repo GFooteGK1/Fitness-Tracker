@@ -192,7 +192,7 @@ describe('fetchPendingUrgentInsights', () => {
     await fetchPendingUrgentInsights(mock as any, 'user-1')
 
     expect(mock.from).toHaveBeenCalledWith('insights')
-    expect(mock._chain.select).toHaveBeenCalledWith('id, content')
+    expect(mock._chain.select).toHaveBeenCalledWith('id, pattern_id, content')
     expect(mock._chain.eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(mock._chain.eq).toHaveBeenCalledWith('priority', 'urgent')
     expect(mock._chain.is).toHaveBeenCalledWith('surfaced_at', null)

@@ -85,6 +85,8 @@ export async function GET(request: Request) {
     // Convert database format to TypeScript interfaces and handle photo URL expiration
     const meals: MealEntry[] = mealsData.map(meal => ({
       id: meal.id,
+      captureRevision: meal.capture_revision,
+      captureProvenance: meal.capture_provenance,
       userId: meal.user_id,
       // Keep the timestamp as a string to preserve local time (no UTC conversion)
       mealTimestamp: meal.meal_timestamp,

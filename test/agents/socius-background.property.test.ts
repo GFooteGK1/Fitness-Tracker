@@ -266,10 +266,10 @@ describe('Property 13: Insight creation threshold', () => {
 
 describe('Property 14: Caloric deficit urgency classification', () => {
   /**
-   * Property 14a: CAL_DEF is urgent when strain >= 14 AND calories < 1500
+   * Property 14a: retired CAL_DEF is withheld across the old threshold range
    *
    * *For any* day where WHOOP strain score >= 14 and total logged calories < 1500,
-   * the CAL_DEF pattern detection SHALL classify the resulting Insight as `urgent` priority.
+   * the retired CAL_DEF pattern SHALL remain unavailable.
    *
    * **Validates: Requirements 4.5**
    */
@@ -280,7 +280,7 @@ describe('Property 14: Caloric deficit urgency classification', () => {
     ],
     propertyConfig
   )(
-    'Property 14: CAL_DEF is urgent when strain >= 14 and calories < 1500',
+    'Property 14: CAL_DEF remains retired across high strain and low logged calories',
     (strain, calories) => {
       const ctx: SociusContext = {
         user_id: 'test',
@@ -319,10 +319,7 @@ describe('Property 14: Caloric deficit urgency classification', () => {
       }
 
       const result = checkCaloricDeficit(ctx)
-      expect(result).not.toBeNull()
-      expect(result!.pattern_id).toBe('CAL_DEF')
-      expect(result!.priority).toBe('urgent')
-      expect(result!.confidence).toBe(0.8)
+      expect(result).toBeNull()
     }
   )
 

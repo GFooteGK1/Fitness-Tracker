@@ -3,6 +3,9 @@ import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { complete } from '@/app/lib/llm/client'
 import { extractJson } from '@/app/lib/llm/json'
 import { FoodItem, PortionSpec } from '@/app/lib/types/food-tracking'
+import { replayJsonRequest, loggingContext, markCaptureCorrectionFailure } from '@/app/lib/logging/server'
+import { amendActivity, validCorrection } from '@/app/lib/capture/corrections'
+import { auditedCaptureInstalled } from '@/app/lib/capture/compatibility'
 
 // Convert portion spec to human-readable description for Claude
 function portionToDescription(spec: PortionSpec): string {
@@ -33,7 +36,7 @@ function portionToDescription(spec: PortionSpec): string {
   return 'unspecified portion'
 }
 
-export async function POST(request: NextRequest) {
+async function processRefine(request: NextRequest) {
   try {
     const supabase = await createServerClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -44,6 +47,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { mealId, items } = body as { mealId: string; items: FoodItem[] }
+    const identity = { entityId: mealId, expectedRevision: body.expectedRevision, requestId: loggingContext.getStore()?.id ?? body.requestId }
+    const captureEnabled = await auditedCaptureInstalled(supabase)
+    if (captureEnabled && (body.expectedUserId !== user.id || !validCorrection(identity))) return NextResponse.json({ error: 'Reload this meal before correcting it.' }, { status: 422 })
 
     if (!mealId || !items || !Array.isArray(items)) {
       return NextResponse.json({ error: 'Missing mealId or items' }, { status: 400 })
@@ -53,6 +59,14 @@ export async function POST(request: NextRequest) {
     const itemsWithPortions = items.filter(item => item.portionSpec)
     
     if (itemsWithPortions.length === 0) {
+      if (captureEnabled && validCorrection(identity)) {
+        const pendingContext = loggingContext.getStore()
+        if (pendingContext) pendingContext.writeAttempted = true
+        const receipt = await amendActivity(supabase, user.id, 'meal', identity, { items, needs_review: false, manual_override: true })
+        const context = loggingContext.getStore()
+        if (context) context.receipts = [receipt]
+        return NextResponse.json({ items, refined: false, reviewed: true, receipts: [receipt] })
+      }
       // Food-name corrections still need to be persisted even when there is
       // no portion-driven macro recalculation.
       const { error: reviewUpdateError } = await supabase
@@ -150,6 +164,15 @@ Use accurate nutritional data. Round macros to 1 decimal place. Confidence shoul
       confidence,
     }
 
+    if (captureEnabled && validCorrection(identity)) {
+      const pendingContext = loggingContext.getStore()
+      if (pendingContext) pendingContext.writeAttempted = true
+      const receipt = await amendActivity(supabase, user.id, 'meal', identity, { items: result.items, needs_review: true, manual_override: true, ai_confidence: result.confidence }, false, true)
+      const context = loggingContext.getStore()
+      if (context) context.receipts = [receipt]
+      return NextResponse.json({ ...result, refined: true, receipts: [receipt] })
+    }
+
     // Update the meal in database with refined values
     const { error: updateError } = await supabase
       .from('meals')
@@ -187,7 +210,16 @@ Use accurate nutritional data. Round macros to 1 decimal place. Confidence shoul
     })
 
   } catch (error) {
+    markCaptureCorrectionFailure(error)
     console.error('[Refine] Error:', error)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
+}
+
+export async function POST(request: NextRequest) {
+  const supabase = await createServerClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try { return await auditedCaptureInstalled(supabase) ? await replayJsonRequest(request, 'meal-refine', processRefine) : await processRefine(request) }
+  catch { return NextResponse.json({ error: 'Capture compatibility is unavailable; retry this request.' }, { status: 503 }) }
 }

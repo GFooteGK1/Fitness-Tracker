@@ -4,6 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import { TodayPlan } from '@/app/components/TodayPlan'
+import { NextActionCard } from '@/app/components/NextActionCard'
 import { WhoopMetricsCard } from '@/app/components/whoop/WhoopMetricsCard'
 import DashboardNarrative from '@/app/components/DashboardNarrative'
 import { AppIcon } from '@/app/components/AppIcon'
@@ -11,6 +12,7 @@ import { AppIcon } from '@/app/components/AppIcon'
 export default function Dashboard() {
   return <ProtectedRoute><div className="mx-auto max-w-2xl space-y-5">
     <header className="py-2"><p className="app-eyebrow">A little context. A clear next step.</p><h1 className="app-title">Your day, at a glance.</h1></header>
+    <NextActionCard />
     <TodayPlan />
     <section aria-labelledby="quick-log-heading" className="app-panel p-5">
       <h2 id="quick-log-heading" className="mb-4 font-semibold">Quick log</h2>

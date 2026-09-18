@@ -60,20 +60,6 @@ export default function MealEntryCard({
     return `${Math.round(value * 10) / 10}${unit}`
   }
 
-  const getConfidenceColor = (confidence?: number) => {
-    if (!confidence) return 'text-gray-500'
-    if (confidence >= 0.8) return 'text-green-600'
-    if (confidence >= 0.6) return 'text-yellow-600'
-    return 'text-red-600'
-  }
-
-  const getConfidenceText = (confidence?: number) => {
-    if (!confidence) return 'Unknown'
-    if (confidence >= 0.8) return 'High'
-    if (confidence >= 0.6) return 'Medium'
-    return 'Low'
-  }
-
   const isPhotoExpired = meal.photoExpiresAt &&
     meal.photoExpiresAt instanceof Date &&
     !isNaN(meal.photoExpiresAt.getTime()) &&
@@ -158,17 +144,7 @@ export default function MealEntryCard({
             />
 
             {/* AI confidence indicator overlay */}
-            {meal.aiConfidence && !meal.manualOverride && (
-              <div className="absolute top-2 right-2">
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white bg-opacity-90 ${getConfidenceColor(meal.aiConfidence)}`}>
-                  <div className={`w-2 h-2 rounded-full mr-1 ${
-                    meal.aiConfidence >= 0.8 ? 'bg-green-500' :
-                    meal.aiConfidence >= 0.6 ? 'bg-yellow-500' : 'bg-red-500'
-                  }`}></div>
-                  AI: {getConfidenceText(meal.aiConfidence)}
-                </span>
-              </div>
-            )}
+
           </div>
         )}
 
@@ -248,11 +224,7 @@ export default function MealEntryCard({
         <div className="flex justify-between items-center text-xs text-gray-500 pt-2 border-t border-gray-100">
           <div className="flex items-center space-x-3">
             {/* AI confidence for non-manual entries */}
-            {meal.aiConfidence && !meal.manualOverride && (
-              <span className={getConfidenceColor(meal.aiConfidence)}>
-                AI Confidence: {Math.round(meal.aiConfidence * 100)}%
-              </span>
-            )}
+            <span>{Object.values(meal.captureProvenance?.fields ?? {}).some(field => field.origin === 'model_estimated') ? 'Estimated nutrition' : meal.captureProvenance ? 'Reported or copied nutrition' : 'Earlier entry: source unknown'}</span>
 
             {/* Review timestamp */}
             {meal.reviewedAt && (

@@ -7,6 +7,8 @@ import type { RollingWeeklyPlanDraft } from '@/app/lib/coach/rolling-weekly-plan
 import type { RollingWeeklyReview } from '@/app/lib/coach/weekly-review'
 import { getLocalDate, parseDateString } from '@/app/lib/timezone-utils'
 import { ExercisePreferenceNotes } from './exercise-preferences-editor'
+import { PrescriptionBasisDetails } from './prescription-basis-details'
+import { GoalReviewDetails, ExecutionPriorityDetails } from './goal-review-details'
 import { CompleteSessionCard } from './coach-program-components'
 import {
   selectTodaySession,
@@ -24,6 +26,7 @@ export interface WeeklyPlanVersionView {
 }
 
 export interface WeeklyReviewHistoryView {
+  sourceInvalidated?: boolean
   id: string
   base_plan_version_id: string
   review_window_start: string
@@ -38,6 +41,7 @@ export interface WeeklyReviewHistoryView {
 }
 
 export interface WeeklyCoachState {
+  capabilities?: { feedbackV2: boolean }
   mode: 'rolling_weekly'
   program: {
     id: string
@@ -70,6 +74,7 @@ export interface WeeklyProposalView {
 }
 
 interface WeeklyProgramViewProps {
+  feedbackV2?: boolean
   state: WeeklyCoachState
   activeProgram: ActiveCoachProgramSummary
   review: RollingWeeklyReview | null
@@ -105,7 +110,8 @@ export function WeeklyProgramView({
   onRequestDirectionChange,
   onRecordSessionResult,
   onEditFailedSessionResult,
-  onRefreshPlan
+  onRefreshPlan,
+  feedbackV2 = false
 }: WeeklyProgramViewProps) {
   const acceptedWeek = state.currentWeek?.intent.weekly_plan ?? null
   const todaySession = selectTodaySession(activeProgram)
@@ -152,6 +158,8 @@ export function WeeklyProgramView({
         <div className="mt-5">
           {todaySession && todayPrescription && todaySession.status === 'planned' ? (
             <TodaySessionCard
+              feedbackV2={feedbackV2}
+              exerciseSignalsEnabled={feedbackV2}
               key={todaySession.id}
               session={todaySession}
               prescription={todayPrescription}
@@ -245,6 +253,7 @@ function CoachReviewSection({
       <p className="text-xs font-semibold uppercase tracking-[0.18em]">Coach review and next week</p>
       <h2 className="mt-2 text-xl font-bold text-gray-950 dark:text-white">{presentation.title}</h2>
       <p className="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-200">{presentation.message}</p>
+      <GoalReviewDetails value={isLiveReview(review) && review.status === 'ready' ? review.goalReviews : review && 'rationale' in review && !Array.isArray(review.rationale) ? review.rationale.goalReviews : undefined} />
 
       {isLiveReview(review) && review.status === 'ready' && (
         <div className="mt-4 rounded-xl bg-white/70 p-4 dark:bg-gray-900/70">
@@ -257,6 +266,9 @@ function CoachReviewSection({
               ? ` · average RPE ${review.executionSummary.averageSessionRpe}`
               : ''}
           </p>
+          {review.executionSummary.explicitRpeCount !== undefined && <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+            Session effort reported for {review.executionSummary.explicitRpeCount} of {review.executionSummary.eligibleCompletionCount ?? review.executionSummary.completedSessions} completed sessions.
+          </p>}
           {review.rationale.length > 0 && (
             <p className="mt-2 text-sm text-gray-700 dark:text-gray-200">{review.rationale[0]}</p>
           )}
@@ -324,6 +336,8 @@ function NextWeekProposal({ proposal }: { proposal: RollingWeeklyPlanDraft }) {
         {actionLabel(action)} · {proposal.sessions.length} sessions · acceptance required
       </p>
       <ExercisePreferenceNotes notes={proposal.profileSnapshot.preferenceNotes} />
+      <PrescriptionBasisDetails basis={proposal.profileSnapshot.prescriptionBasis} />
+      <ExecutionPriorityDetails plan={proposal} />
       {proposal.changeSummary.changedVariables.length > 0 && (
         <ul className="mt-3 space-y-1 text-sm text-gray-700 dark:text-gray-200">
           {proposal.changeSummary.changedVariables.map(change => (
@@ -429,6 +443,10 @@ function historyReview(state: WeeklyCoachState): WeeklyReviewHistoryView | null 
 }
 
 function reviewPresentation(review: RollingWeeklyReview | WeeklyReviewHistoryView | null) {
+  if (review && 'sourceInvalidated' in review && review.sourceInvalidated) return {
+    title: 'Review the corrected training record', message: 'A workout used by this saved review changed. Keep the accepted week and create a new review from current evidence.',
+    className: 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30'
+  }
   const action = reviewAction(review)
   if (action === 'pause_review') return {
     title: 'Pause and review the safety signal',
@@ -463,6 +481,7 @@ function reviewPresentation(review: RollingWeeklyReview | WeeklyReviewHistoryVie
 }
 
 function reviewAction(review: RollingWeeklyReview | WeeklyReviewHistoryView | null): string | null {
+  if (review && 'sourceInvalidated' in review && review.sourceInvalidated) return null
   if (!review) return null
   if ('status' in review && review.status === 'not_ready') return null
   return review.action

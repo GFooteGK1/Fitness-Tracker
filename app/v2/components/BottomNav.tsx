@@ -1,5 +1,7 @@
 'use client'
 
+import { canSurfaceLegacyInsight } from '@/app/lib/agents/legacy-insight-guard'
+
 import React from 'react'
 import type { RecentInsight, InsightPriority, BenchmarkPR } from '@/app/lib/agents/types'
 
@@ -16,7 +18,7 @@ const PRIORITY_ORDER: Record<InsightPriority, number> = {
 }
 
 export function sortInsights(insights: RecentInsight[]): RecentInsight[] {
-  return [...insights].sort((a, b) => {
+  return insights.filter(canSurfaceLegacyInsight).sort((a, b) => {
     const priorityDiff = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
     if (priorityDiff !== 0) return priorityDiff
     // Same priority: newest first (descending created_at)
@@ -74,6 +76,7 @@ const TABS: { id: TabId; icon: string; label: string }[] = [
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function BottomNav({ activeTab, onTabChange, insights, prs }: BottomNavProps) {
+  insights = insights.filter(canSurfaceLegacyInsight)
   return (
     <>
       {/* Tab content: Insights or PRs */}

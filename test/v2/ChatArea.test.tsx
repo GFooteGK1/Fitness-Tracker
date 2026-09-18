@@ -41,10 +41,10 @@ function makeMessage(overrides: Partial<AgentMessage> & { role: AgentMessage['ro
 function makeInsight(overrides: Partial<RecentInsight> = {}): RecentInsight {
   return {
     id: overrides.id ?? 'insight-1',
-    pattern_id: overrides.pattern_id ?? 'CAL_DEF',
+    pattern_id: overrides.pattern_id ?? 'CON_PROG',
     priority: overrides.priority ?? 'urgent',
     confidence: overrides.confidence ?? 0.85,
-    content: overrides.content ?? 'High strain day with low calories.',
+    content: overrides.content ?? 'Your latest session record is available.',
     created_at: overrides.created_at ?? '2026-02-01T12:00:00Z',
   }
 }
@@ -150,23 +150,31 @@ describe('ChatArea', () => {
   })
 
   describe('urgent insight banner', () => {
+    it('withholds retired urgent claims without removing the athlete own words', () => {
+      const content = 'I was told low calories caused my poor workout.'
+      const insights = [makeInsight({ pattern_id: 'CAL_DEF', content: 'Unsupported analyst calorie claim' })]
+      render(<ChatArea messages={[makeMessage({ role: 'user', content })]} isLoading={false} urgentInsights={insights} onDismissInsight={noop} />)
+      expect(screen.queryByText('Unsupported analyst calorie claim')).not.toBeInTheDocument()
+      expect(screen.getByText(content)).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
     it('renders urgent insight banner with content', () => {
-      const insights = [makeInsight({ content: 'You need more calories today!' })]
+      const insights = [makeInsight({ content: 'Your latest session record is available.' })]
       render(<ChatArea messages={[]} isLoading={false} urgentInsights={insights} onDismissInsight={noop} />)
 
-      expect(screen.getByText('You need more calories today!')).toBeInTheDocument()
+      expect(screen.getByText('Your latest session record is available.')).toBeInTheDocument()
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
 
     it('renders multiple urgent insight banners', () => {
       const insights = [
-        makeInsight({ id: 'i1', content: 'Low calories on high strain day.' }),
-        makeInsight({ id: 'i2', content: 'Recovery score declining.' }),
+        makeInsight({ id: 'i1', content: 'A session record was updated.' }),
+        makeInsight({ id: 'i2', content: 'Another record is available.' }),
       ]
       render(<ChatArea messages={[]} isLoading={false} urgentInsights={insights} onDismissInsight={noop} />)
 
-      expect(screen.getByText('Low calories on high strain day.')).toBeInTheDocument()
-      expect(screen.getByText('Recovery score declining.')).toBeInTheDocument()
+      expect(screen.getByText('A session record was updated.')).toBeInTheDocument()
+      expect(screen.getByText('Another record is available.')).toBeInTheDocument()
       expect(screen.getAllByRole('alert')).toHaveLength(2)
     })
 

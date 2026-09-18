@@ -249,7 +249,7 @@ describe('buildPassiveContext', () => {
     }
   }
 
-  it('returns PassiveContext with default targets when no data exists', async () => {
+  it('keeps absent targets unknown with numeric placeholders when no data exists', async () => {
     const mockSupabase = createMockSupabase()
     const { createServerClient } = await import('@/app/lib/auth/supabase-server')
     vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any)
@@ -258,14 +258,15 @@ describe('buildPassiveContext', () => {
     const ctx = await buildPassiveContext('user-123')
 
     expect(ctx.user_id).toBe('user-123')
-    expect(ctx.targets.protein).toBe(150)
-    expect(ctx.targets.carbs).toBe(200)
-    expect(ctx.targets.fat).toBe(65)
-    expect(ctx.targets.calories).toBe(2000)
-    expect(ctx.targets.tolerance_pct).toBe(10)
+    expect(ctx.targets.protein).toBe(0)
+    expect(ctx.targets.carbs).toBe(0)
+    expect(ctx.targets.fat).toBe(0)
+    expect(ctx.targets.calories).toBe(0)
+    expect(ctx.targets.tolerance_pct).toBe(0)
     expect(ctx.today.meals_logged).toBe(0)
     expect(ctx.today.workouts_logged).toBe(0)
     expect(ctx.today.macros_consumed).toEqual({ protein: 0, carbs: 0, fat: 0, calories: 0 })
+    expect(ctx.targets_confirmed).toBe(false)
     expect(ctx.has_whoop).toBe(false)
     expect(ctx.current_time).toBeDefined()
     expect(ctx.day_of_week).toBeDefined()
@@ -836,6 +837,26 @@ describe('buildSociusContext', () => {
     return { from: mockFrom }
   }
 
+  it.each(['idle', 'syncing'])('rechecks the completed generation after historical aggregate retrieval: %s', async finalStatus => {
+    const client = createMockSupabaseForSocius({ recoveries: [{ recovery_score: 31 }], sleeps: [{ sleep_score: 75 }] })
+    const originalFrom = client.from.getMockImplementation()!
+    let syncReads = 0
+    const syncedAt = new Date().toISOString()
+    client.from.mockImplementation((table: string) => {
+      const chain = originalFrom(table)
+      if (table === 'whoop_tokens') chain.single = vi.fn().mockResolvedValue({ data: { id: 'connection' }, error: null })
+      if (table === 'whoop_sync_status') chain.single = vi.fn(async () => ({ data: { status: ++syncReads >= 3 ? finalStatus : 'idle', last_sync_at: syncedAt }, error: null }))
+      return chain
+    })
+    const { createServerClient } = await import('@/app/lib/auth/supabase-server')
+    vi.mocked(createServerClient).mockResolvedValue(client as any)
+    const { buildSociusContext } = await import('@/app/lib/agents/context-builder')
+    const context = await buildSociusContext(`aggregate-${finalStatus}`)
+    expect(syncReads).toBe(3)
+    expect(context.thirty_day_summary.whoop_avg_recovery).toBe(finalStatus === 'idle' ? 31 : null)
+    expect(context.thirty_day_summary.whoop_avg_sleep_score).toBe(finalStatus === 'idle' ? 75 : null)
+  })
+
   it('returns SociusContext with empty data when no records exist', async () => {
     const mockSupabase = createMockSupabaseForSocius()
     const { createServerClient } = await import('@/app/lib/auth/supabase-server')
@@ -954,7 +975,7 @@ describe('buildSociusContext', () => {
     expect(ctx.thirty_day_summary.avg_daily_calories).toBe(900)
   })
 
-  it('calculates WHOOP averages from recovery and sleep data', async () => {
+  it('withholds WHOOP averages without a complete connected sync', async () => {
     const mockRecoveries = [
       { recovery_score: '75' },
       { recovery_score: '60' },
@@ -977,19 +998,19 @@ describe('buildSociusContext', () => {
     const ctx = await buildSociusContext('user-socius-5')
 
     // avg recovery: (75+60+80)/3 = 71.7
-    expect(ctx.thirty_day_summary.whoop_avg_recovery).toBeCloseTo(71.7, 1)
+    expect(ctx.thirty_day_summary.whoop_avg_recovery).toBeNull()
     // avg sleep: (85+70)/2 = 77.5
-    expect(ctx.thirty_day_summary.whoop_avg_sleep_score).toBe(77.5)
+    expect(ctx.thirty_day_summary.whoop_avg_sleep_score).toBeNull()
   })
 
-  it('includes recent insights from the last 30 days', async () => {
+  it('includes retained recent insights and withholds retired protein-recovery claims', async () => {
     const mockInsights = [
       {
         id: 'ins-1',
-        pattern_id: 'CAL_DEF',
+        pattern_id: 'REC_VOL',
         priority: 'urgent',
         confidence: 0.85,
-        content: 'High strain with low calories',
+        content: 'Recovery and volume records available',
         created_at: '2026-01-20T10:00:00Z'
       },
       {
@@ -1009,11 +1030,11 @@ describe('buildSociusContext', () => {
     const { buildSociusContext } = await import('@/app/lib/agents/context-builder')
     const ctx = await buildSociusContext('user-socius-6')
 
-    expect(ctx.recent_insights).toHaveLength(2)
+    expect(ctx.recent_insights).toHaveLength(1)
     expect(ctx.recent_insights[0].id).toBe('ins-1')
-    expect(ctx.recent_insights[0].pattern_id).toBe('CAL_DEF')
+    expect(ctx.recent_insights[0].pattern_id).toBe('REC_VOL')
     expect(ctx.recent_insights[0].priority).toBe('urgent')
-    expect(ctx.recent_insights[1].id).toBe('ins-2')
+    expect(ctx.recent_insights.some(insight => insight.id === 'ins-2')).toBe(false)
   })
 
   it('reports data availability correctly when data exists', async () => {

@@ -1,4 +1,6 @@
 import { createHash } from 'crypto'
+import { validatePlanningIntentSnapshot, type PlanningIntentSnapshot } from './planning-intent'
+import { realizeExecutionPriority } from './execution-priority'
 import type { AdaptivePlanContract } from './adaptive-plan'
 import { validateCompleteProgrammingWeekDose } from './program-validator'
 import {
@@ -18,6 +20,7 @@ export interface StoredRollingWeeklyIntent {
   kernel_version: string
   weekly_plan: RollingWeeklyPlanDraft
   adaptive_programming: AdaptivePlanContract
+  training_intent?: PlanningIntentSnapshot
 }
 
 export interface RollingProposalRpcRow {
@@ -35,12 +38,14 @@ export function buildStoredRollingWeeklyIntent(
     horizon_weeks: 1,
     kernel_version: plan.kernelVersion,
     weekly_plan: structuredClone(plan),
-    adaptive_programming: structuredClone(adaptivePlan)
+    adaptive_programming: structuredClone(adaptivePlan),
+    ...(plan.profileSnapshot.trainingIntent ? { training_intent: structuredClone(plan.profileSnapshot.trainingIntent) } : {})
   }
 }
 
 export function parseStoredRollingWeeklyIntent(value: unknown): StoredRollingWeeklyIntent | null {
   if (!isRecord(value)) return null
+  if (value.training_intent !== undefined && !validatePlanningIntentSnapshot(value.training_intent)) return null
   if (
     value.format !== 'rolling_weekly_intent_v0_1'
     || value.horizon_weeks !== 1
@@ -60,6 +65,7 @@ export function parseStoredRollingWeeklyIntent(value: unknown): StoredRollingWee
     || !isRecord(weeklyPlan.directionSnapshot)
     || !isRecord(weeklyPlan.schedule)
   ) return null
+  if (stableStringify(weeklyPlan.profileSnapshot.trainingIntent) !== stableStringify(value.training_intent)) return null
 
   const profileValidation = validateProgrammingProfile(weeklyPlan.profileSnapshot)
   const directionErrors = validateRollingTrainingDirection(
@@ -72,6 +78,9 @@ export function parseStoredRollingWeeklyIntent(value: unknown): StoredRollingWee
     weeklyPlan.sessions
   )
   if (!profileValidation.ok || directionErrors.length > 0 || !weekValidation.ok) return null
+  try {
+    if (stableStringify(weeklyPlan.executionPriority) !== stableStringify(realizeExecutionPriority(weeklyPlan.profileSnapshot, weeklyPlan.schedule, weeklyPlan.sessions))) return null
+  } catch { return null }
 
   return value as unknown as StoredRollingWeeklyIntent
 }

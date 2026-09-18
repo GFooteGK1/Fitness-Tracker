@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { rankCommonMeals, type MealHistoryRow } from '@/app/lib/nutrition/fast-log'
+import { replayJsonRequest, saveActivity } from '@/app/lib/logging/server'
+import { captureProvenance } from '@/app/lib/capture/contracts'
+import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-export async function POST(request: NextRequest) {
+async function processQuickLog(request: NextRequest) {
   const supabase = await createServerClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
@@ -28,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   const { data: sourceMeal, error: sourceError } = await supabase
     .from('meals')
-    .select('id, items, total_protein, total_carbs, total_fat, total_calories, needs_review, manual_override, reviewed_at, ai_confidence')
+    .select('*')
     .eq('id', sourceMealId)
     .eq('user_id', user.id)
     .single()
@@ -43,6 +46,16 @@ export async function POST(request: NextRequest) {
   } as MealHistoryRow], 1)[0]
   if (!snapshot) {
     return NextResponse.json({ error: 'Source meal is not safe to reuse' }, { status: 422 })
+  }
+
+  if (personalizedCoachingCapabilities().captureReceiptsV2) {
+    const provenance = captureProvenance('meal', 'copied_template', 'unreviewed', [`meal:${sourceMealId}:revision:${sourceMeal.capture_revision ?? 'legacy'}`])
+    // Retain the original composition's origin and review; only the new occurrence is newly confirmed.
+    if (sourceMeal.capture_provenance?.fields) provenance.fields = sourceMeal.capture_provenance.fields
+    const mealId = await saveActivity(supabase, 'meal', { ...sourceMeal, meal_timestamp: timestamp, photo_url: null,
+      items: snapshot.items, source_meal_id: sourceMealId, entry_method: 'quick_log', reviewed_at: sourceMeal.reviewed_at ?? null }, [], undefined,
+      { inputMethod: 'template', provenance })
+    return NextResponse.json({ success: true, mealId })
   }
 
   const { data: insertedMeal, error: insertError } = await supabase
@@ -83,3 +96,6 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ success: true, mealId: insertedMeal.id })
 }
+
+export const POST = (request: NextRequest) => personalizedCoachingCapabilities().captureReceiptsV2
+  ? replayJsonRequest(request, 'quick-meal', processQuickLog) : processQuickLog(request)
