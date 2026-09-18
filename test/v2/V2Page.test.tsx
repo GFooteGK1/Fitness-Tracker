@@ -17,6 +17,8 @@ import '@testing-library/jest-dom'
 
 // Mock useAuth
 const mockUser = { id: 'user-123', email: 'test@example.com' }
+vi.mock('@/app/lib/auth/supabase', () => ({ createClient: () => ({ auth: { getUser: async () => ({ data: { user: mockUser } }) } }) }))
+vi.mock('@/app/lib/offline-queue', () => ({ offlineQueue: { captureNeedsReconciliation: async () => false } }))
 vi.mock('@/app/lib/auth/AuthContext', () => ({
   useAuth: vi.fn(() => ({ user: mockUser, loading: false, hasCompletedOnboarding: true })),
 }))
@@ -97,6 +99,8 @@ function stubPageFetch(options: PageFetchOptions = {}) {
 
   const mockFetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = requestUrl(input)
+    if (url.startsWith('/api/recommendations/refresh')) return makeResponse({ status: 'disabled', recommendations: [], refreshState: null })
+    if (url === '/api/capture/drafts') return makeResponse({ userId: mockUser.id, drafts: [] })
 
     if (url === '/api/agent/process') {
       return options.agent?.(input, init) ?? makeResponse(defaultAgentResponse)
@@ -141,6 +145,8 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
+  sessionStorage.clear(); localStorage.clear()
+  window.dispatchEvent(new CustomEvent('capture-request-resolved', { detail: `socius-pending:${mockUser.id}:/api/agent/process` }))
   chatChain = buildChain([])
   stubPageFetch()
 })

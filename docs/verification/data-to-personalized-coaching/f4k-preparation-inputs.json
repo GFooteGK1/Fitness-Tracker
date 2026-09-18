@@ -1,0 +1,1832 @@
+{
+  "schemaVersion": "f4k-preparation-1",
+  "status": "local_preparation",
+  "syntheticOnly": true,
+  "paidCallsAuthorized": false,
+  "liveCalls": 0,
+  "productionActivationAllowed": false,
+  "currentImplementationFrozenCandidate": "33aba965c5d3cca187459e04352a8548bd63bf79ceedac8bdd701bf1556fcfbe",
+  "strategyControl": {
+    "representation": "compact",
+    "semanticPolicy": "Use the compact representation only. Select only an offered allocation and one eligible movement for each assignment. Cite dated supplied facts and applicable rules. Judge priority from actual compiled order, role and preparation, never allocation name. Application policy owns numerical dose and mandatory precedence. Do not infer readiness, capacity, clearance or total training from missing history. Retain confirmed constraints and preferences. Separate whole-week outside workload from gym availability. State missing capability or a decision-changing question when appropriate. Changes remain drafts requiring athlete acceptance. Ratings are optional; no new numerical policy is authorized.",
+    "semanticPolicySha256": "bcafe62aa8589c99164afae80922a61b46df47d72d0b5b584774d56624156424",
+    "model": "not selected or authorized by this preparation",
+    "responseVersion": "arm-specific serialization only; never a strategy change",
+    "nativeRuntimePrompts": "Do not use as separate experimental arms; they differ."
+  },
+  "archives": [
+    {
+      "path": "C:\\Dev\\Personal\\repos\\Fitness-Tracker\\.worktrees\\coaching-layer\\output\\coaching-eval\\compact-pilot-2026-09-17\\coaching-runtime.cjs",
+      "sha256": "cb95810fe273a52f716c1ae15598ea17b711b8e496e811b4c0a8ed70d4d55a81"
+    },
+    {
+      "path": "C:\\Dev\\Personal\\repos\\Fitness-Tracker\\.worktrees\\coaching-layer\\output\\coaching-eval\\compact-pilot-2026-09-17\\manifest.json",
+      "sha256": "61b3338399263ba6fc72d4210b6f5bd080fd713d05fbcb0c3c8867523c25a1e3"
+    },
+    {
+      "path": "C:\\Dev\\Personal\\repos\\Fitness-Tracker\\.worktrees\\coaching-layer\\output\\coaching-eval\\compact-pilot-2026-09-17\\report.json",
+      "sha256": "85b920b9bb5fd0b026f777d6d628f22f92b13c3c71858b90fd0ee4d51a19e41a"
+    },
+    {
+      "path": "C:\\Dev\\Personal\\repos\\Fitness-Tracker\\.worktrees\\coaching-layer\\output\\coaching-eval\\compact-pilot-2026-09-17\\blinded-review.json",
+      "sha256": "11637fc6f5d3a177b1dbbedc0b6c6c64b7448a45a977386877e5a4bc8f31cbf3"
+    },
+    {
+      "path": "C:\\Dev\\Personal\\repos\\Fitness-Tracker\\.worktrees\\coaching-layer\\.next\\coaching-eval\\priority-runtime.cjs",
+      "sha256": "6ff292cdc89f3b4b960e43206a0ebe93202407f5707ac4120d2da7c08aa843e1"
+    },
+    {
+      "path": "C:\\Dev\\Personal\\repos\\Fitness-Tracker\\.worktrees\\coaching-layer\\.next\\coaching-eval\\priority-recorded-choice-check.json",
+      "sha256": "e8fafd92c15c7b4790a5ab80988f8ee82d9e5d6c75c67f08ee3a17ab71e83e65"
+    },
+    {
+      "path": "C:\\Dev\\Personal\\repos\\Fitness-Tracker\\.worktrees\\coaching-layer\\output\\coaching-eval\\reliability-2026-09-17-preflight\\manifest.json",
+      "sha256": "1d917601c681c3e4fc4466efdf41b061c20cf3d5abf88349f681b4a411ffe31d"
+    },
+    {
+      "path": "C:\\Dev\\Personal\\repos\\Fitness-Tracker\\.worktrees\\coaching-layer\\test\\coach\\coaching-comparison.eval.test.ts",
+      "sha256": "fdb99c706e7c18f3171a4ff0dda1ab33e13ee95d9b76f95777ffa67215024913"
+    },
+    {
+      "path": "C:\\Dev\\Personal\\repos\\Fitness-Tracker\\.worktrees\\coaching-layer\\docs\\coach\\execution-priority-implementation.md",
+      "sha256": "297b60ebf4f419f3d3fbda25f6b43aec97e0ae6050877cd20023f4262d150757"
+    }
+  ],
+  "sourceInput": "Existing exposed development bench-unknown scaffold; new IDs and six explicit controlled variations, not a reserved holdout.",
+  "cases": [
+    {
+      "id": "f4k-outcome-bench",
+      "pair": "outcome",
+      "controlledConcept": "direct primary outcome",
+      "input": {
+        "userId": "synthetic-f4k",
+        "profile": {
+          "schemaVersion": 1,
+          "kernelVersion": "0.3.0",
+          "athleteGoalSummary": "Improve barbell bench strength while maintaining lower-body strength.",
+          "primaryGoal": {
+            "id": "goal:f4k:strength",
+            "domain": "strength",
+            "role": "primary",
+            "allocation": "lead",
+            "athleteIntent": "Improve barbell bench strength while maintaining lower-body strength."
+          },
+          "secondaryGoals": [],
+          "trainingExperience": "consistent",
+          "startDate": "2026-09-14",
+          "sessionAvailability": [
+            {
+              "day": "monday",
+              "minutes": 60
+            },
+            {
+              "day": "tuesday",
+              "minutes": 60
+            },
+            {
+              "day": "wednesday",
+              "minutes": 60
+            }
+          ],
+          "equipment": {
+            "resolvedIds": [
+              "barbell",
+              "rack",
+              "dumbbell",
+              "kettlebell",
+              "bench",
+              "band",
+              "cable",
+              "machine",
+              "pull_up_bar",
+              "medicine_ball",
+              "box",
+              "sled",
+              "bike",
+              "rower",
+              "treadmill",
+              "track",
+              "bodyweight"
+            ],
+            "unresolvedAthleteDescription": null
+          },
+          "explicitConstraints": [],
+          "unresolvedConstraintNote": null,
+          "preferences": [],
+          "assessments": [],
+          "recentTraining": {
+            "asOfDate": null,
+            "lookbackDays": 0,
+            "completedSessionCount": 0,
+            "performedMovementIds": [],
+            "doseByCoverageTarget": []
+          },
+          "inputSource": {
+            "kind": "structured_v0_3_intake"
+          }
+        },
+        "context": {
+          "evidence": {
+            "schemaVersion": 1,
+            "purpose": "new_planning",
+            "asOf": "2026-09-14T12:00:00.000Z",
+            "window": {
+              "startsAt": "2025-09-14T12:00:00.000Z",
+              "endsAt": "2026-09-14T12:00:00.000Z",
+              "days": 365
+            },
+            "algorithmVersion": "coach-context-selection-0.1.0",
+            "evidencePolicyVersion": "0.1.0",
+            "storageAvailable": true,
+            "selectionComplete": true,
+            "scope": {
+              "userId": "synthetic-f4k",
+              "activeProgramId": null,
+              "activePlanVersionId": null,
+              "goalId": null,
+              "prescribedSessionId": null,
+              "metricId": null,
+              "protocol": null,
+              "comparabilityKey": null
+            },
+            "activePlan": null,
+            "session": null,
+            "exercisePreferenceSnapshotSeen": false,
+            "memories": [],
+            "strengthBaselines": [],
+            "evidenceSeries": [],
+            "evidenceIds": [],
+            "sampleCount": 0,
+            "limits": {
+              "maxMemories": 24,
+              "maxAssessments": 20,
+              "maxObservationSamples": 80,
+              "sourceTruncated": false,
+              "selectionTruncated": false
+            },
+            "missing": [
+              "authoritative_memories_missing",
+              "compatible_evidence_missing"
+            ],
+            "reproduction": {
+              "request": {
+                "purpose": "new_planning",
+                "asOf": "2026-09-14T12:00:00.000Z",
+                "windowDays": 365
+              },
+              "activePlanVersionId": null,
+              "memoryIds": [],
+              "assessmentIds": [],
+              "observationIds": []
+            }
+          },
+          "workouts": [],
+          "historyAvailable": true,
+          "historyComplete": true,
+          "historyStartsOn": "2026-08-18",
+          "historyEndsOn": "2026-09-14"
+        }
+      },
+      "reviewQuestions": [
+        "Does the supplied focus become first eligible main work in the final compiled order?",
+        "Do title, roles and preparation agree with achieved or blocked status?",
+        "Do not infer dose appropriateness from order."
+      ],
+      "modelOutput": null,
+      "independentScores": null,
+      "qualifiedCoachReview": null,
+      "inputSha256": "ccfc904ccf02f0f9aa84bc1392210f849f9e49e6f1f9699b7f11dbe6c4ea81c8"
+    },
+    {
+      "id": "f4k-outcome-squat",
+      "pair": "outcome",
+      "controlledConcept": "direct primary outcome",
+      "input": {
+        "userId": "synthetic-f4k",
+        "profile": {
+          "schemaVersion": 1,
+          "kernelVersion": "0.3.0",
+          "athleteGoalSummary": "Improve barbell squat strength while maintaining upper-body strength.",
+          "primaryGoal": {
+            "id": "goal:f4k:strength",
+            "domain": "strength",
+            "role": "primary",
+            "allocation": "lead",
+            "athleteIntent": "Improve barbell squat strength while maintaining upper-body strength."
+          },
+          "secondaryGoals": [],
+          "trainingExperience": "consistent",
+          "startDate": "2026-09-14",
+          "sessionAvailability": [
+            {
+              "day": "monday",
+              "minutes": 60
+            },
+            {
+              "day": "tuesday",
+              "minutes": 60
+            },
+            {
+              "day": "wednesday",
+              "minutes": 60
+            }
+          ],
+          "equipment": {
+            "resolvedIds": [
+              "barbell",
+              "rack",
+              "dumbbell",
+              "kettlebell",
+              "bench",
+              "band",
+              "cable",
+              "machine",
+              "pull_up_bar",
+              "medicine_ball",
+              "box",
+              "sled",
+              "bike",
+              "rower",
+              "treadmill",
+              "track",
+              "bodyweight"
+            ],
+            "unresolvedAthleteDescription": null
+          },
+          "explicitConstraints": [],
+          "unresolvedConstraintNote": null,
+          "preferences": [],
+          "assessments": [],
+          "recentTraining": {
+            "asOfDate": null,
+            "lookbackDays": 0,
+            "completedSessionCount": 0,
+            "performedMovementIds": [],
+            "doseByCoverageTarget": []
+          },
+          "inputSource": {
+            "kind": "structured_v0_3_intake"
+          }
+        },
+        "context": {
+          "evidence": {
+            "schemaVersion": 1,
+            "purpose": "new_planning",
+            "asOf": "2026-09-14T12:00:00.000Z",
+            "window": {
+              "startsAt": "2025-09-14T12:00:00.000Z",
+              "endsAt": "2026-09-14T12:00:00.000Z",
+              "days": 365
+            },
+            "algorithmVersion": "coach-context-selection-0.1.0",
+            "evidencePolicyVersion": "0.1.0",
+            "storageAvailable": true,
+            "selectionComplete": true,
+            "scope": {
+              "userId": "synthetic-f4k",
+              "activeProgramId": null,
+              "activePlanVersionId": null,
+              "goalId": null,
+              "prescribedSessionId": null,
+              "metricId": null,
+              "protocol": null,
+              "comparabilityKey": null
+            },
+            "activePlan": null,
+            "session": null,
+            "exercisePreferenceSnapshotSeen": false,
+            "memories": [],
+            "strengthBaselines": [],
+            "evidenceSeries": [],
+            "evidenceIds": [],
+            "sampleCount": 0,
+            "limits": {
+              "maxMemories": 24,
+              "maxAssessments": 20,
+              "maxObservationSamples": 80,
+              "sourceTruncated": false,
+              "selectionTruncated": false
+            },
+            "missing": [
+              "authoritative_memories_missing",
+              "compatible_evidence_missing"
+            ],
+            "reproduction": {
+              "request": {
+                "purpose": "new_planning",
+                "asOf": "2026-09-14T12:00:00.000Z",
+                "windowDays": 365
+              },
+              "activePlanVersionId": null,
+              "memoryIds": [],
+              "assessmentIds": [],
+              "observationIds": []
+            }
+          },
+          "workouts": [],
+          "historyAvailable": true,
+          "historyComplete": true,
+          "historyStartsOn": "2026-08-18",
+          "historyEndsOn": "2026-09-14"
+        }
+      },
+      "reviewQuestions": [
+        "Does the supplied focus become first eligible main work in the final compiled order?",
+        "Do title, roles and preparation agree with achieved or blocked status?",
+        "Do not infer dose appropriateness from order."
+      ],
+      "modelOutput": null,
+      "independentScores": null,
+      "qualifiedCoachReview": null,
+      "inputSha256": "aea46a31e28b2ccdb975983dcdb3b741360f1ec9fd81318ab3eb6e50e8de90cf"
+    },
+    {
+      "id": "f4k-history-unknown",
+      "pair": "history",
+      "controlledConcept": "dated performed history",
+      "input": {
+        "userId": "synthetic-f4k",
+        "profile": {
+          "schemaVersion": 1,
+          "kernelVersion": "0.3.0",
+          "athleteGoalSummary": "Improve barbell bench strength while maintaining lower-body strength.",
+          "primaryGoal": {
+            "id": "goal:f4k:strength",
+            "domain": "strength",
+            "role": "primary",
+            "allocation": "lead",
+            "athleteIntent": "Improve barbell bench strength while maintaining lower-body strength."
+          },
+          "secondaryGoals": [],
+          "trainingExperience": "consistent",
+          "startDate": "2026-09-14",
+          "sessionAvailability": [
+            {
+              "day": "monday",
+              "minutes": 60
+            },
+            {
+              "day": "wednesday",
+              "minutes": 60
+            },
+            {
+              "day": "friday",
+              "minutes": 60
+            }
+          ],
+          "equipment": {
+            "resolvedIds": [
+              "barbell",
+              "rack",
+              "dumbbell",
+              "kettlebell",
+              "bench",
+              "band",
+              "cable",
+              "machine",
+              "pull_up_bar",
+              "medicine_ball",
+              "box",
+              "sled",
+              "bike",
+              "rower",
+              "treadmill",
+              "track",
+              "bodyweight"
+            ],
+            "unresolvedAthleteDescription": null
+          },
+          "explicitConstraints": [],
+          "unresolvedConstraintNote": null,
+          "preferences": [],
+          "assessments": [],
+          "recentTraining": {
+            "asOfDate": null,
+            "lookbackDays": 0,
+            "completedSessionCount": 0,
+            "performedMovementIds": [],
+            "doseByCoverageTarget": []
+          },
+          "inputSource": {
+            "kind": "structured_v0_3_intake"
+          }
+        },
+        "context": {
+          "evidence": {
+            "schemaVersion": 1,
+            "purpose": "new_planning",
+            "asOf": "2026-09-14T12:00:00.000Z",
+            "window": {
+              "startsAt": "2025-09-14T12:00:00.000Z",
+              "endsAt": "2026-09-14T12:00:00.000Z",
+              "days": 365
+            },
+            "algorithmVersion": "coach-context-selection-0.1.0",
+            "evidencePolicyVersion": "0.1.0",
+            "storageAvailable": true,
+            "selectionComplete": true,
+            "scope": {
+              "userId": "synthetic-f4k",
+              "activeProgramId": null,
+              "activePlanVersionId": null,
+              "goalId": null,
+              "prescribedSessionId": null,
+              "metricId": null,
+              "protocol": null,
+              "comparabilityKey": null
+            },
+            "activePlan": null,
+            "session": null,
+            "exercisePreferenceSnapshotSeen": false,
+            "memories": [],
+            "strengthBaselines": [],
+            "evidenceSeries": [],
+            "evidenceIds": [],
+            "sampleCount": 0,
+            "limits": {
+              "maxMemories": 24,
+              "maxAssessments": 20,
+              "maxObservationSamples": 80,
+              "sourceTruncated": false,
+              "selectionTruncated": false
+            },
+            "missing": [
+              "authoritative_memories_missing",
+              "compatible_evidence_missing"
+            ],
+            "reproduction": {
+              "request": {
+                "purpose": "new_planning",
+                "asOf": "2026-09-14T12:00:00.000Z",
+                "windowDays": 365
+              },
+              "activePlanVersionId": null,
+              "memoryIds": [],
+              "assessmentIds": [],
+              "observationIds": []
+            }
+          },
+          "workouts": [],
+          "historyAvailable": true,
+          "historyComplete": true,
+          "historyStartsOn": "2026-08-18",
+          "historyEndsOn": "2026-09-14"
+        }
+      },
+      "reviewQuestions": [
+        "Is absence described as unknown training, not inactivity?",
+        "Does initial numerical policy remain provisional?"
+      ],
+      "modelOutput": null,
+      "independentScores": null,
+      "qualifiedCoachReview": null,
+      "inputSha256": "44831087d815ff855dc35d6063cbc528ed6432f4e91ce7488f4f26d7dd13c2b7"
+    },
+    {
+      "id": "f4k-history-dated",
+      "pair": "history",
+      "controlledConcept": "dated performed history",
+      "input": {
+        "userId": "synthetic-f4k",
+        "profile": {
+          "schemaVersion": 1,
+          "kernelVersion": "0.3.0",
+          "athleteGoalSummary": "Improve barbell bench strength while maintaining lower-body strength.",
+          "primaryGoal": {
+            "id": "goal:f4k:strength",
+            "domain": "strength",
+            "role": "primary",
+            "allocation": "lead",
+            "athleteIntent": "Improve barbell bench strength while maintaining lower-body strength."
+          },
+          "secondaryGoals": [],
+          "trainingExperience": "consistent",
+          "startDate": "2026-09-14",
+          "sessionAvailability": [
+            {
+              "day": "monday",
+              "minutes": 60
+            },
+            {
+              "day": "wednesday",
+              "minutes": 60
+            },
+            {
+              "day": "friday",
+              "minutes": 60
+            }
+          ],
+          "equipment": {
+            "resolvedIds": [
+              "barbell",
+              "rack",
+              "dumbbell",
+              "kettlebell",
+              "bench",
+              "band",
+              "cable",
+              "machine",
+              "pull_up_bar",
+              "medicine_ball",
+              "box",
+              "sled",
+              "bike",
+              "rower",
+              "treadmill",
+              "track",
+              "bodyweight"
+            ],
+            "unresolvedAthleteDescription": null
+          },
+          "explicitConstraints": [],
+          "unresolvedConstraintNote": null,
+          "preferences": [],
+          "assessments": [],
+          "recentTraining": {
+            "asOfDate": null,
+            "lookbackDays": 0,
+            "completedSessionCount": 0,
+            "performedMovementIds": [],
+            "doseByCoverageTarget": []
+          },
+          "inputSource": {
+            "kind": "structured_v0_3_intake"
+          }
+        },
+        "context": {
+          "evidence": {
+            "schemaVersion": 1,
+            "purpose": "new_planning",
+            "asOf": "2026-09-14T12:00:00.000Z",
+            "window": {
+              "startsAt": "2025-09-14T12:00:00.000Z",
+              "endsAt": "2026-09-14T12:00:00.000Z",
+              "days": 365
+            },
+            "algorithmVersion": "coach-context-selection-0.1.0",
+            "evidencePolicyVersion": "0.1.0",
+            "storageAvailable": true,
+            "selectionComplete": true,
+            "scope": {
+              "userId": "synthetic-f4k",
+              "activeProgramId": null,
+              "activePlanVersionId": null,
+              "goalId": null,
+              "prescribedSessionId": null,
+              "metricId": null,
+              "protocol": null,
+              "comparabilityKey": null
+            },
+            "activePlan": null,
+            "session": null,
+            "exercisePreferenceSnapshotSeen": false,
+            "memories": [],
+            "strengthBaselines": [],
+            "evidenceSeries": [],
+            "evidenceIds": [],
+            "sampleCount": 0,
+            "limits": {
+              "maxMemories": 24,
+              "maxAssessments": 20,
+              "maxObservationSamples": 80,
+              "sourceTruncated": false,
+              "selectionTruncated": false
+            },
+            "missing": [
+              "authoritative_memories_missing",
+              "compatible_evidence_missing"
+            ],
+            "reproduction": {
+              "request": {
+                "purpose": "new_planning",
+                "asOf": "2026-09-14T12:00:00.000Z",
+                "windowDays": 365
+              },
+              "activePlanVersionId": null,
+              "memoryIds": [],
+              "assessmentIds": [],
+              "observationIds": []
+            }
+          },
+          "workouts": [
+            {
+              "id": "f4k-bench-1",
+              "workout_date": "2026-09-03",
+              "blocks": [
+                {
+                  "block_type": "STRENGTH",
+                  "movements": [
+                    {
+                      "name": "Barbell Bench Press",
+                      "sets": 3,
+                      "reps": 5,
+                      "load": 165,
+                      "unit": "lb",
+                      "rpe": 7.5,
+                      "completed": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "f4k-bench-2",
+              "workout_date": "2026-09-10",
+              "blocks": [
+                {
+                  "block_type": "STRENGTH",
+                  "movements": [
+                    {
+                      "name": "Barbell Bench Press",
+                      "sets": 3,
+                      "reps": 5,
+                      "load": 165,
+                      "unit": "lb",
+                      "rpe": 7.5,
+                      "completed": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "historyAvailable": true,
+          "historyComplete": true,
+          "historyStartsOn": "2026-08-18",
+          "historyEndsOn": "2026-09-14"
+        }
+      },
+      "reviewQuestions": [
+        "Are both exact dates and original reported work preserved?",
+        "Is familiarity separated from numerical dose or readiness?",
+        "Do not call template quantities individualized."
+      ],
+      "modelOutput": null,
+      "independentScores": null,
+      "qualifiedCoachReview": null,
+      "inputSha256": "6b95a1e0e5795021ac7e47f0785558be97fdfb014a24db15809f075e8fcf5a8e"
+    },
+    {
+      "id": "f4k-workload-unreported",
+      "pair": "outside-workload",
+      "controlledConcept": "outside practice disclosure",
+      "input": {
+        "userId": "synthetic-f4k",
+        "profile": {
+          "schemaVersion": 1,
+          "kernelVersion": "0.3.0",
+          "athleteGoalSummary": "Develop bench strength while maintaining aerobic capacity alongside my weekly sport schedule.",
+          "primaryGoal": {
+            "id": "goal:f4k:strength",
+            "domain": "strength",
+            "role": "primary",
+            "allocation": "lead",
+            "athleteIntent": "Develop bench strength while maintaining aerobic capacity alongside my weekly sport schedule."
+          },
+          "secondaryGoals": [
+            {
+              "id": "goal:f4k:aerobic",
+              "domain": "aerobic",
+              "role": "secondary",
+              "allocation": "maintenance",
+              "athleteIntent": "Maintain aerobic capacity"
+            }
+          ],
+          "trainingExperience": "consistent",
+          "startDate": "2026-09-14",
+          "sessionAvailability": [
+            {
+              "day": "monday",
+              "minutes": 60
+            },
+            {
+              "day": "wednesday",
+              "minutes": 60
+            },
+            {
+              "day": "saturday",
+              "minutes": 60
+            }
+          ],
+          "equipment": {
+            "resolvedIds": [
+              "barbell",
+              "rack",
+              "dumbbell",
+              "kettlebell",
+              "bench",
+              "band",
+              "cable",
+              "machine",
+              "pull_up_bar",
+              "medicine_ball",
+              "box",
+              "sled",
+              "bike",
+              "rower",
+              "treadmill",
+              "track",
+              "bodyweight"
+            ],
+            "unresolvedAthleteDescription": null
+          },
+          "explicitConstraints": [],
+          "unresolvedConstraintNote": null,
+          "preferences": [],
+          "assessments": [],
+          "recentTraining": {
+            "asOfDate": null,
+            "lookbackDays": 0,
+            "completedSessionCount": 0,
+            "performedMovementIds": [],
+            "doseByCoverageTarget": []
+          },
+          "inputSource": {
+            "kind": "structured_v0_3_intake"
+          }
+        },
+        "context": {
+          "evidence": {
+            "schemaVersion": 1,
+            "purpose": "new_planning",
+            "asOf": "2026-09-14T12:00:00.000Z",
+            "window": {
+              "startsAt": "2025-09-14T12:00:00.000Z",
+              "endsAt": "2026-09-14T12:00:00.000Z",
+              "days": 365
+            },
+            "algorithmVersion": "coach-context-selection-0.1.0",
+            "evidencePolicyVersion": "0.1.0",
+            "storageAvailable": true,
+            "selectionComplete": true,
+            "scope": {
+              "userId": "synthetic-f4k",
+              "activeProgramId": null,
+              "activePlanVersionId": null,
+              "goalId": null,
+              "prescribedSessionId": null,
+              "metricId": null,
+              "protocol": null,
+              "comparabilityKey": null
+            },
+            "activePlan": null,
+            "session": null,
+            "exercisePreferenceSnapshotSeen": false,
+            "memories": [],
+            "strengthBaselines": [],
+            "evidenceSeries": [],
+            "evidenceIds": [],
+            "sampleCount": 0,
+            "limits": {
+              "maxMemories": 24,
+              "maxAssessments": 20,
+              "maxObservationSamples": 80,
+              "sourceTruncated": false,
+              "selectionTruncated": false
+            },
+            "missing": [
+              "authoritative_memories_missing",
+              "compatible_evidence_missing"
+            ],
+            "reproduction": {
+              "request": {
+                "purpose": "new_planning",
+                "asOf": "2026-09-14T12:00:00.000Z",
+                "windowDays": 365
+              },
+              "activePlanVersionId": null,
+              "memoryIds": [],
+              "assessmentIds": [],
+              "observationIds": []
+            }
+          },
+          "workouts": [],
+          "historyAvailable": true,
+          "historyComplete": true,
+          "historyStartsOn": "2026-08-18",
+          "historyEndsOn": "2026-09-14"
+        }
+      },
+      "reviewQuestions": [
+        "Does missing outside workload remain unknown?",
+        "Is whole-week integration distinguished from available gym slots?"
+      ],
+      "modelOutput": null,
+      "independentScores": null,
+      "qualifiedCoachReview": null,
+      "inputSha256": "1514d63d84589e4918f0333bc1fb0ce876bd6ca48467f183ee430abe9c58590a"
+    },
+    {
+      "id": "f4k-workload-practices",
+      "pair": "outside-workload",
+      "controlledConcept": "outside practice disclosure",
+      "input": {
+        "userId": "synthetic-f4k",
+        "profile": {
+          "schemaVersion": 1,
+          "kernelVersion": "0.3.0",
+          "athleteGoalSummary": "Develop bench strength while maintaining aerobic capacity alongside my weekly sport schedule.",
+          "primaryGoal": {
+            "id": "goal:f4k:strength",
+            "domain": "strength",
+            "role": "primary",
+            "allocation": "lead",
+            "athleteIntent": "Develop bench strength while maintaining aerobic capacity alongside my weekly sport schedule."
+          },
+          "secondaryGoals": [
+            {
+              "id": "goal:f4k:aerobic",
+              "domain": "aerobic",
+              "role": "secondary",
+              "allocation": "maintenance",
+              "athleteIntent": "Maintain aerobic capacity"
+            }
+          ],
+          "trainingExperience": "consistent",
+          "startDate": "2026-09-14",
+          "sessionAvailability": [
+            {
+              "day": "monday",
+              "minutes": 60
+            },
+            {
+              "day": "wednesday",
+              "minutes": 60
+            },
+            {
+              "day": "saturday",
+              "minutes": 60
+            }
+          ],
+          "equipment": {
+            "resolvedIds": [
+              "barbell",
+              "rack",
+              "dumbbell",
+              "kettlebell",
+              "bench",
+              "band",
+              "cable",
+              "machine",
+              "pull_up_bar",
+              "medicine_ball",
+              "box",
+              "sled",
+              "bike",
+              "rower",
+              "treadmill",
+              "track",
+              "bodyweight"
+            ],
+            "unresolvedAthleteDescription": null
+          },
+          "explicitConstraints": [],
+          "unresolvedConstraintNote": null,
+          "preferences": [],
+          "assessments": [],
+          "recentTraining": {
+            "asOfDate": null,
+            "lookbackDays": 0,
+            "completedSessionCount": 0,
+            "performedMovementIds": [],
+            "doseByCoverageTarget": []
+          },
+          "inputSource": {
+            "kind": "structured_v0_3_intake"
+          }
+        },
+        "context": {
+          "evidence": {
+            "schemaVersion": 1,
+            "purpose": "new_planning",
+            "asOf": "2026-09-14T12:00:00.000Z",
+            "window": {
+              "startsAt": "2025-09-14T12:00:00.000Z",
+              "endsAt": "2026-09-14T12:00:00.000Z",
+              "days": 365
+            },
+            "algorithmVersion": "coach-context-selection-0.1.0",
+            "evidencePolicyVersion": "0.1.0",
+            "storageAvailable": true,
+            "selectionComplete": true,
+            "scope": {
+              "userId": "synthetic-f4k",
+              "activeProgramId": null,
+              "activePlanVersionId": null,
+              "goalId": null,
+              "prescribedSessionId": null,
+              "metricId": null,
+              "protocol": null,
+              "comparabilityKey": null
+            },
+            "activePlan": null,
+            "session": null,
+            "exercisePreferenceSnapshotSeen": false,
+            "memories": [
+              {
+                "id": "f4k-practice-memory",
+                "memoryKey": "outside-practice",
+                "kind": "schedule",
+                "version": 1,
+                "content": {
+                  "days": [
+                    "tuesday",
+                    "thursday"
+                  ],
+                  "minutes": 75,
+                  "note": "Fixed team practices include repeated accelerations and changes of direction; keep them in the week."
+                },
+                "provenance": {
+                  "source": "athlete"
+                },
+                "confidence": 1,
+                "confirmedAt": "2026-09-13T12:00:00.000Z",
+                "effectiveFrom": "2026-09-13T12:00:00.000Z",
+                "effectiveUntil": null,
+                "reviewAfter": null,
+                "lastReviewedAt": null
+              }
+            ],
+            "strengthBaselines": [],
+            "evidenceSeries": [],
+            "evidenceIds": [
+              "f4k-practice-memory"
+            ],
+            "sampleCount": 0,
+            "limits": {
+              "maxMemories": 24,
+              "maxAssessments": 20,
+              "maxObservationSamples": 80,
+              "sourceTruncated": false,
+              "selectionTruncated": false
+            },
+            "missing": [
+              "compatible_evidence_missing"
+            ],
+            "reproduction": {
+              "request": {
+                "purpose": "new_planning",
+                "asOf": "2026-09-14T12:00:00.000Z",
+                "windowDays": 365
+              },
+              "activePlanVersionId": null,
+              "memoryIds": [
+                "f4k-practice-memory"
+              ],
+              "assessmentIds": [],
+              "observationIds": []
+            }
+          },
+          "workouts": [],
+          "historyAvailable": true,
+          "historyComplete": true,
+          "historyStartsOn": "2026-08-18",
+          "historyEndsOn": "2026-09-14"
+        }
+      },
+      "reviewQuestions": [
+        "Are fixed dated/confirmed practice facts retained?",
+        "Are overlap and unsupported schedule integration disclosed without invented recovery spacing or automatic deload?"
+      ],
+      "modelOutput": null,
+      "independentScores": null,
+      "qualifiedCoachReview": null,
+      "inputSha256": "e84bdb62e2395ce2ebf31d4fdb33249d09d076be73fe74d24fc69a02dfe54660"
+    },
+    {
+      "id": "f4k-preference-favorite",
+      "pair": "preference",
+      "controlledConcept": "confirmed movement preference",
+      "input": {
+        "userId": "synthetic-f4k",
+        "profile": {
+          "schemaVersion": 1,
+          "kernelVersion": "0.3.0",
+          "athleteGoalSummary": "Build lower-body muscle using movements I will repeat.",
+          "primaryGoal": {
+            "id": "goal:f4k:hypertrophy",
+            "domain": "hypertrophy",
+            "role": "primary",
+            "allocation": "lead",
+            "athleteIntent": "Build lower-body muscle using movements I will repeat."
+          },
+          "secondaryGoals": [],
+          "trainingExperience": "consistent",
+          "startDate": "2026-09-14",
+          "sessionAvailability": [
+            {
+              "day": "tuesday",
+              "minutes": 60
+            },
+            {
+              "day": "thursday",
+              "minutes": 60
+            },
+            {
+              "day": "saturday",
+              "minutes": 60
+            }
+          ],
+          "equipment": {
+            "resolvedIds": [
+              "barbell",
+              "rack",
+              "dumbbell",
+              "kettlebell",
+              "bench",
+              "band",
+              "cable",
+              "machine",
+              "pull_up_bar",
+              "medicine_ball",
+              "box",
+              "sled",
+              "bike",
+              "rower",
+              "treadmill",
+              "track",
+              "bodyweight"
+            ],
+            "unresolvedAthleteDescription": null
+          },
+          "explicitConstraints": [],
+          "unresolvedConstraintNote": null,
+          "preferences": [
+            {
+              "movementId": "dumbbell_goblet_squat",
+              "preference": "prefer",
+              "source": "athlete_confirmed"
+            }
+          ],
+          "assessments": [],
+          "recentTraining": {
+            "asOfDate": null,
+            "lookbackDays": 0,
+            "completedSessionCount": 0,
+            "performedMovementIds": [],
+            "doseByCoverageTarget": []
+          },
+          "inputSource": {
+            "kind": "structured_v0_3_intake"
+          }
+        },
+        "context": {
+          "evidence": {
+            "schemaVersion": 1,
+            "purpose": "new_planning",
+            "asOf": "2026-09-14T12:00:00.000Z",
+            "window": {
+              "startsAt": "2025-09-14T12:00:00.000Z",
+              "endsAt": "2026-09-14T12:00:00.000Z",
+              "days": 365
+            },
+            "algorithmVersion": "coach-context-selection-0.1.0",
+            "evidencePolicyVersion": "0.1.0",
+            "storageAvailable": true,
+            "selectionComplete": true,
+            "scope": {
+              "userId": "synthetic-f4k",
+              "activeProgramId": null,
+              "activePlanVersionId": null,
+              "goalId": null,
+              "prescribedSessionId": null,
+              "metricId": null,
+              "protocol": null,
+              "comparabilityKey": null
+            },
+            "activePlan": null,
+            "session": null,
+            "exercisePreferenceSnapshotSeen": false,
+            "memories": [],
+            "strengthBaselines": [],
+            "evidenceSeries": [],
+            "evidenceIds": [],
+            "sampleCount": 0,
+            "limits": {
+              "maxMemories": 24,
+              "maxAssessments": 20,
+              "maxObservationSamples": 80,
+              "sourceTruncated": false,
+              "selectionTruncated": false
+            },
+            "missing": [
+              "authoritative_memories_missing",
+              "compatible_evidence_missing"
+            ],
+            "reproduction": {
+              "request": {
+                "purpose": "new_planning",
+                "asOf": "2026-09-14T12:00:00.000Z",
+                "windowDays": 365
+              },
+              "activePlanVersionId": null,
+              "memoryIds": [],
+              "assessmentIds": [],
+              "observationIds": []
+            }
+          },
+          "workouts": [],
+          "historyAvailable": true,
+          "historyComplete": true,
+          "historyStartsOn": "2026-08-18",
+          "historyEndsOn": "2026-09-14"
+        }
+      },
+      "reviewQuestions": [
+        "Is suitable preference used without implying skill or capacity?",
+        "Does direct goal fit remain primary?"
+      ],
+      "modelOutput": null,
+      "independentScores": null,
+      "qualifiedCoachReview": null,
+      "inputSha256": "b6200a2ee7b09b3476a0b8056c42c713093a9e75cea574722a093cfc9dfe856e"
+    },
+    {
+      "id": "f4k-preference-avoid",
+      "pair": "preference",
+      "controlledConcept": "confirmed movement preference",
+      "input": {
+        "userId": "synthetic-f4k",
+        "profile": {
+          "schemaVersion": 1,
+          "kernelVersion": "0.3.0",
+          "athleteGoalSummary": "Build lower-body muscle using movements I will repeat.",
+          "primaryGoal": {
+            "id": "goal:f4k:hypertrophy",
+            "domain": "hypertrophy",
+            "role": "primary",
+            "allocation": "lead",
+            "athleteIntent": "Build lower-body muscle using movements I will repeat."
+          },
+          "secondaryGoals": [],
+          "trainingExperience": "consistent",
+          "startDate": "2026-09-14",
+          "sessionAvailability": [
+            {
+              "day": "tuesday",
+              "minutes": 60
+            },
+            {
+              "day": "thursday",
+              "minutes": 60
+            },
+            {
+              "day": "saturday",
+              "minutes": 60
+            }
+          ],
+          "equipment": {
+            "resolvedIds": [
+              "barbell",
+              "rack",
+              "dumbbell",
+              "kettlebell",
+              "bench",
+              "band",
+              "cable",
+              "machine",
+              "pull_up_bar",
+              "medicine_ball",
+              "box",
+              "sled",
+              "bike",
+              "rower",
+              "treadmill",
+              "track",
+              "bodyweight"
+            ],
+            "unresolvedAthleteDescription": null
+          },
+          "explicitConstraints": [],
+          "unresolvedConstraintNote": null,
+          "preferences": [
+            {
+              "movementId": "dumbbell_goblet_squat",
+              "preference": "avoid",
+              "source": "athlete_confirmed"
+            }
+          ],
+          "assessments": [],
+          "recentTraining": {
+            "asOfDate": null,
+            "lookbackDays": 0,
+            "completedSessionCount": 0,
+            "performedMovementIds": [],
+            "doseByCoverageTarget": []
+          },
+          "inputSource": {
+            "kind": "structured_v0_3_intake"
+          }
+        },
+        "context": {
+          "evidence": {
+            "schemaVersion": 1,
+            "purpose": "new_planning",
+            "asOf": "2026-09-14T12:00:00.000Z",
+            "window": {
+              "startsAt": "2025-09-14T12:00:00.000Z",
+              "endsAt": "2026-09-14T12:00:00.000Z",
+              "days": 365
+            },
+            "algorithmVersion": "coach-context-selection-0.1.0",
+            "evidencePolicyVersion": "0.1.0",
+            "storageAvailable": true,
+            "selectionComplete": true,
+            "scope": {
+              "userId": "synthetic-f4k",
+              "activeProgramId": null,
+              "activePlanVersionId": null,
+              "goalId": null,
+              "prescribedSessionId": null,
+              "metricId": null,
+              "protocol": null,
+              "comparabilityKey": null
+            },
+            "activePlan": null,
+            "session": null,
+            "exercisePreferenceSnapshotSeen": false,
+            "memories": [],
+            "strengthBaselines": [],
+            "evidenceSeries": [],
+            "evidenceIds": [],
+            "sampleCount": 0,
+            "limits": {
+              "maxMemories": 24,
+              "maxAssessments": 20,
+              "maxObservationSamples": 80,
+              "sourceTruncated": false,
+              "selectionTruncated": false
+            },
+            "missing": [
+              "authoritative_memories_missing",
+              "compatible_evidence_missing"
+            ],
+            "reproduction": {
+              "request": {
+                "purpose": "new_planning",
+                "asOf": "2026-09-14T12:00:00.000Z",
+                "windowDays": 365
+              },
+              "activePlanVersionId": null,
+              "memoryIds": [],
+              "assessmentIds": [],
+              "observationIds": []
+            }
+          },
+          "workouts": [],
+          "historyAvailable": true,
+          "historyComplete": true,
+          "historyStartsOn": "2026-08-18",
+          "historyEndsOn": "2026-09-14"
+        }
+      },
+      "reviewQuestions": [
+        "Is the confirmed avoided movement excluded?",
+        "Can an eligible replacement remain available without repeated performance evidence?"
+      ],
+      "modelOutput": null,
+      "independentScores": null,
+      "qualifiedCoachReview": null,
+      "inputSha256": "09d92f116b9dc249046ab3d784ae31512a7587276f8f4ecaa444d4b8145c3b62"
+    },
+    {
+      "id": "f4k-budget-thirty",
+      "pair": "budget",
+      "controlledConcept": "available session minutes",
+      "input": {
+        "userId": "synthetic-f4k",
+        "profile": {
+          "schemaVersion": 1,
+          "kernelVersion": "0.3.0",
+          "athleteGoalSummary": "Develop general strength within two short home sessions.",
+          "primaryGoal": {
+            "id": "goal:f4k:strength",
+            "domain": "strength",
+            "role": "primary",
+            "allocation": "lead",
+            "athleteIntent": "Develop general strength within two short home sessions."
+          },
+          "secondaryGoals": [],
+          "trainingExperience": "consistent",
+          "startDate": "2026-09-14",
+          "sessionAvailability": [
+            {
+              "day": "monday",
+              "minutes": 30
+            },
+            {
+              "day": "thursday",
+              "minutes": 30
+            }
+          ],
+          "equipment": {
+            "resolvedIds": [
+              "bodyweight",
+              "dumbbell"
+            ],
+            "unresolvedAthleteDescription": null
+          },
+          "explicitConstraints": [],
+          "unresolvedConstraintNote": null,
+          "preferences": [],
+          "assessments": [],
+          "recentTraining": {
+            "asOfDate": null,
+            "lookbackDays": 0,
+            "completedSessionCount": 0,
+            "performedMovementIds": [],
+            "doseByCoverageTarget": []
+          },
+          "inputSource": {
+            "kind": "structured_v0_3_intake"
+          }
+        },
+        "context": {
+          "evidence": {
+            "schemaVersion": 1,
+            "purpose": "new_planning",
+            "asOf": "2026-09-14T12:00:00.000Z",
+            "window": {
+              "startsAt": "2025-09-14T12:00:00.000Z",
+              "endsAt": "2026-09-14T12:00:00.000Z",
+              "days": 365
+            },
+            "algorithmVersion": "coach-context-selection-0.1.0",
+            "evidencePolicyVersion": "0.1.0",
+            "storageAvailable": true,
+            "selectionComplete": true,
+            "scope": {
+              "userId": "synthetic-f4k",
+              "activeProgramId": null,
+              "activePlanVersionId": null,
+              "goalId": null,
+              "prescribedSessionId": null,
+              "metricId": null,
+              "protocol": null,
+              "comparabilityKey": null
+            },
+            "activePlan": null,
+            "session": null,
+            "exercisePreferenceSnapshotSeen": false,
+            "memories": [],
+            "strengthBaselines": [],
+            "evidenceSeries": [],
+            "evidenceIds": [],
+            "sampleCount": 0,
+            "limits": {
+              "maxMemories": 24,
+              "maxAssessments": 20,
+              "maxObservationSamples": 80,
+              "sourceTruncated": false,
+              "selectionTruncated": false
+            },
+            "missing": [
+              "authoritative_memories_missing",
+              "compatible_evidence_missing"
+            ],
+            "reproduction": {
+              "request": {
+                "purpose": "new_planning",
+                "asOf": "2026-09-14T12:00:00.000Z",
+                "windowDays": 365
+              },
+              "activePlanVersionId": null,
+              "memoryIds": [],
+              "assessmentIds": [],
+              "observationIds": []
+            }
+          },
+          "workouts": [],
+          "historyAvailable": true,
+          "historyComplete": true,
+          "historyStartsOn": "2026-08-18",
+          "historyEndsOn": "2026-09-14"
+        }
+      },
+      "reviewQuestions": [
+        "Does every complete session fit the explicit budget?",
+        "Are lost coverage/focus alternatives disclosed rather than reallocated numerically?"
+      ],
+      "modelOutput": null,
+      "independentScores": null,
+      "qualifiedCoachReview": null,
+      "inputSha256": "3e6d6ac567a89eb23df67ab2e2b3ecffea17cb42268a77995eb5baae0984dfbe"
+    },
+    {
+      "id": "f4k-budget-twenty",
+      "pair": "budget",
+      "controlledConcept": "available session minutes",
+      "input": {
+        "userId": "synthetic-f4k",
+        "profile": {
+          "schemaVersion": 1,
+          "kernelVersion": "0.3.0",
+          "athleteGoalSummary": "Develop general strength within two short home sessions.",
+          "primaryGoal": {
+            "id": "goal:f4k:strength",
+            "domain": "strength",
+            "role": "primary",
+            "allocation": "lead",
+            "athleteIntent": "Develop general strength within two short home sessions."
+          },
+          "secondaryGoals": [],
+          "trainingExperience": "consistent",
+          "startDate": "2026-09-14",
+          "sessionAvailability": [
+            {
+              "day": "monday",
+              "minutes": 20
+            },
+            {
+              "day": "thursday",
+              "minutes": 20
+            }
+          ],
+          "equipment": {
+            "resolvedIds": [
+              "bodyweight",
+              "dumbbell"
+            ],
+            "unresolvedAthleteDescription": null
+          },
+          "explicitConstraints": [],
+          "unresolvedConstraintNote": null,
+          "preferences": [],
+          "assessments": [],
+          "recentTraining": {
+            "asOfDate": null,
+            "lookbackDays": 0,
+            "completedSessionCount": 0,
+            "performedMovementIds": [],
+            "doseByCoverageTarget": []
+          },
+          "inputSource": {
+            "kind": "structured_v0_3_intake"
+          }
+        },
+        "context": {
+          "evidence": {
+            "schemaVersion": 1,
+            "purpose": "new_planning",
+            "asOf": "2026-09-14T12:00:00.000Z",
+            "window": {
+              "startsAt": "2025-09-14T12:00:00.000Z",
+              "endsAt": "2026-09-14T12:00:00.000Z",
+              "days": 365
+            },
+            "algorithmVersion": "coach-context-selection-0.1.0",
+            "evidencePolicyVersion": "0.1.0",
+            "storageAvailable": true,
+            "selectionComplete": true,
+            "scope": {
+              "userId": "synthetic-f4k",
+              "activeProgramId": null,
+              "activePlanVersionId": null,
+              "goalId": null,
+              "prescribedSessionId": null,
+              "metricId": null,
+              "protocol": null,
+              "comparabilityKey": null
+            },
+            "activePlan": null,
+            "session": null,
+            "exercisePreferenceSnapshotSeen": false,
+            "memories": [],
+            "strengthBaselines": [],
+            "evidenceSeries": [],
+            "evidenceIds": [],
+            "sampleCount": 0,
+            "limits": {
+              "maxMemories": 24,
+              "maxAssessments": 20,
+              "maxObservationSamples": 80,
+              "sourceTruncated": false,
+              "selectionTruncated": false
+            },
+            "missing": [
+              "authoritative_memories_missing",
+              "compatible_evidence_missing"
+            ],
+            "reproduction": {
+              "request": {
+                "purpose": "new_planning",
+                "asOf": "2026-09-14T12:00:00.000Z",
+                "windowDays": 365
+              },
+              "activePlanVersionId": null,
+              "memoryIds": [],
+              "assessmentIds": [],
+              "observationIds": []
+            }
+          },
+          "workouts": [],
+          "historyAvailable": true,
+          "historyComplete": true,
+          "historyStartsOn": "2026-08-18",
+          "historyEndsOn": "2026-09-14"
+        }
+      },
+      "reviewQuestions": [
+        "Retain an unsupported budget boundary if present; do not silently enlarge to thirty minutes.",
+        "A preflight block is not a model refusal or successful program."
+      ],
+      "modelOutput": null,
+      "independentScores": null,
+      "qualifiedCoachReview": null,
+      "inputSha256": "9fa5ee71037a2328771b2771f2a4ae444bd255eb87204387c28a210b395558cf"
+    },
+    {
+      "id": "f4k-precedence-strength",
+      "pair": "precedence",
+      "controlledConcept": "supported secondary speed allocation",
+      "input": {
+        "userId": "synthetic-f4k",
+        "profile": {
+          "schemaVersion": 1,
+          "kernelVersion": "0.3.0",
+          "athleteGoalSummary": "Prioritize bench strength while retaining high-quality acceleration work.",
+          "primaryGoal": {
+            "id": "goal:f4k:strength",
+            "domain": "strength",
+            "role": "primary",
+            "allocation": "lead",
+            "athleteIntent": "Prioritize bench strength while retaining high-quality acceleration work."
+          },
+          "secondaryGoals": [],
+          "trainingExperience": "consistent",
+          "startDate": "2026-09-14",
+          "sessionAvailability": [
+            {
+              "day": "monday",
+              "minutes": 75
+            },
+            {
+              "day": "thursday",
+              "minutes": 75
+            },
+            {
+              "day": "saturday",
+              "minutes": 75
+            }
+          ],
+          "equipment": {
+            "resolvedIds": [
+              "barbell",
+              "rack",
+              "dumbbell",
+              "kettlebell",
+              "bench",
+              "band",
+              "cable",
+              "machine",
+              "pull_up_bar",
+              "medicine_ball",
+              "box",
+              "sled",
+              "bike",
+              "rower",
+              "treadmill",
+              "track",
+              "bodyweight"
+            ],
+            "unresolvedAthleteDescription": null
+          },
+          "explicitConstraints": [],
+          "unresolvedConstraintNote": null,
+          "preferences": [],
+          "assessments": [],
+          "recentTraining": {
+            "asOfDate": null,
+            "lookbackDays": 0,
+            "completedSessionCount": 0,
+            "performedMovementIds": [],
+            "doseByCoverageTarget": []
+          },
+          "inputSource": {
+            "kind": "structured_v0_3_intake"
+          }
+        },
+        "context": {
+          "evidence": {
+            "schemaVersion": 1,
+            "purpose": "new_planning",
+            "asOf": "2026-09-14T12:00:00.000Z",
+            "window": {
+              "startsAt": "2025-09-14T12:00:00.000Z",
+              "endsAt": "2026-09-14T12:00:00.000Z",
+              "days": 365
+            },
+            "algorithmVersion": "coach-context-selection-0.1.0",
+            "evidencePolicyVersion": "0.1.0",
+            "storageAvailable": true,
+            "selectionComplete": true,
+            "scope": {
+              "userId": "synthetic-f4k",
+              "activeProgramId": null,
+              "activePlanVersionId": null,
+              "goalId": null,
+              "prescribedSessionId": null,
+              "metricId": null,
+              "protocol": null,
+              "comparabilityKey": null
+            },
+            "activePlan": null,
+            "session": null,
+            "exercisePreferenceSnapshotSeen": false,
+            "memories": [],
+            "strengthBaselines": [],
+            "evidenceSeries": [],
+            "evidenceIds": [],
+            "sampleCount": 0,
+            "limits": {
+              "maxMemories": 24,
+              "maxAssessments": 20,
+              "maxObservationSamples": 80,
+              "sourceTruncated": false,
+              "selectionTruncated": false
+            },
+            "missing": [
+              "authoritative_memories_missing",
+              "compatible_evidence_missing"
+            ],
+            "reproduction": {
+              "request": {
+                "purpose": "new_planning",
+                "asOf": "2026-09-14T12:00:00.000Z",
+                "windowDays": 365
+              },
+              "activePlanVersionId": null,
+              "memoryIds": [],
+              "assessmentIds": [],
+              "observationIds": []
+            }
+          },
+          "workouts": [],
+          "historyAvailable": true,
+          "historyComplete": true,
+          "historyStartsOn": "2026-08-18",
+          "historyEndsOn": "2026-09-14"
+        }
+      },
+      "reviewQuestions": [
+        "Does focused strength order respect the supplied primary goal?",
+        "Does unavailable secondary programming remain unclaimed?"
+      ],
+      "modelOutput": null,
+      "independentScores": null,
+      "qualifiedCoachReview": null,
+      "inputSha256": "1ca2d181681217bf480c81bdd90dc1ed23caeabe9e8e26cfd832aca18abbdbbd"
+    },
+    {
+      "id": "f4k-precedence-speed",
+      "pair": "precedence",
+      "controlledConcept": "supported secondary speed allocation",
+      "input": {
+        "userId": "synthetic-f4k",
+        "profile": {
+          "schemaVersion": 1,
+          "kernelVersion": "0.3.0",
+          "athleteGoalSummary": "Prioritize bench strength while retaining high-quality acceleration work.",
+          "primaryGoal": {
+            "id": "goal:f4k:strength",
+            "domain": "strength",
+            "role": "primary",
+            "allocation": "lead",
+            "athleteIntent": "Prioritize bench strength while retaining high-quality acceleration work."
+          },
+          "secondaryGoals": [
+            {
+              "id": "goal:f4k:speed",
+              "domain": "speed_agility",
+              "role": "secondary",
+              "allocation": "development",
+              "athleteIntent": "Develop acceleration quality"
+            }
+          ],
+          "trainingExperience": "consistent",
+          "startDate": "2026-09-14",
+          "sessionAvailability": [
+            {
+              "day": "monday",
+              "minutes": 75
+            },
+            {
+              "day": "thursday",
+              "minutes": 75
+            },
+            {
+              "day": "saturday",
+              "minutes": 75
+            }
+          ],
+          "equipment": {
+            "resolvedIds": [
+              "barbell",
+              "rack",
+              "dumbbell",
+              "kettlebell",
+              "bench",
+              "band",
+              "cable",
+              "machine",
+              "pull_up_bar",
+              "medicine_ball",
+              "box",
+              "sled",
+              "bike",
+              "rower",
+              "treadmill",
+              "track",
+              "bodyweight"
+            ],
+            "unresolvedAthleteDescription": null
+          },
+          "explicitConstraints": [],
+          "unresolvedConstraintNote": null,
+          "preferences": [],
+          "assessments": [],
+          "recentTraining": {
+            "asOfDate": null,
+            "lookbackDays": 0,
+            "completedSessionCount": 0,
+            "performedMovementIds": [],
+            "doseByCoverageTarget": []
+          },
+          "inputSource": {
+            "kind": "structured_v0_3_intake"
+          }
+        },
+        "context": {
+          "evidence": {
+            "schemaVersion": 1,
+            "purpose": "new_planning",
+            "asOf": "2026-09-14T12:00:00.000Z",
+            "window": {
+              "startsAt": "2025-09-14T12:00:00.000Z",
+              "endsAt": "2026-09-14T12:00:00.000Z",
+              "days": 365
+            },
+            "algorithmVersion": "coach-context-selection-0.1.0",
+            "evidencePolicyVersion": "0.1.0",
+            "storageAvailable": true,
+            "selectionComplete": true,
+            "scope": {
+              "userId": "synthetic-f4k",
+              "activeProgramId": null,
+              "activePlanVersionId": null,
+              "goalId": null,
+              "prescribedSessionId": null,
+              "metricId": null,
+              "protocol": null,
+              "comparabilityKey": null
+            },
+            "activePlan": null,
+            "session": null,
+            "exercisePreferenceSnapshotSeen": false,
+            "memories": [],
+            "strengthBaselines": [],
+            "evidenceSeries": [],
+            "evidenceIds": [],
+            "sampleCount": 0,
+            "limits": {
+              "maxMemories": 24,
+              "maxAssessments": 20,
+              "maxObservationSamples": 80,
+              "sourceTruncated": false,
+              "selectionTruncated": false
+            },
+            "missing": [
+              "authoritative_memories_missing",
+              "compatible_evidence_missing"
+            ],
+            "reproduction": {
+              "request": {
+                "purpose": "new_planning",
+                "asOf": "2026-09-14T12:00:00.000Z",
+                "windowDays": 365
+              },
+              "activePlanVersionId": null,
+              "memoryIds": [],
+              "assessmentIds": [],
+              "observationIds": []
+            }
+          },
+          "workouts": [],
+          "historyAvailable": true,
+          "historyComplete": true,
+          "historyStartsOn": "2026-08-18",
+          "historyEndsOn": "2026-09-14"
+        }
+      },
+      "reviewQuestions": [
+        "Do real mandatory precedence edges remain authoritative?",
+        "Is a displaced focus blocked/excluded rather than advertised as first?",
+        "Does all offered work remain inside available time?"
+      ],
+      "modelOutput": null,
+      "independentScores": null,
+      "qualifiedCoachReview": null,
+      "inputSha256": "f1b662ce975f3d0ef332826e972988aeaabf5dcfa721c37fc46757a19b1e9c25"
+    }
+  ]
+}

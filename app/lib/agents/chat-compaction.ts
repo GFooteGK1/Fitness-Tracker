@@ -1,3 +1,4 @@
+import { filterRetiredInsightMessages } from './legacy-insight-readers'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { ChatMessage, ChatCompactionSummary } from './types'
 
@@ -92,8 +93,9 @@ export async function compactOldMessages(
 
   if (!oldMessages || oldMessages.length === 0) return
 
-  const keyFacts = extractKeyFacts(oldMessages as ChatMessage[])
-  const compactionResult = generateCompactionSummary(oldMessages as ChatMessage[], keyFacts)
+  const safeMessages = await filterRetiredInsightMessages(supabase, userId, oldMessages as ChatMessage[])
+  const keyFacts = extractKeyFacts(safeMessages)
+  const compactionResult = generateCompactionSummary(safeMessages, keyFacts)
 
   // Insert compacted summary as a system message
   await supabase.from('chat_messages').insert({

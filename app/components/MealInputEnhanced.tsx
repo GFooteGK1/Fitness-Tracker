@@ -1,6 +1,8 @@
 'use client'
 import { sendLoggingRequest } from '@/app/lib/client/logging-request'
 
+import { CaptureReceiptPanel, type ReceiptResult } from './capture/CaptureReceiptPanel'
+import { CaptureRecovery } from './capture/CaptureRecovery'
 import React, { useEffect, useRef, useState } from 'react'
 import MealCameraCapture from './MealCameraCapture'
 import FastMealLogger from './FastMealLogger'
@@ -54,6 +56,7 @@ export default function MealInputEnhanced({
   selectedDate,
   initialMode = 'all'
 }: MealInputEnhancedProps) {
+  const [receiptResult, setReceiptResult] = useState<ReceiptResult | null>(null)
   const [inputMode, setInputMode] = useState(initialMode)
   const [mealText, setMealText] = useState('')
   const [isRecording, setIsRecording] = useState(false)
@@ -348,14 +351,16 @@ export default function MealInputEnhanced({
           timestamp: getMealTimestamp(selectedDate)
         })
       }, userId ?? '', 60_000, JSON.stringify([mealText, selectedDate ? getLocalDate(selectedDate) : 'today']))
-      const result = await response.json().catch(() => ({})) as { mealId?: string; error?: string }
+      const result = await response.json().catch(() => ({})) as MealUploadResponse & { error?: string }
 
+      setReceiptResult(result)
+      if (result.state === 'save_unconfirmed' || result.receiptBundle?.state === 'save_unconfirmed') throw new Error('Save unconfirmed. Retry this same entry.')
       if (!response.ok) {
         throw new Error(result.error || `Meal analysis failed (${response.status}). Try again.`)
       }
       if (!result.mealId) throw new Error('Meal was analyzed but could not be saved. Try again.')
 
-      onUploadComplete?.({ mealId: result.mealId, analysisStatus: 'complete' })
+      onUploadComplete?.({ ...result, analysisStatus: 'complete' })
       setMealText('')
       transcriptRef.current = ''
     } catch (error) {
@@ -369,6 +374,8 @@ export default function MealInputEnhanced({
 
   return (
     <div className="space-y-4">
+      <CaptureRecovery />
+      {receiptResult && <CaptureReceiptPanel result={receiptResult} />}
       {inputMode !== 'all' && <button type="button" className="app-secondary w-full" onClick={() => setInputMode('all')}>Show all meal options</button>}
       {(inputMode === 'all' || inputMode === 'recent') && <>
       <FastMealLogger

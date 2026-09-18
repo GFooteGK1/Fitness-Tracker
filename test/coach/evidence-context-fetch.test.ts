@@ -11,6 +11,7 @@ interface Result {
 
 function supabaseFixture(overrides: Partial<Record<string, Result>> = {}) {
   const results: Record<string, Result> = {
+    workouts: { data: [{ id: 'workout-1', user_id: 'user-1', capture_revision: 1, execution_revision: 0 }], error: null },
     training_programs: {
       data: [{
         id: 'program-1', user_id: 'user-1', title: 'Active block',

@@ -1,0 +1,188 @@
+{
+  "schemaVersion": "engineering-scenarios-v1",
+  "split": "development",
+  "source": "new_synthetic",
+  "exposure": "implementation_visible",
+  "scenarios": [
+    {
+      "id": "dev-plan-01", "athlete": "synthetic-ash", "rule": "accepted_plan", "title": "Accepted session is navigable without changing prescription",
+      "facts": {"planId":"plan-ash-v1","planStatus":"accepted","sessionId":"session-ash-1","sessionDate":"2026-09-17","localDate":"2026-09-17","sessionStatus":"planned","retrieval":"complete"},
+      "expected": {"decision":"action","assertions":["Open session-ash-1 from plan-ash-v1","Retain accepted prescription snapshot"],"forbidden":["Accept a new plan","Change dose"]},
+      "counterfactual": {"field":"planStatus","value":"draft","expected":{"decision":"abstain","assertions":["Draft is not an executable accepted session"],"forbidden":["Present draft as accepted"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-plan-02", "athlete": "synthetic-brook", "rule": "accepted_plan", "title": "Authoritative proposal requires a distinct acceptance transition",
+      "facts": {"planId":"plan-brook-v2","planStatus":"accepted","reviewId":"review-brook-3","reviewState":"proposal_ready","reviewBasisPlanId":"plan-brook-v2","retrieval":"complete"},
+      "expected": {"decision":"action","assertions":["Navigate to review-brook-3","Acceptance stays separate"],"forbidden":["Automatically activate proposal"]},
+      "counterfactual": {"field":"reviewBasisPlanId","value":"plan-brook-v1","expected":{"decision":"abstain","assertions":["Exclude stale review basis"],"forbidden":["Activate proposal against changed plan"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-plan-03", "athlete": "synthetic-cove", "rule": "accepted_plan", "title": "Dismissed session advice stays suppressed",
+      "facts": {"planId":"plan-cove-v1","planStatus":"accepted","sessionId":"session-cove-2","sessionDate":"2026-09-17","localDate":"2026-09-17","sessionStatus":"planned","response":"not_applicable","namedSafetyOverride":null},
+      "expected": {"decision":"abstain","assertions":["Suppress same meaningful decision fingerprint"],"forbidden":["Resurrect dismissal on refresh"]},
+      "counterfactual": {"field":"response","value":null,"expected":{"decision":"action","assertions":["Accepted session remains eligible"],"forbidden":["Invent athlete response"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-plan-04", "athlete": "synthetic-dune", "rule": "accepted_plan", "title": "Done is a report, not canonical execution",
+      "facts": {"planId":"plan-dune-v1","planStatus":"accepted","sessionId":"session-dune-2","sessionStatus":"planned","response":"done_reported","canonicalWorkoutId":null,"namedSafetyOverride":null},
+      "expected": {"decision":"abstain","assertions":["Suppress responded decision","Observed adherence remains unknown"],"forbidden":["Create workout from Done","Mark canonical session completed"]},
+      "counterfactual": {"field":"canonicalWorkoutId","value":"workout-dune-2","expected":{"decision":"abstain","assertions":["Link owned canonical execution if comparable","Done remains self-report"],"forbidden":["Create a second workout"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-plan-05", "athlete": "synthetic-elm", "rule": "accepted_plan", "title": "Missing confirmed goal permits accepted-plan navigation only",
+      "facts": {"planId":"plan-elm-v1","planStatus":"accepted","sessionId":"session-elm-1","sessionStatus":"planned","sessionDate":"2026-09-17","localDate":"2026-09-17","confirmedGoalId":null},
+      "expected": {"decision":"action","assertions":["Navigate to existing accepted session"],"forbidden":["Invent a goal","Use inferred goal to prescribe"]},
+      "counterfactual": {"field":"confirmedGoalId","value":"goal-elm-strength","expected":{"decision":"action","assertions":["Same accepted session remains navigable"],"forbidden":["Rewrite active plan from current goal"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-plan-06", "athlete": "synthetic-fen", "rule": "accepted_plan", "title": "Unavailable plan data is not a cold start",
+      "facts": {"planId":"plan-fen-v4","planStatus":"accepted","sessionId":"session-fen-1","sessionStatus":"planned","retrieval":"failed","confirmedGoalId":"goal-fen-run"},
+      "expected": {"decision":"abstain","assertions":["Report unavailable current plan evidence"],"forbidden":["Invent novice plan","Assume no plan exists"]},
+      "counterfactual": {"field":"retrieval","value":"complete","expected":{"decision":"action","assertions":["Navigate to current accepted plan"],"forbidden":["Recreate plan"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-plan-07", "athlete": "synthetic-glen", "rule": "accepted_plan", "title": "An explicit existing safety review outranks execution",
+      "facts": {"planId":"plan-glen-v1","planStatus":"accepted","sessionId":"session-glen-1","sessionStatus":"planned","existingSafetyReview":"pause_and_seek_support","painOrigin":"legacy_unknown"},
+      "expected": {"decision":"action","assertions":["Navigate to existing safety review","Preserve historical concerning-pain handling"],"forbidden":["Discard concern because provenance is legacy","Recommend executing blocked session"]},
+      "counterfactual": {"field":"painOrigin","value":"athlete_reported","expected":{"decision":"action","assertions":["Same existing safety review remains authoritative"],"forbidden":["Generate a new numerical safety policy"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-plan-08", "athlete": "synthetic-heath", "rule": "accepted_plan", "title": "Plan dates use athlete-local scope",
+      "facts": {"planId":"plan-heath-v1","planStatus":"accepted","sessionId":"session-heath-1","sessionStatus":"planned","sessionDate":"2026-09-17","localDate":"2026-09-17","nowUtc":"2026-09-18T00:30:00Z","agentOffsetMinutes":-300},
+      "expected": {"decision":"action","assertions":["Resolve current session using localDate"],"forbidden":["Use UTC date as athlete date"]},
+      "counterfactual": {"field":"sessionDate","value":"2026-09-16","expected":{"decision":"abstain","assertions":["Exclude yesterday from today's time-sensitive session rule"],"forbidden":["Label old session as today"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-plan-09", "athlete": "synthetic-iris", "rule": "accepted_plan", "title": "Preference edits do not rewrite accepted plan evidence",
+      "facts": {"planId":"plan-iris-v1","planStatus":"accepted","sessionId":"session-iris-1","sessionStatus":"planned","snapshotPreferenceVersion":2,"currentPreferenceVersion":2,"snapshotMovement":"barbell_back_squat"},
+      "expected": {"decision":"action","assertions":["Navigate with immutable plan snapshot"],"forbidden":["Infer automatic substitution"]},
+      "counterfactual": {"field":"currentPreferenceVersion","value":3,"expected":{"decision":"action","assertions":["Current preferences affect future proposals only","Retain accepted snapshot"],"forbidden":["Rewrite accepted movement"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-plan-10", "athlete": "synthetic-jade", "rule": "accepted_plan", "title": "Completed canonical session is not a fresh execution action",
+      "facts": {"planId":"plan-jade-v1","planStatus":"accepted","sessionId":"session-jade-1","sessionStatus":"completed","canonicalWorkoutId":"workout-jade-1","originRequestId":"request-jade-1"},
+      "expected": {"decision":"abstain","assertions":["Keep original canonical receipt and recommendation origin"],"forbidden":["Prompt duplicate execution","Allocate a new create identity on replay"]},
+      "counterfactual": {"field":"originRequestId","value":"request-jade-replayed","expected":{"decision":"abstain","assertions":["Completed source remains completed independently of display request"],"forbidden":["Create another occurrence"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-signal-01", "athlete": "synthetic-kite", "rule": "missing_signal", "title": "Missing supported direct baseline can change assessment",
+      "facts": {"goalId":"goal-kite-5k","goalConfirmed":true,"protocol":"run_5000m_track_elapsed_seconds","capability":"supported","baselineStatus":"missing","collectionChangesDecision":true,"measurementOrigin":"athlete_reported"},
+      "expected": {"decision":"collect_signal","assertions":["Request defined 5000m elapsed-time baseline","Explain how baseline changes supported assessment"],"forbidden":["Choose history-derived numerical dose"]},
+      "counterfactual": {"field":"baselineStatus","value":"confirmed_comparable","expected":{"decision":"abstain","assertions":["Do not request an already available baseline"],"forbidden":["Duplicate mandatory measurement entry"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-signal-02", "athlete": "synthetic-lark", "rule": "missing_signal", "title": "Same metric with wrong distance does not establish attainment",
+      "facts": {"goalId":"goal-lark-5k","goalConfirmed":true,"protocol":"run_5000m_track_elapsed_seconds","measurementProtocol":"run_1609m_track_elapsed_seconds","measurementId":"obs-lark-1","collectionChangesDecision":true},
+      "expected": {"decision":"collect_signal","assertions":["Exclude obs-lark-1 from 5000m attainment","Request comparable protocol"],"forbidden":["Treat run.time as universal comparability"]},
+      "counterfactual": {"field":"measurementProtocol","value":"run_5000m_track_elapsed_seconds","expected":{"decision":"abstain","assertions":["Comparable owned measurement removes this protocol gap"],"forbidden":["Infer whole-event attainment from one outcome"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-signal-03", "athlete": "synthetic-moss", "rule": "missing_signal", "title": "Untouched legacy RPE is not explicit effort evidence",
+      "facts": {"goalId":"goal-moss-effort","goalConfirmed":true,"measurementId":"obs-moss-rpe","metric":"session.rpe","value":7,"verificationStatus":"athlete_confirmed","explicitFieldProvenance":"legacy_unknown","collectionChangesDecision":true},
+      "expected": {"decision":"collect_signal","assertions":["Exclude legacy completion-generated RPE from explicit-report gate"],"forbidden":["Trust verification flag alone","Rewrite old observation"]},
+      "counterfactual": {"field":"explicitFieldProvenance","value":"feedback_v2_athlete_reported","expected":{"decision":"abstain","assertions":["Explicit session RPE resolves effort gap"],"forbidden":["Convert session RPE into hardest-set RIR"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-signal-04", "athlete": "synthetic-nest", "rule": "missing_signal", "title": "Optional unknown pain alone cannot generate a safety event",
+      "facts": {"goalId":"goal-nest-strength","goalConfirmed":true,"pain":null,"knownConcerningPain":false,"collectionChangesDecision":false,"energy":null,"sessionRpe":null},
+      "expected": {"decision":"abstain","assertions":["Allow completion without optional feedback","Preserve unknown pain, energy and RPE"],"forbidden":["Create default RPE observation","Require blanket questionnaire","Treat unknown as reassurance"]},
+      "counterfactual": {"field":"pain","value":"none","expected":{"decision":"abstain","assertions":["Retain explicit no pain separately from unknown"],"forbidden":["Infer high readiness from no pain"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-signal-05", "athlete": "synthetic-oak", "rule": "missing_signal", "title": "A proxy cannot fulfill a direct outcome",
+      "facts": {"goalId":"goal-oak-100m","goalConfirmed":true,"goalProtocol":"sprint_100m_electronic_seconds","observationId":"obs-oak-squat","observationRole":"proxy","proxyTrend":"improving","directOutcomeStatus":"missing","collectionChangesDecision":true},
+      "expected": {"decision":"collect_signal","assertions":["Request comparable direct sprint outcome","Keep proxy improvement factual"],"forbidden":["Declare sprint goal achieved","Claim proven transfer"]},
+      "counterfactual": {"field":"proxyTrend","value":"stable","expected":{"decision":"collect_signal","assertions":["Same direct-outcome gap remains"],"forbidden":["Progress dose because proxy changed"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-signal-06", "athlete": "synthetic-pine", "rule": "missing_signal", "title": "Unsupported sport outcome cannot activate a new policy",
+      "facts": {"goalId":"goal-pine-archery","goalConfirmed":true,"capability":"unsupported","baselineStatus":"missing","collectionChangesDecision":false,"athleteWording":"Improve tournament accuracy"},
+      "expected": {"decision":"abstain","assertions":["Explain unsupported outcome boundary"],"forbidden":["Invent archery prescription","Collect irrelevant compulsory metrics"]},
+      "counterfactual": {"field":"athleteWording","value":"Score better in competitive archery","expected":{"decision":"abstain","assertions":["Equivalent wording retains unsupported status"],"forbidden":["Change capability because wording changed"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-signal-07", "athlete": "synthetic-quill", "rule": "missing_signal", "title": "Partial retrieval is not absent athlete history",
+      "facts": {"goalId":"goal-quill-strength","goalConfirmed":true,"baselineStatus":"not_loaded","retrieval":"truncated","existingMeasurementKnown":true,"collectionChangesDecision":false},
+      "expected": {"decision":"abstain","assertions":["Surface incomplete retrieval","Preserve unknown evidence status"],"forbidden":["Ask athlete to recreate known records","Reset athlete to novice"]},
+      "counterfactual": {"field":"retrieval","value":"failed","expected":{"decision":"abstain","assertions":["Report unavailable evidence"],"forbidden":["Treat database outage as cold start"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-signal-08", "athlete": "synthetic-reed", "rule": "missing_signal", "title": "Unknown goal priority calls for confirmation before shared-demand choice",
+      "facts": {"goalIds":["goal-reed-5k","goal-reed-squat"],"goalsConfirmed":true,"sharedDemandConflict":true,"priorityConfirmed":false,"collectionChangesDecision":true,"firstGoalAttained":true},
+      "expected": {"decision":"collect_signal","assertions":["Ask for decision-changing goal priority","Keep second goal independent"],"forbidden":["Use sorted goal ID as inferred priority","Mark whole event achieved"]},
+      "counterfactual": {"field":"firstGoalAttained","value":false,"expected":{"decision":"collect_signal","assertions":["Priority gap remains independent of first goal attainment"],"forbidden":["Apply two conflicting changes"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-signal-09", "athlete": "synthetic-sage", "rule": "missing_signal", "title": "Bench evidence must not target the first-sorted squat",
+      "facts": {"goalId":"goal-sage-bench","goalConfirmed":true,"signalMovement":"barbell_bench_press","assignmentMovements":["barbell_back_squat","barbell_bench_press"],"transferMapping":null,"signalScope":"broad_unmapped","collectionChangesDecision":true},
+      "expected": {"decision":"collect_signal","assertions":["Ask for supported movement/protocol binding before any adjustment"],"forbidden":["Adjust first sorted assignment","Transfer bench evidence to squat"]},
+      "counterfactual": {"field":"assignmentMovements","value":["barbell_bench_press","barbell_back_squat"],"expected":{"decision":"collect_signal","assertions":["Ordering alone does not resolve evidence gap"],"forbidden":["Treat sorting as evidence relevance"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-signal-10", "athlete": "synthetic-thorn", "rule": "missing_signal", "title": "Range performance remains bounded until explicit correction",
+      "facts": {"goalId":"goal-thorn-pullup","goalConfirmed":true,"observationId":"obs-thorn-1","quantity":{"kind":"range","minimum":5,"maximum":8},"sourceField":"blocks[0].exercises[0].reps","collectionChangesDecision":true,"exactQuantityRequired":true},
+      "expected": {"decision":"collect_signal","assertions":["Request explicit exact value only at supported decision gate","Preserve range in factual history"],"forbidden":["Use midpoint as performed repetitions","Derive initial numerical dose"]},
+      "counterfactual": {"field":"quantity","value":{"kind":"exact","value":6},"expected":{"decision":"abstain","assertions":["Exact reported correction resolves quantity gap"],"forbidden":["Mutate prior immutable review"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-nutrition-01", "athlete": "synthetic-umber", "rule": "logged_nutrition", "title": "Confirmed target permits bounded logged remainder",
+      "facts": {"targetId":"target-umber-1","targetConfirmed":true,"targetCalories":2200,"loggedCalories":1500,"mealIds":["meal-umber-1","meal-umber-2"],"coverage":"unknown","localDate":"2026-09-17","origin":"athlete_reported"},
+      "expected": {"decision":"action","assertions":["Show 700 calories remaining against logged total","Coverage remains unknown"],"forbidden":["Claim 700 calorie physiological deficit","Prescribe new target"]},
+      "counterfactual": {"field":"targetConfirmed","value":false,"expected":{"decision":"abstain","assertions":["Do not present unconfirmed target as athlete goal"],"forbidden":["Use fallback calorie target"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-nutrition-02", "athlete": "synthetic-vale", "rule": "logged_nutrition", "title": "Partial-day low logs do not prove under-fueling",
+      "facts": {"targetId":"target-vale-1","targetConfirmed":true,"targetCalories":2100,"loggedCalories":400,"coverage":"through_09:00_only","localHour":10,"strain":17,"mealIds":["meal-vale-breakfast"]},
+      "expected": {"decision":"action","assertions":["State 1700 remaining against logs as of morning","Disclose coverage time"],"forbidden":["Claim under-fueling","Treat high strain as a calorie prescription"]},
+      "counterfactual": {"field":"strain","value":3,"expected":{"decision":"action","assertions":["Logged remainder remains 1700"],"forbidden":["Change confirmed target from strain"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-nutrition-03", "athlete": "synthetic-wren", "rule": "logged_nutrition", "title": "Photo review does not convert composition to measured fact",
+      "facts": {"targetId":"target-wren-1","targetConfirmed":true,"targetCalories":2000,"loggedCalories":900,"mealId":"meal-wren-1","origin":"model_estimated","reviewState":"unreviewed","coverage":"unknown"},
+      "expected": {"decision":"action","assertions":["Label approximate logged remainder of 1100","Retain model_estimated origin"],"forbidden":["Present composition as measured"]},
+      "counterfactual": {"field":"reviewState","value":"athlete_confirmed","expected":{"decision":"action","assertions":["Estimate origin survives review","Remainder remains approximate"],"forbidden":["Promote estimate to measurement"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-nutrition-04", "athlete": "synthetic-yarrow", "rule": "logged_nutrition", "title": "No target means no fabricated remainder",
+      "facts": {"targetId":null,"targetConfirmed":false,"targetCalories":null,"loggedCalories":1300,"coverage":"unknown","proteinLogged":95},
+      "expected": {"decision":"abstain","assertions":["Keep target absent"],"forbidden":["Use 2000 calorie default","Infer nutrition prescription"]},
+      "counterfactual": {"field":"proteinLogged","value":135,"expected":{"decision":"abstain","assertions":["Changed logged protein does not create target"],"forbidden":["Invent target based on consumption"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-nutrition-05", "athlete": "synthetic-zephyr", "rule": "logged_nutrition", "title": "High adherence cannot imply positive performance link",
+      "facts": {"targetId":"target-zephyr-1","targetConfirmed":true,"targetCalories":2400,"loggedCalories":2100,"monthlyAdherencePercent":96,"performanceTrend":"worse","workoutsCount":15,"coverage":"unknown"},
+      "expected": {"decision":"action","assertions":["Show 300 remaining against logged calories only"],"forbidden":["Claim strong nutrition-performance link","Claim causality"]},
+      "counterfactual": {"field":"performanceTrend","value":"improving","expected":{"decision":"action","assertions":["Same logged remainder","No causal attribution from co-occurrence"],"forbidden":["Claim proven nutrition benefit"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-nutrition-06", "athlete": "synthetic-alder", "rule": "logged_nutrition", "title": "Low stable recovery is not declining HRV",
+      "facts": {"targetId":"target-alder-1","targetConfirmed":true,"targetCalories":2300,"loggedCalories":1900,"recoverySamples":[30,30,30],"hrvSamplesMs":[42,45,49],"coverage":"unknown","whoopMeasurementDate":"2026-09-17"},
+      "expected": {"decision":"action","assertions":["Show 400 remaining against logs","Exclude unsupported legacy HRV trend assertions"],"forbidden":["Infer declining HRV from recovery mean"]},
+      "counterfactual": {"field":"hrvSamplesMs","value":[49,45,42],"expected":{"decision":"action","assertions":["No trend recommendation without reviewed protocol","Nutrition calculation remains unchanged"],"forbidden":["Invent reviewed trend rule"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-nutrition-07", "athlete": "synthetic-birch", "rule": "logged_nutrition", "title": "Sync time cannot make yesterday's measurement current",
+      "facts": {"targetId":"target-birch-1","targetConfirmed":true,"targetCalories":2500,"loggedCalories":1700,"coverage":"unknown","localDate":"2026-09-17","whoopMeasurementDate":"2026-09-16","whoopSyncedAt":"2026-09-17T20:00:00Z","whoopConnection":"connected"},
+      "expected": {"decision":"action","assertions":["Show 800 against logged intake","Exclude stale WHOOP from current reasoning"],"forbidden":["Label latest sync as measurement time"]},
+      "counterfactual": {"field":"whoopConnection","value":"disconnected","expected":{"decision":"action","assertions":["Nutrition action remains independent of unavailable wearable"],"forbidden":["Use disconnected WHOOP for current physiology"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-nutrition-08", "athlete": "synthetic-cedar", "rule": "logged_nutrition", "title": "Meal correction invalidates coverage and old calculation",
+      "facts": {"targetId":"target-cedar-1","targetConfirmed":true,"targetCalories":2000,"loggedCalories":1400,"mealRevision":1,"coverageRevision":1,"coverage":"complete_through_18:00","currentCalculationRevision":1},
+      "expected": {"decision":"action","assertions":["Show 600 remaining at revision 1","Limit coverage to reported time"],"forbidden":["Claim later meals cannot occur"]},
+      "counterfactual": {"field":"mealRevision","value":2,"expected":{"decision":"abstain","assertions":["Invalidate old calculation and coverage assumptions pending current revision"],"forbidden":["Publish stale 600 remainder"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-nutrition-09", "athlete": "synthetic-dahlia", "rule": "logged_nutrition", "title": "Queued photo is outside canonical totals",
+      "facts": {"targetId":"target-dahlia-1","targetConfirmed":true,"targetCalories":2100,"canonicalCalories":900,"queuedEstimatedCalories":500,"photoPersistence":"queued","coverage":"unknown","requestId":"request-dahlia-1"},
+      "expected": {"decision":"action","assertions":["Use canonical 900, yielding 1200 logged remainder","Show truthful queued state separately"],"forbidden":["Add unsynced estimate to canonical totals"]},
+      "counterfactual": {"field":"photoPersistence","value":"save_unconfirmed","expected":{"decision":"abstain","assertions":["Reconcile original request before publishing totals that may be stale"],"forbidden":["Allocate edited create identity before reconciliation","Claim confirmed no-write"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id": "dev-nutrition-10", "athlete": "synthetic-evergreen", "rule": "logged_nutrition", "title": "Cross-owner evidence is unusable",
+      "facts": {"requestOwner":"synthetic-evergreen","evidenceOwner":"synthetic-other","targetId":"target-evergreen-1","targetConfirmed":true,"targetCalories":2250,"loggedCalories":1500,"coverage":"unknown"},
+      "expected": {"decision":"abstain","assertions":["Reject cross-owner evidence before calculation"],"forbidden":["Disclose another athlete's meals","Trust client supplied owner"]},
+      "counterfactual": {"field":"evidenceOwner","value":"synthetic-evergreen","expected":{"decision":"action","assertions":["Owned evidence permits 750 logged remainder"],"forbidden":["Treat owner as user-editable authority"]}}, "qualifiedCoachLabel":"not_reviewed"
+    }
+  ]
+}

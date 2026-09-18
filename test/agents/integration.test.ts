@@ -359,24 +359,24 @@ describe('Integration Tests: Full Agent Flow', () => {
           insights: [
             {
               id: crypto.randomUUID(),
-              pattern_id: 'PRO_REC',
+              pattern_id: 'CON_PROG',
               priority: 'informational',
               confidence: 0.75,
-              content: 'Your protein intake is consistent with your goals.',
+              content: 'Three training sessions are logged this week.',
               created_at: new Date().toISOString()
             }
           ],
-          data_points: { avg_protein: 145 },
+          data_points: { workout_count: 3 },
           confidence: 0.8
         }) + '\n```'
 
-        const result = parseSociusResponse(wrappedResponse, 'protein analysis')
+        const result = parseSociusResponse(wrappedResponse, 'logged training summary')
 
         // Verify code fences were cleaned and parsing succeeded
         expect(result.message).toBe('Analysis complete')
         expect(result.confidence).toBe(0.8)
         expect(result.insights).toHaveLength(1)
-        expect(result.insights![0].pattern_id).toBe('PRO_REC')
+        expect(result.insights![0].pattern_id).toBe('CON_PROG')
       })
     })
   })

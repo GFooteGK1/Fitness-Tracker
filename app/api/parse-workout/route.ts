@@ -58,7 +58,7 @@ async function processWorkout(request: Request) {
     const workoutId = await saveActivity(supabase, 'workout', {
       workout_date: date, input_text: text, blocks: parsed.blocks,
       primary_score: primaryScore, tags: parsed.tags ?? [], notes: parsed.notes ?? '',
-      rpe: parsed.rpe ?? null, parse_confidence: 0.85
+      rpe: parsed.rpe ?? null, parse_confidence: null
     }, blockScores)
 
     return NextResponse.json({

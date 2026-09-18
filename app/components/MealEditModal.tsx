@@ -1,5 +1,7 @@
 'use client'
 
+import { useAuth } from '@/app/lib/auth/AuthContext'
+import { sendCaptureCorrection, assertCaptureOwner } from '@/app/lib/client/logging-request'
 import React, { useState, useEffect } from 'react'
 import { MealEntry, FoodItem, MealUpdates } from '@/app/lib/types/food-tracking'
 
@@ -24,12 +26,13 @@ export default function MealEditModal({
   onMealUpdated,
   isLoading = false
 }: MealEditModalProps) {
+  const { user } = useAuth()
   const [editableItems, setEditableItems] = useState<EditableFoodItem[]>([])
   const [totalProtein, setTotalProtein] = useState<number | string>(meal.totalProtein)
   const [totalCarbs, setTotalCarbs] = useState<number | string>(meal.totalCarbs)
   const [totalFat, setTotalFat] = useState<number | string>(meal.totalFat)
   const [totalCalories, setTotalCalories] = useState<number | string>(meal.totalCalories)
-  const [autoCalculate, setAutoCalculate] = useState(true)
+  const autoCalculate = true
   const [hasChanges, setHasChanges] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -60,7 +63,6 @@ export default function MealEditModal({
       setTotalCarbs(meal.totalCarbs)
       setTotalFat(meal.totalFat)
       setTotalCalories(meal.totalCalories)
-      setAutoCalculate(true)
       setHasChanges(false)
       setErrors([])
       setIsSaving(false)
@@ -153,7 +155,7 @@ export default function MealEditModal({
       if (!item.portion.trim()) {
         newErrors.push(`Food item ${index + 1}: Portion is required`)
       }
-      if (item.protein < 0 || item.carbs < 0 || item.fat < 0 || item.calories < 0) {
+      if (![item.protein, item.carbs, item.fat, item.calories].every(Number.isFinite) || item.protein < 0 || item.carbs < 0 || item.fat < 0 || item.calories < 0) {
         newErrors.push(`Food item ${index + 1}: All macro values must be non-negative`)
       }
     })
@@ -175,22 +177,18 @@ export default function MealEditModal({
       totalCalories: toNumber(totalCalories),
       items: editableItems.map(({ id, ...item }) => item),
       manualOverride: true,
-      reviewedAt: new Date()
+      ...(meal.captureRevision ? { expectedRevision: meal.captureRevision } : {}),
+      expectedUserId: meal.userId
     }
 
     try {
+      await assertCaptureOwner(meal.userId)
       if (onSave) {
         // Use custom save handler if provided
         await onSave(updates)
       } else {
         // Use default API call
-        const response = await fetch(`/api/meals/${meal.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updates),
-        })
+        const response = await sendCaptureCorrection(`/api/meals/${meal.id}`, 'PUT', updates as Record<string, unknown>, meal.userId)
 
         if (!response.ok) {
           const errorData = await response.json()
@@ -203,6 +201,7 @@ export default function MealEditModal({
         }
       }
 
+      await assertCaptureOwner(meal.userId)
       onClose()
     } catch (error) {
       console.error('Failed to save meal updates:', error)
@@ -214,10 +213,9 @@ export default function MealEditModal({
   }
 
   const handleRevertToAI = () => {
-    if (confirm('This will revert all changes back to the original AI analysis. Are you sure?')) {
+    if (confirm('Reset these unsaved changes to the currently saved meal?')) {
       // Reset to original AI values
       setEditableItems(meal.items.map((item, index) => ({ ...item, id: `item-${index}` })))
-      setAutoCalculate(true)
     }
   }
 
@@ -246,7 +244,7 @@ export default function MealEditModal({
     setEditableItems(items => items.filter(item => item.id !== itemId))
   }
 
-  if (!isOpen) return null
+  if (!isOpen || user?.id !== meal.userId) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center p-4 z-50">
@@ -266,7 +264,7 @@ export default function MealEditModal({
               }).format(new Date(meal.mealTimestamp))}
             </p>
           </div>
-          <button
+          <button type="button"
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
@@ -305,10 +303,10 @@ export default function MealEditModal({
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-[var(--accent)]">Original AI Analysis</h3>
+                  <h3 className="text-sm font-medium text-[var(--accent)]">Estimated values</h3>
                   <p className="mt-1 text-sm text-[var(--accent)]">
                     AI Confidence: {Math.round(meal.aiConfidence * 100)}% •
-                    Making changes will mark this meal as manually edited
+                    Corrections keep the original source visible.
                   </p>
                 </div>
               </div>
@@ -320,21 +318,13 @@ export default function MealEditModal({
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Nutritional Totals</h3>
               <div className="flex items-center space-x-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={autoCalculate}
-                    onChange={(e) => setAutoCalculate(e.target.checked)}
-                    className="rounded border-gray-300 text-[var(--accent)] focus:ring-[var(--accent)]"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Auto-calculate from items</span>
-                </label>
+                <span className="text-sm app-muted">Totals are calculated from food items.</span>
                 {!meal.manualOverride && (
-                  <button
+                  <button type="button"
                     onClick={handleRevertToAI}
                     className="text-sm text-[var(--accent)] hover:text-[var(--accent)] font-medium"
                   >
-                    Revert to AI
+                    Reset unsaved edits
                   </button>
                 )}
               </div>
@@ -355,7 +345,7 @@ export default function MealEditModal({
                   onBlur={(e) => setTotalProtein(toNumber(e.target.value))}
                   onFocus={(e) => e.target.select()}
                   disabled={autoCalculate}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
+                  className="min-h-11 text-base w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 />
               </div>
               <div>
@@ -372,7 +362,7 @@ export default function MealEditModal({
                   onBlur={(e) => setTotalCarbs(toNumber(e.target.value))}
                   onFocus={(e) => e.target.select()}
                   disabled={autoCalculate}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
+                  className="min-h-11 text-base w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 />
               </div>
               <div>
@@ -389,7 +379,7 @@ export default function MealEditModal({
                   onBlur={(e) => setTotalFat(toNumber(e.target.value))}
                   onFocus={(e) => e.target.select()}
                   disabled={autoCalculate}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
+                  className="min-h-11 text-base w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 />
               </div>
               <div>
@@ -406,7 +396,7 @@ export default function MealEditModal({
                   onBlur={(e) => setTotalCalories(toNumber(e.target.value))}
                   onFocus={(e) => e.target.select()}
                   disabled={autoCalculate}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
+                  className="min-h-11 text-base w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                 />
               </div>
             </div>
@@ -416,7 +406,7 @@ export default function MealEditModal({
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Food Items</h3>
-              <button
+              <button type="button"
                 onClick={addItem}
                 className="app-secondary inline-flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent)]"
               >
@@ -433,7 +423,7 @@ export default function MealEditModal({
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Item {index + 1}</h4>
                     {editableItems.length > 1 && (
-                      <button
+                      <button type="button"
                         onClick={() => removeItem(item.id)}
                         className="text-red-600 hover:text-red-800 p-1"
                         title="Remove item"
@@ -454,7 +444,7 @@ export default function MealEditModal({
                         type="text"
                         value={item.food}
                         onChange={(e) => updateItem(item.id, 'food', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+                        className="min-h-11 text-base w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                         placeholder="e.g., Grilled chicken breast"
                       />
                     </div>
@@ -466,7 +456,7 @@ export default function MealEditModal({
                         type="text"
                         value={item.portion}
                         onChange={(e) => updateItem(item.id, 'portion', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+                        className="min-h-11 text-base w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                         placeholder="e.g., 6 oz, 1 cup, 150g"
                       />
                     </div>
@@ -483,9 +473,9 @@ export default function MealEditModal({
                         min="0"
                         value={item.protein}
                         onChange={(e) => updateItem(item.id, 'protein', parseNumber(e.target.value))}
-                        onBlur={(e) => updateItem(item.id, 'protein', toNumber(e.target.value))}
+                        onBlur={(e) => { if (e.target.value.trim() !== '') updateItem(item.id, 'protein', toNumber(e.target.value)) }}
                         onFocus={(e) => e.target.select()}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+                        className="min-h-11 text-base w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                       />
                     </div>
                     <div>
@@ -498,9 +488,9 @@ export default function MealEditModal({
                         min="0"
                         value={item.carbs}
                         onChange={(e) => updateItem(item.id, 'carbs', parseNumber(e.target.value))}
-                        onBlur={(e) => updateItem(item.id, 'carbs', toNumber(e.target.value))}
+                        onBlur={(e) => { if (e.target.value.trim() !== '') updateItem(item.id, 'carbs', toNumber(e.target.value)) }}
                         onFocus={(e) => e.target.select()}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+                        className="min-h-11 text-base w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                       />
                     </div>
                     <div>
@@ -513,9 +503,9 @@ export default function MealEditModal({
                         min="0"
                         value={item.fat}
                         onChange={(e) => updateItem(item.id, 'fat', parseNumber(e.target.value))}
-                        onBlur={(e) => updateItem(item.id, 'fat', toNumber(e.target.value))}
+                        onBlur={(e) => { if (e.target.value.trim() !== '') updateItem(item.id, 'fat', toNumber(e.target.value)) }}
                         onFocus={(e) => e.target.select()}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+                        className="min-h-11 text-base w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                       />
                     </div>
                     <div>
@@ -528,9 +518,9 @@ export default function MealEditModal({
                         min="0"
                         value={item.calories}
                         onChange={(e) => updateItem(item.id, 'calories', parseNumber(e.target.value))}
-                        onBlur={(e) => updateItem(item.id, 'calories', toNumber(e.target.value))}
+                        onBlur={(e) => { if (e.target.value.trim() !== '') updateItem(item.id, 'calories', toNumber(e.target.value)) }}
                         onFocus={(e) => e.target.select()}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+                        className="min-h-11 text-base w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -550,16 +540,16 @@ export default function MealEditModal({
             )}
           </div>
           <div className="flex space-x-3">
-            <button
+            <button type="button"
               onClick={onClose}
               disabled={isSaving}
               className="app-secondary text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent)] disabled:opacity-50"
             >
               Cancel
             </button>
-            <button
+            <button type="button"
               onClick={handleSave}
-              disabled={!hasChanges || isSaving || errors.length > 0}
+              disabled={!hasChanges || isSaving}
               className="app-primary text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? (

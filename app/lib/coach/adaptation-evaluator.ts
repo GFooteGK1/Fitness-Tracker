@@ -142,6 +142,8 @@ export interface AdaptationProposalRecommendation {
 }
 
 export interface AdaptationReview {
+  /** Target attainment is independent of safety or missing supporting evidence. Legacy records omit it. */
+  goalAttained?: boolean
   schemaVersion: typeof ADAPTATION_REVIEW_SCHEMA_VERSION
   algorithmVersion: typeof ADAPTATION_EVALUATOR_ALGORITHM_VERSION
   asOf: string
@@ -372,6 +374,7 @@ export function evaluateAdaptation(input: AdaptationEvaluationInput): Adaptation
     asOf,
     goalId: input.goalId,
     hypothesisId: hypothesis.id,
+    goalAttained: goalMet,
     action,
     evidenceStatus,
     trend,
@@ -814,6 +817,7 @@ function reviewWithoutSnapshot(input: {
     asOf: input.input.context.asOf,
     goalId: input.input.goalId,
     hypothesisId: input.hypothesis?.id ?? null,
+    goalAttained: false,
     action: input.action,
     evidenceStatus: input.evidenceStatus,
     trend: input.trend,

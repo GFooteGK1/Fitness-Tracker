@@ -1,4 +1,5 @@
-import { refreshExercisePreferencesForDraft } from '@/app/lib/coach/exercise-preferences-context'
+import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
+import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -23,6 +24,7 @@ import { buildRollingTrainingDirection } from '@/app/lib/coach/rolling-weekly-co
 import { buildRollingWeeklyPlan } from '@/app/lib/coach/rolling-weekly-plan'
 
 interface InitialWeeklyProposalRequest {
+  tzOffset?: number
   planningInput?: unknown
   goalTargetDate?: unknown
   hypothesis?: unknown
@@ -47,7 +49,8 @@ export async function GET() {
 
     const program = programs?.[0] ?? null
     if (!program) {
-      return NextResponse.json({ mode: 'rolling_weekly', program: null, currentWeek: null, history: [] }, {
+      return NextResponse.json({ mode: 'rolling_weekly', program: null, currentWeek: null, history: [],
+        capabilities: { feedbackV2: personalizedCoachingCapabilities().captureReceiptsV2 } }, {
         headers: { 'Cache-Control': 'private, no-store' }
       })
     }
@@ -63,10 +66,11 @@ export async function GET() {
         .limit(16),
       supabase
         .from('coach_weekly_reviews')
-        .select('id, base_plan_version_id, review_window_start, review_reason, action, presentation_class, evidence_status, confidence, evidence_snapshot, evaluation_window, execution_summary, missing_requirements, safety_override, rationale, policy_version, algorithm_version, input_fingerprint, idempotency_key, created_at')
+        .select('id, base_plan_version_id, review_revision, supersedes_review_id, review_window_start, review_reason, action, presentation_class, evidence_status, confidence, evidence_snapshot, evaluation_window, execution_summary, missing_requirements, safety_override, rationale, policy_version, algorithm_version, input_fingerprint, idempotency_key, created_at')
         .eq('user_id', user.id)
         .eq('program_id', program.id)
         .order('review_window_start', { ascending: false })
+        .order('review_revision', { ascending: false })
         .limit(16),
       supabase
         .from('adaptation_proposals')
@@ -81,19 +85,32 @@ export async function GET() {
       return apiError('Unable to read weekly coach history', 503)
     }
 
+    const reviews = reviewsResult.data ?? []
+    const pending = proposalsResult.data?.[0] ?? null
+    const reviewIds = [...new Set([...reviews.map(r => r.id), ...(pending?.weekly_review_id ? [pending.weekly_review_id] : [])])]
+    // Bounded existence queries cannot lose a review behind many source invalidations.
+    // Persisted source validity remains authoritative when new review generation is disabled.
+    const checks = await Promise.all(reviewIds.map(async reviewId => {
+      const result = await supabase.from('coach_review_source_invalidations').select('review_id')
+        .eq('user_id', user.id).eq('review_id', reviewId).limit(1)
+      return { reviewId, ...result }
+    }))
+    if (checks.some(result => result.error)) return apiError('Unable to verify current review sources', 503)
+    const invalidated = new Set(checks.filter(result => result.data?.length).map(result => result.reviewId))
     const plans = plansResult.data ?? []
     const rollingProgram = program.program_mode === 'rolling_weekly' ? program : null
     const activePlan = rollingProgram
       ? plans.find(plan => plan.id === program.active_plan_version_id) ?? null
       : null
     return NextResponse.json({
+      capabilities: { feedbackV2: personalizedCoachingCapabilities().captureReceiptsV2 },
       mode: 'rolling_weekly',
       program: rollingProgram,
       currentWeek: activePlan,
-      pendingProposal: proposalsResult.data?.[0] ?? null,
+      pendingProposal: pending?.weekly_review_id && invalidated.has(pending.weekly_review_id) ? null : pending,
       history: {
         plans,
-        reviews: reviewsResult.data ?? []
+        reviews: reviews.map(r => ({ ...r, sourceInvalidated: invalidated.has(r.id) }))
       }
     }, {
       headers: { 'Cache-Control': 'private, no-store' }
@@ -112,6 +129,7 @@ export async function POST(request: Request) {
 
     const body = await readJson(request)
     if (!body) return apiError('Request body must be valid JSON', 400)
+    if (personalizedCoachingCapabilities().trainingIntent && (body.planningInput as { setupConfirmed?: boolean } | undefined)?.setupConfirmed !== true) throw new Error('Confirm current training days, session duration and equipment')
     const validated = validateCompleteCoachPlanningInput(body.planningInput)
     if (!validated.ok) {
       return NextResponse.json(
@@ -132,7 +150,8 @@ export async function POST(request: Request) {
     const runtimeContext = await fetchCoachRuntimeContext(supabase, user.id)
     if (!runtimeContext.storageAvailable) return apiError('Coach storage is unavailable', 503)
 
-    const baseProfile = await refreshExercisePreferencesForDraft(supabase, user.id, buildProgrammingProfile(validated.value, runtimeContext.assessments))
+    const baseProfile = await refreshConfirmedPlanningContext(supabase, user.id, buildProgrammingProfile(validated.value, runtimeContext.assessments), { tzOffset: body.tzOffset })
+
     const profile = profileForDirectionHorizon(
       baseProfile,
       validated.value.startDate,

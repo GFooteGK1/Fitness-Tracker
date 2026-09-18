@@ -1,3 +1,4 @@
+import { canSurfaceLegacyInsight, UNSUPPORTED_INSIGHT_RESPONSE } from './legacy-insight-guard'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   SociusContext,
@@ -81,12 +82,13 @@ export function parseSociusResponse(raw: string, userInput = ''): SociusResponse
   const cleaned = cleanResponseForParsing(raw)
   try {
     const parsed = JSON.parse(cleaned)
+    const retiredAssertion = Array.isArray(parsed.insights) && parsed.insights.some((insight: unknown) => insight && typeof insight === 'object' && !canSurfaceLegacyInsight(insight))
     return {
-      message: typeof parsed.message === 'string' ? parsed.message : 'Here is my analysis.',
+      message: retiredAssertion ? UNSUPPORTED_INSIGHT_RESPONSE : typeof parsed.message === 'string' ? parsed.message : 'Here is my analysis.',
       insights: Array.isArray(parsed.insights)
         ? parsed.insights.map(normalizeInsight).filter(Boolean) as RecentInsight[]
         : [],
-      data_points: normalizeDataPoints(parsed.data_points),
+      data_points: retiredAssertion ? {} : normalizeDataPoints(parsed.data_points),
       confidence: typeof parsed.confidence === 'number'
         ? Math.max(0, Math.min(1, parsed.confidence))
         : 0.5
@@ -114,7 +116,7 @@ function normalizeInsight(insight: Record<string, unknown>): RecentInsight | nul
     ? insight.pattern_id as PatternId
     : null
 
-  if (!patternId || !VALID_PATTERN_IDS.includes(patternId)) return null
+  if (!patternId || !VALID_PATTERN_IDS.includes(patternId) || !canSurfaceLegacyInsight(insight)) return null
 
   const priority = typeof insight.priority === 'string' && VALID_PRIORITIES.includes(insight.priority as InsightPriority)
     ? (insight.priority as InsightPriority)
@@ -162,7 +164,7 @@ export async function persistInsights(
   supabase: SupabaseClient
 ): Promise<void> {
   // Filter to insights above the confidence threshold
-  const validInsights = insights.filter(i => i.confidence > 0.6)
+  const validInsights = insights.filter(i => canSurfaceLegacyInsight(i) && i.confidence > 0.6)
   if (validInsights.length === 0) return
 
   const rows = validInsights.map(insight => ({

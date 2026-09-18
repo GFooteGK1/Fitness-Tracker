@@ -1,4 +1,5 @@
-import { refreshExercisePreferencesForDraft } from '@/app/lib/coach/exercise-preferences-context'
+import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
+import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -140,10 +141,11 @@ export async function POST(request: Request) {
       return apiError('The accepted weekly dose has an unsupported format', 409)
     }
     const goalId = storedIntent.adaptive_programming.goals[0]?.goalId ?? ''
+    const targetedReview = personalizedCoachingCapabilities().targetedReview
 
     const [context, recoveryContext, runtimeContext, checkinResult] = await Promise.all([
       fetchCoachEvidenceContext(supabase, user.id, {
-        purpose: 'adaptation_review', goalId, asOf, windowDays
+        purpose: 'adaptation_review', ...(targetedReview ? {} : { goalId }), asOf, windowDays
       }),
       fetchCoachEvidenceContext(supabase, user.id, {
         purpose: 'general_coaching', asOf, windowDays: Math.min(windowDays, 90)
@@ -176,7 +178,7 @@ export async function POST(request: Request) {
     })) as CoachExecutionSession[]
     const checkins: CoachSessionCheckinSummary[] = []
     for (const row of checkinResult.data ?? []) {
-      const validation = validateStoredCoachSessionCheckin(row.responses, row.occurred_at)
+      const validation = validateStoredCoachSessionCheckin(row.responses, row.occurred_at, row.id)
       if (!validation.ok) {
         return apiError('Weekly session feedback has an unsupported format', 409)
       }
@@ -197,7 +199,8 @@ export async function POST(request: Request) {
       sessions,
       checkins,
       athleteLocalDate,
-      athleteRequestedReview: body.athleteRequestedReview === true
+      athleteRequestedReview: body.athleteRequestedReview === true,
+      targetedReview
     })
     if (review.status === 'not_ready') {
       return NextResponse.json({ review, activePlanChanged: false }, {
@@ -215,7 +218,10 @@ export async function POST(request: Request) {
       evidenceStatus: review.evidenceStatus,
       executionSummary: review.executionSummary,
       evidenceSnapshot: review.evidenceSnapshot,
-      observationLinks: review.observationLinks
+      observationLinks: review.observationLinks,
+      goalReviews: review.goalReviews ?? null,
+      observationSources: review.observationSources,
+      executionSources: review.executionSources
     })
     const { data: reviewData, error: reviewError } = await supabase.rpc('record_coach_weekly_review', {
       p_program_id: program.id,
@@ -238,6 +244,9 @@ export async function POST(request: Request) {
       p_rationale: {
         messages: review.rationale,
         goalMetMaintenance: review.goalMetMaintenance,
+        observationSources: review.observationSources,
+      executionSources: review.executionSources,
+        ...(review.goalReviews ? { targetedReviewVersion: review.targetedReviewVersion, goalReviews: review.goalReviews } : {}),
         reviewedAt: review.reviewedAt,
         planningDecision: {
           action: review.action,
@@ -411,6 +420,7 @@ async function buildNextWeek(input: {
   let adaptivePlan = input.storedIntent.adaptive_programming
 
   if (input.review.action === 'shift_emphasis') {
+    if (personalizedCoachingCapabilities().trainingIntent && (input.body.replacementPlanningInput as { setupConfirmed?: boolean } | undefined)?.setupConfirmed !== true) throw new Error('Confirm current training days, session duration and equipment')
     const validated = validateCompleteCoachPlanningInput(input.body.replacementPlanningInput)
     if (!validated.ok || validated.value.startDate !== input.nextWindowStart) {
       return { ok: false, error: 'Confirm a replacement setup that starts on the adjacent Monday' }
@@ -432,7 +442,8 @@ async function buildNextWeek(input: {
     if (hypothesis.length < 5 || hypothesis.length > 500) {
       return { ok: false, error: 'Confirm a concise hypothesis for the replacement direction' }
     }
-    profile = await refreshExercisePreferencesForDraft(input.supabase, input.userId, profile)
+    profile = await refreshConfirmedPlanningContext(input.supabase, input.userId, profile,
+      { tzOffset: typeof input.body.tzOffset === 'number' ? input.body.tzOffset : 0 })
     direction = buildRollingTrainingDirection(profile, { hypothesis, goalTargetDate })
   }
 

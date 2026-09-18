@@ -13,3 +13,5 @@
 | [ADR-0010](ADR-0010-low-touch-entry-and-feature-retirement.md) | Low-touch entry and Leaderboard retirement | Accepted |
 
 - [ADR-0014: Confirmed exercise preferences](ADR-0014-exercise-preference-memory.md) — versioned favorites, correction, and programming boundaries.
+
+- [ADR-0021: Capture and personalized coaching contracts](ADR-0021-capture-and-personalized-coaching-contracts.md) — accepted local implementation; capture, intent, evidence and refresh boundaries. Numbers through 0020 are reserved by experimental worktrees.

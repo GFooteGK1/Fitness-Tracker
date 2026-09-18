@@ -1,4 +1,5 @@
 import { explainPreferenceUse } from './exercise-preferences'
+import { realizeExecutionPriority } from './execution-priority'
 import { MOVEMENT_CATALOG_VERSION } from './movement-catalog'
 import { COMPLETE_PROGRAMMING_POLICY_VERSION } from './programming-policy'
 import { COMPLETE_PROGRAMMING_REFERENCE } from './programming-reference'
@@ -48,6 +49,7 @@ export interface RollingScheduledSession {
 }
 
 export interface RollingWeeklyPlanDraft {
+  executionPriority?: ReturnType<typeof realizeExecutionPriority>
   kind: 'weekly_plan'
   schemaVersion: typeof ROLLING_WEEKLY_SCHEMA_VERSION
   format: 'rolling_weekly_plan_v0_1'
@@ -192,6 +194,7 @@ export function buildRollingWeeklyPlan(
 
   return {
     kind: 'weekly_plan',
+    ...(profile.executionPriority ? { executionPriority: realizeExecutionPriority(profile, schedule, sessions) } : {}),
     schemaVersion: ROLLING_WEEKLY_SCHEMA_VERSION,
     format: 'rolling_weekly_plan_v0_1',
     kernelVersion: ROLLING_WEEKLY_KERNEL_VERSION,
@@ -471,7 +474,11 @@ function profileContinuity(profile: ProgrammingProfile): unknown {
     equipment: profile.equipment,
     explicitConstraints: profile.explicitConstraints,
     unresolvedConstraintNote: profile.unresolvedConstraintNote,
-    preferences: profile.preferences
+    preferences: profile.preferences,
+    trainingIntent: profile.trainingIntent ?? null,
+    planningContext: profile.planningContext ?? null,
+    prescriptionBasis: profile.prescriptionBasis ?? null,
+    executionPriority: profile.executionPriority ?? null
   }
 }
 

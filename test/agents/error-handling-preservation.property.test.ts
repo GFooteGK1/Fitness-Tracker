@@ -50,7 +50,8 @@ const propertyConfig = { numRuns: 50 }
 
 const VALID_BLOCK_TYPES = ['AMRAP', 'FOR_TIME', 'EMOM', 'STRENGTH', 'CARDIO'] as const
 const VALID_MEAL_TIMINGS = ['PRE_WORKOUT', 'POST_WORKOUT', 'BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'] as const
-const VALID_PATTERN_IDS = ['CAL_DEF', 'OVER_TRN', 'NUT_PERF', 'REC_VOL', 'PRO_REC', 'SLEEP_PERF', 'HRV_TREND', 'STRAIN_NUT', 'HYDRA', 'CON_PROG'] as const
+// Retired causal/HRV contracts are deliberately excluded from preservation.
+const VALID_PATTERN_IDS = ['OVER_TRN', 'REC_VOL', 'SLEEP_PERF', 'HYDRA', 'CON_PROG'] as const
 const VALID_PRIORITIES = ['urgent', 'notable', 'informational'] as const
 
 function makeTrainerContext(overrides?: Partial<TrainerContext>): TrainerContext {
@@ -835,7 +836,7 @@ describe('Property 2.3: Socius successful parsing behavior preserved', () => {
 
       const insights: RecentInsight[] = [{
         id: crypto.randomUUID(),
-        pattern_id: 'CAL_DEF',
+        pattern_id: 'CON_PROG',
         priority: 'notable',
         confidence,
         content: 'Test insight above threshold',

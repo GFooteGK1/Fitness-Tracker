@@ -1,11 +1,16 @@
+import { validRecommendationId } from '@/app/lib/logging/server'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
 import { validateCoachSessionCheckinInput } from '@/app/lib/coach/execution-feedback'
 import { validateAtomicSessionCompletionInput } from '@/app/lib/coach/session-completion'
+import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
+import type { CaptureReceipt } from '@/app/lib/capture/contracts'
 
 interface SessionResultRequest {
+  recommendationId?: unknown
+  expectedUserId?: unknown
   contractVersion?: unknown
   idempotencyKey?: unknown
   feedback?: unknown
@@ -39,7 +44,11 @@ export async function POST(
 
     const body = await readJson(request)
     if (!body) return apiError('Request body must be valid JSON', 400)
+    if (body.expectedUserId !== undefined && body.expectedUserId !== user.id) {
+      return apiError('The signed-in account changed. Restore the original account before retrying.', 409)
+    }
 
+    if(body.recommendationId != null && !validRecommendationId(body.recommendationId)) return apiError('Invalid recommendation origin',422)
     const idempotencyKey = validIdempotencyKey(body.idempotencyKey)
     if (!idempotencyKey) return apiError('A valid idempotency key is required', 400)
 
@@ -58,17 +67,24 @@ export async function POST(
         )
       }
       const { occurredAt, ...responses } = validation.value.feedback
-      rpcName = 'record_coach_session_result_v2'
+      if (responses.feedbackVersion === 2 && !personalizedCoachingCapabilities().captureReceiptsV2) {
+        return apiError('Optional session feedback is not enabled', 409)
+      }
+      rpcName = responses.feedbackVersion === 2 ? 'record_coach_session_capture' : 'record_coach_session_result_v2'
       rpcArgs = {
         p_session_id: id,
         p_status: validation.value.status,
-        p_feedback: { schemaVersion: 1, ...responses },
+        p_feedback: { schemaVersion: responses.feedbackVersion === 2 ? 2 : 1, ...responses },
         p_occurred_at: occurredAt,
         p_idempotency_key: idempotencyKey,
         p_performed_work: validation.value.performedWork,
         p_observations: validation.value.observations
       }
     } else {
+      if (body.feedback && typeof body.feedback === 'object'
+        && 'feedbackVersion' in body.feedback && body.feedback.feedbackVersion === 2) {
+        return apiError('Optional feedback requires an atomic session completion', 400)
+      }
       const validation = validateCoachSessionCheckinInput(body.feedback)
       if (!validation.ok) {
         return NextResponse.json(
@@ -86,6 +102,10 @@ export async function POST(
       }
     }
 
+    if(body.recommendationId){
+      if(rpcName!=='record_coach_session_capture')return apiError('Recommendation origin requires the current capture contract',422)
+      rpcArgs.p_recommendation_id=body.recommendationId
+    }
     const { data, error } = await supabase.rpc(rpcName, rpcArgs)
 
     if (error) {
@@ -98,13 +118,16 @@ export async function POST(
       return apiError('Unable to save session result', 503)
     }
 
-    const row = (data?.[0] ?? null) as SessionResultRpcRow | null
+    const row = (rpcName === 'record_coach_session_capture' ? data?.result : data?.[0] ?? null) as SessionResultRpcRow | null
+    const receipt = rpcName === 'record_coach_session_capture' ? data?.receipt as CaptureReceipt | null : null
     if (!row?.prescribed_session_id || !row.checkin_id) {
       return apiError('Unable to save session result', 503)
     }
 
-    const context = await fetchCoachRuntimeContext(supabase, user.id)
-    return NextResponse.json({ result: row, context }, {
+    // A confirmed atomic completion remains successful if a subsequent context read fails.
+    let context: Awaited<ReturnType<typeof fetchCoachRuntimeContext>> | null = null
+    try { context = await fetchCoachRuntimeContext(supabase, user.id) } catch { /* Next entry can refresh context. */ }
+    return NextResponse.json({ result: row, context, ...(receipt ? { receipt, receipts: [receipt] } : {}), ...(context ? {} : { contextUnavailable: true }) }, {
       headers: { 'Cache-Control': 'private, no-store' }
     })
   } catch (error) {

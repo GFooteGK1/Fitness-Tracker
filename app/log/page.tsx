@@ -1,4 +1,6 @@
 'use client'
+import { CaptureReceiptPanel, type ReceiptResult } from '@/app/components/capture/CaptureReceiptPanel'
+import { CaptureRecovery } from '@/app/components/capture/CaptureRecovery'
 import { sendLoggingRequest } from '@/app/lib/client/logging-request'
 
 import { useAuth } from '@/app/lib/auth/AuthContext'
@@ -11,6 +13,7 @@ import { type PRResult } from '../lib/pr-detection'
 
 export default function LogWorkout() {
   const { user } = useAuth()
+  const [receiptResult, setReceiptResult] = useState<ReceiptResult | null>(null)
   const [workoutText, setWorkoutText] = useState('')
   const [workoutDate, setWorkoutDate] = useState(getLocalDate())
   const [loading, setLoading] = useState(false)
@@ -123,6 +126,8 @@ export default function LogWorkout() {
       }, user?.id ?? '')
 
       const result = await response.json()
+      setReceiptResult(result)
+      if (result.state === 'save_unconfirmed' || result.receiptBundle?.state === 'save_unconfirmed') throw new Error('Save unconfirmed. Retry this same entry.')
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to parse workout')
@@ -367,7 +372,9 @@ RPE: 8/10"
           <label htmlFor="date" className="block mt-2">Workout Date</label>
           <input type="date" id="date" value={workoutDate} onChange={e => setWorkoutDate(e.target.value)} className="w-full min-h-12 text-base p-3 rounded-lg bg-[var(--surface)] border border-[var(--line)] my-2" />
         </details>
-        {/* Input Method Selection */}
+        <CaptureRecovery />
+      {receiptResult && <CaptureReceiptPanel result={receiptResult} />}
+      {/* Input Method Selection */}
         <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
           {/* Show full-width photo preview when image is captured, otherwise show grid */}
           {capturedImage ? (

@@ -3,6 +3,11 @@ import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { resolveAnalysisUrl } from '@/app/lib/photo-url'
 import { NutritionalAnalysis } from '@/app/lib/types/food-tracking'
 import { validateMealData } from '@/app/lib/macro-validation'
+import { replayJsonRequest, loggingContext, markCaptureCorrectionFailure } from '@/app/lib/logging/server'
+import { auditedCaptureInstalled } from '@/app/lib/capture/compatibility'
+import { captureProvenance } from '@/app/lib/capture/contracts'
+import { normalizeActivity } from '@/app/lib/capture/normalize'
+import { amendActivity, validCorrection } from '@/app/lib/capture/corrections'
 import {
   analyzeMealPhoto,
   type MealPhotoMediaType,
@@ -18,7 +23,7 @@ import {
 // AI analysis timeout: 15 seconds as per requirements
 const AI_TIMEOUT_MS = 15000
 
-export async function POST(request: NextRequest) {
+async function processAnalysis(request: NextRequest) {
   const context: ErrorContext = {
     operation: 'ai_analysis',
     userAgent: request.headers.get('user-agent') || undefined,
@@ -38,7 +43,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { photoUrl, mealId } = await request.json()
+    const body = await request.json()
+    const { photoUrl, mealId } = body
 
     // Validate required fields
     if (!photoUrl || !mealId) {
@@ -80,6 +86,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (await auditedCaptureInstalled(supabase)) {
+      const identity = { entityId: mealId, expectedRevision: body.expectedRevision, requestId: loggingContext.getStore()?.id ?? body.requestId }
+      if (body.expectedUserId !== user.id || !validCorrection(identity)) return NextResponse.json({ error: 'Reload this meal before reviewing another estimate.' }, { status: 422 })
+      const analysis = await analyzePhoto(analysisUrl)
+      const normalized = normalizeActivity('meal', { ...mealData, items: analysis.meal_items, needs_review: true, ai_confidence: analysis.confidence })
+      if (body.confirmed === true) {
+        const pendingContext = loggingContext.getStore()
+        if (pendingContext) pendingContext.writeAttempted = true
+        const receipt = await amendActivity(supabase, user.id, 'meal', identity, normalized.record, false, true)
+        const capture = loggingContext.getStore()
+        if (capture) capture.receipts = [receipt]
+        return NextResponse.json({ mealId, nutritionalData: analysis, analysisStatus: 'complete', receipts: [receipt] })
+      }
+      const operation = { sourceItemId: 'analysis:0', kind: 'meal', ...normalized, inputMethod: 'photo', eventAt: mealData.meal_timestamp,
+        provenance: captureProvenance('meal'), response: { correction: { entityId: mealId, expectedRevision: identity.expectedRevision } } }
+      const { data: draft, error } = await supabase.rpc('save_activity_draft', { p_request_id: identity.requestId, p_draft_id: null, p_expected_revision: null, p_operation: operation, p_discard: false })
+      if (error) return NextResponse.json({ error: 'The estimate draft could not be confirmed.' }, { status: 503 })
+      return NextResponse.json({ mealId, nutritionalData: analysis, analysisStatus: 'draft', draft, canonicalChanged: false })
+    }
+
     let nutritionalData: NutritionalAnalysis
 
     try {
@@ -105,6 +131,7 @@ export async function POST(request: NextRequest) {
       )
 
     } catch (error) {
+    markCaptureCorrectionFailure(error)
       logError(error, context)
       const errorResult = categorizeError(error, context)
       
@@ -204,6 +231,7 @@ export async function POST(request: NextRequest) {
         { ...context, operation: 'database' }
       )
     } catch (error) {
+    markCaptureCorrectionFailure(error)
       logError(error, { ...context, operation: 'database' })
       return NextResponse.json(
         { error: 'Failed to save analysis results. Please try again.' },
@@ -221,6 +249,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
+    markCaptureCorrectionFailure(error)
     logError(error, context)
     const errorResult = categorizeError(error, context)
     
@@ -234,6 +263,14 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+export async function POST(request: NextRequest) {
+  const supabase = await createServerClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try { return await auditedCaptureInstalled(supabase) ? await replayJsonRequest(request, 'meal-analysis', processAnalysis) : await processAnalysis(request) }
+  catch { return NextResponse.json({ error: 'Capture compatibility is unavailable; retry this request.' }, { status: 503 }) }
 }
 
 async function analyzePhoto(photoUrl: string): Promise<NutritionalAnalysis> {

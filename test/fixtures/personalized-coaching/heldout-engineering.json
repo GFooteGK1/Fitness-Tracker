@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "engineering-scenarios-v1",
+  "split": "heldout_engineering",
+  "source": "new_synthetic",
+  "exposure": "author_only_until_integrated_verification",
+  "scenarios": [
+    {
+      "id":"heldout-plan-01", "athlete":"synthetic-flint", "rule":"accepted_plan", "title":"Lease takeover fences an old accepted-session publisher",
+      "facts":{"planId":"plan-flint-v3","planStatus":"accepted","sessionStatus":"planned","workerLeaseToken":"lease-old","currentLeaseToken":"lease-new","sourceRevision":12,"workerSourceRevision":12,"responseRevision":0,"workerResponseRevision":0},
+      "expected":{"decision":"abstain","assertions":["Reject stale publisher despite matching source revision","Leave pending refresh for current lease"],"forbidden":["Publish with expired ownership"]},
+      "counterfactual":{"field":"workerLeaseToken","value":"lease-new","expected":{"decision":"action","assertions":["Current lease can publish accepted-plan navigation after remaining gates pass"],"forbidden":["Skip source and response revision checks"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id":"heldout-plan-02", "athlete":"synthetic-garnet", "rule":"accepted_plan", "title":"A dismissal racing with refresh cannot reappear",
+      "facts":{"planId":"plan-garnet-v1","planStatus":"accepted","sessionStatus":"planned","workerResponseRevision":4,"currentResponseRevision":5,"sourceRevision":9,"workerSourceRevision":9,"leaseMatches":true},
+      "expected":{"decision":"abstain","assertions":["Reject publication across response revision mismatch"],"forbidden":["Resurrect dismissed card"]},
+      "counterfactual":{"field":"sourceRevision","value":10,"expected":{"decision":"abstain","assertions":["New source revision does not remove response fence"],"forbidden":["Clear pending new source revision"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id":"heldout-plan-03", "athlete":"synthetic-hazel", "rule":"accepted_plan", "title":"Capability change invalidates advice without a source write",
+      "facts":{"planId":"plan-hazel-v2","planStatus":"accepted","sessionStatus":"planned","capturedCapabilitiesVersion":"caps-2","currentCapabilitiesVersion":"caps-3","sourceRevision":3,"workerSourceRevision":3,"recommendationsEnabled":true},
+      "expected":{"decision":"abstain","assertions":["Reject cached decision under different capability fingerprint"],"forbidden":["Treat unchanged source revision as sufficient freshness"]},
+      "counterfactual":{"field":"capturedCapabilitiesVersion","value":"caps-3","expected":{"decision":"action","assertions":["Current compatible capabilities permit accepted-plan navigation"],"forbidden":["Enable history numerical selection implicitly"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id":"heldout-plan-04", "athlete":"synthetic-indigo", "rule":"accepted_plan", "title":"Superseded advice may receive follow-up without becoming current",
+      "facts":{"decisionId":"decision-indigo-1","lifecycle":"superseded","followUpDue":true,"outcomeObservationId":"obs-indigo-2","outcomeComparable":true,"canonicalOriginDecisionId":"decision-indigo-1","overlappingActionIds":["decision-indigo-2"]},
+      "expected":{"decision":"abstain","assertions":["Keep superseded action hidden","Record bounded comparable follow-up with overlap limitation"],"forbidden":["Reactivate old advice","Claim sole causal attribution"]},
+      "counterfactual":{"field":"outcomeComparable","value":false,"expected":{"decision":"abstain","assertions":["Keep hidden and record noncomparable outcome"],"forbidden":["Count noncomparable result as improvement"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id":"heldout-signal-01", "athlete":"synthetic-juniper", "rule":"missing_signal", "title":"An edited source requires as-of snapshot for historical replay",
+      "facts":{"goalId":"goal-juniper-strength","goalConfirmed":true,"observationId":"obs-juniper-1","requestedMode":"historical_replay","asOfRevision":1,"currentRevision":2,"snapshotAvailable":false,"collectionChangesDecision":false},
+      "expected":{"decision":"abstain","assertions":["Report historical source unavailable","Do not substitute current correction into old decision"],"forbidden":["Rewrite immutable review basis"]},
+      "counterfactual":{"field":"snapshotAvailable","value":true,"expected":{"decision":"abstain","assertions":["Replay exact historical snapshot without creating new advice"],"forbidden":["Use new source value for old review"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id":"heldout-signal-02", "athlete":"synthetic-kestrel", "rule":"missing_signal", "title":"A distinct protocol gap in the second goal remains visible",
+      "facts":{"goalIds":["goal-kestrel-400m","goal-kestrel-5k"],"goalsConfirmed":true,"firstGoalBaseline":"confirmed_comparable","secondGoalBaseline":"missing","goalPriority":["goal-kestrel-5k","goal-kestrel-400m"],"collectionChangesDecision":true,"sharedDemandConflict":false},
+      "expected":{"decision":"collect_signal","assertions":["Request second goal's comparable 5000m baseline","Preserve independent first goal result"],"forbidden":["Inspect only goals[0]","Reuse 400m time as 5000m baseline"]},
+      "counterfactual":{"field":"firstGoalBaseline","value":"achieved","expected":{"decision":"collect_signal","assertions":["Second goal still needs its baseline"],"forbidden":["Mark multi-outcome event achieved"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id":"heldout-signal-03", "athlete":"synthetic-linden", "rule":"missing_signal", "title":"Hardest-set fractional effort cannot fill session effort",
+      "facts":{"goalId":"goal-linden-strength","goalConfirmed":true,"measurementId":"obs-linden-effort","value":8.5,"effortScope":"hardest_set","requestedScope":"session","explicitFieldProvenance":"feedback_v2_athlete_reported","collectionChangesDecision":true},
+      "expected":{"decision":"collect_signal","assertions":["Request session effort only for declared decision gate","Retain 8.5 hardest-set effort independently"],"forbidden":["Round fractional effort","Infer RIR","Reuse hardest-set value as session RPE"]},
+      "counterfactual":{"field":"effortScope","value":"session","expected":{"decision":"abstain","assertions":["Explicit fractional session report resolves session-effort gap"],"forbidden":["Create duplicate observation"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id":"heldout-signal-04", "athlete":"synthetic-marsh", "rule":"missing_signal", "title":"Different equipment prevents silent baseline transfer",
+      "facts":{"goalId":"goal-marsh-bench","goalConfirmed":true,"requestedEquipment":"barbell","observedEquipment":"smith_machine","measurementId":"obs-marsh-1","metric":"strength.load","unit":"kg","transferPolicy":null,"collectionChangesDecision":true},
+      "expected":{"decision":"collect_signal","assertions":["Exclude Smith-machine observation from barbell baseline","Request supported comparable measurement"],"forbidden":["Infer equipment transfer","Use familiar movement to infer tolerated load"]},
+      "counterfactual":{"field":"observedEquipment","value":"barbell","expected":{"decision":"abstain","assertions":["Equipment gap resolves when remaining protocol matches"],"forbidden":["Activate unreviewed numerical dose policy"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id":"heldout-nutrition-01", "athlete":"synthetic-nori", "rule":"logged_nutrition", "title":"Frozen identical meal children retain two intended occurrences",
+      "facts":{"targetId":"target-nori-1","targetConfirmed":true,"targetCalories":2200,"authorizedChildIds":["child-nori-1","child-nori-2"],"canonicalChildIds":["child-nori-1","child-nori-2"],"childCalories":500,"otherCalories":300,"samePayload":true,"coverage":"unknown"},
+      "expected":{"decision":"action","assertions":["Count two explicit canonical occurrences for 1300 logged calories and 900 remainder"],"forbidden":["Collapse occurrences by matching payload text"]},
+      "counterfactual":{"field":"canonicalChildIds","value":["child-nori-1"],"expected":{"decision":"action","assertions":["Count only committed child for 800 logged calories and 1400 remainder","Show unresolved child separately"],"forbidden":["Claim whole multi-activity request success","Replay committed first child"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id":"heldout-nutrition-02", "athlete":"synthetic-olive", "rule":"logged_nutrition", "title":"Copying a meal confirms new occurrence without a fresh composition review",
+      "facts":{"targetId":"target-olive-1","targetConfirmed":true,"targetCalories":2050,"loggedCalories":1250,"mealOrigin":"copied_template","templateCompositionOrigin":"model_estimated","compositionReview":"unreviewed","occurrenceConfirmed":true,"coverage":"unknown"},
+      "expected":{"decision":"action","assertions":["Label approximate logged remainder of 800","Retain copied source and estimated composition lineage"],"forbidden":["Fabricate fresh model analysis","Treat occurrence confirmation as measured composition"]},
+      "counterfactual":{"field":"compositionReview","value":"athlete_confirmed","expected":{"decision":"action","assertions":["Estimate origin remains after composition review"],"forbidden":["Erase template lineage"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id":"heldout-nutrition-03", "athlete":"synthetic-pebble", "rule":"logged_nutrition", "title":"Athlete-local midnight expires prior-day nutrition calculation",
+      "facts":{"targetId":"target-pebble-1","targetConfirmed":true,"targetCalories":2350,"loggedCalories":2100,"decisionLocalDate":"2026-09-17","currentLocalDate":"2026-09-18","sourceRevision":6,"decisionSourceRevision":6,"coverage":"unknown"},
+      "expected":{"decision":"abstain","assertions":["Expire yesterday's remaining-logged calculation despite unchanged source revision"],"forbidden":["Apply yesterday's total to today"]},
+      "counterfactual":{"field":"currentLocalDate","value":"2026-09-17","expected":{"decision":"action","assertions":["Same-day scope permits 250 logged remainder"],"forbidden":["Extend validity past local midnight"]}}, "qualifiedCoachLabel":"not_reviewed"
+    },
+    {
+      "id":"heldout-nutrition-04", "athlete":"synthetic-quartz", "rule":"logged_nutrition", "title":"Partial WHOOP sync cannot assemble a current physiological explanation",
+      "facts":{"targetId":"target-quartz-1","targetConfirmed":true,"targetCalories":2150,"loggedCalories":1650,"coverage":"unknown","whoopSyncStatus":"partial","coherentCompletedSnapshot":null,"recoveryDate":"2026-09-17","strainDate":"2026-09-16","hrvDirection":"rising"},
+      "expected":{"decision":"action","assertions":["Show 500 remaining against logs independently of WHOOP","Mark wearable basis unavailable"],"forbidden":["Fuse inconsistent device cycles","Infer HRV decline"]},
+      "counterfactual":{"field":"hrvDirection","value":"falling","expected":{"decision":"action","assertions":["Same logged-nutrition result with no reviewed trend policy"],"forbidden":["Turn unreviewed trend into dose adjustment"]}}, "qualifiedCoachLabel":"not_reviewed"
+    }
+  ]
+}

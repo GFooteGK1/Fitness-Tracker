@@ -1,3 +1,4 @@
+import type { CoachRecommendationContext } from '@/app/lib/recommendations/coach-context'
 // ─── Enums & Literal Types ───────────────────────────────────────────
 
 import type { CoachRuntimeContext } from '@/app/lib/coach/types'
@@ -229,9 +230,12 @@ export interface UserProfile {
 }
 
 /** Shared base context assembled for every agent call */
-export interface PassiveContext {
+export interface PassiveContext extends Partial<CoachRecommendationContext> {
   user_id: string
   targets: MacroTargets
+  /** Only persisted valid targets authorize target comparisons. Absence is unknown. */
+  targets_confirmed?: boolean
+  whoop_context?: { syncEligible: boolean; status: 'current' | 'unavailable'; recoveryDate: string | null; strainDate: string | null; lastSyncAt: string | null }
   today: UserDailyState
   week: UserWeeklyState
   recent_chat: ChatMessage[]
@@ -292,6 +296,8 @@ export interface ClassificationResult {
 
 /** What the client sends to /api/agent/process */
 export interface AgentRequest {
+  recommendationId?: string | null
+  correction?: { entityId: string; expectedRevision: number; requestId: string; kind: 'meal' | 'workout' }
   expectedUserId?: string
   requestId?: string
   submittedAt?: string

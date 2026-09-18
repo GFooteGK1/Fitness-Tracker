@@ -255,6 +255,15 @@ export const TRAINER_TOOLS: LlmToolDef[] = [
       type: 'object' as const,
       properties: {
         workout_id: { type: 'string', description: 'UUID of the workout to update' },
+        blocks: { type: 'array', minItems: 1, items: { type: 'object', properties: {
+          block_type: { type: 'string', enum: ['AMRAP','FOR_TIME','EMOM','STRENGTH','CARDIO'] },
+          movements: { type: 'array', items: { type: 'object', properties: {
+            name: { type: 'string' }, reps: { type: 'number' }, sets: { type: 'number' },
+            weight: { type: 'string', description: 'Include the unit; never guess an unreported amount.' }, distance: { type: 'string' }
+          }, required: ['name'] } },
+          score: { type: 'object', properties: { rounds: { type: 'number' }, extra_reps: { type: 'number' }, time_s: { type: 'number' } } },
+          rx_status: { type: 'string', enum: ['RX','SCALED'] }
+        }, required: ['block_type','movements'] }, description: 'Complete replacement blocks only for the explicitly selected saved workout correction.' },
         primary_score: { type: 'string' },
         rpe: { type: 'number', description: '1-10' },
         tags: { type: 'array', items: { type: 'string' } },

@@ -1,4 +1,8 @@
-import { saveActivity, ActivitySaveError } from '@/app/lib/logging/server'
+import { saveActivity, ActivitySaveError, loggingContext, markCaptureCorrectionFailure } from '@/app/lib/logging/server'
+import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
+import { resolveAuthorizedSource } from '@/app/lib/capture/intent'
+import { amendActivity } from '@/app/lib/capture/corrections'
+import { auditedCaptureInstalled } from '@/app/lib/capture/compatibility'
 import { createHash } from 'crypto'
 
 /**
@@ -38,6 +42,29 @@ export async function executeToolCall(
   context?: ToolExecutionContext
 ): Promise<ToolResult> {
   try {
+    const guardedWrite = personalizedCoachingCapabilities().captureReceiptsV2
+      || (['update_workout','update_meal','log_pr'].includes(toolName) && await auditedCaptureInstalled(supabase))
+    if (guardedWrite && ['log_workout','log_meal','log_pr','update_workout','update_meal','confirm_coach_memory','record_strength_assessment'].includes(toolName)) {
+      const capture = loggingContext.getStore()
+      const collector = capture?.captureCollector
+      if (capture?.correctionAuthorized && capture.correction && ['update_workout','update_meal'].includes(toolName)) {
+        const kind = toolName === 'update_workout' ? 'workout' : 'meal'
+        if (capture.correctionKind !== kind || toolInput[`${kind}_id`] !== capture.correction.entityId) return { success: false, error: 'The correction does not match the selected saved activity.' }
+        const allowed = kind === 'meal' ? ['items','meal_timestamp','input_text'] : ['blocks','primary_score','rpe','tags','notes','workout_date']
+        const changes = Object.fromEntries(Object.entries(toolInput).filter(([key]) => allowed.includes(key)))
+        if (!Object.keys(changes).length) return { success: false, error: 'No supported correction was provided.' }
+        // Program executions use their dedicated, explicit amendment control; an ordinary tool cannot bypass it.
+        capture.writeAttempted = true
+        const receipt = await amendActivity(supabase, userId, kind, { ...capture.correction, requestId: capture.id }, changes, false, true)
+        capture.receipts = [receipt]
+        return { success: true, data: { [`${kind}_id`]: receipt.entityId, receipt } }
+      }
+      if (!collector || !['log_workout','log_meal'].includes(toolName)) return { success: false, error: 'Use the explicit capture, correction or confirmation control for this change. No record was changed.' }
+      const kind = toolName === 'log_meal' ? 'meal' : 'workout'
+      const source = resolveAuthorizedSource(collector.authorizedSources, kind, toolInput.source_item_id)
+      if (!source) return { success: false, error: 'No distinct authorized occurrence matches this action. Ask the athlete which activity to save.' }
+      collector.sourceItemId = source
+    }
     switch (toolName) {
       case 'get_programming_readiness':
         return await executeGetProgrammingReadiness(toolInput, userId, supabase)
@@ -67,6 +94,7 @@ export async function executeToolCall(
         return { success: false, error: `Unknown tool: ${toolName}` }
     }
   } catch (err) {
+    markCaptureCorrectionFailure(err)
     if (err instanceof ActivitySaveError) throw err;
     console.error(`[tool-executor] ${toolName} failed:`, err)
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
@@ -311,7 +339,7 @@ async function executeLogWorkout(
       primary_score: (input.primary_score as string) ?? null,
       tags: (input.tags as string[]) ?? [],
       rpe: (input.rpe as number) ?? null,
-      parse_confidence: 0.9
+      parse_confidence: null
     }, blockScores)
   invalidatePassiveCache(userId)
   return { success: true, data: { workout_id: workoutId } }
@@ -547,8 +575,8 @@ async function executeLogMeal(
       total_fat: totals.fat,
       total_calories: totals.calories,
       input_text: (input.input_text as string) ?? null,
-      needs_review: false,
-      ai_confidence: 0.9
+      needs_review: true,
+      ai_confidence: null
     })
   invalidatePassiveCache(userId)
   return { success: true, data: { meal_id: mealId, totals } }

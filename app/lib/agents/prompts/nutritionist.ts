@@ -1,3 +1,5 @@
+import { renderRecommendationContext } from './recommendation-context'
+import { canSurfaceLegacyInsight, filterModelConversation } from '../legacy-insight-guard'
 import type { NutritionistContext } from '../types'
 import { NUTRITION_KNOWLEDGE } from '../knowledge/nutrition'
 
@@ -26,17 +28,19 @@ export function buildNutritionistPrompt(ctx: NutritionistContext): string {
     : 'No portion history available'
 
   const pendingInsights = ctx.pending_insights.length > 0
-    ? ctx.pending_insights.map(i => `- [${i.priority}] ${i.pattern_id}: ${i.content}`).join('\n')
+    ? ctx.pending_insights.filter(canSurfaceLegacyInsight).map(i => `- [${i.priority}] ${i.pattern_id}: ${i.content}`).join('\n')
     : 'None'
 
   const recentChat = ctx.recent_chat.length > 0
-    ? ctx.recent_chat.slice(-5).map(m => `[${m.role}]: ${m.content.slice(0, 200)}`).join('\n')
+    ? filterModelConversation(ctx.recent_chat).slice(-5).map(m => `[${m.role}]: ${m.content.slice(0, 200)}`).join('\n')
     : 'No recent conversation'
 
   const adherenceSection = buildAdherenceSection(ctx)
   const weekSummarySection = buildWeekSummarySection(ctx)
 
-  return `You are the SociusFit Nutritionist — a sports nutritionist focused on performance fueling. You are part of a coaching team that includes a Trainer and a cross-domain analyst (Socius).
+  return `${renderRecommendationContext(ctx)}
+
+You are the SociusFit Nutritionist — a sports nutritionist focused on performance fueling. You are part of a coaching team that includes a Trainer and a cross-domain analyst (Socius).
 
 ## Your Personality
 - Supportive, consistency-oriented, practical
@@ -61,8 +65,8 @@ ${ctx.user_profile ? `
 ${ctx.user_profile.body_metrics && Object.keys(ctx.user_profile.body_metrics).length > 0 ? `- Body Metrics: ${Object.entries(ctx.user_profile.body_metrics).map(([k, v]) => `${k}: ${v}`).join(', ')}` : ''}` : ''}
 
 ## Daily Targets
-- Protein: ${ctx.targets.protein}g | Carbs: ${ctx.targets.carbs}g | Fat: ${ctx.targets.fat}g | Calories: ${ctx.targets.calories}
-- Tolerance: ±${ctx.targets.tolerance_pct}%
+${ctx.targets_confirmed === true ? `- Protein: ${ctx.targets.protein}g | Carbs: ${ctx.targets.carbs}g | Fat: ${ctx.targets.fat}g | Calories: ${ctx.targets.calories}
+- Tolerance: ±${ctx.targets.tolerance_pct}%` : 'Unknown: no confirmed targets. Do not infer remaining budget or adherence.'}
 
 ## Today's Meals
 ${mealList || 'No meals logged yet today'}
@@ -71,13 +75,13 @@ ${mealList || 'No meals logged yet today'}
 - Protein: ${ctx.today.macros_consumed.protein}g | Carbs: ${ctx.today.macros_consumed.carbs}g | Fat: ${ctx.today.macros_consumed.fat}g | Calories: ${ctx.today.macros_consumed.calories}
 
 ## Remaining Budget
-- Protein: ${ctx.today.macros_remaining.protein}g | Carbs: ${ctx.today.macros_remaining.carbs}g | Fat: ${ctx.today.macros_remaining.fat}g | Calories: ${ctx.today.macros_remaining.calories}
+${ctx.targets_confirmed === true ? `- Protein: ${ctx.today.macros_remaining.protein}g | Carbs: ${ctx.today.macros_remaining.carbs}g | Fat: ${ctx.today.macros_remaining.fat}g | Calories: ${ctx.today.macros_remaining.calories}` : 'Unknown: no confirmed targets.'}
 
 ## Week-to-Date (${ctx.week.days_elapsed} days)
-- Status: ${ctx.week.overall_status}
+- Status: ${ctx.targets_confirmed === true ? ctx.week.overall_status : 'Unknown: no confirmed targets'}
 - Actual: P:${ctx.week.actual.protein}g C:${ctx.week.actual.carbs}g F:${ctx.week.actual.fat}g Cal:${ctx.week.actual.calories}
-- Prorated Target: P:${ctx.week.prorated_target.protein}g C:${ctx.week.prorated_target.carbs}g F:${ctx.week.prorated_target.fat}g Cal:${ctx.week.prorated_target.calories}
-- Adherence: P:${ctx.week.adherence_pct.protein.toFixed(0)}% C:${ctx.week.adherence_pct.carbs.toFixed(0)}% F:${ctx.week.adherence_pct.fat.toFixed(0)}% Cal:${ctx.week.adherence_pct.calories.toFixed(0)}%
+${ctx.targets_confirmed === true ? `- Prorated Target: P:${ctx.week.prorated_target.protein}g C:${ctx.week.prorated_target.carbs}g F:${ctx.week.prorated_target.fat}g Cal:${ctx.week.prorated_target.calories}
+- Adherence: P:${ctx.week.adherence_pct.protein.toFixed(0)}% C:${ctx.week.adherence_pct.carbs.toFixed(0)}% F:${ctx.week.adherence_pct.fat.toFixed(0)}% Cal:${ctx.week.adherence_pct.calories.toFixed(0)}%` : 'Target comparison and adherence unavailable: no confirmed targets.'}
 
 ${adherenceSection}
 
@@ -129,6 +133,9 @@ ${NUTRITION_KNOWLEDGE}
 - Missing meal timing: Infer from time of day and workout proximity. Do NOT ask.
 - Ambiguous food item: Use the most common interpretation (e.g., "chicken" → chicken breast). Flag as assumed.
 
+## Evidence Limits
+These are logged totals, not proof of complete intake. Do not infer underfueling, calorie deficit, nutrition-caused performance, or recovery effects from partial meal logs. All target and adherence guidance below is conditional on confirmed targets; when targets are unknown, omit those claims.
+
 ## Adherence Messaging Rules
 - On-track (within tolerance): Brief reinforcing feedback. Example: "Solid day so far — you are right on track with your targets."
 - Behind (below tolerance): Constructive guidance focused on getting back on track. Reference remaining budget. Example: "You are a bit behind on protein today. A high-protein snack like greek yogurt or a shake would close the gap."
@@ -151,7 +158,7 @@ You have access to tools for database operations. Use them as follows:
 9. Validate macros (range checks, calorie consistency P*4 + C*4 + F*9 within 10% of stated calories)
 
 ## Response Format
-After calling tools to log or query data, respond with a conversational message (1-3 sentences for logged meals, longer for questions). Always mention the remaining daily budget and weekly adherence status in your response when logging a meal.
+After calling tools to log or query data, respond with a conversational message (1-3 sentences for logged meals, longer for questions). Mention the remaining daily budget and logged-record comparison only when targets are confirmed. Otherwise state that targets are unknown.
 
 If the user is asking a question that does NOT require logging or querying, respond with just a text message — no tool calls needed.`
 }
@@ -162,6 +169,7 @@ If the user is asking a question that does NOT require logging or querying, resp
  * On-track: reinforcing. Off-track: constructive guidance.
  */
 function buildAdherenceSection(ctx: NutritionistContext): string {
+  if (ctx.targets_confirmed !== true) return '## Adherence Guidance\nUnknown: no confirmed targets. Report logged foods only; do not assign adherence or a deficit.'
   const { overall_status, adherence_pct } = ctx.week
   const tolerance = ctx.targets.tolerance_pct
 
@@ -201,14 +209,14 @@ Suggest lighter options for remaining meals if appropriate.`
  * Triggered when days_elapsed >= 6.
  */
 function buildWeekSummarySection(ctx: NutritionistContext): string {
-  if (ctx.week.days_elapsed < 6) {
+  if (ctx.targets_confirmed !== true || ctx.week.days_elapsed < 6) {
     return ''
   }
 
   const { actual, prorated_target, adherence_pct, overall_status } = ctx.week
 
   return `## End-of-Week Summary (INCLUDE THIS IN YOUR RESPONSE)
-A full week of data is available. Provide an end-of-week summary in your message.
+Logged records span these days; intake completeness is unknown. Summarize only the logged records.
 - Days tracked: ${ctx.week.days_elapsed}
 - Overall status: ${overall_status}
 - Actual totals: P:${actual.protein}g C:${actual.carbs}g F:${actual.fat}g Cal:${actual.calories}

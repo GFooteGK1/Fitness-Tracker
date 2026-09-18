@@ -1,4 +1,5 @@
 'use client'
+import { CaptureReceiptPanel, type ReceiptResult } from '@/app/components/capture/CaptureReceiptPanel'
 
 import React, { useState, lazy, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -104,8 +105,12 @@ function FoodProgressContent() {
     setCurrentView('camera')
   }
 
+  const [captureResult, setCaptureResult] = useState<ReceiptResult | null>(null)
+
   const handlePhotoUploadComplete = (response: MealUploadResponse) => {
-    // After successful upload, return to daily view and refresh data
+    if (response.state === 'queued' || response.analysisStatus === 'processing') return
+    setCaptureResult(response)
+    // After confirmed save, return to daily view and refresh canonical data
     setMealInputError(null)
     setCurrentView('daily')
     // The DailyProgressView will automatically refresh when it mounts
@@ -211,6 +216,7 @@ function FoodProgressContent() {
           )}
         </div>
 
+        {captureResult && <CaptureReceiptPanel result={captureResult} />}
         {/* Mobile-Optimized Navigation Header */}
         {currentView === 'camera' && <button type="button" className="app-secondary mb-4" onClick={() => setCurrentView('daily')}>← Back to nutrition</button>}
         <div className={`${currentView === 'camera' ? 'hidden' : ''} bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700 mb-4 sm:mb-6`}>

@@ -88,7 +88,9 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.goto('/program')
     await expect(page.getByRole('heading', { name: 'Set your training direction' })).toBeVisible()
     const monday = page.getByLabel('Monday', { exact: true })
-    await monday.check()
+    // The accessible checkbox is visually hidden; the visible label is its touch target.
+    await monday.locator('..').click()
+    await expect(monday).toBeChecked()
     await expect(monday.locator('..')).toHaveCSS('background-color', colorScheme === 'light' ? 'rgb(33, 107, 85)' : 'rgb(132, 219, 194)')
     await page.screenshot({ path: `output/playwright/app-quality-results/program-${colorScheme}.png`, fullPage: true })
     await page.goto('/coach')
@@ -142,6 +144,10 @@ async function signedInCoach(page: Page) {
       if (url.pathname === '/rest/v1/chat_messages') return json(route, [])
     }
     if (url.origin === origin) {
+      if (url.pathname === '/api/recommendations/refresh') return json(route, { status: 'disabled', recommendations: [], refreshState: null })
+      if (url.pathname === '/api/capture/drafts') return json(route, { userId, drafts: [] })
+      if (url.pathname === '/api/coach/intent') return json(route, { enabled: false, snapshot: null, baselineCandidates: [] })
+      if (url.pathname === '/api/coach/trust') return json(route, { trust: { available: true, memories: [], imports: [], goals: [], qualities: [], signalSummary: [], proposals: [] }, exercisePreferencesEnabled: false })
       if (url.pathname === '/api/whoop/sync' && route.request().method() === 'GET') return json(route, { isConnected: true, lastSyncAt: '2026-09-04T15:00:00Z', status: 'idle' })
       if (url.pathname === '/api/whoop/initialize') return json(route, { initialized: false })
       if (url.pathname === '/api/whoop/data') return json(route, { recovery: null })
@@ -327,6 +333,7 @@ test('photo portion correction preserves the draft and retries the same totals',
     }
   }))
   await page.route(`${origin}/api/meals/${savedMealId}`, route => {
+    if (route.request().method() === 'GET') return json(route, { meal: { id: savedMealId, userId, captureRevision: 1 } })
     updates.push(route.request().postDataJSON())
     return json(route, updates.length === 1 ? { error: 'Unavailable' } : {}, updates.length === 1 ? 500 : 200)
   })
@@ -348,6 +355,7 @@ test('photo portion correction preserves the draft and retries the same totals',
   await expect(page.getByRole('heading', { name: 'Nutrition', exact: true })).toBeVisible()
   expect(updates).toHaveLength(2)
   expect(updates[1]).toEqual(updates[0])
-  expect(updates[1]).toMatchObject({ totalCalories: 97, totalProtein: 2, totalCarbs: 20, totalFat: 1 })
+  expect(updates[1]).toMatchObject({ expectedRevision: 1, expectedUserId: userId, manualOverride: true,
+    items: [expect.objectContaining({ calories: 97, protein: 2, carbs: 20, fat: 1 })] })
   expect(unexpected).toEqual([])
 })

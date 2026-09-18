@@ -306,16 +306,16 @@ describe('buildTrainerPrompt - insights and chat', () => {
   it('embeds pending insights when present', () => {
     const insights: RecentInsight[] = [{
       id: 'i1',
-      pattern_id: 'CAL_DEF',
+      pattern_id: 'REC_VOL',
       priority: 'urgent',
       confidence: 0.85,
-      content: 'Caloric deficit detected on high-strain day',
+      content: 'Recovery and volume records available',
       created_at: '2026-01-20T10:00:00Z',
     }]
     const prompt = buildTrainerPrompt(makeBaseContext({ pending_insights: insights }))
-    expect(prompt).toContain('CAL_DEF')
+    expect(prompt).toContain('REC_VOL')
     expect(prompt).toContain('urgent')
-    expect(prompt).toContain('Caloric deficit detected')
+    expect(prompt).toContain('Recovery and volume records available')
   })
 
   it('shows "No recent conversation" when chat is empty', () => {

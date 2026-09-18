@@ -1,4 +1,6 @@
-import { refreshExercisePreferencesForDraft } from '@/app/lib/coach/exercise-preferences-context'
+import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
+import { decodeTargetedGoalReviews, TARGETED_REVIEW_VERSION } from '@/app/lib/coach/targeted-review-contracts'
+import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -34,6 +36,7 @@ import { buildRollingTrainingDirection } from '@/app/lib/coach/rolling-weekly-co
 import { buildRollingWeeklyPlan } from '@/app/lib/coach/rolling-weekly-plan'
 
 interface ProposalFromReviewRequest {
+  tzOffset?: number
   idempotencyKey?: unknown
   replacementPlanningInput?: unknown
   replacementGoalTargetDate?: unknown
@@ -139,7 +142,8 @@ export async function POST(
     let adaptivePlan = storedIntent.adaptive_programming
 
     if (decision.action === 'shift_emphasis') {
-      const validated = validateCompleteCoachPlanningInput(body.replacementPlanningInput)
+      if (personalizedCoachingCapabilities().trainingIntent && (body.replacementPlanningInput as { setupConfirmed?: boolean } | undefined)?.setupConfirmed !== true) throw new Error('Confirm current training days, session duration and equipment')
+    const validated = validateCompleteCoachPlanningInput(body.replacementPlanningInput)
       if (!validated.ok || validated.value.startDate !== nextWindowStart) {
         return apiError('Confirm a replacement setup that starts on the adjacent Monday', 400)
       }
@@ -160,7 +164,7 @@ export async function POST(
         nextWindowStart,
         goalTargetDate
       )
-      profile = await refreshExercisePreferencesForDraft(supabase,user.id,profile)
+      profile = await refreshConfirmedPlanningContext(supabase,user.id,profile, { tzOffset: body.tzOffset })
       direction = buildRollingTrainingDirection(profile, { hypothesis, goalTargetDate })
     } else if (body.replacementPlanningInput !== undefined) {
       return apiError('Only a material emphasis decision can replace the planning direction', 400)
@@ -260,6 +264,8 @@ function parsePlanningDecision(review: ReviewRow): RollingWeeklyPlanningDecision
   if (!isRecord(review.rationale) || !isRecord(review.rationale.planningDecision)) return null
   const stored = review.rationale.planningDecision
   const action = review.action as RollingWeeklyAction
+  if (review.rationale.targetedReviewVersion !== undefined && (review.rationale.targetedReviewVersion !== TARGETED_REVIEW_VERSION
+    || !decodeTargetedGoalReviews(review.rationale.goalReviews))) return null
   const presentationClass = review.presentation_class as RollingWeeklyPresentationClass
   if (!expectedPresentationClass(action).includes(presentationClass)) return null
   if (stored.action !== action || stored.presentationClass !== presentationClass

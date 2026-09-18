@@ -7,6 +7,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CoachTrustCenter } from '@/app/program/coach-trust-center'
 import type { CoachTrustCenter as CoachTrustCenterModel } from '@/app/lib/coach/trust-center'
 
+vi.mock('@/app/lib/auth/AuthContext', () => ({
+  useAuth: () => ({ user: { id: '91111111-1111-4111-8111-111111111111' } })
+}))
+
 describe('CoachTrustCenter', () => {
   afterEach(() => vi.unstubAllGlobals())
 

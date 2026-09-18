@@ -8,6 +8,7 @@ import type { NutritionistContext, MealSummary, ChatMessage, RecentInsight } fro
 function makeBaseContext(overrides?: Partial<NutritionistContext>): NutritionistContext {
   return {
     user_id: 'test-user-123',
+    targets_confirmed: true,
     targets: { protein: 150, carbs: 200, fat: 65, calories: 2000, tolerance_pct: 10 },
     today: {
       meals_logged: 1,
@@ -383,14 +384,14 @@ describe('buildNutritionistPrompt - insights and chat', () => {
   it('embeds pending insights when present', () => {
     const insights: RecentInsight[] = [{
       id: 'i1',
-      pattern_id: 'CAL_DEF',
+      pattern_id: 'REC_VOL',
       priority: 'urgent',
       confidence: 0.85,
       content: 'Caloric deficit detected on high-strain day',
       created_at: '2026-01-20T10:00:00Z',
     }]
     const prompt = buildNutritionistPrompt(makeBaseContext({ pending_insights: insights }))
-    expect(prompt).toContain('CAL_DEF')
+    expect(prompt).toContain('REC_VOL')
     expect(prompt).toContain('urgent')
     expect(prompt).toContain('Caloric deficit detected')
   })

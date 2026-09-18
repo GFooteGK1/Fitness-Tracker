@@ -12,6 +12,7 @@ import {
   type AdaptationSafetySignal
 } from './adaptation-evaluator'
 import type { CoachEvidenceContextPacket } from './evidence-context'
+import { hasExplicitFeedback } from './execution-feedback'
 import type {
   CoachExecutionSession,
   CoachSessionCheckinSummary
@@ -39,6 +40,7 @@ import {
 } from './rolling-weekly-contracts'
 import type { RollingWeeklyPlanDraft } from './rolling-weekly-plan'
 import type { WeeklyCoverageAssignment } from './weekly-coverage'
+import { evaluateConfirmedOutcome, matchingAssignments, outcomesShareDemand, TARGETED_REVIEW_VERSION, type TargetedGoalReview } from './targeted-review'
 
 export type RollingWeeklyReviewReason =
   | 'all_sessions_terminal'
@@ -56,6 +58,8 @@ export interface RollingWeeklyExecutionSummary extends AdaptationExecutionSummar
   pastDuePlannedSessions: number
   modifiedSessions: number
   stoppedEarlySessions: number
+  explicitRpeCount?: number
+  eligibleCompletionCount?: number
   lowEnergyReports: number
   mildPainReports: number
   concerningPainReports: number
@@ -74,6 +78,10 @@ export interface RollingWeeklyProposalBoundary {
 }
 
 export interface RollingWeeklyReadyReview {
+  observationSources?: Array<{ observationId: string; valueId: string }>
+  executionSources?: Array<{ observationId: string; workoutId: string; captureRevision: 1; executionRevision: 0 }>
+  goalReviews?: TargetedGoalReview[]
+  targetedReviewVersion?: typeof TARGETED_REVIEW_VERSION
   status: 'ready'
   schemaVersion: typeof ROLLING_WEEKLY_SCHEMA_VERSION
   algorithmVersion: typeof ROLLING_WEEKLY_REVIEW_ALGORITHM_VERSION
@@ -130,6 +138,7 @@ export interface BuildRollingWeeklyReviewInput {
   checkins: readonly CoachSessionCheckinSummary[]
   athleteLocalDate: string
   athleteRequestedReview?: boolean
+  targetedReview?: boolean
 }
 
 /**
@@ -159,7 +168,7 @@ export function buildRollingWeeklyReview(
     }
   }
 
-  const evaluatorReview = evaluateAdaptation({
+  let evaluatorReview = evaluateAdaptation({
     goalId: input.goalId,
     adaptivePlan: input.adaptivePlan,
     context: input.context,
@@ -167,7 +176,45 @@ export function buildRollingWeeklyReview(
     safetySignals,
     execution
   })
-  const mapped = mapDecision(evaluatorReview, input.currentWeek, execution)
+  let mapped = mapDecision(evaluatorReview, input.currentWeek, execution,
+    matchingAssignments(input.currentWeek, input.context, evaluatorReview, input.goalId))
+  const goalReviews: TargetedGoalReview[] = []
+  if (input.targetedReview && input.currentWeek.profileSnapshot.trainingIntent) {
+    const intent = input.currentWeek.profileSnapshot.trainingIntent.content
+    const outcomes = intent.outcomes.filter(o => o.goal.status === 'active')
+    const evaluated = outcomes.map(outcome => {
+      const result = evaluateConfirmedOutcome({ goalId: outcome.goal.id, adaptivePlan: input.adaptivePlan, context: input.context,
+        recoveryContext: input.recoveryContext, safetySignals, execution, plan: input.currentWeek, outcome })
+      const assignmentIds = matchingAssignments(input.currentWeek, result.context, result.evaluator, result.allocationId, outcome)
+      const decision = mapDecision(result.evaluator, input.currentWeek, execution, assignmentIds, true)
+      const priority = intent.priorityOrder ? intent.priorityOrder.indexOf(outcome.goal.id) : null
+      const goal: TargetedGoalReview = { version: TARGETED_REVIEW_VERSION, goalId: outcome.goal.id, allocationId: result.allocationId,
+        priority, binding: structuredClone(outcome), attained: result.evaluator.goalAttained === true, actionCandidate: result.evaluator.action,
+        includedSourceIds: result.evaluator.evidenceSnapshot?.includedObservationIds ?? [], excludedSources: result.excludedSources,
+        matchingAssignmentIds: assignmentIds, doseChange: decision.doseChange, missing: [...result.evaluator.missing, ...decision.missing],
+        evaluator: result.evaluator, disposition: 'deferred' }
+      goalReviews.push(goal)
+      return { goal, decision, evaluator: result.evaluator }
+    }).sort((a, b) => (a.goal.priority ?? 999) - (b.goal.priority ?? 999) || a.goal.goalId.localeCompare(b.goal.goalId))
+    const safety = evaluated.find(e => e.decision.action === 'pause_review') ?? evaluated.find(e => e.decision.action === 'recover')
+    const changes = evaluated.filter(e => ['progress', 'maintain', 'redirect'].includes(e.evaluator.action))
+    const selected = safety ?? changes[0] ?? evaluated.find(e => e.decision.action === 'continue') ?? evaluated[0]
+    if (selected) {
+      evaluatorReview = selected.evaluator
+      mapped = selected.decision
+      const unspecifiedPriority = !safety && changes.length > 1 && intent.priorityOrder === null
+      const sharedConflict = !safety && changes.some(a => evaluated.some(b => a !== b
+        && (a.goal.allocationId === b.goal.allocationId || outcomesShareDemand(a.goal.binding, b.goal.binding) || a.goal.matchingAssignmentIds.some(id => b.goal.matchingAssignmentIds.includes(id)))
+        && ((b.decision.action === 'collect_signal') || (['adjust_dose', 'shift_emphasis', 'recover'].includes(b.decision.action)
+          && JSON.stringify(a.decision.doseChange) !== JSON.stringify(b.decision.doseChange)))))
+      if (unspecifiedPriority || sharedConflict) {
+        mapped = { ...mapped, action: 'collect_signal', presentationClass: 'needs_signal', evidenceStatus: 'insufficient', doseChange: null,
+          signalRequest: null, safetyBoundary: null, missing: [unspecifiedPriority ? 'outcome_priority_unspecified' : 'shared_demand_conflict'],
+          additionalRationale: ['The proposed changes share unresolved demands or lack a confirmed priority. Keep the accepted week unchanged and review the separate outcomes.'] }
+        for (const item of goalReviews) item.disposition = 'held'
+      } else selected.goal.disposition = 'selected'
+    }
+  }
   const rationale = [
     ...evaluatorReview.rationale,
     ...executionRationale(execution),
@@ -176,7 +223,8 @@ export function buildRollingWeeklyReview(
   const missing = [...new Set([
     ...evaluatorReview.missing,
     ...execution.terminalSessionsWithoutCheckins.map(id => `session_checkin_missing:${id}`),
-    ...mapped.missing
+    ...mapped.missing,
+    ...goalReviews.flatMap(goal => goal.missing.map(reason => `${goal.goalId}:${reason}`))
   ])].sort()
   const directionConfirmationRequired = mapped.action === 'shift_emphasis'
   const generationReady = mapped.action === 'pause_review'
@@ -199,15 +247,23 @@ export function buildRollingWeeklyReview(
       ? ['Resolve the concerning safety signal before generating another training week.']
       : [])
   ]
+  const links = goalReviews.length ? mergeGoalObservationLinks(goalReviews) : observationLinks(evaluatorReview.evidenceSnapshot)
+  const included = new Set(links.filter(link => link.disposition === 'included').map(link => link.groupId))
+  const executionSources = [...new Map([input.context, input.recoveryContext].flatMap(context => context?.evidenceSeries.flatMap(series => series.samples) ?? [])
+    .filter(sample => sample.workoutId && included.has(sample.observationId)).map(sample => [sample.observationId,
+      { observationId: sample.observationId, workoutId: sample.workoutId!, captureRevision: 1 as const, executionRevision: 0 as const }])).values()]
 
   return {
     status: 'ready',
+    executionSources,
+    observationSources: [...new Map([input.context, input.recoveryContext].flatMap(context => context?.evidenceSeries.flatMap(series => series.samples) ?? []).filter(sample => included.has(sample.observationId)).map(sample => [sample.observationValueId, { observationId: sample.observationId, valueId: sample.observationValueId }])).values()],
+    ...(goalReviews.length ? { goalReviews, targetedReviewVersion: TARGETED_REVIEW_VERSION } : {}),
     schemaVersion: ROLLING_WEEKLY_SCHEMA_VERSION,
     algorithmVersion: ROLLING_WEEKLY_REVIEW_ALGORITHM_VERSION,
     policyVersion: ROLLING_WEEKLY_POLICY_VERSION,
     programId: input.programId,
     basePlanVersionId: input.basePlanVersionId,
-    goalId: input.goalId,
+    goalId: evaluatorReview.goalId,
     windowStart: input.currentWeek.windowStart,
     windowEnd: input.currentWeek.windowEnd,
     reviewedAt: input.context.asOf,
@@ -220,7 +276,7 @@ export function buildRollingWeeklyReview(
     missing,
     executionSummary: execution,
     evidenceSnapshot: evaluatorReview.evidenceSnapshot,
-    observationLinks: observationLinks(evaluatorReview.evidenceSnapshot),
+    observationLinks: links,
     safetyOverride: evaluatorReview.safetyOverride,
     doseChange: mapped.doseChange,
     signalRequest: mapped.signalRequest,
@@ -233,7 +289,7 @@ export function buildRollingWeeklyReview(
       directionConfirmationRequired,
       blockingReasons
     },
-    goalMetMaintenance: evaluatorReview.action === 'maintain',
+    goalMetMaintenance: goalReviews.length ? goalReviews.every(goal => goal.attained) : evaluatorReview.action === 'maintain',
     evaluatorReview
   }
 }
@@ -297,7 +353,7 @@ function summarizeExecution(input: BuildRollingWeeklyReviewInput): RollingWeekly
   const completedSessionIds = sessions.filter(session => session.status === 'completed').map(session => session.id)
   const skippedSessionIds = sessions.filter(session => session.status === 'skipped').map(session => session.id)
   const rpes = checkins.flatMap(checkin => (
-    checkin.outcome === 'skipped' || checkin.sessionRpe === null ? [] : [checkin.sessionRpe]
+    checkin.outcome === 'skipped' || !hasExplicitFeedback(checkin, 'sessionRpe') || checkin.sessionRpe === null ? [] : [checkin.sessionRpe]
   ))
   const concerningSessionIds = checkins
     .filter(checkin => checkin.pain === 'concerning')
@@ -317,6 +373,8 @@ function summarizeExecution(input: BuildRollingWeeklyReviewInput): RollingWeekly
     averageSessionRpe: rpes.length === 0
       ? null
       : round(rpes.reduce((total, value) => total + value, 0) / rpes.length),
+    explicitRpeCount: rpes.length,
+    eligibleCompletionCount: completedSessionIds.length,
     plannedSessions: sessions.length,
     completedSessions: completedSessionIds.length,
     skippedSessions: skippedSessionIds.length,
@@ -327,8 +385,8 @@ function summarizeExecution(input: BuildRollingWeeklyReviewInput): RollingWeekly
     )).length,
     modifiedSessions: checkins.filter(checkin => checkin.outcome === 'modified').length,
     stoppedEarlySessions: checkins.filter(checkin => checkin.outcome === 'stopped_early').length,
-    lowEnergyReports: checkins.filter(checkin => checkin.energy === 'low').length,
-    mildPainReports: checkins.filter(checkin => checkin.pain === 'mild').length,
+    lowEnergyReports: checkins.filter(checkin => checkin.energy === 'low' && hasExplicitFeedback(checkin, 'energy')).length,
+    mildPainReports: checkins.filter(checkin => checkin.pain === 'mild' && hasExplicitFeedback(checkin, 'pain')).length,
     concerningPainReports: checkins.filter(checkin => checkin.pain === 'concerning').length,
     concerningSessionIds,
     concerningScheduledDates: [...new Set(concerningSessionIds.flatMap(sessionId => {
@@ -375,7 +433,7 @@ function buildSafetySignals(
           severity: 'pause',
           occurredAt: checkin.occurredAt
         })
-      } else if (checkin.pain === 'mild') {
+      } else if (checkin.pain === 'mild' && hasExplicitFeedback(checkin, 'pain')) {
         signals.push({
           id: `${checkin.id}:pain`,
           kind: 'repeated_pain',
@@ -391,7 +449,7 @@ function buildSafetySignals(
           occurredAt: checkin.occurredAt
         })
       }
-      if (checkin.energy === 'low') {
+      if (checkin.energy === 'low' && hasExplicitFeedback(checkin, 'energy')) {
         signals.push({
           id: `${checkin.id}:energy`,
           kind: 'low_energy',
@@ -406,7 +464,9 @@ function buildSafetySignals(
 function mapDecision(
   evaluator: AdaptationReview,
   currentWeek: RollingWeeklyPlanDraft,
-  execution: RollingWeeklyExecutionSummary
+  execution: RollingWeeklyExecutionSummary,
+  matchingAssignmentIds: string[],
+  exactOutcome = false
 ): {
   action: RollingWeeklyAction
   presentationClass: RollingWeeklyPresentationClass
@@ -430,7 +490,7 @@ function mapDecision(
     }
   }
   if (evaluator.action === 'hold_collect_more') {
-    const signalRequest = buildSignalRequest(currentWeek, evaluator)
+    const signalRequest = exactOutcome ? null : buildSignalRequest(currentWeek, evaluator)
     return {
       action: 'collect_signal',
       presentationClass: 'needs_signal',
@@ -441,11 +501,15 @@ function mapDecision(
       additionalRationale: signalRequest
         ? ['The next weekly dose keeps the emphasis stable and adds one compatible measurement.']
         : [],
-      missing: signalRequest ? [] : ['compatible_assessment_placement_unavailable']
+      missing: signalRequest ? [] : [exactOutcome ? 'record_exact_outcome_protocol' : 'compatible_assessment_placement_unavailable']
     }
   }
   if (evaluator.action === 'progress') {
-    const doseChange = findDoseChange(currentWeek, 'adjust_dose')
+    if (matchingAssignmentIds.length !== 1) return {
+      action: 'collect_signal', presentationClass: 'needs_signal', evidenceStatus: 'insufficient', doseChange: null,
+      signalRequest: null, safetyBoundary: null, additionalRationale: ['The evidence does not identify one supported assignment change. Keep the accepted work unchanged.'],
+      missing: ['exact_assignment_target_unavailable'] }
+    const doseChange = findDoseChange(currentWeek, 'adjust_dose', matchingAssignmentIds)
     if (!doseChange) {
       return {
         action: 'continue',
@@ -470,7 +534,7 @@ function mapDecision(
     }
   }
   if (evaluator.action === 'recover') {
-    const doseChange = findDoseChange(currentWeek, 'recover')
+    const doseChange = matchingAssignmentIds.length === 1 ? findDoseChange(currentWeek, 'recover', matchingAssignmentIds) : null
     return {
       action: 'recover',
       presentationClass: doseChange ? 'small_adjustment' : 'material_change',
@@ -512,12 +576,13 @@ function mapDecision(
 
 function findDoseChange(
   plan: RollingWeeklyPlanDraft,
-  action: 'adjust_dose' | 'recover'
+  action: 'adjust_dose' | 'recover',
+  matchingAssignmentIds: string[]
 ): RollingWeeklyDoseChange | null {
   const priorityRank = { priority: 0, secondary: 1, supporting: 2 }
   const requirements = new Map(plan.schedule.requirements.map(item => [item.id, item]))
   const ledgers = new Map(plan.schedule.ledger.map(item => [item.requirement.id, item]))
-  const candidates = [...plan.schedule.assignments].sort((left, right) => {
+  const candidates = plan.schedule.assignments.filter(item => matchingAssignmentIds.includes(item.id)).sort((left, right) => {
     const leftRequirement = requirements.get(left.requirementId)
     const rightRequirement = requirements.get(right.requirementId)
     return (leftRequirement ? priorityRank[leftRequirement.priority] : 99)
@@ -614,6 +679,17 @@ function observationLinks(snapshot: AdaptationEvidenceSnapshot | null): RollingW
       reason: item.reason.replaceAll('_', ' ')
     }))
   ].sort((left, right) => left.groupId.localeCompare(right.groupId))
+}
+
+function mergeGoalObservationLinks(goals: TargetedGoalReview[]): RollingWeeklyReviewObservationLink[] {
+  const links = new Map<string, RollingWeeklyReviewObservationLink>()
+  for (const goal of goals) for (const link of observationLinks(goal.evaluator.evidenceSnapshot)) {
+    if (!links.has(link.groupId) || link.disposition === 'included') links.set(link.groupId, link)
+  }
+  // SQL observation links refer to real retained observations, including superseded exclusions.
+  for (const goal of goals) for (const item of goal.excludedSources) if (!links.has(item.observationId)) links.set(item.observationId,
+    { groupId: item.observationId, disposition: 'excluded', reason: item.reason })
+  return [...links.values()].sort((a, b) => a.groupId.localeCompare(b.groupId))
 }
 
 function executionRationale(execution: RollingWeeklyExecutionSummary): string[] {

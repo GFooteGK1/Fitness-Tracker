@@ -23,7 +23,7 @@ import type { RecentInsight, BenchmarkPR } from '@/app/lib/agents/types'
 function makeInsight(overrides: Partial<RecentInsight> = {}): RecentInsight {
   return {
     id: overrides.id ?? 'insight-1',
-    pattern_id: overrides.pattern_id ?? 'CAL_DEF',
+    pattern_id: overrides.pattern_id ?? 'CON_PROG',
     priority: overrides.priority ?? 'notable',
     confidence: overrides.confidence ?? 0.75,
     content: overrides.content ?? 'Test insight content',
@@ -46,6 +46,12 @@ const noop = () => {}
 // ─── sortInsights unit tests ─────────────────────────────────────────
 
 describe('sortInsights', () => {
+  it('withholds retired claim families while preserving supported records and the original history', () => {
+    const retired = ['CAL_DEF', 'NUT_PERF', 'HRV_TREND', 'STRAIN_NUT', 'PRO_REC'] as const
+    const insights = [...retired.map(pattern_id => makeInsight({ id: pattern_id, pattern_id })), makeInsight({ id: 'supported' })]
+    expect(sortInsights(insights).map(row => row.id)).toEqual(['supported'])
+    expect(insights).toHaveLength(6)
+  })
   it('sorts by priority: urgent > notable > informational', () => {
     const insights = [
       makeInsight({ id: '1', priority: 'informational', created_at: '2026-02-01T12:00:00Z' }),
@@ -182,9 +188,9 @@ describe('BottomNav', () => {
     })
 
     it('displays insight content', () => {
-      const insights = [makeInsight({ content: 'Your recovery is declining.' })]
+      const insights = [makeInsight({ content: 'Three sessions are logged this week.' })]
       render(<BottomNav activeTab="insights" onTabChange={noop} insights={insights} prs={[]} />)
-      expect(screen.getByText('Your recovery is declining.')).toBeInTheDocument()
+      expect(screen.getByText('Three sessions are logged this week.')).toBeInTheDocument()
     })
 
     it('displays insights sorted by priority then recency', () => {
@@ -204,7 +210,7 @@ describe('BottomNav', () => {
 
     it('shows priority labels with correct colors', () => {
       const insights = [
-        makeInsight({ id: '1', priority: 'urgent', content: 'Caloric deficit detected' }),
+        makeInsight({ id: '1', priority: 'urgent', content: 'Review the recorded session' }),
         makeInsight({ id: '2', priority: 'notable', content: 'Protein trending up' }),
         makeInsight({ id: '3', priority: 'informational', content: 'Consistent training' }),
       ]

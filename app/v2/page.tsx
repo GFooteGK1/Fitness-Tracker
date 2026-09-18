@@ -1,4 +1,10 @@
 'use client'
+import { NextActionCard } from '@/app/components/NextActionCard'
+
+import { filterRetiredInsightMessages } from '@/app/lib/agents/legacy-insight-readers'
+
+import { CaptureReceiptPanel, type ReceiptResult } from '@/app/components/capture/CaptureReceiptPanel'
+import { CaptureRecovery } from '@/app/components/capture/CaptureRecovery'
 
 import { sendLoggingRequest, fileFingerprint } from '@/app/lib/client/logging-request'
 
@@ -207,6 +213,7 @@ function ChatMessage({ msg, isDark }: { msg: Message; isDark: boolean }) {
 export default function V2Page() {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const [captureResult, setCaptureResult] = useState<ReceiptResult | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -326,7 +333,8 @@ export default function V2Page() {
           return
         }
 
-        const loadedMessages: Message[] = data.map(row => ({
+        const visible = await filterRetiredInsightMessages(supabase,user?.id ?? '',data)
+        const loadedMessages: Message[] = visible.map(row => ({
           id: row.id,
           role: row.domain || 'system',
           content: row.content,
@@ -403,7 +411,8 @@ export default function V2Page() {
         throw new Error(errorMessage)
       }
 
-      const data: AgentResponse = await response.json()
+      const data: AgentResponse & ReceiptResult = await response.json()
+      setCaptureResult(data)
 
       const agentMessages: Message[] = data.messages.map(msg => ({
         id: String(Date.now() + Math.random()),
@@ -509,6 +518,8 @@ export default function V2Page() {
         formData.append('timestamp', getMealTimestamp())
         const uploadResponse = await sendLoggingRequest('/api/meals/upload', { method: 'POST', body: formData }, user?.id ?? '', 60_000)
         const uploadData = await uploadResponse.json()
+        setCaptureResult(uploadData)
+        if (uploadData.state === 'save_unconfirmed' || uploadData.receiptBundle?.state === 'save_unconfirmed') throw new Error('Save unconfirmed. Retry the same photo.')
 
         if (!uploadResponse.ok) {
           throw new Error(uploadData.error || 'Photo upload failed')
@@ -570,7 +581,8 @@ export default function V2Page() {
           } satisfies AgentRequest)
         }, user?.id ?? '', 50_000, await fileFingerprint(file))
         if (!agentRes.ok) throw new Error('Failed to process workout')
-        const agentData: AgentResponse = await agentRes.json()
+        const agentData: AgentResponse & ReceiptResult = await agentRes.json()
+        setCaptureResult(agentData)
 
         const agentMessages: Message[] = agentData.messages.map(msg => ({
           id: String(Date.now() + Math.random()),
@@ -638,6 +650,9 @@ export default function V2Page() {
         </div>
       </header>
 
+      <NextActionCard />
+      <CaptureRecovery />
+      {captureResult && <CaptureReceiptPanel result={captureResult} />}
       {/* MAIN CONTENT */}
       <div className="flex-1">
         <div className="py-4 space-y-4">

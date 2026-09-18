@@ -1,4 +1,5 @@
 import { validateExercisePreferences, preferenceSummary } from './exercise-preferences'
+import { validatePlanningIntent } from './planning-intent'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import {
@@ -546,6 +547,10 @@ function groupValues(rows: ObservationValueRow[]): Map<string, CoachTrustObserva
 }
 
 function memorySummary(key: string, content: Record<string, unknown>): string {
+  if (key === 'training_intent') {
+    const parsed = validatePlanningIntent(content)
+    return parsed.ok ? parsed.value.outcomes.map(o => `${o.goal.statement}${o.capability.status === 'unsupported' ? ' (needs capability review)' : ''}`).join(' · ') : 'Training outcomes need review'
+  }
   if (key === 'exercise_preferences') return validateExercisePreferences(content) ? preferenceSummary(content) : 'Exercise preferences need review'
   if (key === 'primary_goal') return stringOrNull(content.goal) ?? 'Goal needs review'
   if (key === 'training_schedule') {

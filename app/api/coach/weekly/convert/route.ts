@@ -1,4 +1,5 @@
-import { refreshExercisePreferencesForDraft } from '@/app/lib/coach/exercise-preferences-context'
+import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
+import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -23,6 +24,7 @@ import { buildRollingTrainingDirection } from '@/app/lib/coach/rolling-weekly-co
 import { buildRollingWeeklyPlan } from '@/app/lib/coach/rolling-weekly-plan'
 
 interface LegacyConversionRequest {
+  tzOffset?: number
   planningInput?: unknown
   goalTargetDate?: unknown
   hypothesis?: unknown
@@ -37,6 +39,7 @@ export async function POST(request: Request) {
 
     const body = await readJson(request)
     if (!body) return apiError('Request body must be valid JSON', 400)
+    if (personalizedCoachingCapabilities().trainingIntent && (body.planningInput as { setupConfirmed?: boolean } | undefined)?.setupConfirmed !== true) throw new Error('Confirm current training days, session duration and equipment')
     const validated = validateCompleteCoachPlanningInput(body.planningInput)
     if (!validated.ok) {
       return NextResponse.json(
@@ -86,7 +89,7 @@ export async function POST(request: Request) {
     if (!basePlan) return apiError('The active legacy plan changed; refresh and try again', 409)
     if (!runtimeContext.storageAvailable) return apiError('Coach storage is unavailable', 503)
 
-    const baseProfile = await refreshExercisePreferencesForDraft(supabase, user.id, buildProgrammingProfile(validated.value, runtimeContext.assessments))
+    const baseProfile = await refreshConfirmedPlanningContext(supabase, user.id, buildProgrammingProfile(validated.value, runtimeContext.assessments), { tzOffset: body.tzOffset })
     const profile = profileForDirectionHorizon(
       baseProfile,
       validated.value.startDate,

@@ -26,6 +26,10 @@ vi.mock('../../app/lib/auth/supabase-server', () => ({
   createServerClient: vi.fn(),
 }))
 
+// This historical suite exercises pre-migration food APIs. Audited commit/amend
+// transactions and schema detection are covered by capture API and SQL suites.
+vi.mock('@/app/lib/capture/compatibility', () => ({ auditedCaptureInstalled: vi.fn(async () => false) }))
+
 // Shared mock for the Anthropic client – vi.hoisted ensures it's accessible
 // inside the vi.mock factory (which is hoisted above all other code).
 const { mockAnthropicCreate } = vi.hoisted(() => ({

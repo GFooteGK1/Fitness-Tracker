@@ -470,7 +470,7 @@ describe('Parse Functions', () => {
           insights: [
             {
               id: crypto.randomUUID(),
-              pattern_id: 'PRO_REC',
+              pattern_id: 'CON_PROG',
               priority: 'informational',
               confidence: 0.75,
               content: 'Valid insight content',
@@ -478,7 +478,7 @@ describe('Parse Functions', () => {
             },
             {
               id: crypto.randomUUID(),
-              pattern_id: 'CAL_DEF',
+              pattern_id: 'CON_PROG',
               priority: 'urgent',
               confidence: 0.9,
               content: '   ',  // Whitespace only
@@ -492,7 +492,7 @@ describe('Parse Functions', () => {
         const result = parseSociusResponse(input, 'test')
 
         expect(result.insights ?? []).toHaveLength(1)
-        expect(result.insights?.[0].pattern_id).toBe('PRO_REC')
+        expect(result.insights?.[0].pattern_id).toBe('CON_PROG')
       })
 
       it('should normalize insight structure correctly', () => {

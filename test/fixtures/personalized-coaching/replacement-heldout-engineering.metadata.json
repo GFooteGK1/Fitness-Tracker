@@ -1,0 +1,263 @@
+{
+  "schemaVersion": "engineering-fixture-integrity-v1",
+  "sourceVersion": "replacement-synthetic-v1",
+  "exposureVersion": "replacement-blind-v1",
+  "freezeState": "frozen_before_candidate_execution",
+  "dataset": "replacement-heldout-engineering.json",
+  "sha256": "80b386b42b87098e27edc5a13b5a5947df0ad15fedc9a792bb717ca19ebbd3ee",
+  "scenarios": 12,
+  "counterfactuals": 12,
+  "distinctSyntheticAthletes": 12,
+  "counts": {
+    "accepted_plan": 4,
+    "missing_signal": 4,
+    "logged_nutrition": 4
+  },
+  "factKeySchema": {
+    "canonicalWorkoutId": [
+      "string"
+    ],
+    "capability": [
+      "string"
+    ],
+    "collectionChangesDecision": [
+      "boolean"
+    ],
+    "compositionReview": [
+      "string"
+    ],
+    "confirmedGoalId": [
+      "null"
+    ],
+    "coverage": [
+      "string"
+    ],
+    "currentLeaseToken": [
+      "string"
+    ],
+    "currentPreferenceVersion": [
+      "number"
+    ],
+    "directOutcomeStatus": [
+      "string"
+    ],
+    "evidenceOwner": [
+      "string"
+    ],
+    "existingSafetyReview": [
+      "null",
+      "string"
+    ],
+    "firstGoalBaseline": [
+      "string"
+    ],
+    "goalConfirmed": [
+      "boolean"
+    ],
+    "goalDistancesMeters": [
+      "array"
+    ],
+    "goalId": [
+      "string"
+    ],
+    "goalIds": [
+      "array"
+    ],
+    "goalPriority": [
+      "array"
+    ],
+    "goalProtocol": [
+      "string"
+    ],
+    "goalsConfirmed": [
+      "boolean"
+    ],
+    "localDate": [
+      "string"
+    ],
+    "localHour": [
+      "number"
+    ],
+    "loggedCalories": [
+      "number"
+    ],
+    "mealOrigin": [
+      "string"
+    ],
+    "measurementId": [
+      "string"
+    ],
+    "measurementOrigin": [
+      "string"
+    ],
+    "measurementProtocol": [
+      "string"
+    ],
+    "metric": [
+      "string"
+    ],
+    "monthlyAdherencePercent": [
+      "number"
+    ],
+    "movementId": [
+      "string"
+    ],
+    "observationId": [
+      "string"
+    ],
+    "observationRole": [
+      "string"
+    ],
+    "observedEquipment": [
+      "string"
+    ],
+    "occurrenceConfirmed": [
+      "boolean"
+    ],
+    "origin": [
+      "string"
+    ],
+    "painOrigin": [
+      "string"
+    ],
+    "performanceTrend": [
+      "string"
+    ],
+    "planId": [
+      "string"
+    ],
+    "planStatus": [
+      "string"
+    ],
+    "protocol": [
+      "string"
+    ],
+    "proxyTrend": [
+      "string"
+    ],
+    "repetitions": [
+      "number"
+    ],
+    "requestOwner": [
+      "string"
+    ],
+    "requestedEquipment": [
+      "string"
+    ],
+    "response": [
+      "null",
+      "string"
+    ],
+    "responseRevision": [
+      "number"
+    ],
+    "retrieval": [
+      "string"
+    ],
+    "reviewBasisPlanId": [
+      "string"
+    ],
+    "reviewId": [
+      "string"
+    ],
+    "reviewState": [
+      "string"
+    ],
+    "secondGoalBaseline": [
+      "string"
+    ],
+    "sessionDate": [
+      "string"
+    ],
+    "sessionId": [
+      "string"
+    ],
+    "sessionStatus": [
+      "string"
+    ],
+    "sharedDemandConflict": [
+      "boolean"
+    ],
+    "snapshotMovement": [
+      "string"
+    ],
+    "snapshotPreferenceVersion": [
+      "number"
+    ],
+    "sourceRevision": [
+      "number"
+    ],
+    "targetCalories": [
+      "number"
+    ],
+    "targetConfirmed": [
+      "boolean"
+    ],
+    "targetId": [
+      "string"
+    ],
+    "templateCompositionOrigin": [
+      "string"
+    ],
+    "transferPolicy": [
+      "null"
+    ],
+    "unit": [
+      "string"
+    ],
+    "workerLeaseToken": [
+      "string"
+    ],
+    "workerResponseRevision": [
+      "number"
+    ],
+    "workerSourceRevision": [
+      "number"
+    ],
+    "workoutsCount": [
+      "number"
+    ]
+  },
+  "originalHashes": {
+    "development.json": "32f437b53ab35f2b7c2f8ed50f5b2a6ed969b84fac9e7cc880d6a6c7441cc278",
+    "heldout-engineering.json": "ea26eb6d3c6fc288330826ec906c288c61566f82f3a7eb2aa7e3a18afc10bc24"
+  },
+  "sourceContract": "docs/verification/data-to-personalized-coaching/engineering-adapter-contract.md",
+  "explicitAdditionalFactKeys": [
+    "goalDistancesMeters",
+    "movementId",
+    "repetitions"
+  ],
+  "author": "/root/w0_reuse_audit",
+  "authoredDate": "2026-09-18",
+  "exposure": {
+    "authorHasSeenReplacementBodies": true,
+    "implementersHaveSeenReplacementBodies": false,
+    "replacementRuntimeExecutionsBeforeFreeze": 0,
+    "authorPriorApplicationWork": "W0/W3/W2/W8 implementation and W4/W6/W7 reviews; independence is from replacement-case implementation tuning, not absence of application knowledge.",
+    "authoringInputs": [
+      "frozen plan and contracts",
+      "original development and consumed original holdout",
+      "general fact materialization contract and blind-safe owner clarification"
+    ],
+    "excludedAuthoringInputs": [
+      "implementation adapter source",
+      "adapter test outputs",
+      "runtime tuning",
+      "pilot archives",
+      "model/provider calls"
+    ],
+    "originalHeldoutStatus": "Consumed and retained unchanged; cannot be claimed blind after implementation exposure."
+  },
+  "qualifiedCoachLabels": "not_reviewed",
+  "numericalPolicyStatus": "disabled; no effort or exact-quantity solicitation gates",
+  "acceptanceLimits": [
+    "Integrity validation is not application execution.",
+    "New synthetic engineering coverage is not physiological validation or a statistically independent athlete cohort.",
+    "Coordinator must freeze candidate source, adapter, migration identity and this hash before first execution.",
+    "Any replacement case used for tuning becomes development material; preserve first-run evidence."
+  ],
+  "sourceContractSha256": "156836ea73226defc32276849e247797416c19ccde4b1ee198ea1ae686f4e595",
+  "freezeAuthorization": "Coordinator and read/SQL adapter owners confirmed final general fact contract; fixture author sealed before any replacement execution.",
+  "fixtureFrozenDate": "2026-09-18"
+}

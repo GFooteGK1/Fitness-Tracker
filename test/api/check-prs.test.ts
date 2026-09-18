@@ -7,9 +7,12 @@ vi.mock('@/app/lib/auth/supabase-server', () => ({
 import { POST } from '@/app/api/check-prs/route'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 
+// These legacy writer tests model the pre-migration schema, not an empty installed schema.
+const legacySchema = () => query({ data: null, error: { code: '42703' } })
+
 function query(result: unknown) {
   const chain: Record<string, ReturnType<typeof vi.fn>> = {}
-  for (const method of ['select', 'eq', 'neq', 'order', 'limit', 'upsert']) {
+  for (const method of ['select', 'eq', 'neq', 'order', 'limit', 'upsert', 'maybeSingle']) {
     chain[method] = vi.fn(() => chain)
   }
   chain.then = vi.fn((resolve?: (value: unknown) => unknown) =>
@@ -22,11 +25,27 @@ describe('POST /api/check-prs', () => {
     vi.clearAllMocks()
   })
 
+  it('reads current audited projections without recalculating from stale client blocks', async () => {
+    const schema = query({ data: [], error: null })
+    const workout = query({ data: { id: 'workout-1', capture_revision: 3 }, error: null })
+    const records = query({ data: [{ exercise: 'Squat', pr_type: 'weight', value: 100, previous_value: 95 }], error: null })
+    const from = vi.fn().mockReturnValueOnce(schema).mockReturnValueOnce(workout).mockReturnValueOnce(records)
+    vi.mocked(createServerClient).mockResolvedValue({ auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } }, error: null })) }, from } as never)
+    const response = await POST(new Request('http://localhost/api/check-prs', { method: 'POST',
+      body: JSON.stringify({ workoutId: 'workout-1', blocks: [{ block_type: 'STRENGTH', segments: [{ events: [{ movement_name: 'Squat', performed: { reps: 1, load: { value: 999, unit: 'lb' } } }] }] }] }) }))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ captureRevision: 3, prs: [{ newRecord: 100, previousBest: 95, isPR: true }] })
+    expect(workout.eq).toHaveBeenCalledWith('user_id', 'user-1')
+    expect(records.eq).toHaveBeenCalledWith('workout_id', 'workout-1')
+    for (const chain of [schema, workout, records]) expect(chain.upsert).not.toHaveBeenCalled()
+  })
+
   it('uses the workout-level uniqueness key when storing detected records', async () => {
     const history = query({ data: [], error: null })
     const workouts = query({ data: [], error: null })
     const write = query({ error: null })
     const from = vi.fn()
+      .mockReturnValueOnce(legacySchema())
       .mockReturnValueOnce(history)
       .mockReturnValueOnce(workouts)
       .mockReturnValueOnce(write)
@@ -103,6 +122,7 @@ describe('POST /api/check-prs', () => {
     })
     const write = query({ error: null })
     const from = vi.fn()
+      .mockReturnValueOnce(legacySchema())
       .mockReturnValueOnce(history)
       .mockReturnValueOnce(workouts)
       .mockReturnValueOnce(write)

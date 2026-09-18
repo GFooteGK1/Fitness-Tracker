@@ -19,6 +19,11 @@ import type { RollingWeeklyReview } from '@/app/lib/coach/weekly-review'
 vi.mock('@/app/components/auth/ProtectedRoute', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }))
+vi.mock('@/app/lib/auth/AuthContext', () => ({ useAuth: () => ({ user: { id: 'athlete-1' } }) }))
+vi.mock('@/app/program/training-intent-editor', async importOriginal => ({
+  ...await importOriginal<typeof import('@/app/program/training-intent-editor')>(),
+  TrainingIntentPanel: () => null,
+}))
 
 import ProgramPage from '@/app/program/page'
 import {
@@ -67,6 +72,10 @@ describe('rolling weekly Program experience', () => {
     fireEvent.change(screen.getByLabelText('Goal'), {
       target: { value: 'Build useful full-body strength' }
     })
+    fireEvent.click(screen.getByLabelText('Monday'))
+    fireEvent.click(screen.getByLabelText('Wednesday'))
+    fireEvent.click(screen.getByLabelText('Bodyweight'))
+    fireEvent.click(screen.getByLabelText('These training days, session duration and equipment are accurate.'))
     fireEvent.click(screen.getByRole('button', { name: 'Create first week' }))
 
     expect(await screen.findByText('First week proposal')).toBeInTheDocument()
@@ -183,6 +192,8 @@ describe('rolling weekly Program experience', () => {
     await act(async () => render(<ProgramPage />))
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm replacement direction' }))
     fireEvent.click(await screen.findByRole('button', { name: 'No preference' }))
+    const confirmSetup = screen.getByLabelText('These training days, session duration and equipment are accurate.') as HTMLInputElement
+    if (!confirmSetup.checked) fireEvent.click(confirmSetup)
     fireEvent.click(screen.getByRole('button', { name: 'Build replacement week' }))
     expect(await screen.findByText('Intake interrupted')).toBeInTheDocument()
     expect(writes).toHaveLength(1)
@@ -276,6 +287,52 @@ describe('rolling weekly Program experience', () => {
       state.history.reviews = [{
         id: 'review-previous',
         base_plan_version_id: 'plan-previous',
+        review_window_start: '2026-08-31',
+        action: 'continue',
+        presentation_class: 'same_track',
+        evidence_status: 'sufficient',
+        confidence: 0.8,
+        execution_summary: {},
+        rationale: {},
+        idempotency_key: 'review-previous-key',
+        created_at: '2026-09-07T00:00:00.000Z'
+      }]
+    }
+
+    render(
+      <WeeklyProgramView
+        state={state}
+        activeProgram={activeProgram(current)}
+        review={null}
+        proposal={null}
+        reviewing={false}
+        creatingProposal={false}
+        accepting={false}
+        savingSessionId={null}
+        onReview={vi.fn().mockResolvedValue(undefined)}
+        onCreateProposal={vi.fn().mockResolvedValue(undefined)}
+        onAccept={vi.fn().mockResolvedValue(undefined)}
+        onRequestDirectionChange={vi.fn()}
+        onRecordSessionResult={vi.fn().mockResolvedValue(null)}
+        onEditFailedSessionResult={vi.fn()}
+        onRefreshPlan={vi.fn().mockResolvedValue(undefined)}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Review this week' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', {
+      name: 'Build next week from saved review'
+    })).not.toBeInTheDocument()
+  })
+
+  it('offers a fresh review after source invalidation instead of a stale proposal', () => {
+    const current = weeklyPlan('2026-09-07', '2026-12-31')
+    const state = weeklyState(current)
+    if (!Array.isArray(state.history)) {
+      state.history.reviews = [{
+        id: 'review-previous',
+        base_plan_version_id: state.currentWeek!.id,
+        sourceInvalidated: true,
         review_window_start: '2026-08-31',
         action: 'continue',
         presentation_class: 'same_track',

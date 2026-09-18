@@ -1,9 +1,10 @@
-/**
- * Offline queue management for food tracking operations
- * Implements Requirements 10.5 - queue operations when network is unavailable
- */
-
+/** Account-owned transient photo queue. Queued work never contributes to canonical totals. */
 import React from 'react'
+import { createClient } from './auth/supabase'
+import { useAuth } from './auth/AuthContext'
+import { fetchWithTimeout } from './client/fetch-with-timeout'
+import { hasConfirmedCapture, recommendationOrigin, refreshAfterCanonicalSave } from './client/recommendations'
+import { markCaptureCertainty } from './client/capture-uncertainty'
 
 export interface QueuedOperation {
   id: string
@@ -13,485 +14,196 @@ export interface QueuedOperation {
   retryCount: number
   maxRetries: number
   priority: 'high' | 'medium' | 'low'
-  userId?: string // Optional since we now use authenticated users
+  userId?: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
   error?: string
+  attempted?: boolean
 }
-
 export interface QueueStats {
-  totalOperations: number
-  pendingOperations: number
-  failedOperations: number
-  completedOperations: number
-  lastSyncAttempt?: number
-  isOnline: boolean
+  totalOperations: number; pendingOperations: number; failedOperations: number; completedOperations: number
+  lastSyncAttempt?: number; isOnline: boolean; hasLegacyUnowned?: boolean
 }
-
-const QUEUE_STORAGE_KEY = 'food_tracking_offline_queue'
-const MAX_QUEUE_SIZE = 100
-const DEFAULT_MAX_RETRIES = 3
-const SYNC_INTERVAL = 30000 // 30 seconds
-
-class OfflineQueueManager {
+const DB_NAME = 'socius-transient-capture'
+const STORE = 'photo-queue'
+function database(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === 'undefined') { reject(new Error('Offline photo storage is unavailable. Keep the photo and retry online.')); return }
+    const request = indexedDB.open(DB_NAME, 1)
+    request.onupgradeneeded = () => request.result.createObjectStore(STORE, { keyPath: 'id' })
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+}
+async function persist(operation: QueuedOperation): Promise<void> {
+  const db = await database()
+  try { await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(STORE, 'readwrite')
+    transaction.objectStore(STORE).put(operation)
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error)
+    transaction.onabort = () => reject(transaction.error)
+  }) } finally { db.close() }
+}
+export class OfflineQueueManager {
   private queue: QueuedOperation[] = []
   private isProcessing = false
-  private syncInterval: NodeJS.Timeout | null = null
-  private onlineStatusCallbacks: ((isOnline: boolean) => void)[] = []
-
-  constructor() {
-    this.loadQueue()
-    this.setupNetworkListeners()
-    this.startSyncInterval()
-  }
-
-  /**
-   * Add operation to offline queue
-   */
-  enqueue(operation: Omit<QueuedOperation, 'id' | 'timestamp' | 'retryCount' | 'status'>): string {
-    const queuedOperation: QueuedOperation = {
-      ...operation,
-      id: this.generateId(),
-      timestamp: Date.now(),
-      retryCount: 0,
-      status: 'pending'
-    }
-
-    // Remove oldest operations if queue is full
-    if (this.queue.length >= MAX_QUEUE_SIZE) {
-      const completedOperations = this.queue.filter(op => op.status === 'completed')
-      if (completedOperations.length > 0) {
-        // Remove oldest completed operations
-        completedOperations.sort((a, b) => a.timestamp - b.timestamp)
-        const toRemove = completedOperations.slice(0, Math.ceil(MAX_QUEUE_SIZE * 0.2))
-        this.queue = this.queue.filter(op => !toRemove.includes(op))
-      }
-    }
-
-    this.queue.push(queuedOperation)
-    this.saveQueue()
-
-    console.log(`Operation ${queuedOperation.type} queued for offline processing:`, queuedOperation.id)
-
-    // Try to process immediately if online
-    if (typeof window !== 'undefined' && navigator.onLine) {
-      this.processQueue()
-    }
-
-    return queuedOperation.id
-  }
-
-  /**
-   * Remove operation from queue
-   */
-  dequeue(operationId: string): boolean {
-    const index = this.queue.findIndex(op => op.id === operationId)
-    if (index !== -1) {
-      this.queue.splice(index, 1)
-      this.saveQueue()
-      return true
-    }
-    return false
-  }
-
-  /**
-   * Get operation by ID
-   */
-  getOperation(operationId: string): QueuedOperation | null {
-    return this.queue.find(op => op.id === operationId) || null
-  }
-
-  /**
-   * Get all operations for a user
-   */
-  getUserOperations(userId: string): QueuedOperation[] {
-    return this.queue.filter(op => op.userId === userId)
-  }
-
-  /**
-   * Get queue statistics
-   */
-  getStats(): QueueStats {
-    const pending = this.queue.filter(op => op.status === 'pending').length
-    const failed = this.queue.filter(op => op.status === 'failed').length
-    const completed = this.queue.filter(op => op.status === 'completed').length
-
-    return {
-      totalOperations: this.queue.length,
-      pendingOperations: pending,
-      failedOperations: failed,
-      completedOperations: completed,
-      lastSyncAttempt: this.getLastSyncAttempt(),
-      isOnline: typeof window !== 'undefined' ? navigator.onLine : true
-    }
-  }
-
-  /**
-   * Process all pending operations in queue
-   */
-  async processQueue(): Promise<void> {
-    if (this.isProcessing || (typeof window !== 'undefined' && !navigator.onLine)) {
-      return
-    }
-
-    this.isProcessing = true
-    console.log('Processing offline queue...')
-
+  private owner: string | null = null
+  private ready: Promise<void>
+  private loadUnavailable = false
+  private callbacks = new Set<(online: boolean) => void>()
+  private lastSyncAttempt?: number
+  constructor() { this.ready = typeof window === 'undefined' ? Promise.resolve() : this.load() }
+  setOwner(userId: string | null) { this.owner = userId }
+  private async load() {
     try {
-      // Get pending operations sorted by priority and timestamp
-      const pendingOps = this.queue
-        .filter(op => op.status === 'pending' || (op.status === 'failed' && op.retryCount < op.maxRetries))
-        .sort((a, b) => {
-          // Sort by priority first, then by timestamp
-          const priorityOrder = { high: 0, medium: 1, low: 2 }
-          const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority]
-          return priorityDiff !== 0 ? priorityDiff : a.timestamp - b.timestamp
-        })
-
-      for (const operation of pendingOps) {
+      const db = await database()
+      this.queue = await new Promise<QueuedOperation[]>((resolve, reject) => {
+        const request = db.transaction(STORE).objectStore(STORE).getAll()
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+      db.close()
+      // Old localStorage File objects have no recoverable bytes. Preserve the original records;
+      // migrate only a visible warning, never silently resubmit an unowned or empty photo.
+      const legacy = JSON.parse(localStorage.getItem('food_tracking_offline_queue') ?? '[]')
+      if (Array.isArray(legacy)) for (const operation of legacy) {
+        if (!operation?.id || this.queue.some(item => item.id === operation.id)) continue
+        const migrated = { ...operation, data: { timestamp: operation.data?.timestamp }, status: 'failed' as const,
+          retryCount: 3, maxRetries: 3, error: 'Older queued photo cannot be recovered. Reselect the original photo and review history before saving.' }
+        await persist(migrated)
+        this.queue.push(migrated)
+      }
+      for (const operation of this.queue) {
+        if (operation.status === 'processing') { operation.status = 'pending'; operation.attempted = true }
+        if (operation.userId && (operation.attempted || operation.retryCount > 0)) markCaptureCertainty(operation.userId, `photo:${operation.id}`, operation.status === 'completed')
+      }
+    } catch { this.loadUnavailable = true }
+  }
+  async captureNeedsReconciliation(userId: string): Promise<boolean> {
+    await this.ready
+    return this.loadUnavailable || this.queue.some(item => item.userId === userId && item.status !== 'completed' && (item.attempted || item.retryCount > 0))
+  }
+  async enqueue(operation: Omit<QueuedOperation, 'id' | 'timestamp' | 'retryCount' | 'status'>): Promise<string> {
+    await this.ready
+    if (!operation.userId) throw new Error('Sign in before queueing a photo.')
+    if (operation.type !== 'photo_upload' || !(operation.data.file instanceof Blob)) throw new Error('Reselect the photo. This operation cannot be queued safely.')
+    if (this.queue.filter(item => item.userId === operation.userId && item.status !== 'completed').length >= 100) throw new Error('Resolve pending photos before queueing more.')
+    const queued: QueuedOperation = { ...operation, id: crypto.randomUUID(), timestamp: Date.now(), retryCount: 0, status: 'pending' }
+    await persist(queued)
+    this.queue.push(queued)
+    this.notify()
+    return queued.id
+  }
+  getOperation(id: string) { return this.queue.find(item => item.id === id && item.userId === this.owner) ?? null }
+  getUserOperations(userId: string) { return userId === this.owner ? this.queue.filter(item => item.userId === userId) : [] }
+  getStats(): QueueStats {
+    const own = this.queue.filter(item => item.userId === this.owner && !!this.owner)
+    return { hasLegacyUnowned: this.queue.some(item => !item.userId && item.status === 'failed'), totalOperations: own.length, pendingOperations: own.filter(item => ['pending','processing'].includes(item.status)).length,
+      failedOperations: own.filter(item => item.status === 'failed').length, completedOperations: own.filter(item => item.status === 'completed').length,
+      lastSyncAttempt: this.lastSyncAttempt, isOnline: typeof navigator === 'undefined' || navigator.onLine }
+  }
+  async processQueue(): Promise<void> {
+    await this.ready
+    if (this.isProcessing || !this.owner || !navigator.onLine) return
+    this.isProcessing = true
+    const owner = this.owner
+    try {
+      for (const operation of this.queue.filter(item => item.userId === owner && item.status === 'pending')) {
+        const { data: { user } } = await createClient().auth.getUser()
+        if (this.owner !== owner || user?.id !== owner) break
+        if (operation.type !== 'photo_upload' || !(operation.data.file instanceof Blob)) {
+          operation.status = 'failed'; operation.error = 'Reselect the original photo; stored bytes are unavailable.'
+          await persist(operation); continue
+        }
         try {
           operation.status = 'processing'
-          this.saveQueue()
-
-          await this.processOperation(operation)
-
+          operation.attempted = true
+          await persist(operation)
+          markCaptureCertainty(owner, `photo:${operation.id}`, false)
+          const form = new FormData()
+          form.set('photo', operation.data.file)
+          form.set('timestamp', operation.data.timestamp)
+          form.set('requestId', operation.id)
+          form.set('expectedUserId', owner)
+          if (operation.data.recommendationId) form.set('recommendationId', operation.data.recommendationId)
+          const response = await fetchWithTimeout('/api/meals/upload', { method: 'POST', body: form }, 120_000)
+          const result = await response.json()
+          if (hasConfirmedCapture(result, false)) refreshAfterCanonicalSave(owner)
+          if (!response.ok || (!result.mealId && !result.receipt?.entityId && !result.receipts?.length) || result.state === 'save_unconfirmed' || result.receiptBundle?.state === 'save_unconfirmed') throw new Error(result.error ?? 'Save unconfirmed. Retry this queued entry.')
+          operation.data = { timestamp: operation.data.timestamp, result } // discard bytes only after canonical save is confirmed
           operation.status = 'completed'
-          console.log(`Operation ${operation.type} completed:`, operation.id)
+          operation.error = undefined
+          markCaptureCertainty(owner, `photo:${operation.id}`, true)
+          if (!hasConfirmedCapture(result, false)) refreshAfterCanonicalSave(owner)
         } catch (error) {
           operation.retryCount++
-          operation.error = error instanceof Error ? error.message : String(error)
-
-          if (operation.retryCount >= operation.maxRetries) {
-            operation.status = 'failed'
-            console.error(`Operation ${operation.type} failed permanently:`, operation.id, error)
-          } else {
-            operation.status = 'pending'
-            console.warn(`Operation ${operation.type} failed, will retry:`, operation.id, error)
-          }
+          operation.status = operation.retryCount >= operation.maxRetries ? 'failed' : 'pending'
+          operation.error = error instanceof Error ? error.message : 'Save unconfirmed'
         }
-
-        this.saveQueue()
+        await persist(operation)
+        this.notify()
       }
-    } finally {
-      this.isProcessing = false
-      this.setLastSyncAttempt(Date.now())
-    }
+    } finally { this.isProcessing = false; this.lastSyncAttempt = Date.now(); this.notify() }
   }
-
-  /**
-   * Clear completed operations from queue
-   */
-  clearCompleted(): number {
-    const completedCount = this.queue.filter(op => op.status === 'completed').length
-    this.queue = this.queue.filter(op => op.status !== 'completed')
-    this.saveQueue()
-    return completedCount
+  async retry(id: string) {
+    await this.ready
+    const operation = this.getOperation(id)
+    if (!operation || !(operation.data.file instanceof Blob)) throw new Error('Reselect the original photo and review history before saving.')
+    operation.status = 'pending'; operation.retryCount = 0
+    await persist(operation)
+    await this.processQueue()
   }
-
-  /**
-   * Clear all operations from queue
-   */
-  clearAll(): void {
-    this.queue = []
-    this.saveQueue()
-  }
-
-  /**
-   * Subscribe to online status changes
-   */
-  onOnlineStatusChange(callback: (isOnline: boolean) => void): () => void {
-    this.onlineStatusCallbacks.push(callback)
-    
-    // Return unsubscribe function
-    return () => {
-      const index = this.onlineStatusCallbacks.indexOf(callback)
-      if (index !== -1) {
-        this.onlineStatusCallbacks.splice(index, 1)
+  async dequeue(id: string): Promise<boolean> {
+    await this.ready
+    const operation = this.getOperation(id)
+    if (!operation || operation.status === 'processing') return false
+    if (operation.status !== 'completed' && (operation.attempted || operation.retryCount > 0)) {
+      const owner = this.owner
+      const { data: { user } } = await createClient().auth.getUser()
+      if (!owner || user?.id !== owner) throw new Error('Restore the original account before resolving this photo.')
+      const response = await fetchWithTimeout(`/api/logging/requests/${encodeURIComponent(`photo:${operation.id}`)}?expectedUserId=${encodeURIComponent(owner)}`, { method: 'GET' }, 15_000)
+      const result = await response.json()
+      if (this.owner !== owner || !response.ok) throw new Error('This photo save remains unconfirmed. Retry its original request before discarding it.')
+      if (result.state === 'saved' && result.receipts?.length) {
+        operation.status = 'completed'; operation.data = { timestamp: operation.data.timestamp, result }; operation.error = undefined
+        await persist(operation); this.notify()
+        markCaptureCertainty(owner, `photo:${operation.id}`, true)
+        refreshAfterCanonicalSave(owner)
+        return false // Keep its recovered receipt visible; a later clear-completed action may remove device metadata.
       }
+      if (result.retryAllowed !== true || result.receipts?.length) throw new Error('Resolve or explicitly cancel each pending item before discarding this photo.')
+      markCaptureCertainty(owner, `photo:${operation.id}`, true)
     }
-  }
-
-  private async processOperation(operation: QueuedOperation): Promise<void> {
-    switch (operation.type) {
-      case 'photo_upload':
-        await this.processPhotoUpload(operation)
-        break
-      case 'meal_analysis':
-        await this.processMealAnalysis(operation)
-        break
-      case 'meal_update':
-        await this.processMealUpdate(operation)
-        break
-      case 'target_update':
-        await this.processTargetUpdate(operation)
-        break
-      default:
-        throw new Error(`Unknown operation type: ${operation.type}`)
-    }
-  }
-
-  private async processPhotoUpload(operation: QueuedOperation): Promise<void> {
-    if (!operation.userId) throw new Error('This older queued photo has no account identity. Review it before resubmitting.')
-    const { file, timestamp } = operation.data
-
-    const formData = new FormData()
-    formData.append('photo', file)
-    formData.append('timestamp', timestamp)
-    formData.append('requestId', operation.id)
-    formData.append('expectedUserId', operation.userId)
-
-    const response = await fetch('/api/meals/upload', {
-      method: 'POST',
-      body: formData
+    const db = await database()
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE, 'readwrite')
+      transaction.objectStore(STORE).delete(id)
+      transaction.oncomplete = () => resolve()
+      transaction.onerror = () => reject(transaction.error)
     })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Upload failed')
-    }
-
-    const result = await response.json()
-    
-    // Store result for retrieval
-    operation.data.result = result
+    db.close(); this.queue = this.queue.filter(item => item.id !== id); this.notify(); return true
   }
-
-  private async processMealAnalysis(operation: QueuedOperation): Promise<void> {
-    const { photoUrl, mealId } = operation.data
-
-    const response = await fetch('/api/meals/analyze', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ photoUrl, mealId })
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Analysis failed')
-    }
-
-    const result = await response.json()
-    operation.data.result = result
-  }
-
-  private async processMealUpdate(operation: QueuedOperation): Promise<void> {
-    const { mealId, updates } = operation.data
-
-    const response = await fetch(`/api/meals/${mealId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(updates)
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Update failed')
-    }
-
-    const result = await response.json()
-    operation.data.result = result
-  }
-
-  private async processTargetUpdate(operation: QueuedOperation): Promise<void> {
-    const { targets } = operation.data
-
-    const response = await fetch('/api/targets', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(targets)
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Target update failed')
-    }
-
-    const result = await response.json()
-    operation.data.result = result
-  }
-
-  private loadQueue(): void {
-    // Only run on client-side to avoid SSR issues
-    if (typeof window === 'undefined') return
-    
-    try {
-      const stored = localStorage.getItem(QUEUE_STORAGE_KEY)
-      if (stored) {
-        this.queue = JSON.parse(stored)
-        console.log(`Loaded ${this.queue.length} operations from offline queue`)
-      }
-    } catch (error) {
-      console.error('Failed to load offline queue:', error)
-      this.queue = []
-    }
-  }
-
-  private saveQueue(): void {
-    // Only run on client-side to avoid SSR issues
-    if (typeof window === 'undefined') return
-    
-    try {
-      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(this.queue))
-    } catch (error) {
-      console.error('Failed to save offline queue:', error)
-    }
-  }
-
-  private setupNetworkListeners(): void {
-    // Only run on client-side to avoid SSR issues
-    if (typeof window === 'undefined') return
-
-    const handleOnline = () => {
-      console.log('Network connection restored, processing offline queue...')
-      this.processQueue()
-      this.notifyOnlineStatusChange(true)
-    }
-
-    const handleOffline = () => {
-      console.log('Network connection lost, operations will be queued')
-      this.notifyOnlineStatusChange(false)
-    }
-
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-  }
-
-  private startSyncInterval(): void {
-    // Only run on client-side to avoid SSR issues
-    if (typeof window === 'undefined') return
-    
-    this.syncInterval = setInterval(() => {
-      if (navigator.onLine && !this.isProcessing) {
-        const pendingCount = this.queue.filter(op => op.status === 'pending').length
-        if (pendingCount > 0) {
-          console.log(`Periodic sync: ${pendingCount} pending operations`)
-          this.processQueue()
-        }
-      }
-    }, SYNC_INTERVAL)
-  }
-
-  private notifyOnlineStatusChange(isOnline: boolean): void {
-    this.onlineStatusCallbacks.forEach(callback => {
-      try {
-        callback(isOnline)
-      } catch (error) {
-        console.error('Error in online status callback:', error)
-      }
-    })
-  }
-
-  private generateId(): string {
-    return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  }
-
-  private getLastSyncAttempt(): number | undefined {
-    try {
-      const stored = localStorage.getItem('food_tracking_last_sync')
-      return stored ? parseInt(stored, 10) : undefined
-    } catch {
-      return undefined
-    }
-  }
-
-  private setLastSyncAttempt(timestamp: number): void {
-    try {
-      localStorage.setItem('food_tracking_last_sync', timestamp.toString())
-    } catch (error) {
-      console.error('Failed to save last sync timestamp:', error)
-    }
-  }
-
-  /**
-   * Cleanup method for component unmounting
-   */
-  destroy(): void {
-    if (this.syncInterval) {
-      clearInterval(this.syncInterval)
-      this.syncInterval = null
-    }
-    this.onlineStatusCallbacks = []
-  }
+  async clearCompleted() { for (const item of this.getUserOperations(this.owner ?? '').filter(item => item.status === 'completed')) await this.dequeue(item.id) }
+  onOnlineStatusChange(callback: (online: boolean) => void) { this.callbacks.add(callback); return () => { this.callbacks.delete(callback) } }
+  private notify() { this.callbacks.forEach(callback => callback(navigator.onLine)) }
 }
-
-// Singleton instance
 export const offlineQueue = new OfflineQueueManager()
-
-/**
- * Helper functions for common operations
- */
-
-export function queuePhotoUpload(file: File, timestamp: string, userId?: string): string {
-  return offlineQueue.enqueue({
-    type: 'photo_upload',
-    userId,
-    data: { file, timestamp },
-    maxRetries: DEFAULT_MAX_RETRIES,
-    priority: 'high'
-  })
+export function queuePhotoUpload(file: File, timestamp: string, userId?: string): Promise<string> {
+  return offlineQueue.enqueue({ type: 'photo_upload', userId, data: { file, timestamp, recommendationId: recommendationOrigin() }, maxRetries: 3, priority: 'high' })
 }
-
-export function queueMealAnalysis(photoUrl: string, mealId: string): string {
-  return offlineQueue.enqueue({
-    type: 'meal_analysis',
-    data: { photoUrl, mealId },
-    maxRetries: DEFAULT_MAX_RETRIES,
-    priority: 'high'
-  })
-}
-
-export function queueMealUpdate(mealId: string, updates: any): string {
-  return offlineQueue.enqueue({
-    type: 'meal_update',
-    data: { mealId, updates },
-    maxRetries: DEFAULT_MAX_RETRIES,
-    priority: 'medium'
-  })
-}
-
-export function queueTargetUpdate(targets: any): string {
-  return offlineQueue.enqueue({
-    type: 'target_update',
-    data: { targets },
-    maxRetries: DEFAULT_MAX_RETRIES,
-    priority: 'medium'
-  })
-}
-
-/**
- * React hook for offline queue status
- */
 export function useOfflineQueue() {
+  const { user } = useAuth()
   const [stats, setStats] = React.useState<QueueStats>(offlineQueue.getStats())
-  const [isOnline, setIsOnline] = React.useState(typeof window !== 'undefined' ? navigator.onLine : true)
-
   React.useEffect(() => {
-    const updateStats = () => setStats(offlineQueue.getStats())
-    
-    const unsubscribe = offlineQueue.onOnlineStatusChange((online) => {
-      setIsOnline(online)
-      updateStats()
-    })
-
-    // Update stats periodically
-    const interval = setInterval(updateStats, 5000)
-
-    return () => {
-      unsubscribe()
-      clearInterval(interval)
-    }
-  }, [])
-
-  return {
-    stats,
-    isOnline,
-    processQueue: () => offlineQueue.processQueue(),
-    clearCompleted: () => offlineQueue.clearCompleted(),
-    getUserOperations: (userId: string) => offlineQueue.getUserOperations(userId)
-  }
+    offlineQueue.setOwner(user?.id ?? null)
+    const update = () => setStats(offlineQueue.getStats())
+    const online = () => { update(); void offlineQueue.processQueue() }
+    const unsubscribe = offlineQueue.onOnlineStatusChange(update)
+    window.addEventListener('online', online); window.addEventListener('offline', update)
+    const interval = setInterval(online, 30_000)
+    online()
+    return () => { unsubscribe(); clearInterval(interval); window.removeEventListener('online', online); window.removeEventListener('offline', update); offlineQueue.setOwner(null) }
+  }, [user?.id])
+  return { stats, isOnline: stats.isOnline, processQueue: () => offlineQueue.processQueue(), clearCompleted: () => offlineQueue.clearCompleted(),
+    getUserOperations: (userId: string) => offlineQueue.getUserOperations(userId) }
 }

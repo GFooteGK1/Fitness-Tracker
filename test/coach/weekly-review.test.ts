@@ -1,3 +1,6 @@
+import { type PlanningOutcome } from '@/app/lib/coach/planning-intent'
+import { sampleMatchesOutcome, matchingAssignments } from '@/app/lib/coach/targeted-review'
+import { intent, runningOutcome } from '../fixtures/personalized-coaching/intent'
 import { describe, expect, it } from 'vitest'
 import {
   ADAPTIVE_ASSESSMENT_CATALOG_VERSION,
@@ -19,6 +22,7 @@ import type {
   CoachExecutionSession,
   CoachSessionCheckinSummary
 } from '@/app/lib/coach/execution-feedback'
+import { reportedFeedbackProvenance } from '@/app/lib/coach/execution-feedback'
 import { buildRollingTrainingDirection } from '@/app/lib/coach/rolling-weekly-contracts'
 import {
   buildRollingWeeklyPlan,
@@ -119,7 +123,7 @@ describe('rolling weekly review', () => {
     expect(next.changeSummary.assessmentSignal).toEqual(result.signalRequest)
   })
 
-  it('turns repeated direct improvement into one bounded dose change', () => {
+  it('holds broad direct improvement without an exact assignment target', () => {
     const week = initialWeek()
     const sessions = executionSessions(week, ['completed', 'completed'])
     const result = requireReady(buildRollingWeeklyReview(reviewInput({
@@ -130,12 +134,10 @@ describe('rolling weekly review', () => {
       series: [strengthSeries([100, 101, 105, 106])]
     })))
 
-    expect(result.action).toBe('adjust_dose')
-    expect(result.presentationClass).toBe('small_adjustment')
-    expect(result.doseChange).not.toBeNull()
-    if (result.doseChange) {
-      expect(result.doseChange.to).toBeGreaterThan(result.doseChange.from)
-    }
+    expect(result.action).toBe('collect_signal')
+    expect(result.presentationClass).toBe('needs_signal')
+    expect(result.doseChange).toBeNull()
+    expect(result.missing).toContain('exact_assignment_target_unavailable')
     expect(result.proposal.requiresAcceptance).toBe(true)
   })
 
@@ -164,7 +166,8 @@ describe('rolling weekly review', () => {
 
     expect(oneSignal.action).toBe('continue')
     expect(repeated.action).toBe('recover')
-    expect(repeated.doseChange?.to).toBeLessThan(repeated.doseChange?.from ?? 0)
+    expect(repeated.doseChange).toBeNull()
+    expect(repeated.proposal.generationReady).toBe(false)
   })
 
   it('requires a confirmed direction before a repeated contradiction shifts emphasis', () => {
@@ -325,6 +328,8 @@ function checkin(
   overrides: Partial<CoachSessionCheckinSummary> = {}
 ): CoachSessionCheckinSummary {
   return {
+    feedbackVersion: 2,
+    provenance: reportedFeedbackProvenance({ sessionRpe: 7, energy: 'okay', pain: 'none' }),
     id: `checkin-${sessionId}`,
     prescribedSessionId: sessionId,
     outcome: 'as_planned',
@@ -506,3 +511,101 @@ function doseStep(unit: RollingWeeklyPlanDraft['schedule']['assignments'][number
 function withStart(profile: ProgrammingProfile, startDate: string): ProgrammingProfile {
   return structuredClone({ ...profile, startDate })
 }
+
+function strengthOutcome(id = 'goal:bench', movement = 'barbell_bench_press'): PlanningOutcome {
+  const outcome = runningOutcome(id), definition = findAssessmentDefinition(directRequirement(adaptivePlan).assessmentDefinitionId!)!
+  outcome.domain = 'strength'; outcome.goal.requiredQualityIds = ['maximal_strength']
+  outcome.goal.statement = `Improve ${movement}`
+  outcome.measurement = {metricId:definition.primaryMetricId,unit:'kg',assessmentDefinition:{id:definition.id,version:definition.version},protocol:{id:definition.protocol.id,version:definition.protocol.version}}
+  outcome.binding = {movementId:movement,variation:'standard',equipmentIds:['barbell'],distance:null,assessmentContext:{repetitions:1,externalLoad:null,duration:null,techniqueModifiers:[],environmentModifiers:[]}}
+  return outcome
+}
+function boundSeries(outcome:PlanningOutcome, values=[100,100,100,100]) {
+  const value = strengthSeries(values,outcome.goal.id)
+  value.id = outcome.goal.id;value.comparabilityKey=outcome.goal.id
+  value.protocol = {...outcome.measurement!.protocol}
+  value.samples.forEach(s=>{s.assessmentDefinition.version=outcome.measurement!.assessmentDefinition.version;s.protocol={...outcome.measurement!.protocol};s.comparabilityKey=outcome.goal.id;s.comparison={movementId:outcome.binding.movementId,variationId:outcome.binding.variation,equipmentIds:outcome.binding.equipmentIds,repetitions:1}})
+  return value
+}
+function targeted(outcomes:PlanningOutcome[],series:CoachEvidenceSeries[],priority:string[]|null=null) {
+  const week=initialWeek(),content=intent(...outcomes);content.priorityOrder=priority
+  week.profileSnapshot.trainingIntent={schemaVersion:1,memoryId:'11111111-1111-4111-8111-111111111111',memoryVersion:1,content}
+  const sessions=executionSessions(week,['completed','completed'])
+  return {week,input:{...reviewInput({week,sessions,checkins:sessions.map(s=>checkin(s.id)),localDate:'2026-09-14',series}),targetedReview:true}}
+}
+describe('separate confirmed outcome review',()=>{
+  it('does not treat bench, squat, changed protocol, equipment or repetitions as equivalent strength outcomes',()=>{
+    const bench=strengthOutcome(),sample=boundSeries(bench).samples[0]
+    expect(sampleMatchesOutcome(sample,bench)).toBe(true)
+    for(const changed of [ {...sample,comparison:{...sample.comparison,movementId:'barbell_back_squat'}},{...sample,protocol:{...sample.protocol,version:'future'}},{...sample,comparison:{...sample.comparison,equipmentIds:['dumbbell']}},{...sample,comparison:{...sample.comparison,repetitions:5}} ]) expect(sampleMatchesOutcome(changed,bench)).toBe(false)
+  })
+  it('evaluates the second same-domain goal and retains separate included and excluded source identities',()=>{
+    const bench=strengthOutcome(),squat=strengthOutcome('goal:squat','barbell_back_squat'),{input}=targeted([bench,squat],[boundSeries(bench),boundSeries(squat,[100,101,105,106])],[bench.goal.id,squat.goal.id])
+    const result=requireReady(buildRollingWeeklyReview(input))
+    expect(result.goalReviews).toHaveLength(2)
+    expect(result.goalReviews?.find(g=>g.goalId===squat.goal.id)?.actionCandidate).toBe('progress')
+    expect(result.goalId).toBe(squat.goal.id)
+    expect(result.goalReviews?.[0].includedSourceIds.every(id=>id.includes(bench.goal.id))).toBe(true)
+    expect(result.goalReviews?.[0].excludedSources.length).toBeGreaterThan(0)
+  })
+  it('holds competing changes without confirmed priority and when shared demands have missing evidence',()=>{
+    const a=strengthOutcome(),b=strengthOutcome('goal:squat','barbell_back_squat')
+    const unprioritized=requireReady(buildRollingWeeklyReview(targeted([a,b],[boundSeries(a,[100,101,105,106]),boundSeries(b,[100,101,105,106])]).input))
+    expect(unprioritized.missing).toContain('outcome_priority_unspecified');expect(unprioritized.doseChange).toBeNull()
+    const conflict=requireReady(buildRollingWeeklyReview(targeted([a,b],[boundSeries(a,[100,101,105,106])],[a.goal.id,b.goal.id]).input))
+    expect(conflict.missing).toContain('shared_demand_conflict');expect(conflict.proposal.generationReady).toBe(false)
+  })
+  it('allows an unchanged week when an unrelated outcome lacks evidence',()=>{
+    const a=strengthOutcome(),b=runningOutcome(),result=requireReady(buildRollingWeeklyReview(targeted([a,b],[boundSeries(a)]).input))
+    expect(result.action).toBe('continue');expect(result.goalReviews?.find(g=>g.goalId===b.goal.id)?.includedSourceIds).toEqual([])
+    expect(result.goalReviews?.find(g=>g.goalId===b.goal.id)?.attained).toBe(false)
+  })
+  it('applies concerning pain across outcomes before missing-evidence decisions',()=>{
+    const a=strengthOutcome(),b=runningOutcome(),{input}=targeted([a,b],[])
+    input.checkins[0]=checkin(input.sessions[0].id,{pain:'concerning'})
+    const result=requireReady(buildRollingWeeklyReview(input));expect(result.action).toBe('pause_review');expect(result.proposal.generationReady).toBe(false)
+  })
+  it('never maps bench evidence onto squat work or silently chooses one of multiple matching assignments',()=>{
+    const a=strengthOutcome(),{week,input}=targeted([a],[boundSeries(a,[100,101,105,106])])
+    const result=requireReady(buildRollingWeeklyReview(input)),goal=result.goalReviews![0]
+    const assignments=matchingAssignments(week,input.context,goal.evaluator,week.profileSnapshot.primaryGoal.id,a)
+    for(const id of assignments){const assignment=week.schedule.assignments.find(x=>x.id===id)!;expect(week.sessions.some(s=>s.day===assignment.day&&s.blocks.some(b=>b.role!=='specific_preparation'&&b.exercises.some(e=>e.movementId===a.binding.movementId&&e.coverageRequirementIds.includes(assignment.requirementId))))).toBe(true)}
+    if(assignments.length!==1){expect(result.doseChange).toBeNull();expect(result.missing).toContain('exact_assignment_target_unavailable')}
+  })
+  it('keeps a previously declared supporting signal separate and flags improvement without direct transfer',()=>{
+    const a=strengthOutcome(),direct=boundSeries(a),support=boundSeries(a,[8,8,6,6]),definition=findAssessmentDefinition('session.rpe')!
+    support.id='support';support.metricId='session.rpe';support.semanticRole='training_signal';support.assessmentDefinitionId=definition.id;support.protocol={...definition.protocol};support.observationIds=support.observationIds.map(id=>'support-'+id)
+    support.samples.forEach(sample=>{sample.observationId='support-'+sample.observationId;sample.observationValueId='support-'+sample.observationValueId;sample.metricId='session.rpe';sample.semanticRole='training_signal';sample.unit='score';sample.originalMeasurement.unit='score';sample.assessmentDefinition={id:definition.id,version:definition.version,catalogVersion:ADAPTIVE_ASSESSMENT_CATALOG_VERSION};sample.protocol={...definition.protocol}})
+    const {input}=targeted([a],[direct,support]);input.adaptivePlan=structuredClone(input.adaptivePlan)
+    input.adaptivePlan.hypotheses[0].evidenceRequirements.push({metricId:'session.rpe',semanticRole:'training_signal',assessmentDefinitionId:definition.id,minimumComparableObservations:2,evaluationWindowDays:56})
+    input.adaptivePlan.expectedSignals.push({...input.adaptivePlan.expectedSignals[0],id:'signal:declared-support',metricId:'session.rpe',semanticRole:'training_signal',assessmentDefinitionId:definition.id,expectedDirection:'decrease'})
+    const result=requireReady(buildRollingWeeklyReview(input));expect(result.action).toBe('shift_emphasis');expect(result.goalReviews?.[0].evaluator.rationale.join(' ')).toContain('without transfer');expect(result.doseChange).toBeNull();expect(result.proposal.directionConfirmationRequired).toBe(true)
+  })
+  it('does not call the whole direction attained when only one same-domain outcome reaches its target',()=>{
+    const a=strengthOutcome(),b=strengthOutcome('goal:squat','barbell_back_squat');a.goal.target={role:'target',comparison:'at_least',metric:{metricId:'strength.load',unit:'kg',value:105},assessmentDefinition:a.measurement!.assessmentDefinition,protocol:a.measurement!.protocol}
+    const result=requireReady(buildRollingWeeklyReview(targeted([a,b],[boundSeries(a,[100,101,105,106]),boundSeries(b)],[a.goal.id,b.goal.id]).input))
+    expect(result.goalReviews?.find(g=>g.goalId===a.goal.id)?.attained).toBe(true);expect(result.goalReviews?.find(g=>g.goalId===b.goal.id)?.attained).toBe(false);expect(result.goalMetMaintenance).toBe(false)
+  })
+  it('does not inherit repetition-max numerical eligibility for a velocity measurement',()=>{
+    const a=strengthOutcome(),d=findAssessmentDefinition('strength.fixed_load_velocity')!;a.measurement={metricId:d.primaryMetricId,unit:'m_per_s',assessmentDefinition:{id:d.id,version:d.version},protocol:{id:d.protocol.id,version:d.protocol.version}}
+    const velocity=boundSeries(a,[0.4,0.41,0.5,0.51]);velocity.metricId=d.primaryMetricId;velocity.assessmentDefinitionId=d.id;velocity.samples.forEach(s=>{s.metricId=d.primaryMetricId;s.unit='m_per_s';s.originalMeasurement.unit='m_per_s';s.assessmentDefinition.id=d.id})
+    const result=requireReady(buildRollingWeeklyReview(targeted([a],[velocity]).input));expect(result.action).toBe('collect_signal');expect(result.doseChange).toBeNull();expect(result.goalReviews?.[0].missing).toContain('outcome_policy_adapter_unavailable')
+  })
+  it('keeps attained targets true even when concerning pain takes precedence over the action',()=>{
+    const a=strengthOutcome();a.goal.target={role:'target',comparison:'at_least',metric:{metricId:'strength.load',unit:'kg',value:105},assessmentDefinition:a.measurement!.assessmentDefinition,protocol:a.measurement!.protocol}
+    const {input}=targeted([a],[boundSeries(a,[100,101,105,106])]);input.checkins[0]=checkin(input.sessions[0].id,{pain:'concerning'})
+    const result=requireReady(buildRollingWeeklyReview(input));expect(result.action).toBe('pause_review');expect(result.goalReviews?.[0].attained).toBe(true);expect(result.proposal.generationReady).toBe(false)
+  })
+  it('holds when another domain shares the exact movement but its required evidence is missing',()=>{
+    const strength=strengthOutcome(),hypertrophy=strengthOutcome('goal:bench-capacity'),d=findAssessmentDefinition('strength.repetition_capacity')!
+    hypertrophy.domain='hypertrophy';hypertrophy.goal.requiredQualityIds=['strength_endurance'];hypertrophy.measurement={metricId:d.primaryMetricId,unit:'repetitions',assessmentDefinition:{id:d.id,version:d.version},protocol:{id:d.protocol.id,version:d.protocol.version}}
+    const {input}=targeted([strength,hypertrophy],[boundSeries(strength,[100,101,105,106])],[strength.goal.id,hypertrophy.goal.id])
+    input.currentWeek.profileSnapshot.secondaryGoals=[{id:'allocation:hypertrophy',domain:'hypertrophy',role:'secondary',allocation:'development',athleteIntent:'Bench capacity'}]
+    const result=requireReady(buildRollingWeeklyReview(input));expect(result.missing).toContain('shared_demand_conflict');expect(result.doseChange).toBeNull();expect(result.goalReviews?.map(g=>g.allocationId)).toEqual([baseProfile.primaryGoal.id,'allocation:hypertrophy'])
+  })
+  it('keeps accepted prescription content immutable and excludes amendment sources from decisions',()=>{
+    const a=strengthOutcome(),{week,input}=targeted([a],[]),before=structuredClone(week)
+    input.context.executionExclusions=[{observationId:'amended',workoutId:'workout',reason:'execution_amended_or_deleted'}]
+    const result=requireReady(buildRollingWeeklyReview(input));expect(week).toEqual(before);expect(result.goalReviews?.[0].excludedSources).toContainEqual({observationId:'amended',reason:'execution_amended_or_deleted'});expect(result.executionSources).toEqual([])
+  })
+})

@@ -1,5 +1,6 @@
 'use client'
 
+import { sendCaptureCorrection, assertCaptureOwner } from '@/app/lib/client/logging-request'
 import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { MealEntry, DailyTargets, MacroTotals, AdherenceStatus, DailyMealsResponse } from '@/app/lib/types/food-tracking'
@@ -117,57 +118,34 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
     }
   }, [fetchDailyData, user])
 
-  const handleEditMeal = (mealId: string) => {
-    const meal = meals.find(m => m.id === mealId)
-    if (meal) {
-      setEditingMeal(meal)
-    }
-  }
-
-  const handleSaveMeal = async (updates: any) => {
-    if (!editingMeal) return
-
+  const handleEditMeal = async (mealId: string) => {
+    if (!user) return
     try {
-      const response = await fetch(`/api/meals/${editingMeal.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update meal')
-      }
-
-      // Refresh data after successful update
-      await fetchDailyData()
-      setEditingMeal(null)
-
-      // Show success message (you could use a toast here)
-      console.log('Meal updated successfully')
-    } catch (err) {
-      console.error('Error updating meal:', err)
-      // You might want to show an error message to the user here
-    }
+      const response = await fetch(`/api/meals/${mealId}`)
+      const data = await response.json()
+      await assertCaptureOwner(user.id)
+      if (!response.ok || data.meal?.userId !== user.id) throw new Error('Meal unavailable for this account.')
+      setEditingMeal(data.meal)
+    } catch (error) { setError(error instanceof Error ? error.message : 'Meal unavailable') }
   }
-
+  const handleSaveMeal = async (updates: import('@/app/lib/types/food-tracking').MealUpdates) => {
+    if (!editingMeal || !user) return
+    const response = await sendCaptureCorrection(`/api/meals/${editingMeal.id}`, 'PUT', updates as Record<string, unknown>, user.id)
+    if (!response.ok) { const data = await response.json(); throw new Error(data.error ?? 'Correction remains unconfirmed. Retry the unchanged correction.') }
+    await fetchDailyData()
+    setEditingMeal(null)
+  }
   const handleDeleteMeal = async (mealId: string) => {
+    if (!user) return
     try {
-      const response = await fetch(`/api/meals/${mealId}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to delete meal')
-      }
-
-      // Refresh data after successful delete
+      const currentResponse = await fetch(`/api/meals/${mealId}`)
+      const current = await currentResponse.json()
+      await assertCaptureOwner(user.id)
+      if (!currentResponse.ok || current.meal?.userId !== user.id) throw new Error('Meal unavailable for this account.')
+      const response = await sendCaptureCorrection(`/api/meals/${mealId}`, 'DELETE', { expectedRevision: current.meal.captureRevision }, user.id)
+      if (!response.ok) { const data = await response.json(); throw new Error(data.error ?? 'Deletion remains unconfirmed. Retry the same action.') }
       await fetchDailyData()
-      console.log('Meal deleted successfully')
-    } catch (err) {
-      console.error('Error deleting meal:', err)
-    }
+    } catch (error) { setError(error instanceof Error ? error.message : 'Deletion remains unconfirmed.') }
   }
 
   const formatMacro = (value: number, unit: string = 'g') => {

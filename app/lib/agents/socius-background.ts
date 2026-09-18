@@ -1,3 +1,4 @@
+import { canSurfaceLegacyInsight } from './legacy-insight-guard'
 /**
  * Socius Background Pattern Detection
  *
@@ -47,7 +48,7 @@ export async function triggerSociusBackground(userId: string): Promise<void> {
   ]
 
   const detectedPatterns = checkers.filter(
-    (p): p is DetectedPattern => p !== null && p.confidence > 0.6
+    (p): p is DetectedPattern => p !== null && canSurfaceLegacyInsight(p) && p.confidence > 0.6
   )
 
   for (const pattern of detectedPatterns) {
@@ -64,28 +65,9 @@ export async function triggerSociusBackground(userId: string): Promise<void> {
 
 // ─── Pattern Checkers ────────────────────────────────────────────────
 
-/**
- * CAL_DEF: Caloric deficit on a high-strain day.
- * Urgent when strain >= 14 AND calories < 1500.
- *
- * Validates: Requirements 4.2, 4.5
- */
-export function checkCaloricDeficit(context: SociusContext): DetectedPattern | null {
-  const strain = context.today.latest_whoop_strain
-  const calories = context.today.macros_consumed.calories
-
-  if (strain === null || calories === 0) return null
-
-  if (strain >= 14 && calories < 1500) {
-    return {
-      pattern_id: 'CAL_DEF',
-      priority: 'urgent',
-      confidence: 0.8,
-      content: `High strain day (${strain.toFixed(1)}) with only ${Math.round(calories)} calories logged. Consider fueling up to support recovery.`,
-      data_context: { strain, calories },
-    }
-  }
-
+/** Retained compatibility entry point; unsupported legacy inference is permanently retired. */
+export function checkCaloricDeficit(_context: SociusContext): DetectedPattern | null {
+  // Retired: this legacy context cannot establish the required source evidence.
   return null
 }
 
@@ -115,32 +97,9 @@ export function checkOvertraining(context: SociusContext): DetectedPattern | nul
   return null
 }
 
-/**
- * NUT_PERF: Correlation between nutrition adherence and workout performance.
- * When adherence is high (>= 90%) and workout count is solid (>= 8 in 30d) → informational.
- *
- * Validates: Requirements 4.2
- */
-export function checkNutritionPerformance(context: SociusContext): DetectedPattern | null {
-  const { workout_count, avg_daily_protein, avg_daily_calories } = context.thirty_day_summary
-  const { protein: targetProtein, calories: targetCalories } = context.targets
-
-  if (workout_count < 8 || targetProtein === 0 || targetCalories === 0) return null
-
-  const proteinAdherence = (avg_daily_protein / targetProtein) * 100
-  const calorieAdherence = (avg_daily_calories / targetCalories) * 100
-  const avgAdherence = (proteinAdherence + calorieAdherence) / 2
-
-  if (avgAdherence >= 90) {
-    return {
-      pattern_id: 'NUT_PERF',
-      priority: 'informational',
-      confidence: 0.7,
-      content: `Strong nutrition-performance link: ${avgAdherence.toFixed(0)}% average adherence across ${workout_count} workouts this month.`,
-      data_context: { workout_count, proteinAdherence, calorieAdherence, avgAdherence },
-    }
-  }
-
+/** Retained compatibility entry point; unsupported legacy inference is permanently retired. */
+export function checkNutritionPerformance(_context: SociusContext): DetectedPattern | null {
+  // Retired: this legacy context cannot establish the required source evidence.
   return null
 }
 
@@ -170,32 +129,8 @@ export function checkRecoveryVolume(context: SociusContext): DetectedPattern | n
   return null
 }
 
-/**
- * PRO_REC: Low protein (< 80% target) on recovery days.
- * When recovery is low and protein intake is also low → notable.
- *
- * Validates: Requirements 4.2
- */
-export function checkProteinRecovery(context: SociusContext): DetectedPattern | null {
-  const recovery = context.today.latest_whoop_recovery
-  const proteinConsumed = context.today.macros_consumed.protein
-  const proteinTarget = context.targets.protein
-
-  if (recovery === null || proteinTarget === 0) return null
-  if (proteinConsumed === 0) return null
-
-  const proteinPct = (proteinConsumed / proteinTarget) * 100
-
-  if (recovery < 50 && proteinPct < 80) {
-    return {
-      pattern_id: 'PRO_REC',
-      priority: 'notable',
-      confidence: 0.7,
-      content: `Recovery is at ${recovery.toFixed(0)}% and protein is only ${proteinPct.toFixed(0)}% of target. Prioritize protein to support recovery.`,
-      data_context: { recovery, proteinConsumed, proteinTarget, proteinPct },
-    }
-  }
-
+/** Retained compatibility entry point; partial protein logs cannot establish recovery effects. */
+export function checkProteinRecovery(_context: SociusContext): DetectedPattern | null {
   return null
 }
 
@@ -225,57 +160,15 @@ export function checkSleepPerformance(context: SociusContext): DetectedPattern |
   return null
 }
 
-/**
- * HRV_TREND: HRV trending down over recent days.
- * Uses avg recovery as a proxy for HRV trend → informational.
- *
- * Validates: Requirements 4.2
- */
-export function checkHRVTrend(context: SociusContext): DetectedPattern | null {
-  const { whoop_avg_recovery } = context.thirty_day_summary
-
-  if (whoop_avg_recovery === null) return null
-
-  // Declining recovery trend suggests declining HRV
-  if (whoop_avg_recovery < 50) {
-    return {
-      pattern_id: 'HRV_TREND',
-      priority: 'informational',
-      confidence: 0.65,
-      content: `Average recovery trending low at ${whoop_avg_recovery.toFixed(0)}%. This may indicate declining HRV — consider monitoring stress and sleep.`,
-      data_context: { avg_recovery: whoop_avg_recovery },
-    }
-  }
-
+/** Retained compatibility entry point; unsupported legacy inference is permanently retired. */
+export function checkHRVTrend(_context: SociusContext): DetectedPattern | null {
+  // Retired: this legacy context cannot establish the required source evidence.
   return null
 }
 
-/**
- * STRAIN_NUT: High strain (>= 14) with low calorie adherence.
- * High strain day but not eating enough → notable.
- *
- * Validates: Requirements 4.2
- */
-export function checkStrainNutrition(context: SociusContext): DetectedPattern | null {
-  const strain = context.today.latest_whoop_strain
-  const caloriesConsumed = context.today.macros_consumed.calories
-  const caloriesTarget = context.targets.calories
-
-  if (strain === null || caloriesTarget === 0) return null
-  if (caloriesConsumed === 0) return null
-
-  const calorieAdherence = (caloriesConsumed / caloriesTarget) * 100
-
-  if (strain >= 14 && calorieAdherence < 70) {
-    return {
-      pattern_id: 'STRAIN_NUT',
-      priority: 'notable',
-      confidence: 0.75,
-      content: `High strain (${strain.toFixed(1)}) but only ${calorieAdherence.toFixed(0)}% of calorie target consumed. Fuel up to match your output.`,
-      data_context: { strain, caloriesConsumed, caloriesTarget, calorieAdherence },
-    }
-  }
-
+/** Retained compatibility entry point; unsupported legacy inference is permanently retired. */
+export function checkStrainNutrition(_context: SociusContext): DetectedPattern | null {
+  // Retired: this legacy context cannot establish the required source evidence.
   return null
 }
 

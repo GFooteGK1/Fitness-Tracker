@@ -1,6 +1,8 @@
+import { isWhoopSyncEligible } from '@/app/lib/agents/whoop-context-eligibility'
+import { canSurfaceLegacyInsight } from '@/app/lib/agents/legacy-insight-guard'
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { isValidTimezoneOffset, getLocalDate } from '@/app/lib/timezone-utils'
+import { isValidTimezoneOffset, localDateToUTCStart } from '@/app/lib/timezone-utils'
 import type { CrossDomainAnalysisResponse, HolisticInsight, DailyFitnessSummary } from '@/app/lib/types/cross-domain'
 import type { WhoopRecovery, WhoopSleep, WhoopCycle } from '@/app/lib/types/whoop'
 
@@ -23,6 +25,8 @@ export async function GET(request: Request) {
     const tzOffsetStr = searchParams.get('tzOffset')
     const tzOffset = tzOffsetStr ? parseInt(tzOffsetStr, 10) : 0
 
+    if (!isValidTimezoneOffset(tzOffset)) return NextResponse.json({ error: 'Invalid timezone offset' }, { status: 400 })
+
     // Calculate date range in user's local timezone
     // tzOffset uses getTimezoneOffset() convention: positive for west of UTC
     // localTime = UTC - tzOffset
@@ -36,8 +40,7 @@ export async function GET(request: Request) {
 
     // For timestamp-based queries (meals), calculate UTC boundary using localDateToUTCStart
     // which expects the same getTimezoneOffset() convention
-    const startUTC = new Date(`${startDateStr}T00:00:00`)
-    const startUTCBoundary = new Date(startUTC.getTime() + tzOffset * 60000)
+    const startUTCBoundary = localDateToUTCStart(startDateStr, tzOffset)
 
     // Get daily fitness summaries
     const { data: dailySummaries, error: summaryError } = await supabase
@@ -87,13 +90,17 @@ export async function GET(request: Request) {
         workout_id
       `)
       .eq('user_id', user.id)
-      .gte('meal_timestamp', startUTCBoundary.toISOString())
+      .gte('meal_timestamp', startUTCBoundary)
       .order('meal_timestamp', { ascending: false })
 
     if (mealError) {
       throw new Error(`Failed to fetch meals: ${mealError.message}`)
     }
 
+    const [connection, syncBefore] = await Promise.all([
+      supabase.from('whoop_tokens').select('id').eq('user_id', user.id).single(),
+      supabase.from('whoop_sync_status').select('status,last_sync_at,error_message').eq('user_id', user.id).single(),
+    ])
     // Get WHOOP data if available (DATE type columns, no timezone conversion needed)
     const { data: whoopRecovery } = await supabase
       .from('whoop_recovery')
@@ -116,14 +123,24 @@ export async function GET(request: Request) {
       .gte('date', startDateStr)
       .order('date', { ascending: false })
 
+    const sync = await supabase.from('whoop_sync_status').select('status,last_sync_at,error_message').eq('user_id', user.id).single()
+    const whoopEligible = !connection.error && !sync.error && !syncBefore.error
+      && isWhoopSyncEligible(Boolean(connection.data?.id), syncBefore.data, now.getTime())
+      && syncBefore.data?.last_sync_at === sync.data?.last_sync_at && isWhoopSyncEligible(Boolean(connection.data?.id), sync.data, now.getTime())
+    // Advice may use only current dated readings; stored raw history is unchanged.
+    const currentRecovery = whoopEligible ? (whoopRecovery ?? []).filter(row => row.date === endDateStr) : []
+    const currentSleep = whoopEligible ? (whoopSleep ?? []).filter(row => row.date === endDateStr) : []
+    const currentCycles = whoopEligible ? (whoopCycles ?? []).filter(row => row.date === endDateStr) : []
+
     // Generate holistic insights with WHOOP data
     const insights = generateHolisticInsights(
       workouts || [],
       meals || [],
       dailySummaries || [],
-      whoopRecovery || [],
-      whoopSleep || [],
-      whoopCycles || []
+      currentRecovery,
+      currentSleep,
+      currentCycles,
+      endDateStr
     )
     
     // Calculate summary metrics
@@ -134,8 +151,8 @@ export async function GET(request: Request) {
       insights,
       workouts || [],
       meals || [],
-      whoopRecovery || [],
-      whoopSleep || []
+      currentRecovery,
+      currentSleep
     )
 
     const response: CrossDomainAnalysisResponse = {
@@ -162,7 +179,8 @@ function generateHolisticInsights(
   summaries: any[],
   whoopRecovery: WhoopRecovery[],
   whoopSleep: WhoopSleep[],
-  whoopCycles: WhoopCycle[]
+  whoopCycles: WhoopCycle[],
+  currentDate: string
 ): HolisticInsight[] {
   const insights: HolisticInsight[] = []
 
@@ -218,7 +236,7 @@ function generateHolisticInsights(
   // WHOOP Insight 3: Recovery-Based Training Recommendations
   if (whoopRecovery.length > 0) {
     const recentRecovery = whoopRecovery[0]?.recovery_score || 0
-    const todayStr = getLocalDate()
+    const todayStr = currentDate
     const todayWorkouts = workouts.filter(w => w.workout_date === todayStr)
 
     if (recentRecovery < 34 && todayWorkouts.length > 0 && todayWorkouts[0].rpe >= 7) {
@@ -240,72 +258,23 @@ function generateHolisticInsights(
     }
   }
 
-  // WHOOP Insight 4: Strain and Nutrition Correlation
-  if (whoopCycles.length > 2 && meals.length > 0) {
-    const avgStrain = whoopCycles.reduce((sum, c) => sum + (c.strain || 0), 0) / whoopCycles.length
-    const avgCalories = summaries.reduce((sum, s) => sum + (s.total_calories || 0), 0) / summaries.length
+  // Partial meal logs do not establish a strain-related calorie deficit.
 
-    if (avgStrain > 15 && avgCalories < 2000) {
-      insights.push({
-        type: 'nutrition_strain',
-        title: 'High Strain with Insufficient Caloric Intake',
-        description: `Your average daily strain is ${avgStrain.toFixed(1)} (high), but you're only consuming ${avgCalories.toFixed(0)} calories per day. This caloric deficit may impair recovery.`,
-        recommendations: [
-          'Increase daily caloric intake to match training demands',
-          'Focus on nutrient-dense whole foods',
-          'Ensure adequate carbohydrate intake for energy',
-          'Consider tracking macros to optimize fueling'
-        ],
-        confidence: 0.8,
-        dataPoints: whoopCycles.length + summaries.length,
-        timeframe: `${summaries.length} days`,
-        relatedMeals: meals.slice(0, 5).map(m => m.id)
-      })
-    }
-  }
-
-  // Existing Insight 1: Workout-Nutrition Timing
-  const preWorkoutMeals = meals.filter(m => m.meal_timing === 'pre_workout').length
-  const postWorkoutMeals = meals.filter(m => m.meal_timing === 'post_workout').length
-  const totalWorkouts = workouts.length
-
-  if (totalWorkouts > 0) {
-    const preWorkoutRatio = preWorkoutMeals / totalWorkouts
-    const postWorkoutRatio = postWorkoutMeals / totalWorkouts
-
-    if (preWorkoutRatio < 0.5) {
-      insights.push({
-        type: 'meal_timing',
-        title: 'Pre-Workout Nutrition Opportunity',
-        description: `You're only eating before ${Math.round(preWorkoutRatio * 100)}% of your workouts. Pre-workout nutrition can improve performance.`,
-        recommendations: [
-          'Try eating a small meal 1-2 hours before workouts',
-          'Focus on easily digestible carbs and moderate protein',
-          'Consider a banana or oatmeal 30-60 minutes before training'
-        ],
-        confidence: 0.8,
-        dataPoints: totalWorkouts,
-        timeframe: `${summaries.length} days`,
-        relatedWorkouts: workouts.slice(0, 3).map(w => w.id)
-      })
-    }
-
-    if (postWorkoutRatio < 0.7) {
-      insights.push({
-        type: 'recovery_nutrition',
-        title: 'Post-Workout Recovery Nutrition',
-        description: `You're only eating after ${Math.round(postWorkoutRatio * 100)}% of your workouts. Post-workout nutrition aids recovery.`,
-        recommendations: [
-          'Eat within 30-60 minutes after intense workouts',
-          'Include both protein and carbs for optimal recovery',
-          'Aim for 20-30g protein and 30-60g carbs post-workout'
-        ],
-        confidence: 0.85,
-        dataPoints: totalWorkouts,
-        timeframe: `${summaries.length} days`,
-        relatedWorkouts: workouts.slice(0, 3).map(w => w.id)
-      })
-    }
+  // Factual linked-log coverage is not evidence of what the athlete ate.
+  const workoutIds = new Set(workouts.map(workout => workout.id))
+  const preWorkoutIds = new Set(meals.filter(meal => typeof meal.meal_timing === 'string'
+    && meal.meal_timing.toUpperCase() === 'PRE_WORKOUT' && workoutIds.has(meal.workout_id)).map(meal => meal.workout_id))
+  if (workoutIds.size > 0) {
+    insights.push({
+      type: 'meal_timing',
+      title: 'Logged Meal Timing',
+      description: `${preWorkoutIds.size} of ${workoutIds.size} logged workouts have a linked pre-workout meal record. Logging coverage is unknown; this does not establish what or when you ate.`,
+      recommendations: ['Review linked meal and workout records if you want to clarify the logged timing.'],
+      confidence: 1,
+      dataPoints: workoutIds.size,
+      timeframe: `${summaries.length} days`,
+      relatedWorkouts: [...workoutIds].slice(0, 3)
+    })
   }
 
   // Existing Insight 2: Energy Level Patterns
@@ -317,12 +286,9 @@ function generateHolisticInsights(
       insights.push({
         type: 'energy_optimization',
         title: 'Low Energy Levels During Workouts',
-        description: `Your average energy level during workouts is ${avgEnergy.toFixed(1)}/5. This might indicate nutrition or recovery issues.`,
+        description: `Your average energy level during workouts is ${avgEnergy.toFixed(1)}/5. The cause is not established by these stored ratings.`,
         recommendations: [
-          'Ensure adequate carbohydrate intake throughout the day',
-          'Check your sleep quality and duration',
-          'Consider timing your largest meals 2-3 hours before workouts',
-          'Stay hydrated throughout the day'
+          'Review workout and energy records for accuracy before drawing conclusions.'
         ],
         confidence: 0.7,
         dataPoints: workoutsWithEnergy.length,
@@ -332,27 +298,9 @@ function generateHolisticInsights(
     }
   }
 
-  // Existing Insight 3: Protein Intake Analysis
-  const avgDailyProtein = summaries.reduce((sum, s) => sum + (s.total_protein || 0), 0) / summaries.length
-  if (avgDailyProtein > 0 && avgDailyProtein < 1.2 * 70) { // Assuming 70kg average weight, 1.2g/kg minimum
-    insights.push({
-      type: 'nutrition_performance',
-      title: 'Protein Intake Below Recommendations',
-      description: `Your average daily protein intake is ${avgDailyProtein.toFixed(0)}g. For active individuals, higher protein supports recovery and performance.`,
-      recommendations: [
-        'Aim for 1.6-2.2g protein per kg of body weight',
-        'Include protein in every meal',
-        'Consider post-workout protein within 30 minutes',
-        'Good sources: lean meats, fish, eggs, dairy, legumes'
-      ],
-      confidence: 0.75,
-      dataPoints: summaries.length,
-      timeframe: `${summaries.length} days`,
-      relatedMeals: meals.slice(0, 5).map(m => m.id)
-    })
-  }
+  // No inferred body mass or protein prescription from incomplete meal records.
 
-  return insights
+  return insights.filter(canSurfaceLegacyInsight)
 }
 
 function calculateOverallSummary(summaries: any[]): DailyFitnessSummary {

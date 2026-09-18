@@ -16,6 +16,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { complete, getProvider } from '@/app/lib/llm/client'
 import type { LlmMessage, LlmToolDef } from '@/app/lib/llm/types'
 import { executeToolCall, type ToolResult } from './executor'
+import { loggingContext } from '@/app/lib/logging/server'
 
 const MAX_TOOL_ROUNDS = 3
 const TIMEOUT_MS = 30_000
@@ -72,6 +73,12 @@ export async function callAgentWithTools(
   } = options
 
   let messages: LlmMessage[] = [{ role: 'user', content: userInput }]
+  const sources = loggingContext.getStore()?.captureCollector?.authorizedSources
+  const boundedTools = sources ? tools.map(tool => ['log_workout','log_meal'].includes(tool.name) ? {
+    ...tool, parameters: { ...tool.parameters, properties: { ...(tool.parameters.properties as Record<string, unknown>),
+      source_item_id: { type: 'string', enum: [...sources].filter(([,kind]) => kind === (tool.name === 'log_meal' ? 'meal' : 'workout')).map(([id]) => id),
+        description: 'Server-issued occurrence identity. Repeat calls for this occurrence MUST reuse this identity.' } } }
+  } : tool) : tools
   const allToolCalls: ToolCallRecord[] = []
   const totalTokens = { input: 0, output: 0 }
   const deadline = Date.now() + TOTAL_TIMEOUT_MS
@@ -86,7 +93,7 @@ export async function callAgentWithTools(
       temperature: 0,
       system: systemPrompt,
       messages,
-      tools: tools.length > 0 ? tools : undefined,
+      tools: boundedTools.length > 0 ? boundedTools : undefined,
       timeoutMs: Math.min(TIMEOUT_MS, remainingMs)
     })
 
@@ -135,9 +142,7 @@ export async function callAgentWithTools(
   }
 
   // Exhausted max rounds — provide a sensible final message.
-  const lastText = allToolCalls.length > 0
-    ? 'Done — I completed the requested actions.'
-    : 'I had trouble processing that. Could you try rephrasing?'
+  const lastText = 'Processing ended. Check the individual save receipts for confirmed results.'
 
   return { text: lastText, toolCalls: allToolCalls, totalTokens }
 }

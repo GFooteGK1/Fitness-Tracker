@@ -1,3 +1,4 @@
+import { focusedRequirement, orderSessionAssignments } from './execution-priority'
 import {
   MOVEMENT_CATALOG_VERSION,
   MOVEMENT_EQUIPMENT_IDS,
@@ -70,6 +71,7 @@ export function composeWeeklySessions(
   schedule: WeeklyCoverageSchedule
 ): SessionCompositionResult {
   validateCompositionInputs(profile, schedule)
+  const focus = focusedRequirement(profile, schedule)
 
   const requirementById = new Map(schedule.requirements.map(requirement => [
     requirement.id,
@@ -86,14 +88,16 @@ export function composeWeeklySessions(
       continue
     }
 
-    const sortedAssignments = [...assignments].sort((left, right) => {
+    const rankedAssignments = [...assignments].sort((left, right) => {
       const leftRequirement = requireRequirement(requirementById, left.requirementId)
       const rightRequirement = requireRequirement(requirementById, right.requirementId)
       return goalRank(profile, left.goalAllocationId) - goalRank(profile, right.goalAllocationId)
+        || Number(rightRequirement.id === focus?.id) - Number(leftRequirement.id === focus?.id)
         || PRIORITY_RANK[leftRequirement.priority] - PRIORITY_RANK[rightRequirement.priority]
         || KIND_RANK[leftRequirement.kind] - KIND_RANK[rightRequirement.kind]
         || left.requirementId.localeCompare(right.requirementId)
     })
+    const sortedAssignments = orderSessionAssignments(rankedAssignments, requirementById)
     const selected = sortedAssignments.map(assignment => {
       const requirement = requireRequirement(requirementById, assignment.requirementId)
       return {

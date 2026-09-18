@@ -201,6 +201,32 @@ function source(): CoachEvidenceContextSource {
 }
 
 describe('purpose-specific coach evidence context', () => {
+  it('excludes old default-stamped typed session RPE despite athlete_confirmed status', () => {
+    const context = assembleCoachEvidenceContext('user-1', { purpose: 'weekly_review', asOf }, source())
+    expect(context.evidenceIds).not.toContain('session-rpe-active')
+  })
+
+  it('requires an owned matching v2 check-in for explicit session RPE evidence', () => {
+    const data = source()
+    const group = data.observationGroups.find(row => row.id === 'session-rpe-active')!
+    group.metadata = { protocolId: 'session-rpe-ten-point', feedbackProvenance: {
+      feedbackVersion: 2, checkinId: 'reported-checkin', revision: 1, field: 'sessionRpe',
+      origin: 'athlete_reported', reviewState: 'athlete_confirmed'
+    } }
+    data.sessionCheckins = [{ id: 'reported-checkin', user_id: 'user-1', prescribed_session_id: sessionOne,
+      occurred_at: group.observed_at, responses: {
+        schemaVersion: 2, feedbackVersion: 2, sessionRpe: 7.5, workoutId: group.workout_id,
+        feedbackProvenance: { checkinId: 'reported-checkin', revision: 1 },
+        provenance: { sessionRpe: { origin: 'athlete_reported', reviewState: 'athlete_confirmed' } }
+      } }]
+    expect(assembleCoachEvidenceContext('user-1', { purpose: 'weekly_review', asOf }, data).evidenceIds).toContain(group.id)
+    data.sessionCheckins[0].user_id = 'different-athlete'
+    expect(assembleCoachEvidenceContext('user-1', { purpose: 'weekly_review', asOf }, data).evidenceIds).not.toContain(group.id)
+    data.sessionCheckins[0].user_id = 'user-1'
+    const responses = data.sessionCheckins[0].responses as Record<string, unknown>
+    responses.sessionRpe = 8
+    expect(assembleCoachEvidenceContext('user-1', { purpose: 'weekly_review', asOf }, data).evidenceIds).not.toContain(group.id)
+  })
   it('validates purpose requirements and bounded windows', () => {
     expect(validateCoachEvidenceContextRequest({
       purpose: 'metric_history', asOf, windowDays: 900
@@ -226,7 +252,7 @@ describe('purpose-specific coach evidence context', () => {
 
     expect(context.session).toMatchObject({ id: sessionOne, status: 'planned' })
     expect(context.evidenceIds).toEqual(expect.arrayContaining([
-      'session-rpe-active', 'readiness-current'
+      'readiness-current'
     ]))
     expect(context.evidenceIds).not.toContain('session-rpe-stale-plan')
     expect(context.scope.activePlanVersionId).toBe('plan-current')
@@ -238,7 +264,7 @@ describe('purpose-specific coach evidence context', () => {
     }, source())
 
     expect(context.evidenceIds).toEqual(expect.arrayContaining([
-      'strength-1', 'strength-2', 'strength-incompatible', 'session-rpe-active', 'sprint-current'
+      'strength-1', 'strength-2', 'strength-incompatible', 'sprint-current'
     ]))
     expect(context.evidenceIds).not.toContain('session-rpe-stale-plan')
     expect(context.evidenceIds).not.toContain('readiness-current')
@@ -560,3 +586,21 @@ function sprintKey() {
 function jumpKey() {
   return 'comparison-v1|metric=jump.height|definition=jump.height%401.0.0|protocol=jump-height-standard%401.0.0|source=qwik'
 }
+
+
+describe('current execution evidence revision',()=>{
+  it('withholds amended and missing canonical sources without deleting their original observations',()=>{
+    const data=source(),g=data.observationGroups.find(g=>g.id==='strength-1')!
+    g.workout_id='workout:source'
+    data.workoutRevisions=[{id:g.workout_id,user_id:'user-1',capture_revision:1,execution_revision:0}]
+    expect(assembleCoachEvidenceContext('user-1',{purpose:'weekly_review',asOf,windowDays:35},data).evidenceIds).toContain(g.id)
+    const unchanged=structuredClone(g)
+    for(const revisions of [[{id:g.workout_id,user_id:'user-1',capture_revision:2,execution_revision:0}],[{id:g.workout_id,user_id:'user-1',capture_revision:1,execution_revision:1}],[]]) {
+      data.workoutRevisions=revisions
+      const context=assembleCoachEvidenceContext('user-1',{purpose:'weekly_review',asOf,windowDays:35},data)
+      expect(context.evidenceIds).not.toContain(g.id)
+      expect(context.executionExclusions).toContainEqual({observationId:g.id,workoutId:g.workout_id,reason:'execution_amended_or_deleted'})
+      expect(g).toEqual(unchanged)
+    }
+  })
+})

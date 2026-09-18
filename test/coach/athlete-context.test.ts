@@ -228,8 +228,11 @@ describe('fetchCoachRuntimeContext', () => {
         weekNumber: 3,
         status: 'ready',
         completedSessions: 1,
+        averageSessionRpe: null,
+        explicitRpeCount: 0,
+        eligibleCompletionCount: 1,
         adaptationProposal: {
-          action: 'continue_as_written'
+          action: 'hold_and_review'
         }
       }
     })

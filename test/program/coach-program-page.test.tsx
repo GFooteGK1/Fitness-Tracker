@@ -17,6 +17,10 @@ vi.mock('@/app/components/auth/ProtectedRoute', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }))
 
+vi.mock('@/app/lib/auth/AuthContext', () => ({
+  useAuth: () => ({ user: { id: '91111111-1111-4111-8111-111111111111' } })
+}))
+
 import LegacyProgramPage from '@/app/program/legacy-program-page'
 import { ActiveProgramView } from '@/app/program/coach-program-components'
 

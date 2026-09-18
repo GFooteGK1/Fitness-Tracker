@@ -116,6 +116,7 @@ describe('/api/coach/weekly', () => {
         error: null
       }],
       coach_weekly_reviews: [{ data: [{ id: 'review-1', action: 'continue' }], error: null }],
+      coach_review_source_invalidations: [{ data: [], error: null }],
       adaptation_proposals: [{ data: [{ id: 'proposal-3', status: 'proposed' }], error: null }]
     }
     const supabase = historyClient(tableResults)
@@ -129,6 +130,16 @@ describe('/api/coach/weekly', () => {
     expect(body.pendingProposal.id).toBe('proposal-3')
     expect(body.history.plans).toHaveLength(2)
     expect(body.history.reviews[0].action).toBe('continue')
+  })
+
+  it('keeps invalidation visible with the feature flag off and checks pending reviews outside the displayed history',async()=>{
+    vi.stubEnv('COACH_TARGETED_REVIEW_ENABLED','false')
+    const results={training_programs:[{data:[{id:'program',active_plan_version_id:'plan',program_mode:'rolling_weekly'}],error:null}],training_plan_versions:[{data:[{id:'plan'}],error:null}],coach_weekly_reviews:[{data:[{id:'current-review'}],error:null}],adaptation_proposals:[{data:[{id:'pending',weekly_review_id:'older-review',status:'proposed'}],error:null}],coach_review_source_invalidations:[{data:[{review_id:'current-review'}],error:null},{data:[{review_id:'older-review'}],error:null}]}
+    const supabase=historyClient(results);vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+    const response=await GET(),body=await response.json()
+    expect(response.status).toBe(200);expect(body.pendingProposal).toBeNull();expect(body.history.reviews[0].sourceInvalidated).toBe(true)
+    expect(supabase.from.mock.calls.filter(([table])=>table==='coach_review_source_invalidations')).toHaveLength(2)
+    vi.unstubAllEnvs()
   })
 
   it('recovers a pending weekly conversion while the legacy plan remains active', async () => {

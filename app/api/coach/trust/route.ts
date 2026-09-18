@@ -1,5 +1,7 @@
 import { exercisePreferencesEnabled } from '@/app/lib/coach/exercise-preferences-server'
 import { validateExercisePreferences } from '@/app/lib/coach/exercise-preferences'
+import { validatePlanningIntent } from '@/app/lib/coach/planning-intent'
+import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
 import { NextResponse } from 'next/server'
 
 import { apiError } from '@/app/lib/api-response'
@@ -157,6 +159,12 @@ async function correctMemory(
     return apiError('Corrected memory fields do not match this memory', 422)
   }
 
+  if (memory.memory_key === 'training_intent') {
+    const { error } = await supabase.rpc('confirm_training_intent', {
+      p_content: content, p_idempotency_key: idempotencyKey, p_previous_memory_id: memoryId,
+    })
+    return rpcError(error, 'memory')
+  }
   const { error } = await supabase.rpc('correct_coach_memory_with_review', {
     p_memory_id: memoryId,
     p_content: content,
@@ -347,6 +355,7 @@ function selectedMappings(value: unknown): SelectedMapping[] | null {
 }
 
 function validMemoryContent(memoryKey: string, content: Record<string, unknown>): boolean {
+  if (memoryKey === 'training_intent') return personalizedCoachingCapabilities().trainingIntent && validatePlanningIntent(content).ok
   if (memoryKey === 'exercise_preferences') return exercisePreferencesEnabled() && validateExercisePreferences(content)
   const allowed: Record<string, readonly string[]> = {
     primary_goal: ['goal', 'primaryDomain', 'secondaryGoals'],

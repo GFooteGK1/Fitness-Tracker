@@ -1,15 +1,16 @@
 'use client'
 
-import { sendLoggingRequest, fileFingerprint } from '@/app/lib/client/logging-request'
+import { sendLoggingRequest, fileFingerprint, sendCaptureCorrection, assertCaptureOwner } from '@/app/lib/client/logging-request'
 
 import React, { useState, useRef, useCallback } from 'react'
 import { compressImage, isSupportedImageFormat, formatFileSize } from '@/app/lib/imageUtils'
 import { MealUploadResponse, FoodItem } from '@/app/lib/types/food-tracking'
 import { createUserErrorMessage, ErrorContext } from '@/app/lib/error-handling'
-import { queuePhotoUpload, useOfflineQueue } from '@/app/lib/offline-queue'
+import { queuePhotoUpload, useOfflineQueue, offlineQueue } from '@/app/lib/offline-queue'
 import { useSession } from '@/app/lib/session-management'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import { getMealTimestamp, getLocalDate } from '@/app/lib/timezone-utils'
+import { CaptureReceiptPanel, type ReceiptResult } from './capture/CaptureReceiptPanel'
 import PortionSelector from './PortionSelector'
 
 interface MealCameraCaptureProps {
@@ -23,6 +24,7 @@ interface MealCameraCaptureProps {
 }
 
 interface AnalysisResult {
+  captureRevision?: number
   mealId: string
   items: FoodItem[]
   totals: {
@@ -70,6 +72,8 @@ export default function MealCameraCapture({
   userId,
   selectedDate
 }: MealCameraCaptureProps) {
+  const [receiptResult, setReceiptResult] = useState<ReceiptResult | null>(null)
+  const correctionStage = useRef<{ signature: string; items: FoodItem[]; revision?: number } | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -357,7 +361,7 @@ export default function MealCameraCapture({
     // Handle offline scenario - queue for later processing
     if (!networkState.isOnline) {
       try {
-        const queueId = queuePhotoUpload(
+        await queuePhotoUpload(
           photoState.file,
           getMealTimestamp(selectedDate),
           effectiveUserId
@@ -373,8 +377,8 @@ export default function MealCameraCapture({
 
         // Create a queued response
         const queuedResponse: MealUploadResponse = {
-          mealId: `queued_${queueId}`,
           analysisStatus: 'processing',
+          state: 'queued',
           photoUrl: null,
           storageWarning: 'Photo queued for upload when connection is restored'
         }
@@ -455,6 +459,8 @@ export default function MealCameraCapture({
         }
 
         const result: MealUploadResponse = await response.json()
+        setReceiptResult(result)
+        if (result.state === 'save_unconfirmed' || result.receiptBundle?.state === 'save_unconfirmed') throw new Error('Save unconfirmed. Retry this same photo.')
 
         // Handle analysis failure
         if (result.analysisStatus === 'failed' || result.error) {
@@ -494,11 +500,13 @@ export default function MealCameraCapture({
           return
         }
 
+        if (!result.mealId) throw new Error('The saved meal identity is unavailable. Retry the same photo.')
         // The server has already analyzed and saved this estimate.
         const analysisItems: FoodItem[] = result.analysis?.items || []
         if (analysisItems.length > 0) {
           setAnalysisResult({
             mealId: result.mealId,
+            captureRevision: result.receipt?.revision ?? result.receipts?.[0]?.revision,
             items: analysisItems,
             totals: {
               protein: result.analysis?.total_protein || 0,
@@ -592,40 +600,40 @@ export default function MealCameraCapture({
     setPhotoState(prev => ({ ...prev, analysisStatus: 'refining' }))
 
     try {
-      let correctedItems = items
-      if (hasReviewEdits) {
-        const response = await fetch('/api/meals/refine', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mealId: analysisResult.mealId, items })
-        })
-        if (!response.ok) throw new Error('Failed to save corrections')
+      const owner = user?.id ?? ''
+      await assertCaptureOwner(owner)
+      const signature = JSON.stringify([analysisResult.mealId, items, multiplier])
+      let stage = correctionStage.current?.signature === signature ? correctionStage.current : null
+      let revision = stage?.revision ?? analysisResult.captureRevision
+      if (!revision) {
+        const currentResponse = await fetch(`/api/meals/${analysisResult.mealId}`)
+        const current = await currentResponse.json()
+        await assertCaptureOwner(owner)
+        if (!currentResponse.ok || current.meal?.userId !== owner) throw new Error('Reload the meal before correcting it.')
+        revision = current.meal.captureRevision
+        setAnalysisResult(previous => previous ? { ...previous, captureRevision: revision } : previous)
+      }
+      let correctedItems = stage?.items ?? items
+      if (hasReviewEdits && !stage) {
+        const response = await sendCaptureCorrection('/api/meals/refine', 'POST', { mealId: analysisResult.mealId, items, expectedRevision: revision }, owner)
         const result = await response.json()
-        if (!result.refined && !result.reviewed) throw new Error('Could not refine the estimate')
+        if (!response.ok || (!result.refined && !result.reviewed)) throw new Error(result.error ?? 'Could not refine the estimate')
         correctedItems = result.items
+        revision = result.receipt?.revision ?? result.receipts?.[0]?.revision ?? revision
+        stage = { signature, items: correctedItems, revision }
+        correctionStage.current = stage
+        setReceiptResult(result)
       }
       if (multiplier !== 1) {
-        const scaledItems = correctedItems.map(item => ({
-          ...item,
-          portion: `${multiplier} × (${item.portion})`,
-          portionSpec: undefined,
-          protein: Math.round(item.protein * multiplier * 10) / 10,
-          carbs: Math.round(item.carbs * multiplier * 10) / 10,
-          fat: Math.round(item.fat * multiplier * 10) / 10,
-          calories: Math.round(item.calories * multiplier * 10) / 10
-        }))
-        const totals = scaledItems.reduce((sum, item) => ({
-          totalProtein: sum.totalProtein + item.protein,
-          totalCarbs: sum.totalCarbs + item.carbs,
-          totalFat: sum.totalFat + item.fat,
-          totalCalories: sum.totalCalories + item.calories
-        }), { totalProtein: 0, totalCarbs: 0, totalFat: 0, totalCalories: 0 })
-        const response = await fetch(`/api/meals/${analysisResult.mealId}`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: scaledItems, ...totals, manualOverride: true, reviewedAt: new Date().toISOString() })
-        })
-        if (!response.ok) throw new Error('Failed to save portion change')
+        const scaledItems = correctedItems.map(item => ({ ...item, portion: `${multiplier} x (${item.portion})`, portionSpec: undefined,
+          protein: Math.round(item.protein * multiplier * 10) / 10, carbs: Math.round(item.carbs * multiplier * 10) / 10,
+          fat: Math.round(item.fat * multiplier * 10) / 10, calories: Math.round(item.calories * multiplier * 10) / 10 }))
+        const response = await sendCaptureCorrection(`/api/meals/${analysisResult.mealId}`, 'PUT', { items: scaledItems, manualOverride: true, expectedRevision: revision }, owner)
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.error ?? 'Could not confirm the portion change.')
+        setReceiptResult(result)
       }
+      await assertCaptureOwner(owner)
       setPhotoState(prev => ({ ...prev, analysisStatus: 'complete' }))
       onUploadComplete?.({
         mealId: analysisResult.mealId,
@@ -639,7 +647,7 @@ export default function MealCameraCapture({
     } finally {
       setIsRefining(false)
     }
-  }, [analysisResult, onUploadComplete])
+  }, [analysisResult, onUploadComplete, user?.id])
 
   // Handle skip portion selection
   const handlePortionSkip = useCallback(() => {
@@ -664,6 +672,10 @@ export default function MealCameraCapture({
 
   return (
     <div className="meal-camera-capture">
+      {receiptResult && <CaptureReceiptPanel result={receiptResult} />}
+      {offlineQueue.getUserOperations(user?.id ?? '').filter(operation => operation.status === 'completed' && operation.data.result).map(operation => <CaptureReceiptPanel key={operation.id} result={operation.data.result} />)}
+      {queueStats.hasLegacyUnowned && <p role="status">An older queued photo has no account identity or recoverable bytes. Reselect the original photo and review your history before saving.</p>}
+      {queueStats.failedOperations > 0 && <div className="app-surface rounded-xl p-3"><p>Some queued photos need attention. They are not included in meal totals.</p>{offlineQueue.getUserOperations(user?.id ?? '').filter(operation => operation.status === 'failed').map(operation => <div key={operation.id}><p className="text-sm">{operation.error}</p><button type="button" className="app-secondary" onClick={() => void offlineQueue.retry(operation.id).catch(error => onError?.(error.message))}>Retry original queued photo</button></div>)}</div>}
       {/* Hidden canvas for photo capture */}
       <canvas ref={canvasRef} style={{ display: 'none' }} />
 
@@ -841,7 +853,7 @@ export default function MealCameraCapture({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <span className="text-sm text-green-800 dark:text-green-200">
-                  Meal saved with estimated nutrition. You can edit it anytime.
+                  {photoState.fallbackAction === 'queued_for_sync' ? 'Photo queued on this device. It is not saved to your meal history or totals yet.' : 'Meal saved with estimated nutrition. You can edit it anytime.'}
                 </span>
               </div>
             </div>

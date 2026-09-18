@@ -1,8 +1,11 @@
 'use client'
 
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
+import { useAuth } from '@/app/lib/auth/AuthContext'
+import { sendLoggingRequest } from '@/app/lib/client/logging-request'
+import { CaptureReceiptPanel } from './capture/CaptureReceiptPanel'
 import type { MealUploadResponse } from '@/app/lib/types/food-tracking'
-import { getMealTimestamp } from '@/app/lib/timezone-utils'
+import { getMealTimestamp, getLocalDate } from '@/app/lib/timezone-utils'
 import { scaleNutrition, type FoodCatalogDraft } from '@/app/lib/nutrition/reviewed-food'
 import type { CommonMeal } from '@/app/lib/nutrition/fast-log'
 
@@ -10,16 +13,6 @@ interface FastMealLoggerProps {
   selectedDate?: Date
   onLogged?: (response: MealUploadResponse) => void
   onError?: (error: string) => void
-}
-
-function requestId(): string {
-  if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID()
-  const bytes = new Uint8Array(16)
-  globalThis.crypto.getRandomValues(bytes)
-  bytes[6] = (bytes[6] & 0x0f) | 0x40
-  bytes[8] = (bytes[8] & 0x3f) | 0x80
-  const hex = [...bytes].map(value => value.toString(16).padStart(2, '0')).join('')
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
 function manualDraft(): FoodCatalogDraft {
@@ -33,6 +26,9 @@ function manualDraft(): FoodCatalogDraft {
 }
 
 export default function FastMealLogger({ selectedDate, onLogged, onError }: FastMealLoggerProps) {
+  const { user } = useAuth()
+  const [loadedOwner, setLoadedOwner] = useState(user?.id)
+  const [lastResult, setLastResult] = useState<MealUploadResponse | null>(null)
   const [commonMeals, setCommonMeals] = useState<CommonMeal[]>([])
   const [loadingCommon, setLoadingCommon] = useState(true)
   const [commonError, setCommonError] = useState(false)
@@ -41,11 +37,11 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
   const [draft, setDraft] = useState<FoodCatalogDraft | null>(null)
   const [servings, setServings] = useState(1)
   const [loggingFood, setLoggingFood] = useState(false)
-  const commonRequestIdsRef = useRef(new Map<string, string>())
-  const foodRequestIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     let active = true
+    setLoadedOwner(user?.id)
+    setCommonMeals([]); setLastResult(null); setDraft(null); setStatus('')
     void fetch('/api/meals/common?limit=4')
       .then(async response => {
         if (!response.ok) throw new Error('Common meals unavailable')
@@ -58,9 +54,7 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
       })
       .finally(() => { if (active) setLoadingCommon(false) })
     return () => { active = false }
-  }, [])
-
-  useEffect(() => { foodRequestIdRef.current = null }, [draft, servings])
+  }, [user?.id])
 
   const showError = useCallback((message: string) => {
     setStatus(message)
@@ -68,18 +62,17 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
   }, [onError])
 
   const logCommonMeal = async (meal: CommonMeal) => {
-    const retryRequestId = commonRequestIdsRef.current.get(meal.sourceMealId) || requestId()
-    commonRequestIdsRef.current.set(meal.sourceMealId, retryRequestId)
     setLoggingMealId(meal.sourceMealId)
     try {
-      const response = await fetch('/api/meals/quick-log', {
+      const response = await sendLoggingRequest('/api/meals/quick-log', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceMealId: meal.sourceMealId, requestId: retryRequestId, timestamp: getMealTimestamp(selectedDate) }),
-      })
+        body: JSON.stringify({ sourceMealId: meal.sourceMealId, timestamp: getMealTimestamp(selectedDate) }),
+      }, user?.id ?? '', 60_000, JSON.stringify([meal.sourceMealId, selectedDate ? getLocalDate(selectedDate) : 'today']))
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Failed to log common meal')
-      commonRequestIdsRef.current.delete(meal.sourceMealId)
-      onLogged?.({ mealId: result.mealId, analysisStatus: 'complete' })
+      if (result.state === 'save_unconfirmed' || result.receiptBundle?.state === 'save_unconfirmed') throw new Error('Save unconfirmed. Retry this same entry.')
+      const saved = { ...result, analysisStatus: 'complete' as const }
+      setLastResult(saved); onLogged?.(saved)
     } catch (error) {
       showError(error instanceof Error ? error.message : 'Failed to log common meal')
     } finally { setLoggingMealId(null) }
@@ -97,18 +90,17 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
 
   const logReviewedFood = async () => {
     if (!draft) return
-    const retryRequestId = foodRequestIdRef.current || requestId()
-    foodRequestIdRef.current = retryRequestId
     setLoggingFood(true)
     try {
-      const response = await fetch('/api/foods/log', {
+      const response = await sendLoggingRequest('/api/foods/log', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId: retryRequestId, timestamp: getMealTimestamp(selectedDate), servings, food: draft }),
-      })
+        body: JSON.stringify({ timestamp: getMealTimestamp(selectedDate), servings, food: draft }),
+      }, user?.id ?? '', 60_000, JSON.stringify([draft, servings, selectedDate ? getLocalDate(selectedDate) : 'today']))
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Failed to log food')
-      foodRequestIdRef.current = null
-      onLogged?.({ mealId: result.mealId, analysisStatus: 'complete' })
+      if (result.state === 'save_unconfirmed' || result.receiptBundle?.state === 'save_unconfirmed') throw new Error('Save unconfirmed. Retry this same entry.')
+      const saved = { ...result, analysisStatus: 'complete' as const }
+      setLastResult(saved); onLogged?.(saved)
       setDraft(null)
       setStatus('Food logged.')
     } catch (error) {
@@ -118,8 +110,10 @@ export default function FastMealLogger({ selectedDate, onLogged, onError }: Fast
 
   const scaled = draft ? scaleNutrition(draft.nutrition, servings) : null
 
+  if (loadedOwner !== user?.id) return null
   return (
     <div className="space-y-4">
+      {lastResult && <CaptureReceiptPanel result={lastResult} />}
       {!loadingCommon && commonMeals.length === 0 && <p className="app-muted text-sm">{commonError ? 'Recent meals could not load.' : 'No recent meals to repeat yet.'} Use a photo, voice, text, or a nutrition label.</p>}
       {(loadingCommon || commonMeals.length > 0) && (
         <section aria-labelledby="common-meals-heading" className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/40">

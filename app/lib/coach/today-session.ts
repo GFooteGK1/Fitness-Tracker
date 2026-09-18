@@ -29,6 +29,7 @@ export interface TodayScheduledMeasurementDraft {
 }
 
 export interface TodaySessionCompletionDraft {
+  feedbackVersion?: 1 | 2
   sessionId: string
   prescription: CompleteProgrammingSessionPrescription
   workoutDate: string
@@ -49,6 +50,7 @@ export function buildTodaySessionCompletion(
   draft: TodaySessionCompletionDraft
 ): AtomicSessionCompletionValidation {
   const feedback = {
+    ...(draft.feedbackVersion === 2 ? { feedbackVersion: 2 } : {}),
     outcome: draft.outcome,
     sessionRpe: draft.outcome === 'skipped' ? null : draft.sessionRpe,
     energy: draft.energy,

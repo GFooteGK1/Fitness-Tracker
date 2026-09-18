@@ -1,4 +1,5 @@
 import { createHash } from 'crypto'
+import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
 
     let proposal
     try {
-      const profile = buildProgrammingProfile(validated.value, context.assessments)
+      const profile = await refreshConfirmedPlanningContext(supabase, user.id, buildProgrammingProfile(validated.value, context.assessments))
       proposal = buildCompleteEightWeekPlan(profile)
       const proposalValidation = validateCompleteProgrammingPlan(proposal)
       if (!proposalValidation.ok) throw new Error(proposalValidation.errors.join('; '))

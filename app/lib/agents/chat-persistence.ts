@@ -1,3 +1,5 @@
+import { canSurfaceLegacyInsight, filterModelConversation } from './legacy-insight-guard'
+import { filterRetiredInsightMessages } from './legacy-insight-readers'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { AgentRequest, AgentMessage, ClassificationResult, ChatMessage } from './types'
 
@@ -58,7 +60,7 @@ export async function fetchRecentChat(
     .order('created_at', { ascending: false })
     .limit(limit)
 
-  return (data || []).reverse()
+  return filterModelConversation(await filterRetiredInsightMessages(supabase,userId,(data || []).reverse()))
 }
 
 /** Fetch urgent insights that haven't been surfaced yet */
@@ -68,11 +70,11 @@ export async function fetchPendingUrgentInsights(
 ): Promise<{ id: string; content: string }[]> {
   const { data } = await supabase
     .from('insights')
-    .select('id, content')
+    .select('id, pattern_id, content')
     .eq('user_id', userId)
     .eq('priority', 'urgent')
     .is('surfaced_at', null)
     .order('created_at', { ascending: false })
 
-  return data || []
+  return (data || []).filter(canSurfaceLegacyInsight)
 }
