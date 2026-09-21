@@ -20,43 +20,11 @@ struct AutoMealPhotoSetupView: View {
                         "App Group access",
                         value: controller.sharedContainerAvailable ? "Available" : "Unavailable"
                     )
-                    LabeledContent(
-                        "Extension initialized",
-                        value: controller.diagnostics.lastInitializationAt?.formatted() ?? "Not recorded"
-                    )
-                    LabeledContent("Phase", value: controller.diagnostics.phase.displayName)
-                    LabeledContent(
-                        "Extension invocations",
-                        value: String(controller.diagnostics.invocationCount)
-                    )
-                    LabeledContent(
-                        "Baseline token",
-                        value: controller.diagnostics.hasBaselineToken ? "Ready" : "Missing"
-                    )
-                    LabeledContent(
-                        "Inserted photos seen",
-                        value: String(controller.diagnostics.insertedPhotoCount)
-                    )
-                    LabeledContent(
-                        "Original resource",
-                        value: resourceDescription
-                    )
-                    LabeledContent(
-                        "Upload job registered",
-                        value: controller.diagnostics.jobRegistered ? "Yes" : "No"
-                    )
-
-                    if let state = controller.diagnostics.lastJobState {
-                        LabeledContent("Last job state", value: state)
-                    }
-                    if let requestID = controller.diagnostics.lastRequestID {
-                        LabeledContent("Probe receipt", value: requestID)
-                    }
-                    if let errorDescription {
-                        LabeledContent("Sanitized error", value: errorDescription)
-                    }
-                    if let updatedAt = controller.diagnostics.lastUpdatedAt {
-                        LabeledContent("Last update", value: updatedAt.formatted())
+                    LabeledContent("Snapshot", value: controller.diagnosticsRead.category)
+                    if let diagnostics = controller.diagnostics {
+                        runDiagnostics(diagnostics)
+                    } else {
+                        Text("Run counters and upload state are unknown. No startup evidence recorded in this snapshot.")
                     }
 
                     Button("Refresh Diagnostics") {
@@ -73,9 +41,25 @@ struct AutoMealPhotoSetupView: View {
                     LabeledContent("App version", value: appVersion)
                 }
 
+                Section("Extension lifecycle observations") {
+                    ForEach(ProtocolProbeLifecycleEvent.allCases, id: \.self) { event in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(event.rawValue).font(.headline)
+                            let read = controller.lifecycleReads[event] ?? .unavailable
+                            if case .valid(let record) = read {
+                                Text("\(record.version) (\(record.build)) — \(record.timestamp.formatted(date: .abbreviated, time: .standard))")
+                                Text(record.provenance(current: .current, canaryPreparedAt: controller.diagnostics?.canaryPreparedAt))
+                            } else {
+                                Text(read.category)
+                            }
+                        }
+                    }
+                    Text("Each slot is an independent latest observation. Slots may come from different invocations. Device clock changes prevent strict sequence conclusions. Initialization does not prove processing; processing does not prove upload.")
+                }
+
                 Section("Fresh canary") {
                     Text(
-                        "Prepare first. The app records the current library position, then enables the extension. After the status says Ready for capture, close the app and take exactly one new disposable photo."
+                        "Capture the displayed evidence first. Prepare Fresh Canary replaces the library baseline and run snapshot, but preserves lifecycle observations. After Ready for capture, leave the app normally and take exactly one new disposable photo."
                     )
 
                     Button {
@@ -107,6 +91,7 @@ struct AutoMealPhotoSetupView: View {
                 }
 
                 Section {
+                    Text("Capture the displayed evidence before either action. Allow Photos and Enable also replaces the baseline and run snapshot. Turning off changes the run phase. Lifecycle observations are preserved.")
                     if controller.extensionEnabled {
                         Button("Turn Off Automatic Meal Photos", role: .destructive) {
                             controller.disable()
@@ -140,31 +125,45 @@ struct AutoMealPhotoSetupView: View {
         return "\(version) (\(build))"
     }
 
-    private var resourceDescription: String {
-        switch controller.diagnostics.originalResourceAvailable {
-        case true:
-            return "Found"
-        case false:
-            return "Unavailable"
-        case nil:
-            return "Not checked"
+    @ViewBuilder
+    private func runDiagnostics(_ diagnostics: ProtocolProbeDiagnostics) -> some View {
+        LabeledContent("Recorded phase", value: diagnostics.phase.displayName)
+        LabeledContent("Recorded invocations", value: String(diagnostics.invocationCount))
+        Text("A recorded zero is not proof that iOS never executed the extension. Snapshot counters can lose concurrent updates.")
+        LabeledContent("Canary prepared", value: diagnostics.canaryPreparedAt?.formatted(date: .abbreviated, time: .standard) ?? "Unknown (legacy or unprepared snapshot)")
+        LabeledContent("Snapshot initialization", value: diagnostics.lastInitializationAt?.formatted() ?? "No startup evidence recorded")
+        LabeledContent("Baseline token", value: diagnostics.hasBaselineToken ? "Recorded ready" : "Recorded missing")
+        // Initial/reset values do not establish a downstream processing observation.
+        if diagnostics.insertedPhotoCount > 0 || [.noInsertedPhotos, .resourceUnavailable, .jobRegistered].contains(diagnostics.phase) {
+            LabeledContent("Inserted photos seen", value: String(diagnostics.insertedPhotoCount))
+        }
+        if let available = diagnostics.originalResourceAvailable {
+            LabeledContent("Original resource", value: available ? "Found" : "Unavailable")
+        }
+        if diagnostics.jobRegistered {
+            LabeledContent("Upload job registered", value: "Recorded")
+        }
+        if let state = diagnostics.lastJobState {
+            LabeledContent("Last job state", value: state)
+        }
+        if let requestID = diagnostics.lastRequestID {
+            LabeledContent("Probe receipt", value: requestID)
+        }
+        if let domain = diagnostics.lastErrorDomain, let code = diagnostics.lastErrorCode {
+            LabeledContent("Sanitized error", value: "\(domain) (\(code))")
+        }
+        if let date = diagnostics.lastUpdatedAt {
+            LabeledContent("Last update", value: date.formatted(date: .abbreviated, time: .standard))
         }
     }
 
-    private var errorDescription: String? {
-        guard let domain = controller.diagnostics.lastErrorDomain,
-              let code = controller.diagnostics.lastErrorCode else {
-            return nil
-        }
-        return "\(domain) (\(code))"
-    }
 }
 
 private extension ProtocolProbePhase {
     var displayName: String {
         switch self {
         case .neverInvoked:
-            return "Never invoked"
+            return "No process entry recorded"
         case .readyForCapture:
             return "Ready for capture"
         case .extensionInvoked:

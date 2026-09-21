@@ -156,11 +156,76 @@ func freshCanaryStoresBaseline() throws {
     try fixture.store.prepareFreshCanary(tokenData: tokenData, at: preparedAt)
 
     #expect(fixture.store.loadPersistentChangeTokenData() == tokenData)
-    let diagnostics = fixture.store.loadDiagnostics()
+    let diagnostics = try #require(fixture.store.readDiagnostics().snapshot)
     #expect(diagnostics.phase == .readyForCapture)
     #expect(diagnostics.hasBaselineToken)
     #expect(diagnostics.lastUpdatedAt == preparedAt)
     #expect(diagnostics.invocationCount == 0)
+    #expect(diagnostics.canaryPreparedAt == preparedAt)
+}
+
+@Test("Snapshot reads classify evidence and preserve invalid bytes on ordinary updates")
+func diagnosticReadStatesPreserveEvidence() throws {
+    let fixture = isolatedProtocolProbeStore()
+    defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+    let token = Data([12, 34])
+    fixture.store.savePersistentChangeTokenData(token)
+    #expect(fixture.store.readDiagnostics() == .missing)
+    #expect(fixture.store.readDiagnostics().snapshot == nil)
+    #expect(fixture.store.updateDiagnostics { $0.phase = .disabled } == .skipped(.missing))
+    #expect(fixture.store.readDiagnostics() == .missing)
+
+    let cases: [(Any, ProtocolProbeDiagnosticsRead)] = [
+        ("wrong type", .wrongType),
+        (Data("broken".utf8), .corrupt),
+        (Data("{\"schemaVersion\":1}".utf8), .corrupt),
+        (Data("{\"schemaVersion\":99,\"phase\":[]}".utf8), .unsupportedSchema(99))
+    ]
+    for (value, expected) in cases {
+        fixture.defaults.set(value, forKey: "ProtocolProbe.Diagnostics")
+        #expect(fixture.store.readDiagnostics() == expected)
+        #expect(fixture.store.readDiagnostics().snapshot == nil)
+        let outcome = fixture.store.updateDiagnostics(initializeIfMissing: true) {
+            $0.beginInvocation(hasBaselineToken: true, at: Date())
+        }
+        #expect(outcome == .skipped(expected))
+        if let bytes = value as? Data {
+            #expect(fixture.defaults.data(forKey: "ProtocolProbe.Diagnostics") == bytes)
+        } else {
+            #expect(fixture.defaults.string(forKey: "ProtocolProbe.Diagnostics") == "wrong type")
+        }
+        #expect(fixture.store.loadPersistentChangeTokenData() == token)
+    }
+    let date = Date(timeIntervalSince1970: 1_777_000_000)
+    try fixture.store.prepareFreshCanary(tokenData: token, at: date)
+    #expect(fixture.store.readDiagnostics().snapshot?.canaryPreparedAt == date)
+    #expect(fixture.store.readDiagnostics().snapshot?.invocationCount == 0)
+}
+
+@Test("Both historical schema-1 builds remain readable with unknown canary provenance")
+func historicalSnapshotVersions() throws {
+    let fixture = isolatedProtocolProbeStore()
+    defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+    for includesInitialization in [false, true] {
+        var snapshot = ProtocolProbeDiagnostics()
+        if includesInitialization { snapshot.lastInitializationAt = Date(timeIntervalSince1970: 123) }
+        try fixture.store.saveDiagnostics(snapshot)
+        let read = try #require(fixture.store.readDiagnostics().snapshot)
+        #expect(read == snapshot)
+        #expect(read.canaryPreparedAt == nil)
+    }
+}
+
+@Test("A diagnostic encoding failure is observational and preserves the previous value")
+func diagnosticEncodingFailureIsNonfatal() throws {
+    let fixture = isolatedProtocolProbeStore()
+    defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+    try fixture.store.prepareFreshCanary(tokenData: Data([1]))
+    let previous = fixture.defaults.data(forKey: "ProtocolProbe.Diagnostics")
+    let outcome = fixture.store.updateDiagnostics { $0.lastUpdatedAt = Date(timeIntervalSince1970: .infinity) }
+    #expect(outcome == .encodingFailed)
+    #expect(fixture.defaults.data(forKey: "ProtocolProbe.Diagnostics") == previous)
+    #expect(fixture.store.loadPersistentChangeTokenData() == Data([1]))
 }
 
 @Test("Extension invocation increments shared diagnostics and preserves baseline state")
@@ -172,11 +237,11 @@ func extensionInvocationIsShared() throws {
     try fixture.store.prepareFreshCanary(tokenData: Data([1]))
     let invokedAt = Date(timeIntervalSince1970: 1_777_000_100)
 
-    try fixture.store.updateDiagnostics {
+    fixture.store.updateDiagnostics(initializeIfMissing: true) {
         $0.beginInvocation(hasBaselineToken: true, at: invokedAt)
     }
 
-    let diagnostics = fixture.store.loadDiagnostics()
+    let diagnostics = try #require(fixture.store.readDiagnostics().snapshot)
     #expect(diagnostics.phase == .extensionInvoked)
     #expect(diagnostics.invocationCount == 1)
     #expect(diagnostics.hasBaselineToken)
@@ -190,7 +255,7 @@ func finishedJobRecordsSanitizedResult() throws {
         fixture.defaults.removePersistentDomain(forName: fixture.suiteName)
     }
 
-    try fixture.store.updateDiagnostics {
+    fixture.store.updateDiagnostics(initializeIfMissing: true) {
         $0.recordJobResult(
             state: "failed",
             requestID: "receipt-123",
@@ -200,7 +265,7 @@ func finishedJobRecordsSanitizedResult() throws {
         )
     }
 
-    let diagnostics = fixture.store.loadDiagnostics()
+    let diagnostics = try #require(fixture.store.readDiagnostics().snapshot)
     #expect(diagnostics.phase == .jobResultObserved)
     #expect(diagnostics.lastJobState == "failed")
     #expect(diagnostics.lastRequestID == "receipt-123")
@@ -236,6 +301,7 @@ func diagnosticsExcludePrivateMetadata() throws {
 func legacyDiagnosticsRemainReadable() throws {
     var legacy = ProtocolProbeDiagnostics()
     legacy.prepareFreshCanary(at: Date(timeIntervalSince1970: 1_777_000_000))
+    legacy.canaryPreparedAt = nil
     let encoded = try JSONEncoder().encode(legacy)
     var payload = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
     payload.removeValue(forKey: "lastInitializationAt")
@@ -258,9 +324,9 @@ func initializationDoesNotClaimProcessing() throws {
     let preparedAt = Date(timeIntervalSince1970: 1_777_000_000)
     let initializedAt = preparedAt.addingTimeInterval(60)
     try fixture.store.prepareFreshCanary(tokenData: baseline, at: preparedAt)
-    try fixture.store.updateDiagnostics { $0.lastInitializationAt = initializedAt }
+    fixture.store.updateDiagnostics(initializeIfMissing: true) { $0.lastInitializationAt = initializedAt }
 
-    let diagnostics = fixture.store.loadDiagnostics()
+    let diagnostics = try #require(fixture.store.readDiagnostics().snapshot)
     #expect(diagnostics.lastInitializationAt == initializedAt)
     #expect(diagnostics.invocationCount == 0)
     #expect(diagnostics.lastInvocationAt == nil)
@@ -268,11 +334,11 @@ func initializationDoesNotClaimProcessing() throws {
     #expect(diagnostics.phase == .readyForCapture)
     #expect(!diagnostics.jobRegistered)
     #expect(fixture.store.loadPersistentChangeTokenData() == baseline)
-    #expect(fixture.store.loadDiagnostics() == diagnostics)
+    #expect(fixture.store.readDiagnostics().snapshot == diagnostics)
 
-    try fixture.store.updateDiagnostics {
+    fixture.store.updateDiagnostics(initializeIfMissing: true) {
         $0.beginInvocation(hasBaselineToken: true, at: initializedAt.addingTimeInterval(1))
     }
-    #expect(fixture.store.loadDiagnostics().lastInitializationAt == initializedAt)
-    #expect(fixture.store.loadDiagnostics().invocationCount == 1)
+    #expect(fixture.store.readDiagnostics().snapshot?.lastInitializationAt == initializedAt)
+    #expect(fixture.store.readDiagnostics().snapshot?.invocationCount == 1)
 }

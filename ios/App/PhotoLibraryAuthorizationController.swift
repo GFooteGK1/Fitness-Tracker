@@ -1,24 +1,35 @@
 import Combine
 import Foundation
+import OSLog
 import Photos
 
 @MainActor
 final class PhotoLibraryAuthorizationController: ObservableObject {
     @Published private(set) var authorizationStatus: PHAuthorizationStatus
     @Published private(set) var extensionEnabled: Bool
-    @Published private(set) var diagnostics: ProtocolProbeDiagnostics
+    @Published private(set) var diagnosticsRead: ProtocolProbeDiagnosticsRead
+    @Published private(set) var lifecycleReads: [ProtocolProbeLifecycleEvent: ProtocolProbeLifecycleRead]
     @Published private(set) var isPreparingCanary = false
     @Published private(set) var lastCheckedAt: Date?
     @Published private(set) var errorMessage: String?
 
     private let sharedStore: ProtocolProbeSharedStore?
+    private let lifecycleStore: ProtocolProbeLifecycleStore
+    private static let logger = Logger(subsystem: "com.sociusfit.automeals", category: "ProtocolProbe")
 
-    init(sharedStore: ProtocolProbeSharedStore? = ProtocolProbeSharedStore()) {
+    init(
+        sharedStore: ProtocolProbeSharedStore? = ProtocolProbeSharedStore(),
+        lifecycleStore: ProtocolProbeLifecycleStore = .appGroup()
+    ) {
+        self.lifecycleStore = lifecycleStore
+        lifecycleReads = Dictionary(uniqueKeysWithValues: ProtocolProbeLifecycleEvent.allCases.map { ($0, lifecycleStore.read($0)) })
         self.sharedStore = sharedStore
         authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         extensionEnabled = PHPhotoLibrary.shared().uploadJobExtensionEnabled
-        diagnostics = sharedStore?.loadDiagnostics() ?? ProtocolProbeDiagnostics()
+        diagnosticsRead = sharedStore?.readDiagnostics() ?? .unavailable
     }
+
+    var diagnostics: ProtocolProbeDiagnostics? { diagnosticsRead.snapshot }
 
     var statusDescription: String {
         switch authorizationStatus {
@@ -82,7 +93,7 @@ final class PhotoLibraryAuthorizationController: ObservableObject {
 
             guard extensionEnabled,
                   sharedStore.loadPersistentChangeTokenData() == tokenData,
-                  sharedStore.loadDiagnostics().phase == .readyForCapture else {
+                  sharedStore.readDiagnostics().snapshot?.phase == .readyForCapture else {
                 throw NSError(domain: "SociusFit.ProtocolProbe.Setup", code: 1)
             }
         } catch {
@@ -102,7 +113,8 @@ final class PhotoLibraryAuthorizationController: ObservableObject {
     func refreshDiagnostics() {
         authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         extensionEnabled = PHPhotoLibrary.shared().uploadJobExtensionEnabled
-        diagnostics = sharedStore?.loadDiagnostics() ?? ProtocolProbeDiagnostics()
+        diagnosticsRead = sharedStore?.readDiagnostics() ?? .unavailable
+        lifecycleReads = Dictionary(uniqueKeysWithValues: ProtocolProbeLifecycleEvent.allCases.map { ($0, lifecycleStore.read($0)) })
         lastCheckedAt = Date()
     }
 
@@ -111,7 +123,7 @@ final class PhotoLibraryAuthorizationController: ObservableObject {
         do {
             try PHPhotoLibrary.shared().setUploadJobExtensionEnabled(false)
             extensionEnabled = PHPhotoLibrary.shared().uploadJobExtensionEnabled
-            try sharedStore?.updateDiagnostics {
+            observe {
                 $0.mark(phase: .disabled, at: Date())
             }
             refreshDiagnostics()
@@ -126,7 +138,7 @@ final class PhotoLibraryAuthorizationController: ObservableObject {
         phase: ProtocolProbePhase = .failed
     ) {
         let nsError = error as NSError
-        try? sharedStore?.updateDiagnostics {
+        observe {
             $0.recordFailure(
                 phase: phase,
                 domain: nsError.domain,
@@ -135,5 +147,16 @@ final class PhotoLibraryAuthorizationController: ObservableObject {
             )
         }
         refreshDiagnostics()
+    }
+
+    private func observe(_ update: (inout ProtocolProbeDiagnostics) -> Void) {
+        let outcome = sharedStore?.updateDiagnostics(update) ?? .skipped(.unavailable)
+        switch outcome {
+        case .updated: break
+        case .skipped(let read):
+            Self.logger.error("Protocol probe host diagnostic skipped: \(read.category, privacy: .public)")
+        case .encodingFailed:
+            Self.logger.error("Protocol probe host diagnostic skipped: encoding failed")
+        }
     }
 }

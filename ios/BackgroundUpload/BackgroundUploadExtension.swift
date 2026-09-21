@@ -5,42 +5,61 @@ import Photos
 
 @main
 final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
-    private let logger = Logger(
+    private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "SociusFitAutoMealsBackgroundUpload",
         category: "ProtocolProbe"
     )
-    private let sharedStore = ProtocolProbeSharedStore()
+    private let sharedStore: ProtocolProbeSharedStore?
+    private let lifecycleStore: ProtocolProbeLifecycleStore
     private let terminationLock = NSLock()
     private var terminationRequested = false
 
     required init() {
-        logger.notice("Protocol probe extension initialized")
+        Self.logger.notice("Protocol probe extension initialized")
+        let lifecycle = ProtocolProbeLifecycleStore.appGroup()
+        Self.logLifecycle(lifecycle.record(.initialized))
+        lifecycleStore = lifecycle
+        sharedStore = ProtocolProbeSharedStore()
+        let identity = ProtocolProbeBuildIdentity.current
+        Self.logger.notice("Protocol probe build version=\(identity.version, privacy: .public) build=\(identity.build, privacy: .public)")
+        observe { $0.lastInitializationAt = Date() }
+    }
+
+    // Diagnostic failures never enter PhotoKit's processing catch/return paths.
+    private func observe(_ update: (inout ProtocolProbeDiagnostics) -> Void) {
         guard let sharedStore else {
-            logger.error("Protocol probe initialization: App Group is unavailable")
+            Self.logger.error("Protocol probe diagnostic skipped: unavailable")
             return
         }
-        do {
-            try sharedStore.updateDiagnostics {
-                $0.lastInitializationAt = Date()
-            }
-        } catch {
-            let nsError = error as NSError
-            logger.error(
-                "Protocol probe startup diagnostic failed domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)"
-            )
+        switch sharedStore.updateDiagnostics(initializeIfMissing: true, update) {
+        case .updated: break
+        case .skipped(let read):
+            Self.logger.error("Protocol probe diagnostic skipped: \(read.category, privacy: .public)")
+        case .encodingFailed:
+            Self.logger.error("Protocol probe diagnostic skipped: encoding failed")
+        }
+    }
+
+    private static func logLifecycle(_ outcome: ProtocolProbeLifecycleWrite) {
+        switch outcome {
+        case .written: break
+        case .unavailable: Self.logger.error("Protocol probe lifecycle write: unavailable")
+        case .oversized: Self.logger.error("Protocol probe lifecycle write: oversized")
+        case .failed(let code): Self.logger.error("Protocol probe lifecycle write failed code=\(code, privacy: .public)")
         }
     }
 
     func process() -> PHBackgroundResourceUploadProcessingResult {
-        logger.notice("Protocol probe process entered")
+        Self.logger.notice("Protocol probe process entered")
+        Self.logLifecycle(lifecycleStore.record(.processEntered))
         guard let sharedStore else {
-            logger.error("Protocol probe App Group is unavailable")
+            Self.logger.error("Protocol probe App Group is unavailable")
             return .failure
         }
 
         do {
             let hasBaselineToken = sharedStore.loadPersistentChangeTokenData() != nil
-            try sharedStore.updateDiagnostics {
+            observe {
                 $0.beginInvocation(hasBaselineToken: hasBaselineToken, at: Date())
             }
 
@@ -49,28 +68,28 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
             }
 
             guard !isTerminationRequested else {
-                try sharedStore.updateDiagnostics {
+                observe {
                     $0.mark(phase: .terminationRequested, at: Date())
                 }
                 return .processing
             }
 
             guard let configuration = probeConfiguration() else {
-                try sharedStore.updateDiagnostics {
+                observe {
                     $0.mark(phase: .configurationError, at: Date())
                 }
-                logger.notice("Probe endpoint is not configured; no photo can be uploaded")
+                Self.logger.notice("Probe endpoint is not configured; no photo can be uploaded")
                 return .completed
             }
 
             let library = PHPhotoLibrary.shared()
             guard let tokenData = sharedStore.loadPersistentChangeTokenData() else {
                 try saveToken(library.currentChangeToken, to: sharedStore)
-                try sharedStore.updateDiagnostics {
+                observe {
                     $0.mark(phase: .baselineEstablished, at: Date())
                     $0.hasBaselineToken = true
                 }
-                logger.notice("Protocol probe baseline established; prepare a fresh canary in the host app")
+                Self.logger.notice("Protocol probe baseline established; prepare a fresh canary in the host app")
                 return .completed
             }
 
@@ -94,7 +113,7 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
             switch action {
             case .establishBaseline:
                 try saveToken(nextToken, to: sharedStore)
-                try sharedStore.updateDiagnostics {
+                observe {
                     $0.mark(phase: .baselineEstablished, at: Date())
                     $0.hasBaselineToken = true
                 }
@@ -102,7 +121,7 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
 
             case .noUpload:
                 try saveToken(nextToken, to: sharedStore)
-                try sharedStore.updateDiagnostics {
+                observe {
                     $0.mark(
                         phase: .noInsertedPhotos,
                         at: Date(),
@@ -114,7 +133,7 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
             case .enqueue(let localIdentifier):
                 guard let resource = originalPhotoResource(for: localIdentifier) else {
                     try saveToken(nextToken, to: sharedStore)
-                    try sharedStore.updateDiagnostics {
+                    observe {
                         $0.mark(
                             phase: .resourceUnavailable,
                             at: Date(),
@@ -122,7 +141,7 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
                             originalResourceAvailable: false
                         )
                     }
-                    logger.notice("Newest inserted asset has no original photo resource; skipped locally")
+                    Self.logger.notice("Newest inserted asset has no original photo resource; skipped locally")
                     return .completed
                 }
 
@@ -140,7 +159,7 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
 
                 // Advance only after registration so relaunch cannot duplicate this change.
                 try saveToken(nextToken, to: sharedStore)
-                try sharedStore.updateDiagnostics {
+                observe {
                     $0.mark(
                         phase: .jobRegistered,
                         at: Date(),
@@ -149,33 +168,33 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
                         jobRegistered: true
                     )
                 }
-                logger.notice("Registered one disposable-photo protocol probe job")
+                Self.logger.notice("Registered one disposable-photo protocol probe job")
                 return .processing
             }
         } catch PHPhotosError.persistentChangeTokenExpired {
             sharedStore.removePersistentChangeTokenData()
-            try? sharedStore.updateDiagnostics {
+            observe {
                 $0.mark(phase: .tokenExpired, at: Date())
                 $0.hasBaselineToken = false
             }
-            logger.notice("Persistent change token expired; prepare a fresh canary in the host app")
+            Self.logger.notice("Persistent change token expired; prepare a fresh canary in the host app")
             return .processing
         } catch PHPhotosError.limitExceeded {
-            try? sharedStore.updateDiagnostics {
+            observe {
                 $0.mark(phase: .jobLimitReached, at: Date())
             }
-            logger.notice("PhotoKit upload-job limit reached; waiting for another invocation")
+            Self.logger.notice("PhotoKit upload-job limit reached; waiting for another invocation")
             return .processing
         } catch {
             let nsError = error as NSError
-            try? sharedStore.updateDiagnostics {
+            observe {
                 $0.recordFailure(
                     domain: nsError.domain,
                     code: nsError.code,
                     at: Date()
                 )
             }
-            logger.error(
+            Self.logger.error(
                 "Protocol probe failed closed domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)"
             )
             return .failure
@@ -186,7 +205,9 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
         terminationLock.withLock {
             terminationRequested = true
         }
-        try? sharedStore?.updateDiagnostics {
+        Self.logger.notice("Protocol probe termination requested")
+        Self.logLifecycle(lifecycleStore.record(.terminationRequested))
+        observe {
             $0.mark(phase: .terminationRequested, at: Date())
         }
     }
@@ -262,7 +283,7 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
                 jobError = nil
             }
 
-            try sharedStore.updateDiagnostics {
+            observe {
                 $0.recordJobResult(
                     state: String(describing: job.state),
                     requestID: job.responseHeaderFields?["x-probe-request-id"],
@@ -271,7 +292,7 @@ final class BackgroundUploadExtension: PHBackgroundResourceUploadExtension {
                     at: Date()
                 )
             }
-            logger.notice(
+            Self.logger.notice(
                 "Observed one protocol probe job result state=\(String(describing: job.state), privacy: .public)"
             )
         }

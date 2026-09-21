@@ -27,6 +27,7 @@ public struct ProtocolProbeDiagnostics: Codable, Equatable, Sendable {
     public var lastUpdatedAt: Date?
     public var lastInvocationAt: Date?
     public var lastInitializationAt: Date?
+    public var canaryPreparedAt: Date?
     public var invocationCount: Int
     public var hasBaselineToken: Bool
     public var insertedPhotoCount: Int
@@ -57,6 +58,7 @@ public struct ProtocolProbeDiagnostics: Codable, Equatable, Sendable {
         self.lastUpdatedAt = lastUpdatedAt
         self.lastInvocationAt = lastInvocationAt
         self.lastInitializationAt = nil
+        self.canaryPreparedAt = nil
         self.invocationCount = invocationCount
         self.hasBaselineToken = hasBaselineToken
         self.insertedPhotoCount = insertedPhotoCount
@@ -74,6 +76,7 @@ public struct ProtocolProbeDiagnostics: Codable, Equatable, Sendable {
             lastUpdatedAt: date,
             hasBaselineToken: true
         )
+        canaryPreparedAt = date
     }
 
     public mutating func beginInvocation(hasBaselineToken: Bool, at date: Date) {
@@ -137,6 +140,37 @@ public struct ProtocolProbeDiagnostics: Codable, Equatable, Sendable {
     }
 }
 
+public enum ProtocolProbeDiagnosticsRead: Equatable, Sendable {
+    case valid(ProtocolProbeDiagnostics)
+    case missing
+    case wrongType
+    case corrupt
+    case unsupportedSchema(Int)
+    case unavailable
+
+    public var snapshot: ProtocolProbeDiagnostics? {
+        guard case .valid(let snapshot) = self else { return nil }
+        return snapshot
+    }
+
+    public var category: String {
+        switch self {
+        case .valid: "Valid recorded snapshot"
+        case .missing: "No observable snapshot"
+        case .wrongType: "Wrong stored type"
+        case .corrupt: "Corrupt snapshot"
+        case .unsupportedSchema: "Unsupported snapshot schema"
+        case .unavailable: "App Group unavailable"
+        }
+    }
+}
+
+public enum ProtocolProbeDiagnosticsUpdate: Equatable, Sendable {
+    case updated
+    case skipped(ProtocolProbeDiagnosticsRead)
+    case encodingFailed
+}
+
 public final class ProtocolProbeSharedStore {
     private enum Key {
         static let diagnostics = "ProtocolProbe.Diagnostics"
@@ -163,28 +197,45 @@ public final class ProtocolProbeSharedStore {
         self.defaults = defaults
     }
 
-    public func loadDiagnostics() -> ProtocolProbeDiagnostics {
-        guard let data = defaults.data(forKey: Key.diagnostics),
-              let diagnostics = try? JSONDecoder().decode(
-                  ProtocolProbeDiagnostics.self,
-                  from: data
-              ),
-              diagnostics.schemaVersion == ProtocolProbeDiagnostics.currentSchemaVersion else {
-            return ProtocolProbeDiagnostics()
+    public func readDiagnostics() -> ProtocolProbeDiagnosticsRead {
+        guard let value = defaults.object(forKey: Key.diagnostics) else { return .missing }
+        guard let data = value as? Data else { return .wrongType }
+        struct Header: Decodable { let schemaVersion: Int }
+        guard let header = try? JSONDecoder().decode(Header.self, from: data) else {
+            return .corrupt
         }
-        return diagnostics
+        guard header.schemaVersion == ProtocolProbeDiagnostics.currentSchemaVersion else {
+            return .unsupportedSchema(header.schemaVersion)
+        }
+        guard let snapshot = try? JSONDecoder().decode(ProtocolProbeDiagnostics.self, from: data) else {
+            return .corrupt
+        }
+        return .valid(snapshot)
     }
 
     public func saveDiagnostics(_ diagnostics: ProtocolProbeDiagnostics) throws {
         defaults.set(try JSONEncoder().encode(diagnostics), forKey: Key.diagnostics)
     }
 
+    @discardableResult
     public func updateDiagnostics(
+        initializeIfMissing: Bool = false,
         _ update: (inout ProtocolProbeDiagnostics) -> Void
-    ) throws {
-        var diagnostics = loadDiagnostics()
+    ) -> ProtocolProbeDiagnosticsUpdate {
+        let read = readDiagnostics()
+        var diagnostics: ProtocolProbeDiagnostics
+        switch read {
+        case .valid(let snapshot): diagnostics = snapshot
+        case .missing where initializeIfMissing: diagnostics = ProtocolProbeDiagnostics()
+        default: return .skipped(read)
+        }
         update(&diagnostics)
-        try saveDiagnostics(diagnostics)
+        do {
+            try saveDiagnostics(diagnostics)
+            return .updated
+        } catch {
+            return .encodingFailed
+        }
     }
 
     public func prepareFreshCanary(tokenData: Data, at date: Date = Date()) throws {

@@ -1,7 +1,8 @@
 # SociusFit Auto Meal Photos — native harness
 
 This directory contains the minimal native boundary approved in ADR-0005. The
-current slice is the Build 4 fail-closed physical-device protocol probe. With
+current slice is a local, uncompiled September 21 diagnostic candidate on top of
+Build 6. It preserves the fail-closed physical-device protocol probe. With
 the committed `https://example.invalid` configuration, it cannot upload a
 photo. The protected TestFlight workflow may inject only the separately approved
 private probe URL. The host records the current PhotoKit change token before it
@@ -10,13 +11,14 @@ original photo resource per invocation. Use disposable test photos only.
 
 The harness requires iOS 26.4 because the upload-job creation and response
 header APIs used by this probe became available in that release. Greg's iPhone
-16 Pro on iOS 26.6 satisfies this minimum.
+16 Pro was reported on iOS 26.6.1 on September 21; verify the installed version
+again for the next device experiment.
 
 
 The probe does not classify food, store photo bytes, analyze nutrition, create a
-canonical meal, or call `/api/meals/upload`. Build 4 uses only
+canonical meal, or call `/api/meals/upload`. The probe uses only
 `group.com.sociusfit.automeals` to share the PhotoKit baseline and a bounded
-latest diagnostic snapshot. The shared state excludes filenames, asset
+latest diagnostic snapshot plus three extension-owned lifecycle files. The shared state excludes filenames, asset
 identifiers, location, photo bytes, endpoint URLs, and nutrition data.
 
 ## OPTIONS 501 protocol probe
@@ -38,23 +40,38 @@ npm run probe:ios-upload
 The loopback CLI proves the HTTP contract only. A physical iPhone requires a
 separately approved private TLS endpoint with the same behavior.
 
-After signing and that endpoint are approved, run this canary:
+The next device experiment is **one preserved canary**, after exact-candidate
+native compilation and separate TestFlight upload authority. The upload workflow
+signs, exports, and uploads in one protected job; it is not a build-only check.
+Use the actual workflow build number, never an assumed next number.
 
-1. Record the source commit, iPhone model, iOS version, install type, network,
-   and iCloud Photos state.
-2. Install Build 4 from the internal TestFlight group and open it.
-   iOS 26.6 uses normal PhotoKit scheduling; Resource Upload Test Mode requires
-   iOS 27 plus an Xcode-run development-signed build and does not apply here.
-3. Grant full read-write Photos access if needed.
-4. Tap **Prepare Fresh Canary**. Confirm the phase is **Ready for capture**, the
-   baseline is **Ready**, and the invocation count is zero.
-5. Close or lock the host, take exactly one new disposable photo, and record the
-   time.
-6. Reopen the app later, tap **Refresh Diagnostics**, and record the phase,
-   invocation count, resource result, job registration, job state, receipt, and
-   sanitized error.
-7. Compare the app evidence with the exact `OPTIONS` and any `POST` receipt.
-8. Disable the extension. Prove another disposable photo creates no receipt.
+1. Before an in-place upgrade, screenshot existing diagnostics and record the
+   installed build, local/UTC time, iOS, Photos permission, extension state,
+   charging/network conditions, and iCloud state. Do not uninstall or reset permissions.
+2. On first open, verify the new build and capture snapshot read status and all
+   lifecycle slots. Opening/refreshing must preserve state. New slots may be missing.
+3. Capture evidence before **Prepare Fresh Canary**, **Allow Photos and Enable**,
+   or disable. Both enable/setup actions replace the baseline and run snapshot;
+   disable changes the phase. None clears lifecycle files.
+4. Prepare exactly one baseline. Confirm Ready for capture, a recorded baseline,
+   and the canary time. Historical lifecycle observations remain visible.
+5. Leave the app normally (do not force quit), take one disposable photo in ordinary
+   Apple Camera, and record its time. This probe has no food filter.
+6. Preserve that baseline overnight on Wi-Fi/charging, locked after first unlock.
+   Record actual start/end and intervening opens. These are controlled conditions,
+   not a guaranteed PhotoKit scheduling deadline.
+7. Refresh once and screenshot all statuses, event versions/builds/times, run
+   counters, job state, and any existing receipt before changing state again.
+8. Interpret affirmative initialization, processing, job registration, and upload
+   separately. Missing/invalid evidence does not prove no execution. If unresolved,
+   preserve the packet and obtain a fresh diagnostic tied to this window; do not
+   repeat unchanged overnight experiments.
+
+The local execution plan at
+`docs/plans/2026-09-21-photo-probe-diagnostic-build.md` contains the full
+interpretation table and release gates. Effective directory and
+replacement-file protection after first unlock still requires device-capable
+inspection; Windows tests and simulator compilation do not establish it.
 
 Do not add HTTP `104` support yet. It is required only if the physical-device
 `501` canary proves that PhotoKit rejects or cannot complete a non-resumable
@@ -80,7 +97,7 @@ The GitHub workflow pins XcodeGen 2.46.0 and verifies its published SHA-256
 before execution. Generated `.xcodeproj`, SwiftPM output, and derived data are
 ignored.
 
-## Cloud compile evidence
+## Historical cloud compile evidence
 
 Draft PR #66 proved the credential-free boundary on source commit `d9e9105`:
 
@@ -91,7 +108,7 @@ Draft PR #66 proved the credential-free boundary on source commit `d9e9105`:
 - no signing, secret, App Store Connect, TestFlight, photo, or production API
   access occurred.
 
-The current probe compile run `31637024156` passed all 10 Swift tests, pinned
+The earlier probe compile run `31637024156` passed all 10 Swift tests, pinned
 XcodeGen generation, and the unsigned app plus extension compile on Xcode 26.5
 at source commit `6453f20`. That run did not test signing, archiving, export, or
 App Store Connect upload.
@@ -123,7 +140,7 @@ representation_policy: No external representation or user communication.
 rollback_or_correction_path: Revert the workflow/native scaffold; no runtime or user data exists.
 ```
 
-## Manual TestFlight workflow — prepared, not dispatched
+## Manual TestFlight upload workflow
 
 `.github/workflows/ios-testflight.yml` is a manual-only internal probe upload.
 It accepts only `codex/auto-meal-photos-probe` plus the exact confirmation text,
@@ -143,51 +160,57 @@ be a short-lived capability URL, not a durable authentication boundary.
 
 The GitHub `TestFlight` environment uses `GFooteGK1` as required reviewer
 and limits deployment to `codex/auto-meal-photos-probe`. Build 3 proved this
-protected signing and upload path. Build 4 requires regenerated host and
-extension profiles that both contain the approved App Group entitlement.
+protected signing and upload path. Build 6 later passed this path at
+`dc76f91d63e8696a2873a1adedbcd24b61ff6c66` (run `34350718417`).
+Those historical results do not validate this candidate. Recheck live release
+state, profiles, protected environment, and queued runs before any authorized dispatch.
 
 Follow `ios/APPLE-PORTAL-CHECKLIST.md` for the exact identifiers, profile names,
 team API key, secure GitHub values, internal tester group, and revocation steps.
 
 Do not commit Apple private keys, certificates, provisioning profiles, issuer
 IDs, key IDs, endpoint capability URLs, or App Store Connect credentials. Do not
-add another App Group or shared container. Build 4 is limited to
-`group.com.sociusfit.automeals`, the shared PhotoKit baseline, and the bounded
-diagnostic snapshot defined by ADR-0006.
+add another App Group or shared container. The probe is limited to
+`group.com.sociusfit.automeals` and the local storage defined by ADR-0006.
 
 Official PhotoKit source:
 https://developer.apple.com/documentation/photokit/uploading-asset-resources-in-the-background
 
-## Startup investigation (2026-09-09, local candidate)
+## September 21 diagnostic candidate
 
-The refreshed phone screenshot shows full Photos access, extension enabled,
-zero recorded invocations, and no registered job. This does not distinguish a
-launch that never occurred from a failure before shared diagnostics were saved.
+The initializer logs before App Group/defaults access, then attempts an independent
+initialization file. Process entry and termination have separate fixed slots.
+The termination flag is set under its existing lock before any diagnostic I/O.
+The files contain only schema, allowlisted event, UTC time, bounded sanitized
+marketing version and build. Each atomic replacement is at most 2 KiB (6 KiB of
+final records across three slots), with iOS protection until first authentication.
+No retries, history, network heartbeat, or host-side lifecycle writes are added.
 
-The diagnostic candidate records the latest extension initialization separately
-from process invocations. It emits local OSLog markers at both entry points and
-checks App Group container availability before opening the shared defaults suite.
-The host displays its App Group access, app version/build, and a Last checked time
-on refresh. Last update remains the processing-state timestamp. Startup evidence
-uses the same shared store: missing evidence still cannot rule out a storage
-failure or failure before initialization. Host access does not prove extension
-access. Device logs are needed if both startup and processing evidence remain absent.
+The three files are latest observations from potentially different instances,
+not a global timeline or exact invocation count. They share the App Group failure
+boundary with UserDefaults. Their absence cannot rule out startup. Host App Group
+access does not establish extension access. OSLog cannot observe failure before
+the initializer body.
 
-The optional initialization timestamp preserves decoding of Build 5 snapshots.
-Preparing a fresh canary resets it with the existing diagnostics, so capture the
-current card before resetting. No photo discovery, upload, endpoint, or nutrition
-processing behavior changes in this candidate.
+Snapshot reads distinguish valid data, missing observable value, wrong stored
+type, corrupt payload, unsupported schema, and unavailable store. Only valid
+snapshots display counters. Ordinary observational writes preserve invalid or
+future values, report a fixed skipped category, and cannot throw into PhotoKit
+control flow. Only explicit canary preparation replaces that snapshot and token.
+The additive optional canary date keeps schema 1 and Build 5/6 decoding intact;
+legacy snapshots have unknown canary provenance. UserDefaults supplies no durable
+write acknowledgement. No synchronize-based durability claim is made.
 
-An external developer reports similar scheduling failure when iCloud Photos is
-enabled: https://developer.apple.com/forums/thread/822256 . This is an unconfirmed
-lead, not an Apple-confirmed cause on Greg's device. Record current iOS version
-and iCloud Photos state without changing sync settings. Do not disable iCloud
-Photos as a routine workaround.
+Older-build and pre-canary lifecycle records are labeled historical. Clock changes
+and separate slots prevent strict ordering or same-invocation inference. Snapshot
+zero does not prove no launch, initialization does not prove process entry, and
+process entry does not prove upload success. The existing token, asset selection,
+job acknowledgment, upload, protocol, and entitlement policies are unchanged.
 
-Windows validation cannot compile the Apple extension. Before TestFlight release,
-run the native Swift tests and unsigned Xcode compile on this candidate, then the
-protected signing workflow under release authorization. On the phone, preserve
-old diagnostics, verify the new build number and refresh timestamp, and compare
-initialization evidence with process count. A recorded initialization with zero
-process calls narrows the failure to after initialization; neither marker requires
-or claims a photo upload or a nutrition result.
+Windows local checks: HTTP probe **3/3** and signing contracts **8/8** passed on
+September 21. Swift tests are authored but not executed here: Swift, XcodeGen,
+and Xcode are unavailable. Native compile, SwiftUI rendering, physical startup,
+locked-device file access/protection, and upload remain unverified for this diff.
+The credential-free **iOS Native Compile** workflow must pass on the exact future
+candidate SHA before a separately authorized TestFlight release. Build 6's prior
+16 passing Swift tests and compile are historical evidence only.
