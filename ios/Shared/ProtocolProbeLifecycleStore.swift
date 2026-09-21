@@ -137,7 +137,11 @@ public struct ProtocolProbeLifecycleStore: Sendable {
             return .valid(record)
         } catch {
             let error = error as NSError
-            if error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError {
+            // FileHandle on Darwin can report the generic missing-file code;
+            // other Foundation readers use the read-specific variant.
+            if error.domain == NSCocoaErrorDomain &&
+                (error.code == CocoaError.fileNoSuchFile.rawValue ||
+                 error.code == CocoaError.fileReadNoSuchFile.rawValue) {
                 return .missing
             }
             return .readFailed(error.code)

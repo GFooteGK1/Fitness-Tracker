@@ -26,6 +26,14 @@ func lifecycleRoundTripAndIndependentSlots() throws {
     let store = fixture.store
     #expect(store.read(.initialized) == .missing)
     #expect(!FileManager.default.fileExists(atPath: fixture.root.path))
+    // Missing parent and missing slot in an existing directory are both absence,
+    // not storage failures. Reading either must not create the slot.
+    try FileManager.default.createDirectory(
+        at: fixture.url(.initialized).deletingLastPathComponent(),
+        withIntermediateDirectories: true
+    )
+    #expect(store.read(.initialized) == .missing)
+    #expect(!FileManager.default.fileExists(atPath: fixture.url(.initialized).path))
     for event in ProtocolProbeLifecycleEvent.allCases {
         #expect(store.record(event) == .written)
         guard case .valid(let record) = store.read(event) else {
