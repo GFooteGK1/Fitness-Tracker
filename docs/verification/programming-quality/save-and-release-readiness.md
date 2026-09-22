@@ -2,6 +2,12 @@
 
 Date: 2026-09-21 (America/Chicago). Tracker: `Fitness-Tracker-i40.9`.
 
+September 22 follow-up: the inherited fixture date defect is fixed under
+`Fitness-Tracker-i40.10`. All 14 boundary checks and the full regression passed
+(3,460 passed, 19 skipped). The results below preserve the original save-time
+assessment. Current release preparation is tracked by `Fitness-Tracker-i40.11`
+and [the release runbook](release-preflight.md); production remains unapproved.
+
 ## Decision
 
 Save the accumulated implementation, tests, research, review decisions and
