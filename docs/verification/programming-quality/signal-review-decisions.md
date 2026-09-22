@@ -1,0 +1,24 @@
+# Six signal cases: Greg's review decisions
+
+Recorded: 2026-09-21. Reviewer: Greg Foote. Source: six consecutive case-specific “Agree” replies in the current conversation, following the phone-readable presentations of [the worked cases](signal-review-cases.md).
+
+Status: **all six proposed qualitative coaching responses agreed**. This is a review of desired behavior, not a finding that the existing evaluator implements it. The short presentations did not ask Greg to adjudicate the statistical method, select exact numerical changes, score the full baseline, or approve runtime activation. Do not infer those decisions from these replies.
+
+## Agreed responses
+
+| Case | Agreed desired coaching response | Conditions and unresolved implementation decisions |
+|---|---|---|
+| 1. One velocity spike | Keep the current prescription, check whether setup or execution changed, and seek confirmation at the next comparable exposure. Treat the spike as worth investigating. | Do not declare the spike noise or proven adaptation. Best-repetition selection, device validity and exact repeated-agreement rules remain unreviewed. |
+| 2. Repeated direct improvement | Recognize progress without automatically increasing the program. Consider the athlete's goal, working-set performance, effort and recovery before continuing successful work or proposing a specific adjustment. | Improved outcome is not automatic authority to raise dose. The current strength evaluator does not integrate the supplied session RPE. No load increment or effort threshold was selected. |
+| 3. Lower monitoring velocity, stable working performance | Flag the disagreement. Check measurement setup, movement intent, technique and recovery. Provisionally keep the working prescription while investigating; propose a targeted adjustment if corroborating evidence supports it. | Neither signal overrides the other by default. The current evaluator has not reconciled the reported working prescription with the velocity trend. Exact corroboration criteria remain open. |
+| 4. Changed protocol | Keep the protocols in separate comparison series. Explain that the apparent increase does not establish progress against the original benchmark. Continue the current prescription unless other evidence warrants change; confirm which protocol guides future monitoring. | Do not pool incompatible observations or silently switch the confirmed benchmark. No universal waiting period or minimum sample count was approved. |
+| 5. Missing sensor repetition | Preserve both performed repetitions. Mark the velocity measurement incomplete; do not treat the changed trend label as evidence of reduced capacity. Apply a reviewed, protocol-specific completeness rule before using the exposure to support a program change. | The particular rule—exclude, qualify or otherwise represent an incomplete exposure—was not chosen. Do not substitute zero, infer fewer performed reps, or label the current method validated. |
+| 6. Changed availability | Propose a rescheduled week from confirmed availability. Preserve intended prescriptions where feasible and check session duration, overlapping demands and adjacent training. Explain any required dose or emphasis change separately before acceptance. | Rescheduling does not require physiological decline. It must produce an actual proposed schedule, preserve the accepted original and avoid hiding prescription changes inside a relocation. |
+
+## Effect on the plan
+
+The six-case qualitative review is complete; do not present these cases to Greg again as unanswered. These responses supply desired behavior and prohibited inferences for subsequent implementation and evaluation. They do not establish that characterization-test outputs are correct coaching decisions.
+
+P0 remains in progress: the live tracker still requires broader baseline adjudication/calibration, source-grounded expected decisions and a sealed grouped holdout (16 slots were unauthored at this readback). P2's implementation receipt remains separate from its final package acceptance. The next engineering work is to map these decisions to the existing research and evaluation gaps, prepare the remaining evaluation material, and resolve the package acceptance evidence. Ask Greg only for concrete judgments that remain unanswered; do not ask him to invent signal-analysis methods or repeat general approval.
+
+Numerical applicability, initial-dose policy review, prescription changes and hosted activation retain their separate decisions. All six examples remain synthetic. No athlete program or runtime behavior changed when this review was recorded. Frozen `signal-traces.json` and baseline artifacts retain their original pending labels as historical outputs; this dated review record is the subsequent human annotation and does not rewrite those traces.

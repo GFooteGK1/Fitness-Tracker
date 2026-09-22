@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('@/app/lib/coach/proposal-context-revision', async importOriginal => ({
+  ...await importOriginal<typeof import('@/app/lib/coach/proposal-context-revision')>(),
+  fetchCoachContextRevision: vi.fn().mockResolvedValue(7),
+}))
+
 vi.mock('@/app/lib/auth/supabase-server', () => ({
   createServerClient: vi.fn()
 }))
@@ -7,10 +12,16 @@ vi.mock('@/app/lib/coach/athlete-context', async importOriginal => {
   const actual = await importOriginal<typeof import('@/app/lib/coach/athlete-context')>()
   return { ...actual, fetchCoachRuntimeContext: vi.fn() }
 })
+vi.mock('@/app/lib/coach/planning-intent-server', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/app/lib/coach/planning-intent-server')>()
+  return { ...actual, refreshConfirmedPlanningContext: vi.fn(actual.refreshConfirmedPlanningContext) }
+})
 
 import { POST } from '@/app/api/coach/weekly/convert/route'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
+import { applyConfirmedIntentToProfile, refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
+import { intent, runningOutcome } from '@/test/fixtures/personalized-coaching/intent'
 
 const planningInput = {
   format: 'complete_programming_intake_v0_3',
@@ -61,6 +72,7 @@ describe('/api/coach/weekly/convert', () => {
         p_program_id: 'program-legacy',
         p_base_plan_version_id: 'plan-legacy',
         p_weekly_review_id: null,
+        p_input_snapshot: expect.objectContaining({ contextRevision: 7 }),
         p_window_start: '2026-09-07',
         p_intent: expect.objectContaining({ horizon_weeks: 1 }),
         p_input_fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/)
@@ -81,6 +93,30 @@ describe('/api/coach/weekly/convert', () => {
     }))
 
     expect(response.status).toBe(409)
+    expect(supabase.rpc).not.toHaveBeenCalled()
+  })
+
+  it('returns an actionable conflict for a refreshed event date before storing a conversion', async () => {
+    const supabase = client()
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+    const content = intent(runningOutcome())
+    content.event = { name: 'Synthetic spring event', date: '2027-04-10', goalIds: [content.outcomes[0].goal.id] }
+    vi.mocked(refreshConfirmedPlanningContext).mockImplementationOnce(async (_supabase, _userId, input) =>
+      applyConfirmedIntentToProfile(input, {
+        schemaVersion: 1, memoryId: '11111111-1111-4111-8111-111111111111', memoryVersion: 1, content
+      }))
+
+    const response = await POST(request({
+      planningInput: { ...planningInput, primaryDomain: 'aerobic', goal: 'Improve running performance',
+        equipment: 'Track', resolvedEquipmentIds: ['bodyweight', 'track'], setupConfirmed: true },
+      goalTargetDate: '2026-12-13',
+      hypothesis: 'Repeatable running exposures will improve the direct outcome.',
+      idempotencyKey: 'legacy-conversion-conflict'
+    }))
+
+    expect(response.status).toBe(409)
+    expect((await response.json()).error).toContain('confirmed event date (2027-04-10)')
+    expect(refreshConfirmedPlanningContext).toHaveBeenCalledTimes(1)
     expect(supabase.rpc).not.toHaveBeenCalled()
   })
 })

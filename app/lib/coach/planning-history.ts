@@ -1,6 +1,6 @@
 /** Source selection is shared; shadow dose interpretation is deliberately separate. */
 export interface HistoryWorkoutRow {
-  id: string; user_id: string; workout_date: string; blocks: unknown
+  id: string; user_id: string; workout_date: string; blocks: unknown; rpe?: unknown
   created_at: string; updated_at?: string; execution_revision?: number
   execution_source?: string; execution_status?: string
   capture_revision?: number; capture_provenance?: unknown; captured_at?: string; capture_input_method?: string

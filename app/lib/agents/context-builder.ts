@@ -15,6 +15,7 @@ import { projectTodaysProgram } from '@/app/lib/coach/todays-program'
 import { localDateToUTCStart, localDateToUTCEnd } from '@/app/lib/timezone-utils'
 import { fetchProgrammingReadinessContext } from './programming-context'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
+import { fetchPerformedWorkContextForCoaching } from '@/app/lib/coach/performed-work-context'
 import { fetchCoachEvidenceContext } from '@/app/lib/coach/evidence-context'
 
 // ─── Passive Context Cache ────────────────────────────────────────────
@@ -346,6 +347,7 @@ export async function buildSociusContext(
   includeCoachContext = false
 ): Promise<SociusContext> {
   const supabase = await createServerClient()
+  const coachAsOf = new Date().toISOString()
 
   const [
     passive,
@@ -354,7 +356,8 @@ export async function buildSociusContext(
     dataAvailability,
     programmingContext,
     coachContext,
-    coachEvidenceContext
+    coachEvidenceContext,
+    performedWorkContext
   ] = await Promise.all([
     buildPassiveContext(userId, tzOffset),
     fetchThirtyDaySummary(supabase, userId),
@@ -367,9 +370,10 @@ export async function buildSociusContext(
     includeCoachContext
       ? fetchCoachEvidenceContext(supabase, userId, {
         purpose: 'general_coaching',
-        asOf: new Date().toISOString()
+        asOf: coachAsOf
       }).catch(() => undefined)
-      : Promise.resolve(undefined)
+      : Promise.resolve(undefined),
+    fetchPerformedWorkContextForCoaching(supabase, userId, { includeCoachContext, agentTzOffset: tzOffset, asOf: coachAsOf })
   ])
 
   // History retrieval may outlast the passive source read. Require the same completed
@@ -390,7 +394,8 @@ export async function buildSociusContext(
     data_availability: dataAvailability,
     programming_context: programmingContext,
     ...(coachContext ? { coach_context: coachContext } : {}),
-    ...(coachEvidenceContext ? { coach_evidence_context: coachEvidenceContext } : {})
+    ...(coachEvidenceContext ? { coach_evidence_context: coachEvidenceContext } : {}),
+    ...(performedWorkContext ? { coach_performed_work_context: performedWorkContext } : {})
   }
 }
 

@@ -123,7 +123,7 @@ describe('rolling weekly review', () => {
     expect(next.changeSummary.assessmentSignal).toEqual(result.signalRequest)
   })
 
-  it('holds broad direct improvement without an exact assignment target', () => {
+  it('continues successful work without requiring an assignment change from direct improvement', () => {
     const week = initialWeek()
     const sessions = executionSessions(week, ['completed', 'completed'])
     const result = requireReady(buildRollingWeeklyReview(reviewInput({
@@ -134,10 +134,11 @@ describe('rolling weekly review', () => {
       series: [strengthSeries([100, 101, 105, 106])]
     })))
 
-    expect(result.action).toBe('collect_signal')
-    expect(result.presentationClass).toBe('needs_signal')
+    expect(result.action).toBe('continue')
+    expect(result.presentationClass).toBe('same_track')
     expect(result.doseChange).toBeNull()
-    expect(result.missing).toContain('exact_assignment_target_unavailable')
+    expect(result.missing).not.toContain('exact_assignment_target_unavailable')
+    expect(result.proposal.generationReady).toBe(true)
     expect(result.proposal.requiresAcceptance).toBe(true)
   })
 
@@ -240,6 +241,65 @@ describe('rolling weekly review', () => {
     expect(first.observationLinks).toEqual(second.observationLinks)
     expect(first.observationLinks.some(link => link.disposition === 'included')).toBe(true)
     expect(first.observationLinks.some(link => link.disposition === 'excluded')).toBe(true)
+  })
+
+  it('opens a material confirmation review for changed goals during an unfinished week without claiming a new-goal evaluation', () => {
+    const week = initialWeek(), original = structuredClone(week)
+    const result = requireReady(buildRollingWeeklyReview({ ...reviewInput({ week, sessions: executionSessions(week),
+      localDate: '2026-09-08', series: [strengthSeries([100, 100, 100, 100])] }),
+      directionReconciliation: { status: 'changed', changedFields: ['event'], reasons: ['Your confirmed event is now in April.'] }
+    }))
+    expect(result).toMatchObject({ action: 'shift_emphasis', presentationClass: 'material_change', doseChange: null,
+      signalRequest: null, goalMetMaintenance: false, proposal: { eligible: true, generationReady: false, directionConfirmationRequired: true } })
+    expect(result.rationale[0]).toContain('event is now in April')
+    expect(result.rationale.join(' ')).toContain('reviews the accepted direction')
+    expect(result.directionReconciliation?.status).toBe('changed')
+    expect(week).toEqual(original)
+  })
+
+  it.each(['confirmation_required', 'unsupported', 'unavailable'] as const)('blocks generation for %s current intent', status => {
+    const week = initialWeek()
+    const result = requireReady(buildRollingWeeklyReview({ ...reviewInput({ week, sessions: executionSessions(week),
+      localDate: '2026-09-08', series: [strengthSeries([100, 100, 100, 100])] }),
+      directionReconciliation: { status, changedFields: [], reasons: ['Confirm current outcomes before requesting a replacement.'] }
+    }))
+    expect(result).toMatchObject({ action: 'collect_signal', doseChange: null, signalRequest: null,
+      proposal: { eligible: false, requiresAcceptance: false, generationReady: false, directionConfirmationRequired: false } })
+    expect(result.proposal.blockingReasons).toContain('Confirm current outcomes before requesting a replacement.')
+  })
+
+  it('preserves a safety pause ahead of changed intent', () => {
+    const week = initialWeek(), sessions = executionSessions(week)
+    const result = requireReady(buildRollingWeeklyReview({ ...reviewInput({ week, sessions,
+      checkins: [checkin(sessions[0].id, { pain: 'concerning', occurredAt: '2026-09-08T10:00:00.000Z' })],
+      localDate: '2026-09-08', series: [strengthSeries([100, 100, 100, 100])] }),
+      directionReconciliation: { status: 'changed', changedFields: ['event'], reasons: ['Confirm the changed event.'] }
+    }))
+    expect(result).toMatchObject({ action: 'pause_review', reviewReason: 'safety_override', evidenceStatus: 'safety_override',
+      proposal: { eligible: false, generationReady: false, directionConfirmationRequired: false } })
+    expect(result.safetyBoundary?.prohibitedMovementIds.length).toBeGreaterThan(0)
+  })
+
+  it('preserves recovery findings but cannot apply an old-direction dose edit across changed intent', () => {
+    const week = progressedWeek(), sessions = executionSessions(week, ['completed', 'completed'])
+    const result = requireReady(buildRollingWeeklyReview({ ...reviewInput({ week, planId: 'plan-rolling-2', sessions,
+      checkins: sessions.map(session => checkin(session.id, { energy: 'low' })), localDate: '2026-09-20',
+      series: [strengthSeries([100, 100, 100, 100])] }),
+      directionReconciliation: { status: 'changed', changedFields: ['schedule'], reasons: ['Confirm the changed training days.'] }
+    }))
+    expect(result).toMatchObject({ action: 'recover', doseChange: null, signalRequest: null,
+      proposal: { eligible: false, generationReady: false, directionConfirmationRequired: false } })
+    expect(result.evaluatorReview.action).toBe('recover')
+  })
+
+  it('preserves ordinary same-track review when current direction is unchanged', () => {
+    const week = initialWeek(), input = reviewInput({ week, sessions: executionSessions(week, ['completed', 'completed']),
+      localDate: '2026-09-14', series: [strengthSeries([100, 100, 100, 100])] })
+    const previous = requireReady(buildRollingWeeklyReview(input))
+    const reconciled = requireReady(buildRollingWeeklyReview({ ...input,
+      directionReconciliation: { status: 'unchanged', changedFields: [], reasons: [] } }))
+    const { directionReconciliation: _reconciliation, ...remaining } = reconciled
+    expect(remaining).toEqual(previous)
   })
 })
 
@@ -570,7 +630,7 @@ describe('separate confirmed outcome review',()=>{
     const result=requireReady(buildRollingWeeklyReview(input)),goal=result.goalReviews![0]
     const assignments=matchingAssignments(week,input.context,goal.evaluator,week.profileSnapshot.primaryGoal.id,a)
     for(const id of assignments){const assignment=week.schedule.assignments.find(x=>x.id===id)!;expect(week.sessions.some(s=>s.day===assignment.day&&s.blocks.some(b=>b.role!=='specific_preparation'&&b.exercises.some(e=>e.movementId===a.binding.movementId&&e.coverageRequirementIds.includes(assignment.requirementId))))).toBe(true)}
-    if(assignments.length!==1){expect(result.doseChange).toBeNull();expect(result.missing).toContain('exact_assignment_target_unavailable')}
+    expect(result.action).toBe('continue');expect(result.doseChange).toBeNull();expect(result.missing).not.toContain('exact_assignment_target_unavailable')
   })
   it('keeps a previously declared supporting signal separate and flags improvement without direct transfer',()=>{
     const a=strengthOutcome(),direct=boundSeries(a),support=boundSeries(a,[8,8,6,6]),definition=findAssessmentDefinition('session.rpe')!

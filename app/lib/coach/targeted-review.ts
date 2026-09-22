@@ -28,8 +28,15 @@ export interface TargetedGoalReview {
 
 /** Only catalog comparability dimensions are normalized, without inferring missing context. */
 export function sampleMatchesOutcome(sample: CoachEvidenceSample, outcome: PlanningOutcome): boolean {
+  return sample.semanticRole === 'direct_outcome' && sampleMatchesOutcomeMeasurement(sample, outcome)
+}
+
+/** Factual measurement identity is independent of its evidence role. The
+ * adaptation matcher above separately requires direct-outcome authority.
+ */
+export function sampleMatchesOutcomeMeasurement(sample: CoachEvidenceSample, outcome: PlanningOutcome): boolean {
   const m = outcome.measurement
-  if (!m || sample.metricId !== m.metricId || sample.semanticRole !== 'direct_outcome'
+  if (!m || sample.metricId !== m.metricId
     || sample.assessmentDefinition.id !== m.assessmentDefinition.id || sample.assessmentDefinition.version !== m.assessmentDefinition.version
     || sample.protocol.id !== m.protocol.id || sample.protocol.version !== m.protocol.version) return false
   return sampleMatchesBinding(sample, outcome)
@@ -89,7 +96,11 @@ export function evaluateConfirmedOutcome(input: AdaptationEvaluationInput & { pl
   const includedIds = new Set(series.flatMap(s => s.observationIds))
   const excludedSources = input.context.evidenceIds.filter(id => !includedIds.has(id)).map(observationId => ({ observationId, reason: 'outcome_binding_mismatch' }))
   excludedSources.push(...(input.context.executionExclusions ?? []).map(item => ({ observationId: item.observationId, reason: item.reason })))
-  const context: CoachEvidenceContextPacket = { ...input.context, scope: { ...input.context.scope, goalId: outcome.goal.id },
+  const context: CoachEvidenceContextPacket = { ...input.context,
+    // This is a derived outcome-scoped view, not a wider numerical policy. Keep
+    // source caps, incompleteness, active-plan binding and retrieval reproduction.
+    purpose: input.context.purpose === 'new_planning' ? 'adaptation_review' : input.context.purpose,
+    scope: { ...input.context.scope, goalId: outcome.goal.id },
     evidenceSeries: series, evidenceIds: [...includedIds], sampleCount: series.reduce((n, s) => n + s.samples.length, 0) }
   if (supported) {
     const hypothesisId = `${base.id}:outcome:${outcome.goal.id}`

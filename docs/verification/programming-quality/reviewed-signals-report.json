@@ -1,0 +1,1576 @@
+{
+  "version": "reviewed-signals-evaluation-1",
+  "purpose": "development_gap_analysis",
+  "synthetic": true,
+  "holdout": false,
+  "authority": "No numerical approval, coaching pass, model call, plan mutation or runtime activation.",
+  "traceVersion": "programming-quality-signal-traces-1",
+  "algorithmVersion": "adaptive-review-0.1.0",
+  "counts": {
+    "cases": 6,
+    "checks": 18,
+    "pass": 9,
+    "fail": 2,
+    "notObserved": 7,
+    "coachingAssessed": 0
+  },
+  "cases": [
+    {
+      "id": "stable-and-noisy-vbt",
+      "agreement": {
+        "reviewer": "Greg Foote",
+        "status": "agreed_qualitative_response",
+        "source": "docs/verification/programming-quality/signal-review-decisions.md"
+      },
+      "criterion": {
+        "id": "stable-and-noisy-vbt",
+        "response": "Retain work provisionally; investigate the spike and seek comparable confirmation.",
+        "forbidden": [
+          "Declare the spike proven noise or adaptation.",
+          "Change dose from the isolated spike."
+        ],
+        "pending": [
+          "Device validity and best-repetition suitability",
+          "Exact confirmation rule"
+        ],
+        "humanCheck": "Does the response identify the uncertainty and relevant setup/execution checks without asserting a cause?"
+      },
+      "checks": [
+        {
+          "id": "isolated-spike-does-not-trigger-diagnostic-change",
+          "status": "pass",
+          "scope": "diagnostic",
+          "evidence": {
+            "action": "continue"
+          },
+          "limitation": "Harness-only velocity hypothesis; not validated product VBT policy."
+        },
+        {
+          "id": "product-retains-active-plan",
+          "status": "pass",
+          "scope": "product",
+          "evidence": {
+            "eligible": false,
+            "requiresAcceptance": false,
+            "activePlanUnchanged": true,
+            "numericChangeStatus": "not_generated",
+            "suggestedChanges": [
+              "Keep the accepted plan unchanged and collect the named compatible measurement."
+            ]
+          },
+          "limitation": null
+        },
+        {
+          "id": "investigate-spike-and-seek-confirmation",
+          "status": "not_observed",
+          "scope": "product",
+          "evidence": null,
+          "limitation": "Trace has no user-facing investigation workflow. A stable label alone does not satisfy this criterion."
+        }
+      ],
+      "coachingAssessment": "not_assessed"
+    },
+    {
+      "id": "repeated-direct-improvement",
+      "agreement": {
+        "reviewer": "Greg Foote",
+        "status": "agreed_qualitative_response",
+        "source": "docs/verification/programming-quality/signal-review-decisions.md"
+      },
+      "criterion": {
+        "id": "repeated-direct-improvement",
+        "response": "Recognize improvement; decide whether to continue successful work or adjust using goals, working performance, effort and recovery.",
+        "forbidden": [
+          "Treat improvement as automatic authority to increase dose.",
+          "Claim the supplied session RPE was used when it was not."
+        ],
+        "pending": [
+          "Integrated effort and working-performance interpretation",
+          "Any specific permitted prescription change"
+        ],
+        "humanCheck": "Is continuation a real option, and is any proposed change justified against the athlete goal and burden?"
+      },
+      "checks": [
+        {
+          "id": "evaluator-does-not-apply-dose",
+          "status": "pass",
+          "scope": "product",
+          "evidence": {
+            "eligible": true,
+            "requiresAcceptance": true,
+            "activePlanUnchanged": true,
+            "numericChangeStatus": "athlete_input_required",
+            "suggestedChanges": [
+              "Build a reviewed next plan version from the same goal and compatible assessment protocol.",
+              "Change only one declared dose variable and require athlete acceptance."
+            ]
+          },
+          "limitation": "Evaluator boundary only; does not grade the downstream weekly prescription mapper."
+        },
+        {
+          "id": "supplied-effort-reaches-selected-evidence",
+          "status": "fail",
+          "scope": "product",
+          "evidence": {
+            "selectedMetrics": [
+              "strength.load"
+            ]
+          },
+          "limitation": "Presence is necessary, not sufficient, for appropriate effort interpretation."
+        },
+        {
+          "id": "goal-and-burden-justify-continuation-or-adjustment",
+          "status": "not_observed",
+          "scope": "product",
+          "evidence": null,
+          "limitation": "No semantic or downstream weekly-decision assessment is performed by this trace."
+        }
+      ],
+      "coachingAssessment": "not_assessed"
+    },
+    {
+      "id": "mixed-vbt-working-performance",
+      "agreement": {
+        "reviewer": "Greg Foote",
+        "status": "agreed_qualitative_response",
+        "source": "docs/verification/programming-quality/signal-review-decisions.md"
+      },
+      "criterion": {
+        "id": "mixed-vbt-working-performance",
+        "response": "Flag disagreement, investigate setup/intent/technique/recovery, and provisionally retain working prescription.",
+        "forbidden": [
+          "Declare global capacity loss from monitoring velocity alone.",
+          "Claim mixed evidence was reconciled without consuming working performance."
+        ],
+        "pending": [
+          "Corroborating evidence criteria"
+        ],
+        "humanCheck": "Does the explanation reconcile both signals and identify what evidence could change the decision?"
+      },
+      "checks": [
+        {
+          "id": "product-retains-active-plan",
+          "status": "pass",
+          "scope": "product",
+          "evidence": {
+            "eligible": false,
+            "requiresAcceptance": false,
+            "activePlanUnchanged": true,
+            "numericChangeStatus": "not_generated",
+            "suggestedChanges": [
+              "Keep the accepted plan unchanged and collect the named compatible measurement."
+            ]
+          },
+          "limitation": null
+        },
+        {
+          "id": "working-performance-reaches-evaluator",
+          "status": "not_observed",
+          "scope": "product",
+          "evidence": null,
+          "limitation": "This trace has no structured performed-work input bridge or consumption receipt. Adding a strength.load series would not prove that the reported working sets were consumed and must not make this criterion pass."
+        },
+        {
+          "id": "mixed-evidence-reconciliation",
+          "status": "not_observed",
+          "scope": "product",
+          "evidence": null,
+          "limitation": "Reported work is fixture context, not evidence consumed by this evaluator."
+        }
+      ],
+      "coachingAssessment": "not_assessed"
+    },
+    {
+      "id": "changed-protocol",
+      "agreement": {
+        "reviewer": "Greg Foote",
+        "status": "agreed_qualitative_response",
+        "source": "docs/verification/programming-quality/signal-review-decisions.md"
+      },
+      "criterion": {
+        "id": "changed-protocol",
+        "response": "Keep protocols separate; retain work unless other evidence warrants change and confirm the future monitoring protocol.",
+        "forbidden": [
+          "Pool incompatible observations into one trend.",
+          "Silently replace the confirmed benchmark."
+        ],
+        "pending": [
+          "Which future protocol to confirm",
+          "Sufficiency of comparable evidence"
+        ],
+        "humanCheck": "Does the response distinguish progress against the original benchmark from results under a new protocol?"
+      },
+      "checks": [
+        {
+          "id": "exact-confirmed-protocol-evidence",
+          "status": "pass",
+          "scope": "product",
+          "evidence": {
+            "ids": [
+              "standard-exposure-1",
+              "standard-exposure-2"
+            ],
+            "protocols": [
+              {
+                "id": "strength-repetition-max-standard",
+                "version": "1.0.0",
+                "comparabilityDimensions": [
+                  "movement",
+                  "variation",
+                  "repetitions",
+                  "equipment",
+                  "source",
+                  "technique_modifiers"
+                ]
+              }
+            ],
+            "expectedProtocol": {
+              "id": "strength-repetition-max-standard",
+              "version": "1.0.0",
+              "comparabilityDimensions": [
+                "movement",
+                "variation",
+                "repetitions",
+                "equipment",
+                "source",
+                "technique_modifiers"
+              ]
+            },
+            "samplesMatch": true,
+            "fixtureBindingMatches": true
+          },
+          "limitation": "Exact selected samples are checked against source input and the declared standard fixture identity, values and binding. This is a fixture-specific check, not a general protocol validator."
+        },
+        {
+          "id": "changed-observations-explicitly-excluded",
+          "status": "pass",
+          "scope": "product",
+          "evidence": {
+            "excluded": [
+              "changed-exposure-1",
+              "changed-exposure-2",
+              "reported-rpe-exposure-1",
+              "reported-rpe-exposure-2",
+              "reported-rpe-exposure-3",
+              "reported-rpe-exposure-4"
+            ]
+          },
+          "limitation": null
+        },
+        {
+          "id": "confirm-future-monitoring-protocol",
+          "status": "not_observed",
+          "scope": "product",
+          "evidence": null,
+          "limitation": "Filtering to the existing binding does not establish a user-facing protocol confirmation operation."
+        }
+      ],
+      "coachingAssessment": "not_assessed"
+    },
+    {
+      "id": "missing-sensor-repetition",
+      "agreement": {
+        "reviewer": "Greg Foote",
+        "status": "agreed_qualitative_response",
+        "source": "docs/verification/programming-quality/signal-review-decisions.md"
+      },
+      "criterion": {
+        "id": "missing-sensor-repetition",
+        "response": "Preserve performed repetitions, mark sensor incompleteness, and require a reviewed protocol-specific completeness rule before supporting a change.",
+        "forbidden": [
+          "Infer fewer performed repetitions or reduced capacity from missing readings.",
+          "Zero-fill missing velocity.",
+          "Treat retrieval completeness as sensor completeness."
+        ],
+        "pending": [
+          "Protocol-specific incomplete-exposure handling"
+        ],
+        "humanCheck": "Does the response separate work performed from measurements observed without inventing the missing reading?"
+      },
+      "checks": [
+        {
+          "id": "known-performed-work-preserved-in-fixture",
+          "status": "pass",
+          "scope": "fixture",
+          "evidence": {
+            "performedReps": [
+              2,
+              2,
+              2,
+              2
+            ]
+          },
+          "limitation": "This is a fixture fact, not proof of runtime logging or persistence."
+        },
+        {
+          "id": "missing-reading-not-zero-filled",
+          "status": "pass",
+          "scope": "fixture",
+          "evidence": {
+            "values": [
+              0.5,
+              0.48,
+              0.51,
+              0.49,
+              0.5,
+              0.53,
+              0.51
+            ]
+          },
+          "limitation": "Tests these positive synthetic velocity values only; not a general zero-value validity policy."
+        },
+        {
+          "id": "sensor-completeness-governs-comparison",
+          "status": "not_observed",
+          "scope": "product",
+          "evidence": null,
+          "limitation": "Expected/performed sensor counts are not supplied to this evaluator; protocol-specific handling remains unreviewed."
+        }
+      ],
+      "coachingAssessment": "not_assessed"
+    },
+    {
+      "id": "schedule-only-correction",
+      "agreement": {
+        "reviewer": "Greg Foote",
+        "status": "agreed_qualitative_response",
+        "source": "docs/verification/programming-quality/signal-review-decisions.md"
+      },
+      "criterion": {
+        "id": "schedule-only-correction",
+        "response": "Propose a feasible reschedule; preserve intended prescriptions where possible and explain dose/emphasis changes separately before acceptance.",
+        "forbidden": [
+          "Require physiological decline to honor availability.",
+          "Silently mutate the accepted plan.",
+          "Hide dose changes inside relocation."
+        ],
+        "pending": [
+          "Whole-week feasibility and persisted proposal integration"
+        ],
+        "humanCheck": "Does the actual proposed week implement the reschedule and explain any unavoidable prescription change?"
+      },
+      "checks": [
+        {
+          "id": "ordinary-continuation-produces-reschedule",
+          "status": "fail",
+          "scope": "product",
+          "evidence": {
+            "status": "blocked",
+            "error": "A same-track decision cannot silently change schedule, equipment, goals, or constraints",
+            "actualDays": [],
+            "expectedDays": [
+              "friday",
+              "saturday",
+              "thursday"
+            ]
+          },
+          "limitation": "This grades only the legacy ordinary-continuation entrypoint, not current confirmed-direction reconciliation. See separate downstream observations for that path. Matching days alone does not establish dose preservation or persisted acceptance."
+        },
+        {
+          "id": "fixture-does-not-assert-physiological-decline",
+          "status": "pass",
+          "scope": "fixture",
+          "evidence": {
+            "action": "continue"
+          },
+          "limitation": "The review decision is supplied synthetically, not selected by a model."
+        },
+        {
+          "id": "saved-week-matches-reviewed-reschedule",
+          "status": "not_observed",
+          "scope": "product",
+          "evidence": null,
+          "limitation": "Pure compiler trace has no persistence or acceptance entrypoint."
+        }
+      ],
+      "coachingAssessment": "not_assessed"
+    }
+  ],
+  "downstreamObservations": {
+    "version": "programming-quality-downstream-signals-1",
+    "synthetic": true,
+    "authority": "Offline characterization only; no coaching-quality pass, persistence, activation or approved numerical change",
+    "directImprovement": {
+      "sourceCaseId": "repeated-direct-improvement",
+      "inputMeasurements": {
+        "standardizedOneRepLoadsKg": [
+          100,
+          101,
+          105,
+          106
+        ],
+        "sessionRpe": [
+          7,
+          7,
+          7,
+          7
+        ]
+      },
+      "evaluatorAction": "progress",
+      "executionInput": {
+        "athleteLocalDate": "2026-09-21",
+        "athleteRequestedReview": true,
+        "sessions": [
+          {
+            "id": "synthetic-session-0",
+            "weekNumber": 1,
+            "sessionIndex": 1,
+            "scheduledDate": "2026-09-21",
+            "status": "planned"
+          },
+          {
+            "id": "synthetic-session-1",
+            "weekNumber": 1,
+            "sessionIndex": 2,
+            "scheduledDate": "2026-09-22",
+            "status": "planned"
+          },
+          {
+            "id": "synthetic-session-2",
+            "weekNumber": 1,
+            "sessionIndex": 3,
+            "scheduledDate": "2026-09-23",
+            "status": "planned"
+          }
+        ],
+        "checkins": [],
+        "recoveryContextSupplied": false,
+        "workingSetRecordsSupplied": false,
+        "mainPacketMetrics": [
+          {
+            "metricId": "strength.load",
+            "semanticRole": "direct_outcome"
+          },
+          {
+            "metricId": "session.rpe",
+            "semanticRole": "training_signal"
+          }
+        ]
+      },
+      "review": {
+        "action": "collect_signal",
+        "evidenceStatus": "insufficient",
+        "doseChange": null,
+        "proposal": {
+          "eligible": true,
+          "requiresAcceptance": true,
+          "activePlanUnchanged": true,
+          "generationReady": false,
+          "directionConfirmationRequired": false,
+          "blockingReasons": [
+            "No safe bounded plan change could be generated from the accepted weekly dose."
+          ]
+        },
+        "rationale": [
+          "Repeated compatible direct outcomes improved beyond provisional variability.",
+          "0 of 3 scheduled sessions were completed.",
+          "The evidence does not identify one supported assignment change. Keep the accepted work unchanged."
+        ],
+        "missing": [
+          "exact_assignment_target_unavailable"
+        ],
+        "selectedMeasurements": [
+          {
+            "metricId": "strength.load",
+            "semanticRole": "direct_outcome",
+            "exposureCount": 4,
+            "trend": "improving"
+          }
+        ]
+      },
+      "matchingAssignmentCount": 2,
+      "prescriptionsBefore": [
+        {
+          "day": "monday",
+          "scheduledMinutes": 60,
+          "blocks": [
+            {
+              "role": "specific_preparation",
+              "estimatedMinutes": 6,
+              "exercises": [
+                {
+                  "movementId": "single_leg_hip_bridge",
+                  "role": "specific_preparation",
+                  "dose": {
+                    "kind": "continuous",
+                    "durationMinutes": {
+                      "min": 6,
+                      "max": 6
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "quality",
+                    "cue": "Rehearse the exact range and positions with light, controlled repetitions."
+                  },
+                  "restSeconds": {
+                    "min": 0,
+                    "max": 60
+                  },
+                  "estimatedMinutes": 6,
+                  "successCondition": "Finish ready to reproduce the priority movement without preparation fatigue.",
+                  "stopCondition": "Reduce range, speed, or complexity if the rehearsal becomes less controlled."
+                }
+              ]
+            },
+            {
+              "role": "priority_adaptation",
+              "estimatedMinutes": 12,
+              "exercises": [
+                {
+                  "movementId": "single_leg_hip_bridge",
+                  "role": "priority_adaptation",
+                  "dose": {
+                    "kind": "sets_reps",
+                    "sets": {
+                      "min": 2,
+                      "max": 2
+                    },
+                    "repetitions": {
+                      "min": 3,
+                      "max": 8
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "rir",
+                    "range": {
+                      "min": 2,
+                      "max": 4
+                    }
+                  },
+                  "restSeconds": {
+                    "min": 120,
+                    "max": 300
+                  },
+                  "estimatedMinutes": 12,
+                  "successCondition": "Every planned repetition is repeatable with stable position and force.",
+                  "stopCondition": "Stop the set when position or repeatable force materially breaks down."
+                }
+              ]
+            },
+            {
+              "role": "secondary_adaptation",
+              "estimatedMinutes": 12,
+              "exercises": [
+                {
+                  "movementId": "barbell_back_squat",
+                  "role": "secondary_adaptation",
+                  "dose": {
+                    "kind": "sets_reps",
+                    "sets": {
+                      "min": 2,
+                      "max": 2
+                    },
+                    "repetitions": {
+                      "min": 3,
+                      "max": 8
+                    }
+                  },
+                  "loadAnchor": {
+                    "source": "saved_assessment",
+                    "assessmentId": "synthetic-assessment-squat",
+                    "percentRange": {
+                      "min": 65,
+                      "max": 75
+                    },
+                    "loadRange": {
+                      "min": 170,
+                      "max": 195,
+                      "unit": "lb"
+                    }
+                  },
+                  "executionTarget": {
+                    "kind": "rir",
+                    "range": {
+                      "min": 2,
+                      "max": 4
+                    }
+                  },
+                  "restSeconds": {
+                    "min": 120,
+                    "max": 300
+                  },
+                  "estimatedMinutes": 12,
+                  "successCondition": "Every planned repetition is repeatable with stable position and force.",
+                  "stopCondition": "Stop the set when position or repeatable force materially breaks down."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "day": "tuesday",
+          "scheduledMinutes": 60,
+          "blocks": [
+            {
+              "role": "specific_preparation",
+              "estimatedMinutes": 6,
+              "exercises": [
+                {
+                  "movementId": "band_row",
+                  "role": "specific_preparation",
+                  "dose": {
+                    "kind": "continuous",
+                    "durationMinutes": {
+                      "min": 6,
+                      "max": 6
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "quality",
+                    "cue": "Rehearse the exact range and positions with light, controlled repetitions."
+                  },
+                  "restSeconds": {
+                    "min": 0,
+                    "max": 60
+                  },
+                  "estimatedMinutes": 6,
+                  "successCondition": "Finish ready to reproduce the priority movement without preparation fatigue.",
+                  "stopCondition": "Reduce range, speed, or complexity if the rehearsal becomes less controlled."
+                }
+              ]
+            },
+            {
+              "role": "priority_adaptation",
+              "estimatedMinutes": 10,
+              "exercises": [
+                {
+                  "movementId": "band_row",
+                  "role": "priority_adaptation",
+                  "dose": {
+                    "kind": "sets_reps",
+                    "sets": {
+                      "min": 2,
+                      "max": 2
+                    },
+                    "repetitions": {
+                      "min": 3,
+                      "max": 8
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "rir",
+                    "range": {
+                      "min": 2,
+                      "max": 4
+                    }
+                  },
+                  "restSeconds": {
+                    "min": 120,
+                    "max": 300
+                  },
+                  "estimatedMinutes": 10,
+                  "successCondition": "Every planned repetition is repeatable with stable position and force.",
+                  "stopCondition": "Stop the set when position or repeatable force materially breaks down."
+                }
+              ]
+            },
+            {
+              "role": "assistance_and_capacity",
+              "estimatedMinutes": 10,
+              "exercises": [
+                {
+                  "movementId": "barbell_floor_press",
+                  "role": "assistance_and_capacity",
+                  "dose": {
+                    "kind": "sets_reps",
+                    "sets": {
+                      "min": 2,
+                      "max": 2
+                    },
+                    "repetitions": {
+                      "min": 3,
+                      "max": 8
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "rir",
+                    "range": {
+                      "min": 2,
+                      "max": 4
+                    }
+                  },
+                  "restSeconds": {
+                    "min": 120,
+                    "max": 300
+                  },
+                  "estimatedMinutes": 10,
+                  "successCondition": "Every planned repetition is repeatable with stable position and force.",
+                  "stopCondition": "Stop the set when position or repeatable force materially breaks down."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "day": "wednesday",
+          "scheduledMinutes": 60,
+          "blocks": [
+            {
+              "role": "specific_preparation",
+              "estimatedMinutes": 6,
+              "exercises": [
+                {
+                  "movementId": "single_leg_hip_bridge",
+                  "role": "specific_preparation",
+                  "dose": {
+                    "kind": "continuous",
+                    "durationMinutes": {
+                      "min": 6,
+                      "max": 6
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "quality",
+                    "cue": "Rehearse the exact range and positions with light, controlled repetitions."
+                  },
+                  "restSeconds": {
+                    "min": 0,
+                    "max": 60
+                  },
+                  "estimatedMinutes": 6,
+                  "successCondition": "Finish ready to reproduce the priority movement without preparation fatigue.",
+                  "stopCondition": "Reduce range, speed, or complexity if the rehearsal becomes less controlled."
+                }
+              ]
+            },
+            {
+              "role": "priority_adaptation",
+              "estimatedMinutes": 12,
+              "exercises": [
+                {
+                  "movementId": "single_leg_hip_bridge",
+                  "role": "priority_adaptation",
+                  "dose": {
+                    "kind": "sets_reps",
+                    "sets": {
+                      "min": 2,
+                      "max": 2
+                    },
+                    "repetitions": {
+                      "min": 3,
+                      "max": 8
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "rir",
+                    "range": {
+                      "min": 2,
+                      "max": 4
+                    }
+                  },
+                  "restSeconds": {
+                    "min": 120,
+                    "max": 300
+                  },
+                  "estimatedMinutes": 12,
+                  "successCondition": "Every planned repetition is repeatable with stable position and force.",
+                  "stopCondition": "Stop the set when position or repeatable force materially breaks down."
+                }
+              ]
+            },
+            {
+              "role": "secondary_adaptation",
+              "estimatedMinutes": 12,
+              "exercises": [
+                {
+                  "movementId": "barbell_back_squat",
+                  "role": "secondary_adaptation",
+                  "dose": {
+                    "kind": "sets_reps",
+                    "sets": {
+                      "min": 2,
+                      "max": 2
+                    },
+                    "repetitions": {
+                      "min": 3,
+                      "max": 8
+                    }
+                  },
+                  "loadAnchor": {
+                    "source": "saved_assessment",
+                    "assessmentId": "synthetic-assessment-squat",
+                    "percentRange": {
+                      "min": 65,
+                      "max": 75
+                    },
+                    "loadRange": {
+                      "min": 170,
+                      "max": 195,
+                      "unit": "lb"
+                    }
+                  },
+                  "executionTarget": {
+                    "kind": "rir",
+                    "range": {
+                      "min": 2,
+                      "max": 4
+                    }
+                  },
+                  "restSeconds": {
+                    "min": 120,
+                    "max": 300
+                  },
+                  "estimatedMinutes": 12,
+                  "successCondition": "Every planned repetition is repeatable with stable position and force.",
+                  "stopCondition": "Stop the set when position or repeatable force materially breaks down."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "compile": {
+        "status": "not_generation_ready",
+        "days": [],
+        "prescriptionsAfter": []
+      },
+      "acceptedInputUnchanged": true,
+      "limitations": [
+        "Already-selected synthetic packet; no database/device validation.",
+        "Historical session RPE remains in the main evidence packet; no recovery packet or verified working-set effort is supplied.",
+        "This fixture characterizes its actual assignment count and bounds; it does not force the one-assignment progression branch."
+      ]
+    },
+    "scheduleReplacement": {
+      "sourceCaseId": "schedule-only-correction",
+      "reconciliation": {
+        "status": "changed",
+        "changedFields": [
+          "training_schedule"
+        ],
+        "reasons": [
+          "Confirmed training_schedule differs from the accepted direction"
+        ]
+      },
+      "previousAvailableDays": [
+        "monday",
+        "tuesday",
+        "wednesday"
+      ],
+      "confirmedDays": [
+        "thursday",
+        "friday",
+        "saturday"
+      ],
+      "review": {
+        "action": "shift_emphasis",
+        "evidenceStatus": "insufficient",
+        "doseChange": null,
+        "proposal": {
+          "eligible": true,
+          "requiresAcceptance": true,
+          "activePlanUnchanged": true,
+          "generationReady": false,
+          "directionConfirmationRequired": true,
+          "blockingReasons": [
+            "Confirmed training_schedule differs from the accepted direction",
+            "Confirm the replacement training emphasis before generating the next week."
+          ]
+        },
+        "rationale": [
+          "Confirmed training_schedule differs from the accepted direction",
+          "Performance evidence below reviews the accepted direction; it does not evaluate a replacement goal or authorize a new dose.",
+          "The plan stays unchanged because at least one required comparable series is missing, stale, or below its repeated-exposure threshold.",
+          "0 of 3 scheduled sessions were completed."
+        ],
+        "missing": [
+          "compatible_evidence_missing",
+          "direction_reconciliation:changed",
+          "evidence_requirement_unmet:strength.repetitions:direct_outcome:strength.repetition_capacity"
+        ],
+        "selectedMeasurements": []
+      },
+      "prescriptionsBefore": [
+        {
+          "day": "monday",
+          "scheduledMinutes": 60,
+          "blocks": [
+            {
+              "role": "specific_preparation",
+              "estimatedMinutes": 6,
+              "exercises": [
+                {
+                  "movementId": "single_leg_hip_bridge",
+                  "role": "specific_preparation",
+                  "dose": {
+                    "kind": "continuous",
+                    "durationMinutes": {
+                      "min": 6,
+                      "max": 6
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "quality",
+                    "cue": "Rehearse the exact range and positions with light, controlled repetitions."
+                  },
+                  "restSeconds": {
+                    "min": 0,
+                    "max": 60
+                  },
+                  "estimatedMinutes": 6,
+                  "successCondition": "Finish ready to reproduce the priority movement without preparation fatigue.",
+                  "stopCondition": "Reduce range, speed, or complexity if the rehearsal becomes less controlled."
+                }
+              ]
+            },
+            {
+              "role": "priority_adaptation",
+              "estimatedMinutes": 12,
+              "exercises": [
+                {
+                  "movementId": "single_leg_hip_bridge",
+                  "role": "priority_adaptation",
+                  "dose": {
+                    "kind": "sets_reps",
+                    "sets": {
+                      "min": 2,
+                      "max": 2
+                    },
+                    "repetitions": {
+                      "min": 6,
+                      "max": 15
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "rir",
+                    "range": {
+                      "min": 1,
+                      "max": 3
+                    }
+                  },
+                  "restSeconds": {
+                    "min": 90,
+                    "max": 180
+                  },
+                  "estimatedMinutes": 12,
+                  "successCondition": "The target region remains the limiter through the last useful repetition.",
+                  "stopCondition": "Stop when another repetition would shift work away from the target region or destabilize technique."
+                }
+              ]
+            },
+            {
+              "role": "secondary_adaptation",
+              "estimatedMinutes": 12,
+              "exercises": [
+                {
+                  "movementId": "dumbbell_goblet_squat",
+                  "role": "secondary_adaptation",
+                  "dose": {
+                    "kind": "sets_reps",
+                    "sets": {
+                      "min": 2,
+                      "max": 2
+                    },
+                    "repetitions": {
+                      "min": 6,
+                      "max": 15
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "rir",
+                    "range": {
+                      "min": 1,
+                      "max": 3
+                    }
+                  },
+                  "restSeconds": {
+                    "min": 90,
+                    "max": 180
+                  },
+                  "estimatedMinutes": 12,
+                  "successCondition": "The target region remains the limiter through the last useful repetition.",
+                  "stopCondition": "Stop when another repetition would shift work away from the target region or destabilize technique."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "day": "tuesday",
+          "scheduledMinutes": 60,
+          "blocks": [
+            {
+              "role": "specific_preparation",
+              "estimatedMinutes": 6,
+              "exercises": [
+                {
+                  "movementId": "dumbbell_goblet_squat",
+                  "role": "specific_preparation",
+                  "dose": {
+                    "kind": "continuous",
+                    "durationMinutes": {
+                      "min": 6,
+                      "max": 6
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "quality",
+                    "cue": "Rehearse the exact range and positions with light, controlled repetitions."
+                  },
+                  "restSeconds": {
+                    "min": 0,
+                    "max": 60
+                  },
+                  "estimatedMinutes": 6,
+                  "successCondition": "Finish ready to reproduce the priority movement without preparation fatigue.",
+                  "stopCondition": "Reduce range, speed, or complexity if the rehearsal becomes less controlled."
+                }
+              ]
+            },
+            {
+              "role": "priority_adaptation",
+              "estimatedMinutes": 12,
+              "exercises": [
+                {
+                  "movementId": "dumbbell_goblet_squat",
+                  "role": "priority_adaptation",
+                  "dose": {
+                    "kind": "sets_reps",
+                    "sets": {
+                      "min": 2,
+                      "max": 2
+                    },
+                    "repetitions": {
+                      "min": 6,
+                      "max": 15
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "rir",
+                    "range": {
+                      "min": 1,
+                      "max": 3
+                    }
+                  },
+                  "restSeconds": {
+                    "min": 90,
+                    "max": 180
+                  },
+                  "estimatedMinutes": 12,
+                  "successCondition": "The target region remains the limiter through the last useful repetition.",
+                  "stopCondition": "Stop when another repetition would shift work away from the target region or destabilize technique."
+                }
+              ]
+            },
+            {
+              "role": "assistance_and_capacity",
+              "estimatedMinutes": 10,
+              "exercises": [
+                {
+                  "movementId": "barbell_floor_press",
+                  "role": "assistance_and_capacity",
+                  "dose": {
+                    "kind": "sets_reps",
+                    "sets": {
+                      "min": 2,
+                      "max": 2
+                    },
+                    "repetitions": {
+                      "min": 6,
+                      "max": 15
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "rir",
+                    "range": {
+                      "min": 1,
+                      "max": 3
+                    }
+                  },
+                  "restSeconds": {
+                    "min": 90,
+                    "max": 180
+                  },
+                  "estimatedMinutes": 10,
+                  "successCondition": "The target region remains the limiter through the last useful repetition.",
+                  "stopCondition": "Stop when another repetition would shift work away from the target region or destabilize technique."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "day": "wednesday",
+          "scheduledMinutes": 60,
+          "blocks": [
+            {
+              "role": "specific_preparation",
+              "estimatedMinutes": 6,
+              "exercises": [
+                {
+                  "movementId": "single_leg_hip_bridge",
+                  "role": "specific_preparation",
+                  "dose": {
+                    "kind": "continuous",
+                    "durationMinutes": {
+                      "min": 6,
+                      "max": 6
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "quality",
+                    "cue": "Rehearse the exact range and positions with light, controlled repetitions."
+                  },
+                  "restSeconds": {
+                    "min": 0,
+                    "max": 60
+                  },
+                  "estimatedMinutes": 6,
+                  "successCondition": "Finish ready to reproduce the priority movement without preparation fatigue.",
+                  "stopCondition": "Reduce range, speed, or complexity if the rehearsal becomes less controlled."
+                }
+              ]
+            },
+            {
+              "role": "priority_adaptation",
+              "estimatedMinutes": 12,
+              "exercises": [
+                {
+                  "movementId": "single_leg_hip_bridge",
+                  "role": "priority_adaptation",
+                  "dose": {
+                    "kind": "sets_reps",
+                    "sets": {
+                      "min": 2,
+                      "max": 2
+                    },
+                    "repetitions": {
+                      "min": 6,
+                      "max": 15
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "rir",
+                    "range": {
+                      "min": 1,
+                      "max": 3
+                    }
+                  },
+                  "restSeconds": {
+                    "min": 90,
+                    "max": 180
+                  },
+                  "estimatedMinutes": 12,
+                  "successCondition": "The target region remains the limiter through the last useful repetition.",
+                  "stopCondition": "Stop when another repetition would shift work away from the target region or destabilize technique."
+                }
+              ]
+            },
+            {
+              "role": "assistance_and_capacity",
+              "estimatedMinutes": 10,
+              "exercises": [
+                {
+                  "movementId": "band_row",
+                  "role": "assistance_and_capacity",
+                  "dose": {
+                    "kind": "sets_reps",
+                    "sets": {
+                      "min": 2,
+                      "max": 2
+                    },
+                    "repetitions": {
+                      "min": 6,
+                      "max": 15
+                    }
+                  },
+                  "loadAnchor": null,
+                  "executionTarget": {
+                    "kind": "rir",
+                    "range": {
+                      "min": 1,
+                      "max": 3
+                    }
+                  },
+                  "restSeconds": {
+                    "min": 90,
+                    "max": 180
+                  },
+                  "estimatedMinutes": 10,
+                  "successCondition": "The target region remains the limiter through the last useful repetition.",
+                  "stopCondition": "Stop when another repetition would shift work away from the target region or destabilize technique."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "compile": {
+        "status": "compiled",
+        "days": [
+          "thursday",
+          "friday",
+          "saturday"
+        ],
+        "prescriptionsAfter": [
+          {
+            "day": "thursday",
+            "scheduledMinutes": 60,
+            "blocks": [
+              {
+                "role": "specific_preparation",
+                "estimatedMinutes": 6,
+                "exercises": [
+                  {
+                    "movementId": "single_leg_hip_bridge",
+                    "role": "specific_preparation",
+                    "dose": {
+                      "kind": "continuous",
+                      "durationMinutes": {
+                        "min": 6,
+                        "max": 6
+                      }
+                    },
+                    "loadAnchor": null,
+                    "executionTarget": {
+                      "kind": "quality",
+                      "cue": "Rehearse the exact range and positions with light, controlled repetitions."
+                    },
+                    "restSeconds": {
+                      "min": 0,
+                      "max": 60
+                    },
+                    "estimatedMinutes": 6,
+                    "successCondition": "Finish ready to reproduce the priority movement without preparation fatigue.",
+                    "stopCondition": "Reduce range, speed, or complexity if the rehearsal becomes less controlled."
+                  }
+                ]
+              },
+              {
+                "role": "priority_adaptation",
+                "estimatedMinutes": 12,
+                "exercises": [
+                  {
+                    "movementId": "single_leg_hip_bridge",
+                    "role": "priority_adaptation",
+                    "dose": {
+                      "kind": "sets_reps",
+                      "sets": {
+                        "min": 2,
+                        "max": 2
+                      },
+                      "repetitions": {
+                        "min": 6,
+                        "max": 15
+                      }
+                    },
+                    "loadAnchor": null,
+                    "executionTarget": {
+                      "kind": "rir",
+                      "range": {
+                        "min": 1,
+                        "max": 3
+                      }
+                    },
+                    "restSeconds": {
+                      "min": 90,
+                      "max": 180
+                    },
+                    "estimatedMinutes": 12,
+                    "successCondition": "The target region remains the limiter through the last useful repetition.",
+                    "stopCondition": "Stop when another repetition would shift work away from the target region or destabilize technique."
+                  }
+                ]
+              },
+              {
+                "role": "secondary_adaptation",
+                "estimatedMinutes": 12,
+                "exercises": [
+                  {
+                    "movementId": "dumbbell_goblet_squat",
+                    "role": "secondary_adaptation",
+                    "dose": {
+                      "kind": "sets_reps",
+                      "sets": {
+                        "min": 2,
+                        "max": 2
+                      },
+                      "repetitions": {
+                        "min": 6,
+                        "max": 15
+                      }
+                    },
+                    "loadAnchor": null,
+                    "executionTarget": {
+                      "kind": "rir",
+                      "range": {
+                        "min": 1,
+                        "max": 3
+                      }
+                    },
+                    "restSeconds": {
+                      "min": 90,
+                      "max": 180
+                    },
+                    "estimatedMinutes": 12,
+                    "successCondition": "The target region remains the limiter through the last useful repetition.",
+                    "stopCondition": "Stop when another repetition would shift work away from the target region or destabilize technique."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "day": "friday",
+            "scheduledMinutes": 60,
+            "blocks": [
+              {
+                "role": "specific_preparation",
+                "estimatedMinutes": 6,
+                "exercises": [
+                  {
+                    "movementId": "dumbbell_goblet_squat",
+                    "role": "specific_preparation",
+                    "dose": {
+                      "kind": "continuous",
+                      "durationMinutes": {
+                        "min": 6,
+                        "max": 6
+                      }
+                    },
+                    "loadAnchor": null,
+                    "executionTarget": {
+                      "kind": "quality",
+                      "cue": "Rehearse the exact range and positions with light, controlled repetitions."
+                    },
+                    "restSeconds": {
+                      "min": 0,
+                      "max": 60
+                    },
+                    "estimatedMinutes": 6,
+                    "successCondition": "Finish ready to reproduce the priority movement without preparation fatigue.",
+                    "stopCondition": "Reduce range, speed, or complexity if the rehearsal becomes less controlled."
+                  }
+                ]
+              },
+              {
+                "role": "priority_adaptation",
+                "estimatedMinutes": 12,
+                "exercises": [
+                  {
+                    "movementId": "dumbbell_goblet_squat",
+                    "role": "priority_adaptation",
+                    "dose": {
+                      "kind": "sets_reps",
+                      "sets": {
+                        "min": 2,
+                        "max": 2
+                      },
+                      "repetitions": {
+                        "min": 6,
+                        "max": 15
+                      }
+                    },
+                    "loadAnchor": null,
+                    "executionTarget": {
+                      "kind": "rir",
+                      "range": {
+                        "min": 1,
+                        "max": 3
+                      }
+                    },
+                    "restSeconds": {
+                      "min": 90,
+                      "max": 180
+                    },
+                    "estimatedMinutes": 12,
+                    "successCondition": "The target region remains the limiter through the last useful repetition.",
+                    "stopCondition": "Stop when another repetition would shift work away from the target region or destabilize technique."
+                  }
+                ]
+              },
+              {
+                "role": "assistance_and_capacity",
+                "estimatedMinutes": 10,
+                "exercises": [
+                  {
+                    "movementId": "barbell_floor_press",
+                    "role": "assistance_and_capacity",
+                    "dose": {
+                      "kind": "sets_reps",
+                      "sets": {
+                        "min": 2,
+                        "max": 2
+                      },
+                      "repetitions": {
+                        "min": 6,
+                        "max": 15
+                      }
+                    },
+                    "loadAnchor": null,
+                    "executionTarget": {
+                      "kind": "rir",
+                      "range": {
+                        "min": 1,
+                        "max": 3
+                      }
+                    },
+                    "restSeconds": {
+                      "min": 90,
+                      "max": 180
+                    },
+                    "estimatedMinutes": 10,
+                    "successCondition": "The target region remains the limiter through the last useful repetition.",
+                    "stopCondition": "Stop when another repetition would shift work away from the target region or destabilize technique."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "day": "saturday",
+            "scheduledMinutes": 60,
+            "blocks": [
+              {
+                "role": "specific_preparation",
+                "estimatedMinutes": 6,
+                "exercises": [
+                  {
+                    "movementId": "single_leg_hip_bridge",
+                    "role": "specific_preparation",
+                    "dose": {
+                      "kind": "continuous",
+                      "durationMinutes": {
+                        "min": 6,
+                        "max": 6
+                      }
+                    },
+                    "loadAnchor": null,
+                    "executionTarget": {
+                      "kind": "quality",
+                      "cue": "Rehearse the exact range and positions with light, controlled repetitions."
+                    },
+                    "restSeconds": {
+                      "min": 0,
+                      "max": 60
+                    },
+                    "estimatedMinutes": 6,
+                    "successCondition": "Finish ready to reproduce the priority movement without preparation fatigue.",
+                    "stopCondition": "Reduce range, speed, or complexity if the rehearsal becomes less controlled."
+                  }
+                ]
+              },
+              {
+                "role": "priority_adaptation",
+                "estimatedMinutes": 12,
+                "exercises": [
+                  {
+                    "movementId": "single_leg_hip_bridge",
+                    "role": "priority_adaptation",
+                    "dose": {
+                      "kind": "sets_reps",
+                      "sets": {
+                        "min": 2,
+                        "max": 2
+                      },
+                      "repetitions": {
+                        "min": 6,
+                        "max": 15
+                      }
+                    },
+                    "loadAnchor": null,
+                    "executionTarget": {
+                      "kind": "rir",
+                      "range": {
+                        "min": 1,
+                        "max": 3
+                      }
+                    },
+                    "restSeconds": {
+                      "min": 90,
+                      "max": 180
+                    },
+                    "estimatedMinutes": 12,
+                    "successCondition": "The target region remains the limiter through the last useful repetition.",
+                    "stopCondition": "Stop when another repetition would shift work away from the target region or destabilize technique."
+                  }
+                ]
+              },
+              {
+                "role": "assistance_and_capacity",
+                "estimatedMinutes": 10,
+                "exercises": [
+                  {
+                    "movementId": "band_row",
+                    "role": "assistance_and_capacity",
+                    "dose": {
+                      "kind": "sets_reps",
+                      "sets": {
+                        "min": 2,
+                        "max": 2
+                      },
+                      "repetitions": {
+                        "min": 6,
+                        "max": 15
+                      }
+                    },
+                    "loadAnchor": null,
+                    "executionTarget": {
+                      "kind": "rir",
+                      "range": {
+                        "min": 1,
+                        "max": 3
+                      }
+                    },
+                    "restSeconds": {
+                      "min": 90,
+                      "max": 180
+                    },
+                    "estimatedMinutes": 10,
+                    "successCondition": "The target region remains the limiter through the last useful repetition.",
+                    "stopCondition": "Stop when another repetition would shift work away from the target region or destabilize technique."
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "gaps": [],
+        "changedVariables": []
+      },
+      "prescriptionMultisetEqual": true,
+      "acceptedInputUnchanged": true,
+      "limitations": [
+        "Synthetic confirmed setup acknowledgement; no API, database proposal or acceptance.",
+        "Comparison excludes weekday and generated identity but retains block order, dose, load, effort, rest and time.",
+        "Compilation uses current replacement behavior; no relocation-preservation claim.",
+        "Adjacent actual training and outside work are not supplied or validated."
+      ]
+    }
+  },
+  "sourceFingerprintScope": "Selected evaluation inputs and implementation files, not a complete dependency graph or deployment identity.",
+  "sourceHashes": {
+    "scripts/programming-quality-reviewed-signals.ts": "150908675de1149fb9f4c17fffd55ffc6a55cf84c1e42e74df537707cd817c5d",
+    "scripts/programming-quality-downstream-signals.ts": "8cae4a667b99b2dd353dfec100396e1d37fa04c199fffe0f3b2d487d26779cfb",
+    "scripts/programming-quality-signal-traces.ts": "516f27193b79c792503432b0c30b6dcef863bf06a0de1952e77a4bffaac8d3cb",
+    "scripts/programming-quality-baseline.ts": "bc1c7036e8a86d87ff5ea81216fb04d1cc3d6126998191a9524303f42c4e239d",
+    "app/lib/coach/adaptation-evaluator.ts": "0fb48e6eaf87d6baf942314dde6ed102c6ebf98016d2c5e3c04fb560f8a57ac5",
+    "app/lib/coach/adaptive-programming-contracts.ts": "623d67e0291bf20820698bdce1e91a3222aa7cb469092263b5e7b13e74b068c8",
+    "app/lib/coach/targeted-review.ts": "e8f0cf9c634dbba8a76c7a9326dc38e1a6ead939abdf34823a37961a5cefac21",
+    "app/lib/coach/weekly-review.ts": "5237cec443acdbda24e3cb60f95d969845bf4c6de2c6567d58c7c059be0ea4b0",
+    "app/lib/coach/direction-reconciliation.ts": "6133fb4ff285e593cfcd0d09db859be9358d88a7a9676dab230c9d25d9e6675c",
+    "app/lib/coach/rolling-weekly-plan.ts": "4a84911eef03d8df72ff8720000052023267811f8c0d833630e04cae7d961d99",
+    "app/lib/coach/weekly-coverage.ts": "89db88883a17028c8f0c67a953d863dd0d928cbbce81c732edf26714017347f2",
+    "app/lib/coach/session-composer.ts": "1b1d365fe98896dff0293f73332b32d13acc810c0bda497e525b4b548828f828",
+    "docs/verification/programming-quality/signal-review-decisions.md": "b14e624c4e87dbf0ec01e2abc3a3fa18176bed2a56be6c42b4c928fe904c26e9"
+  },
+  "frozenArtifactHashes": {
+    "docs/verification/programming-quality/baseline-report.json": "4ca926f4535b0d334d5222dd421f75876148660caf1707269a758c3e1979edff",
+    "docs/verification/programming-quality/signal-traces.json": "e9e25da2aee009bb5d5a31f2d28cfbb635ae0e981f3209991270dda08699be44"
+  }
+}

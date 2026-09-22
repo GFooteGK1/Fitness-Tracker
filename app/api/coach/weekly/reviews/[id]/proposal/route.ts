@@ -1,6 +1,8 @@
-import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
+import { decodeDirectionReconciliation, replacementSetupMatches } from '@/app/lib/coach/direction-reconciliation'
+import { fetchDirectionReconciliation } from '@/app/lib/coach/direction-reconciliation-server'
+import { parseCoachContextRevision, STALE_COACH_CONTEXT_MESSAGE, coachContextConflictMessage } from '@/app/lib/coach/proposal-context-revision'
 import { decodeTargetedGoalReviews, TARGETED_REVIEW_VERSION } from '@/app/lib/coach/targeted-review-contracts'
-import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
+import { applyConfirmedIntentToProfile, refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -12,6 +14,7 @@ import {
 } from '@/app/lib/coach/complete-intake'
 import {
   buildStoredRollingWeeklyIntent,
+  ConfirmedEventDateConflictError,
   isIsoDate,
   isRecord,
   nextIsoDate,
@@ -119,6 +122,9 @@ export async function POST(
     if (review.action === 'pause_review') {
       return apiError('A safety review cannot create a training proposal', 409)
     }
+    // A stored review keeps its original revision. Fresh reads cannot revalidate an old decision.
+    const contextRevision = isRecord(review.rationale) ? parseCoachContextRevision(review.rationale.contextRevision) : null
+    if (contextRevision === null) return apiError(STALE_COACH_CONTEXT_MESSAGE, 409)
 
     const storedIntent = parseStoredRollingWeeklyIntent(planRow.intent)
     if (!storedIntent
@@ -132,8 +138,22 @@ export async function POST(
     const decision = parsePlanningDecision(review)
     if (!decision) return apiError('The stored weekly decision is incomplete', 409)
 
+    const savedReconciliation = isRecord(review.rationale) && review.rationale.directionReconciliation !== undefined
+      ? decodeDirectionReconciliation(review.rationale.directionReconciliation) : undefined
+    if (savedReconciliation === null || (savedReconciliation && (!['unchanged', 'changed'].includes(savedReconciliation.status)
+      || (savedReconciliation.status === 'changed' && decision.action !== 'shift_emphasis')))) {
+      return apiError(savedReconciliation?.reasons.join(' ') || 'Review the current training direction before creating a proposal', 409)
+    }
+
     const nextWindowStart = nextIsoDate(storedIntent.weekly_plan.windowEnd)
-    let profile = profileForDirectionHorizon(
+    const currentReconciliation = await fetchDirectionReconciliation(supabase, user.id, storedIntent.weekly_plan, nextWindowStart)
+    if (!['unchanged', 'changed'].includes(currentReconciliation.status)) {
+      return apiError(currentReconciliation.reasons.join(' '), currentReconciliation.status === 'unavailable' ? 503 : 409)
+    }
+    if (currentReconciliation.status === 'changed' && decision.action !== 'shift_emphasis') {
+      return apiError('Your confirmed direction changed. Create a fresh review before building the replacement week.', 409)
+    }
+    let profile = decision.action === 'shift_emphasis' ? structuredClone(storedIntent.weekly_plan.profileSnapshot) : profileForDirectionHorizon(
       storedIntent.weekly_plan.profileSnapshot,
       nextWindowStart,
       program.goal_target_date
@@ -142,15 +162,18 @@ export async function POST(
     let adaptivePlan = storedIntent.adaptive_programming
 
     if (decision.action === 'shift_emphasis') {
-      if (personalizedCoachingCapabilities().trainingIntent && (body.replacementPlanningInput as { setupConfirmed?: boolean } | undefined)?.setupConfirmed !== true) throw new Error('Confirm current training days, session duration and equipment')
+      if ((body.replacementPlanningInput as { setupConfirmed?: boolean } | undefined)?.setupConfirmed !== true) return apiError('Confirm current training days, session duration and equipment', 409)
     const validated = validateCompleteCoachPlanningInput(body.replacementPlanningInput)
       if (!validated.ok || validated.value.startDate !== nextWindowStart) {
         return apiError('Confirm a replacement setup that starts on the adjacent Monday', 400)
       }
-      const goalTargetDate = isIsoDate(body.replacementGoalTargetDate)
+      if (!replacementSetupMatches(validated.value, currentReconciliation)) {
+        return apiError('The replacement setup differs from your latest confirmed settings. Save the current setup and create a fresh review.', 409)
+      }
+      const goalTargetDate = body.replacementGoalTargetDate === null ? null : isIsoDate(body.replacementGoalTargetDate)
         ? body.replacementGoalTargetDate
         : program.goal_target_date
-      if (!goalTargetDate || goalTargetDate < nextWindowStart) {
+      if (goalTargetDate !== null && goalTargetDate < nextWindowStart) {
         return apiError('Confirm a valid target date for the replacement direction', 400)
       }
       const hypothesis = typeof body.replacementHypothesis === 'string'
@@ -159,12 +182,10 @@ export async function POST(
       if (hypothesis.length < 5 || hypothesis.length > 500) {
         return apiError('Confirm a concise hypothesis for the replacement direction', 400)
       }
-      profile = profileForDirectionHorizon(
-        buildProgrammingProfile(validated.value, runtimeContext.assessments),
-        nextWindowStart,
-        goalTargetDate
-      )
+      profile = buildProgrammingProfile(validated.value, runtimeContext.assessments)
       profile = await refreshConfirmedPlanningContext(supabase,user.id,profile, { tzOffset: body.tzOffset })
+      if (currentReconciliation.currentIntent) profile = applyConfirmedIntentToProfile(profile, currentReconciliation.currentIntent)
+      profile = profileForDirectionHorizon(profile, nextWindowStart, goalTargetDate)
       direction = buildRollingTrainingDirection(profile, { hypothesis, goalTargetDate })
     } else if (body.replacementPlanningInput !== undefined) {
       return apiError('Only a material emphasis decision can replace the planning direction', 400)
@@ -194,6 +215,7 @@ export async function POST(
     }
 
     const sourceSnapshot = {
+      contextRevision,
       reason: 'stored_rolling_weekly_review',
       basePlanVersionId: planRow.id,
       weeklyReviewId: review.id,
@@ -228,7 +250,7 @@ export async function POST(
     })
     if (error) {
       console.error('Stored weekly review proposal RPC failed:', { code: error.code })
-      if (error.code === '40001') return apiError('The active plan changed; refresh and review again', 409)
+      if (error.code === '40001' || error.code === '40P01') return apiError(coachContextConflictMessage(error), 409)
       if (error.code === '22023' || error.code === '23505') {
         return apiError('Next-week proposal conflicts with an existing request', 409)
       }
@@ -253,6 +275,7 @@ export async function POST(
       headers: { 'Cache-Control': 'private, no-store' }
     })
   } catch (error) {
+    if (error instanceof ConfirmedEventDateConflictError) return apiError(error.message, 409)
     console.error('Stored weekly review proposal POST error:', error)
     return apiError('Unable to create a proposal from the stored weekly review', 500)
   }

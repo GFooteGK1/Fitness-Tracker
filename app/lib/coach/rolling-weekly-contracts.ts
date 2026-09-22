@@ -6,7 +6,7 @@ import type {
 export const ROLLING_WEEKLY_SCHEMA_VERSION = 1 as const
 export const ROLLING_WEEKLY_KERNEL_VERSION = '0.1.0'
 export const ROLLING_WEEKLY_POLICY_VERSION = 'rolling-weekly-0.1.0'
-export const ROLLING_WEEKLY_REVIEW_ALGORITHM_VERSION = 'weekly-review-0.3.0'
+export const ROLLING_WEEKLY_REVIEW_ALGORITHM_VERSION = 'weekly-review-0.4.0'
 
 export type RollingWeeklyAction =
   | 'continue'
@@ -91,7 +91,7 @@ export function buildRollingTrainingDirection(
     schemaVersion: ROLLING_WEEKLY_SCHEMA_VERSION,
     ...(profile.trainingIntent ? { trainingIntent: structuredClone(profile.trainingIntent) } : {}),
     goalSummary: profile.athleteGoalSummary,
-    goalTargetDate: options.goalTargetDate ?? profile.primaryGoal.outcome?.horizon.endsOn ?? null,
+    goalTargetDate: options.goalTargetDate !== undefined ? options.goalTargetDate : profile.primaryGoal.outcome?.horizon.endsOn ?? null,
     currentEmphasis: [
       {
         goalAllocationId: profile.primaryGoal.id,

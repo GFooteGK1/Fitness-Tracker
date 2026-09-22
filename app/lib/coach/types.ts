@@ -288,6 +288,7 @@ export interface ActiveCoachProgramSummary {
 }
 
 export interface CoachRuntimeContext {
+  coachingDecision?: import('./coaching-decision-context').CoachingDecisionContext
   userId?: string
   capabilities?: { feedbackV2: boolean }
   generatedAt: string
