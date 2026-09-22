@@ -1,21 +1,34 @@
 # SociusFit programming quality — current handoff
 
-Updated: 2026-09-21. Project: Fitness-Tracker/SociusFit. Status: active, partial implementation.
+Updated: 2026-09-22. Project: Fitness-Tracker/SociusFit. Status: active, partial implementation.
 Objective: execute the accepted evidence-conditioned programming QPlan.
 Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
 
-Greg requested a durable save and deployment-readiness assessment. The accumulated
-work is being saved as a local checkpoint on `codex/programming-quality`; see
-[save and release receipt](../docs/verification/programming-quality/save-and-release-readiness.md)
-for the current result. Full regression: 3,450 passed, eight failed, 19 skipped.
-The eight failures are an inherited fixture timezone mismatch tracked in
-`Fitness-Tracker-i40.10`. Production build/type validation and full lint passed.
-Deployment is not ready: the migration and application require a coordinated,
-verified cutover/rollback; hosted and browser release evidence remain outstanding.
-`Fitness-Tracker-i40.9` owns this save/readiness checkpoint. Local saving does not
-mean a remote backup, release, or completion of the programming-quality plan.
+The saved implementation is committed and pushed on `codex/programming-quality`;
+[draft PR #84](https://github.com/GFooteGK1/Fitness-Tracker/pull/84) is open.
+The inherited date-fixture defect is fixed in `4c649ef` and `i40.10` is closed.
+Full regression now passes: **3,460 passed, 19 skipped**; the 14 focused boundary
+tests include SQL timezones spanning the UTC date boundary. Full TypeScript and
+focused lint passed; the preceding production build remains applicable because
+this continuation changes only fixtures, browser tests and release documents.
+
+Four new mobile Chromium tests passed at 320/390px, with light/dark screenshots
+inspected. See [mobile evidence](../docs/verification/programming-quality/mobile-release-verification.md).
+The [release runbook and schema readback](../docs/verification/programming-quality/release-preflight.md)
+are prepared, including two executable local metadata-query checks. These do not
+establish hosted database state, real multi-session contention, or a rehearsed
+cutover/rollback. `Fitness-Tracker-i40.11` tracks the remaining release work.
+
+Fresh Vercel readback confirms production still serves `f123aa8` and Preview shares
+the production Supabase URL variable. No canary app was found in the verified
+scope. Supabase remains on sign-in; Greg was asked to sign in and identify a
+separate canary app/database. Complete target metadata/recovery verification and
+isolated rehearsal before proposing production promotion. The draft PR does not
+authorize merge, production migration, numerical activation or deployment.
+See the original [save receipt](../docs/verification/programming-quality/save-and-release-readiness.md)
+for the earlier checkpoint; its failed-test count is historical.
 
 The two explicitly approved signal fixes are implemented locally:
 `Fitness-Tracker-i40.6.1` and `Fitness-Tracker-i40.6.2`. See
@@ -86,9 +99,9 @@ or plan-acceptance questions.
 
 Workspace: `C:/Dev/Personal/repos/Fitness-Tracker/.worktrees/programming-quality`.
 Branch: `codex/programming-quality`, based on freshly fetched `origin/main` at `f123aa8aa848716e894ea7bec340d693995e4b36`.
-The accumulated changes are included in the local save checkpoint requested by
-Greg; inspect this branch's latest commit for its identity. Root and other dirty
-worktrees were preserved. No push or hosted deployment is included.
+The accumulated changes are committed and pushed in draft PR #84; inspect its
+current head for the final candidate identity. Root and other dirty worktrees
+were preserved. No hosted migration or production deployment is included.
 
 ## Read first
 
@@ -200,10 +213,16 @@ not general multi-outcome strategy or evidence of physiological quality.
 `initialDosePolicy: false` remains unchanged.
 
 Greg's “Let’s take next steps” accepted local implementation of the QPlan. His
-later request to ensure all work is properly saved authorizes the local Git
-checkpoint. Pushes, hosted migrations, deployment, live athlete mutations, paid
-evaluations and external reviewer outreach remain outside this checkpoint's
-authority. Existing qsp/activation gates remain independent. Neither a software
-reviewer nor synthetic case counts supply qualified physiological policy review.
+save request authorized the checkpoint; “Work the tasks” authorized the stated
+fixture fix, push/PR, prerequisite verification, isolated rehearsal and mobile
+validation. Do not request repeated permission for those scoped steps. New
+provisioning/cost decisions need exact targets; production migration/deployment,
+live athlete mutations, paid evaluations and external reviewer outreach remain
+outside this authority. Existing qsp/activation gates remain independent.
+Software review and synthetic cases do not supply physiological-policy approval.
 
-Production flags, schema/ledger, deployment, backups and canary isolation were not refreshed by this implementation turn. Reuse the existing `u5l.14`–`u5l.17` activation path when those actions are separately authorized. Do not copy experimental coaching-layer work wholesale or treat preview sharing production Supabase as isolation.
+Vercel production metadata and variable target inventory were refreshed on
+September 22; secret/effective values, hosted schema/ledger and backups remain
+unverified. Reuse `u5l.14`–`u5l.17` for hosted activation dependencies. Do not copy
+experimental coaching-layer work wholesale or use production-linked Preview as
+an isolated canary. Automatic branch Preview builds are not canary evidence.
