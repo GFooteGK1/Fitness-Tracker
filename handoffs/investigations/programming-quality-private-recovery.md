@@ -2,8 +2,9 @@
 
 Issue: `Fitness-Tracker-i40.11`. Owner: root. Workspace: programming-quality.
 Objective: encrypted consistent production export and separate private restore.
-Status: blocked: revised plan awaiting approval. Connection cycle 1: three failed
-attempts. No further production probes are permitted under this cycle.
+Status: diagnosed; local fix verified; corrected production check awaits approval.
+Connection cycle 1: three failed attempts. Approved cycle 2: one of one attempts
+used. No further production probes are permitted under either exhausted cycle.
 
 ## September 23, 2026 — authority and isolation
 
@@ -92,3 +93,49 @@ synthetic validation passed 18 checks, covering failed producer/tampered archive
 refusal and separately classified metadata failures. This is helper evidence,
 not a verified production backup. The reviewed archive/restore design remains a
 proposal until real inventory and compatibility are established.
+
+## Approved cycle 2 — September 23, 21:31 UTC
+
+Greg approved the single metadata-only retry. Run
+`inspect-20260923213116-bb6811c1` retained encrypted raw metadata and failed only
+`rowSecurityDisabled`. Exporter stopped. No archive, restore or user-table read
+was attempted. Inspection of retained evidence required no new source connection.
+
+Verified source fields: database/effective role `postgres`, temporary login
+`cli_login_postgres`, PostgreSQL `17.6` / `170006`, read-only `on`, isolation
+`repeatable read`. The exact failed field was `rowSecurity: on` despite the
+client's `PGOPTIONS` request. This establishes an ineffective startup setting,
+not why the transport omitted it. Do not assert a pooler defect without proof.
+Backend `pg_stat_ssl=false` describes the pooler-to-database leg; client
+`verify-full` with the pinned CA succeeded and remains required.
+
+## Corrective method and local evidence — 21:34 UTC
+
+The shared transaction preamble now explicitly runs `SET LOCAL row_security=off`
+after the role switch. It also sets the two-minute statement and five-second lock
+timeouts explicitly; metadata validation requires their effective millisecond
+values. These are transaction-local controls, not ALTER ROLE, table policy edits,
+or permission grants. `row_security=off` rejects a query that would be filtered;
+it does not confer bypass privilege. Official references:
+https://www.postgresql.org/docs/17/runtime-config-client.html#GUC-ROW-SECURITY
+and https://www.postgresql.org/docs/17/sql-set.html.
+
+The actual shared preamble passed six checks on the existing synthetic-only,
+network-isolated PostgreSQL 17.6 probe:
+
+- Settings become off/read-only/repeatable-read with both exact timeouts.
+- Rollback restores the prior row-security setting.
+- A restricted role sees one of two synthetic rows with row security on.
+- The same role receives 42501 with row security off, instead of filtered data.
+- The already privileged local operator reads both synthetic rows.
+- Table RLS/FORCE RLS and policy remain unchanged.
+
+Receipt: ignored `output/app-quality-release/synthetic_recovery_settings_d55520fdc893.json`.
+Harness: `scripts/release/local-recovery-session-check.mjs`. All 18 crypto and
+metadata classifier checks also passed. No production retry of this fix ran.
+
+Next proposed action: one metadata-only production check of the explicit SQL
+controls, retaining encrypted evidence. Requires fresh approval because the
+previous approval explicitly allowed one attempt and that attempt is exhausted.
+Backup execution remains blocked and unimplemented. Existing export/private
+restore authority does not override the exhausted diagnostic attempt budget.

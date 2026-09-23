@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { randomBytes, randomUUID, createCipheriv, createHash } from 'node:crypto';
-import { classifyRecoveryMetadata } from './private-recovery-preflight.mjs';
+import { classifyRecoveryMetadata, RECOVERY_TRANSACTION_SQL } from './private-recovery-preflight.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const destination = 'C:/Users/foote/AppData/Local/SociusFit/Recovery';
@@ -105,8 +105,9 @@ try {
   const pgEnv = ['env', ...['PGHOST', 'PGPORT', 'PGUSER', 'PGDATABASE'].map(name => `${name}=${connection[name]}`), 'PGPASSFILE=/tmp/private-recovery/pgpass', 'PGSSLMODE=verify-full', 'PGSSLROOTCERT=/tmp/private-recovery/root.crt', 'PGCONNECT_TIMEOUT=15', 'PGOPTIONS=-c default_transaction_read_only=on -c row_security=off -c statement_timeout=120000 -c lock_timeout=5000'];
   const pg = (args, input) => pod(['exec', '-i', client, ...pgEnv, ...args], input);
   if (pg(['pg_dump', '--version']) !== 'pg_dump (PostgreSQL) 17.6') throw Error('Unexpected pg_dump version');
-  const metadataSql = `BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL ROLE postgres;
+  const metadataSql = `${RECOVERY_TRANSACTION_SQL}
 SELECT jsonb_build_object('database',current_database(),'role',current_user,'login',session_user,'version',current_setting('server_version'),'versionNum',current_setting('server_version_num'),'readOnly',current_setting('transaction_read_only'),'rowSecurity',current_setting('row_security'),'isolation',current_setting('transaction_isolation'),'ssl',(SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()),'bytes',pg_database_size(current_database()),
+'statementTimeoutMs',(SELECT setting::integer FROM pg_settings WHERE name='statement_timeout'),'lockTimeoutMs',(SELECT setting::integer FROM pg_settings WHERE name='lock_timeout'),
 'schemas',(SELECT jsonb_agg(nspname ORDER BY nspname) FROM pg_namespace WHERE nspname NOT LIKE 'pg_%' AND nspname <> 'information_schema'),
 'extensions',(SELECT jsonb_agg(jsonb_build_object('name',extname,'version',extversion,'schema',n.nspname) ORDER BY extname) FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace),
 'roles',(SELECT jsonb_agg(jsonb_build_object('name',rolname,'super',rolsuper,'inherit',rolinherit,'createRole',rolcreaterole,'createDb',rolcreatedb,'login',rolcanlogin,'replication',rolreplication,'bypassRls',rolbypassrls) ORDER BY rolname) FROM pg_roles WHERE rolname NOT LIKE 'pg_%'),

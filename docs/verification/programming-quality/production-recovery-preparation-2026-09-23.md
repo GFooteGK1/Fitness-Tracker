@@ -66,13 +66,19 @@ production bytes entered it. Hosted/local extension compatibility remains unknow
 
 ## Current blocker and saved helpers
 
-Three metadata-preflight attempts failed: missing Supabase CA trust, a Podman
-network-field assertion mismatch, then a combined metadata-validation failure.
-TLS and container-field issues were resolved. The third returned metadata but
-the tool did not retain rejected fields; its exact cause is unknown. All exporter
-containers stopped. The [attempt record and reviewed restart plan](../../../handoffs/investigations/programming-quality-private-recovery.md)
-preserve the evidence and require approval for one further metadata-only attempt.
-No further source probe ran after that stop.
+The first three metadata-preflight attempts failed: missing Supabase CA trust,
+a Podman network-field assertion mismatch, then a combined metadata-validation
+failure. After Greg approved one diagnostic retry, it retained encrypted evidence
+and identified the exact failed field: `row_security=on` despite the client
+startup request for off. Identity, PostgreSQL 17.6, read-only mode and repeatable
+read passed. All exporter containers stopped. No backup or restore was attempted.
+
+The fix applies row-security and timeout controls explicitly inside the read-only
+SQL transaction and checks their effective values. Six real PostgreSQL 17.6
+synthetic checks passed, including rollback restoration and rejection of filtered
+reads without changing permissions or table policies. Eighteen crypto/classifier
+checks also pass. The approved one-attempt budget is exhausted; the corrected
+production check awaits approval. See the [attempt record](../../../handoffs/investigations/programming-quality-private-recovery.md).
 
 The revised inspector seals raw metadata before validation and emits separate
 check booleans. It retains verify-full with the official Supabase CA, SHA256
@@ -93,12 +99,14 @@ controls do not establish that Windows never pages or dumps VM/process memory.
 
 ## Parallel release preparation
 
-The application at source `7abca86e183f547925ff69d858f453460872133e` passed
+The application checkpoint `7abca86e183f547925ff69d858f453460872133e` passed
 [CI run 35920252754](https://github.com/GFooteGK1/Fitness-Tracker/actions/runs/35920252754):
 3,484 tests passed, 19 skipped, 26 browser tests passed, with TypeScript, lint
 and production build passing. Later recovery-helper/doc changes have separate
 local evidence and do not modify application behavior. The compatible local build has been retained for a same-port
 rollback rehearsal; its local API configuration is not a production artifact.
+The subsequent recovery-helper checkpoint `8eebe74` also passed
+[CI run 35922154764](https://github.com/GFooteGK1/Fitness-Tracker/actions/runs/35922154764).
 
 The [application artifact-switch rehearsal](local-pause-and-rollback-2026-09-23.md)
 passed 15 checks and independent review. The pause passed 13 ordered regressions

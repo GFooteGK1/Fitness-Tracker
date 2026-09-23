@@ -25,11 +25,13 @@ Greg approved the private production backup/restore preparation and parallel
 write-pause/application rollback work. The private recovery destination now
 exists with verified restrictive Windows ACLs. Existing CLI project access is
 verified; Greg approved its temporary CLI database login, which was created/refreshed.
-Three metadata preflights failed. TLS CA and container assertion issues are fixed;
-the last combined metadata gate rejected a result it failed to retain. No exact
-cause can be asserted and no backup exists. Production probing stopped per guardrails.
-The revised helper preserves encrypted raw evidence and names each failed check;
-one metadata-only retry awaits approval. See the [attempt record](investigations/programming-quality-private-recovery.md).
+After three failed metadata preflights, Greg approved one diagnostic retry. It
+retained encrypted evidence and identified `row_security=on` despite the startup
+request for off. All identity/version/read-only/isolation checks passed. The
+explicit transaction-local SQL fix passed six real synthetic PostgreSQL checks
+and 18 helper checks; a corrected production check needs approval because the
+one-attempt budget is exhausted. No backup exists. See the
+[attempt record](investigations/programming-quality-private-recovery.md).
 Eighteen synthetic crypto/metadata tests and independent review passed. A separate
 empty private restore container passed isolation/synthetic checks; real data never
 entered it. Archive orchestration remains unimplemented and fails before access.
@@ -60,6 +62,7 @@ CI passed on `923473a04583684d3f9b150c35ffa7e0173a8e25`: 3,471 tests passed,
 passed CI `35920252754`: 3,484 tests, 19 skipped, 26 browser journeys, TypeScript,
 lint and build. It fixes a visibility-observer test timing race without changing
 application behavior. Later recovery helper/doc changes have separate local checks.
+Recovery-helper checkpoint `8eebe74` also passed full CI `35922154764`.
 
 Four new mobile Chromium tests passed at 320/390px, with light/dark screenshots
 inspected. See [mobile evidence](../docs/verification/programming-quality/mobile-release-verification.md).
