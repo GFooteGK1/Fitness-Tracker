@@ -6,6 +6,19 @@ Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
 
+September 23 follow-up: approved artifact/metadata preparation is complete.
+The [release decision packet](../docs/verification/programming-quality/production-release-decision-2026-09-23.md)
+identifies the retained production-configured Linux Vercel tar at application
+source `93539b0`, SHA256 `461e0bf9e21561e0323c6c2edf53e825d48f8a8a8fc7c9f2a739798c8ea44814`.
+Offline build and structural checks passed; builder is stopped. Current hosted
+metadata passed with the exact documented UUID-default qualification; the
+original rejection and raw inequality remain preserved. No source retry was
+needed. The next decision is approval to stage this artifact on the existing
+Vercel production target, including its existing WHOOP cron possibility, without
+domain promotion or database changes. Hosting, runtime validation, fresh paused
+backup and final cutover are still unexecuted. New attempt evidence is in the
+[artifact investigation](investigations/programming-quality-production-artifact.md).
+
 Budget steering, September 23: Greg does not want Supabase spending. The selected
 preparation route is a local Supabase/application rehearsal with synthetic data
 and verified manual backup/restore of production in a separate private recovery
@@ -70,8 +83,11 @@ application behavior. Later recovery helper/doc changes have separate local chec
 Recovery-helper checkpoint `8eebe74` also passed full CI `35922154764`; e469c10
 passed `35923540505`. CI `35927882780` on e7d1506 found an independent cache
 property-fixture leak. The test-only repair passes the recorded seed, exact
-counterexample and full ten-test file. Current correction checkpoint CI is
-pending. See [fixture receipt](../docs/verification/programming-quality/ci-cache-isolation-2026-09-23.md).
+counterexample and full ten-test file. Correction checkpoint `93539b0` passed full
+CI `35930249161`: 3,484 tests, 19 skipped, 26 browser journeys, TypeScript/lint/build.
+Later release-preparation scripts/docs retain the same app and build sources;
+their current commit/CI status is maintained in Beads i40.11.
+See [fixture receipt](../docs/verification/programming-quality/ci-cache-isolation-2026-09-23.md).
 
 Four new mobile Chromium tests passed at 320/390px, with light/dark screenshots
 inspected. See [mobile evidence](../docs/verification/programming-quality/mobile-release-verification.md).

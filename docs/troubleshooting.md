@@ -48,3 +48,21 @@ delete or overwrite an existing dependency tree. Use worktree-local tool paths.
 Full typechecking passed after this correction. See the
 [investigation record](../handoffs/investigations/programming-quality-validation.md)
 for exact scope, attempts and evidence.
+
+## Offline Vercel builder dependency and catalog display differences
+
+Verified 2026-09-23 during production artifact preparation. Vercel CLI 56.4.1's
+separately installed Next builder 4.20.4 could not resolve `@vercel/build-utils`.
+The pinned CLI already contained version 13.34.0. Setting the build-only
+`NODE_PATH=/tools/node_modules` passed an offline import check and completed the
+network-disconnected build. No dependency upgrade or runtime application change
+was needed. Retain the standalone output and verify symlink containment; do not
+assume a Windows `.next` directory is a deployable Linux artifact.
+
+The release metadata refresh also differed in one workouts-column fingerprint.
+Earlier encrypted source metadata reproduced both hashes by changing only the
+displayed default `extensions.uuid_generate_v4()` to `uuid_generate_v4()`.
+An exact table/category/count/hash-bound exception passed independent review;
+other differences still fail. Do not globally strip schema qualifiers or equate
+raw inequality with unexplained schema drift. See the
+[artifact investigation](../handoffs/investigations/programming-quality-production-artifact.md).

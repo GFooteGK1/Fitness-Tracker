@@ -1,0 +1,139 @@
+{
+  "kind": "offline_compiled_artifact_readback",
+  "observedAt": "2026-09-23T23:37:57.547Z",
+  "passed": true,
+  "sourceCommit": "93539b00bef9109f4221d10c9554cd99a3f5d5fe",
+  "containerSourceArchiveSha256": "2c62d96474bb03ee09102599fff5b449d64052baea486e5f3f996d460d83f40d",
+  "artifactVerificationSha256": "186444681774c4e1c522fb82ab5f1f8d0afa845e976d0afe455ecb069c7a170b",
+  "configSha256": "59505883565f8afcd99319c788642af9b969b37ebb732f3ae3398e72e89503a2",
+  "flags": {
+    "COACH_EXERCISE_PREFERENCES_ENABLED": {
+      "matchingPhysicalFiles": 2,
+      "example": {
+        "file": "functions/api/adherence/weekly.func/.next/server/chunks/7580.js",
+        "sha256": "93ba8dee42595aabd860302de554859e1bcad5e3a60fc608dc98f571ef520eef",
+        "expression": "\"true\"===process.env.COACH_EXERCISE_PREFERENCES_ENABLED"
+      }
+    },
+    "CAPTURE_RECEIPTS_V2_ENABLED": {
+      "matchingPhysicalFiles": 13,
+      "example": {
+        "file": "functions/api/adherence/weekly.func/.next/server/chunks/8950.js",
+        "sha256": "62cbd5cc6896043a105533c8248e2b0c06276e6ed687c8b759c3fe72ee166011",
+        "expression": "\"true\"===process.env.CAPTURE_RECEIPTS_V2_ENABLED"
+      }
+    },
+    "COACH_TRAINING_INTENT_ENABLED": {
+      "matchingPhysicalFiles": 13,
+      "example": {
+        "file": "functions/api/adherence/weekly.func/.next/server/chunks/8950.js",
+        "sha256": "62cbd5cc6896043a105533c8248e2b0c06276e6ed687c8b759c3fe72ee166011",
+        "expression": "\"true\"===process.env.COACH_TRAINING_INTENT_ENABLED"
+      }
+    },
+    "COACH_HISTORY_CONTEXT_ENABLED": {
+      "matchingPhysicalFiles": 13,
+      "example": {
+        "file": "functions/api/adherence/weekly.func/.next/server/chunks/8950.js",
+        "sha256": "62cbd5cc6896043a105533c8248e2b0c06276e6ed687c8b759c3fe72ee166011",
+        "expression": "\"true\"===process.env.COACH_HISTORY_CONTEXT_ENABLED"
+      }
+    },
+    "COACH_TARGETED_REVIEW_ENABLED": {
+      "matchingPhysicalFiles": 13,
+      "example": {
+        "file": "functions/api/adherence/weekly.func/.next/server/chunks/8950.js",
+        "sha256": "62cbd5cc6896043a105533c8248e2b0c06276e6ed687c8b759c3fe72ee166011",
+        "expression": "\"true\"===process.env.COACH_TARGETED_REVIEW_ENABLED"
+      }
+    },
+    "RECOMMENDATIONS_ENABLED": {
+      "matchingPhysicalFiles": 13,
+      "example": {
+        "file": "functions/api/adherence/weekly.func/.next/server/chunks/8950.js",
+        "sha256": "62cbd5cc6896043a105533c8248e2b0c06276e6ed687c8b759c3fe72ee166011",
+        "expression": "\"true\"===process.env.RECOMMENDATIONS_ENABLED"
+      }
+    }
+  },
+  "routes": [
+    {
+      "route": "/api/coach/intake",
+      "runtime": "nodejs24.x",
+      "handler": "___next_launcher.cjs",
+      "handlerExists": true,
+      "resolvedFunction": "functions/api/adherence/weekly.func",
+      "routeModule": "app/api/coach/intake/route.js",
+      "routeModuleSha256": "56a5fe95127f5c8aa8c9112835841e65502e84f2e32510d1343680929e8e4af1"
+    },
+    {
+      "route": "/api/coach/weekly",
+      "runtime": "nodejs24.x",
+      "handler": "___next_launcher.cjs",
+      "handlerExists": true,
+      "resolvedFunction": "functions/api/adherence/weekly.func",
+      "routeModule": "app/api/coach/weekly/route.js",
+      "routeModuleSha256": "eb2476da1c91fb2359ad50c08ec794232fc2d717afdbf333a7b61623b683e01f"
+    },
+    {
+      "route": "/api/coach/weekly/review",
+      "runtime": "nodejs24.x",
+      "handler": "___next_launcher.cjs",
+      "handlerExists": true,
+      "resolvedFunction": "functions/api/adherence/weekly.func",
+      "routeModule": "app/api/coach/weekly/review/route.js",
+      "routeModuleSha256": "abf1f38af55db876080c9a6075ee3a63adfdc0cac9defa2e3fdccc9f06e22068"
+    },
+    {
+      "route": "/api/coach/weekly/convert",
+      "runtime": "nodejs24.x",
+      "handler": "___next_launcher.cjs",
+      "handlerExists": true,
+      "resolvedFunction": "functions/api/adherence/weekly.func",
+      "routeModule": "app/api/coach/weekly/convert/route.js",
+      "routeModuleSha256": "14e77ea8f4d00238bef53e842b4fcbf137b88a364703e5224a1ea6d5f6866654"
+    },
+    {
+      "route": "/api/coach/weekly/reviews/[id]/proposal",
+      "runtime": "nodejs24.x",
+      "handler": "___next_launcher.cjs",
+      "handlerExists": true,
+      "resolvedFunction": "functions/api/adherence/weekly.func",
+      "routeModule": "app/api/coach/weekly/reviews/[id]/proposal/route.js",
+      "routeModuleSha256": "cef58c6913104a98daa07244b9041a207eaf8d1f31f09b6ae55bd7ee48e3999f"
+    },
+    {
+      "route": "/api/coach/proposals",
+      "runtime": "nodejs24.x",
+      "handler": "___next_launcher.cjs",
+      "handlerExists": true,
+      "resolvedFunction": "functions/api/adherence/weekly.func",
+      "routeModule": "app/api/coach/proposals/route.js",
+      "routeModuleSha256": "2da5196db73260900abc3029470cba9940b740f7604cebd3e3696446960d7f57"
+    },
+    {
+      "route": "/api/coach/proposals/[id]/accept",
+      "runtime": "nodejs24.x",
+      "handler": "___next_launcher.cjs",
+      "handlerExists": true,
+      "resolvedFunction": "functions/api/adherence/weekly.func",
+      "routeModule": "app/api/coach/proposals/[id]/accept/route.js",
+      "routeModuleSha256": "9ee9f96fa710ad80f2cc626f53ffe5db30264d2a83bf5d9c1bce75b9ac19b8eb"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/whoop/sync-all",
+      "schedule": "30 10 * * *"
+    }
+  ],
+  "limitations": [
+    "Read-only compiled-source and configuration inspection; no server or function invocation.",
+    "Runtime environment variable reads remain in emitted server code; actual hosted values and enabled behavior were not tested.",
+    "Function symlinks share a retained launcher; matching compiled route modules were separately checked.",
+    "Cron configuration is present; no scheduled invocation was performed."
+  ],
+  "retainedTarSha256": "461e0bf9e21561e0323c6c2edf53e825d48f8a8a8fc7c9f2a739798c8ea44814",
+  "pinnedGitArchiveSha256": "2c62d96474bb03ee09102599fff5b449d64052baea486e5f3f996d460d83f40d",
+  "sourceIdentityCheck": "Fresh git archive of pinned commit, retained host receipt and container /tmp/source.tar SHA256 agree"
+}

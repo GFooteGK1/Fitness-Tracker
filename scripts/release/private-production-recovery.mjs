@@ -12,6 +12,7 @@ import { pipeline } from 'node:stream/promises';
 import { StringDecoder } from 'node:string_decoder';
 import { Readable } from 'node:stream';
 import { RECOVERY_LOCALE_SQL, validateSourceLocale } from './private-recovery-locale.mjs';
+import { RELEASE_TARGET_METADATA_SQL, classifyReleaseTargetMetadata, releaseMigrationManifest } from './release-target-metadata.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const destination = 'C:/Users/foote/AppData/Local/SociusFit/Recovery';
@@ -21,7 +22,7 @@ const cli = path.join(root, 'output/app-quality-release/tools/supabase-2.117.0/s
 const podman = path.join(root, 'output/app-quality-release/tools/podman-5.8.3/podman-5.8.3/usr/bin/podman.exe');
 const pwsh = 'C:/Users/foote/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe';
 const mode = process.argv[2];
-if (!['inspect', 'backup', 'locale'].includes(mode) || process.argv.length !== 3) throw Error('Use inspect, backup or locale; source and destination are fixed');
+if (!['inspect', 'backup', 'locale', 'release'].includes(mode) || process.argv.length !== 3) throw Error('Use inspect, backup, locale or release; source and destination are fixed');
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|USERPROFILE|APPDATA|LOCALAPPDATA|HOMEDRIVE|HOMEPATH)$/i.test(key)));
 const options = { cwd: destination, env, windowsHide: true, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 120000 };
 const hash = value => createHash('sha256').update(value).digest('hex');
@@ -79,6 +80,8 @@ function command(binary, args, input) {
 const pod = (args, input) => command(podman, ['--connection', 'sociusfit-local', ...args], input);
 const client = `socius-private-export-${randomUUID().slice(0, 12)}`;
 let clientStarted = false;
+let releaseReceipt;
+let releaseCleanupVerified = false;
 const workers = new Set();
 try {
   // No token-store scraping: the official CLI uses the already approved login.
@@ -111,7 +114,25 @@ try {
   const pgEnv = ['env', ...['PGHOST', 'PGPORT', 'PGUSER', 'PGDATABASE'].map(name => `${name}=${connection[name]}`), 'PGPASSFILE=/tmp/private-recovery/pgpass', 'PGSSLMODE=verify-full', 'PGSSLROOTCERT=/tmp/private-recovery/root.crt', 'PGCONNECT_TIMEOUT=15', 'PGOPTIONS=-c default_transaction_read_only=on -c row_security=off -c statement_timeout=120000 -c lock_timeout=5000'];
   const pg = (args, input) => pod(['exec', '-i', client, ...pgEnv, ...args], input);
   if (pg(['pg_dump', '--version']) !== 'pg_dump (PostgreSQL) 17.6') throw Error('Unexpected pg_dump version');
-  if (mode === 'locale') {
+  if (mode === 'release') {
+    // One catalog/ledger-only connection, with no inventory/dump fallthrough.
+    const raw = pg(['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1'], `${RECOVERY_TRANSACTION_SQL}\n${RELEASE_TARGET_METADATA_SQL}\nROLLBACK;`);
+    sealed('source-release-metadata', raw);
+    let metadata;
+    try { metadata = JSON.parse(raw); } catch { throw Error('Release metadata parse failed; encrypted evidence retained'); }
+    const validation = classifyReleaseTargetMetadata(metadata, { projectRef: project, fixedTargetVerified: true, tlsVerifyFull: true });
+    const count = value => Array.isArray(value) ? value.length : 0;
+    releaseReceipt = {
+      kind: 'production_release_target_metadata', project, runId, checkedAt: new Date().toISOString(),
+      readOnly: true, sslMode: 'verify-full', encryptedEvidence: true, keyProtection: 'Windows DPAPI CurrentUser',
+      sourceConnections: 1, athleteRowsRead: false, applicationRpcsInvoked: false, archiveCreated: false, productionRestorePerformed: false,
+      migrations: releaseMigrationManifest(), querySha256: validation.querySha256,
+      counts: { ledgerEntries: count(metadata?.ledger), recordedMigrations: Array.isArray(metadata?.ledger) ? metadata.ledger.filter(row => row?.recorded === true).length : 0,
+        newerLedgerEntries: count(metadata?.newerLedger), functions: count(metadata?.functions), functionAccessEntries: count(metadata?.functionAccess), relations: count(metadata?.relations), metadataGroups: count(metadata?.groups) },
+      passed: validation.passed, state: validation.state, checks: validation.checks, failedChecks: validation.failedChecks, metadataComparison: validation.metadataComparison, limitations: validation.limitations,
+    };
+    if (!validation.passed) process.exitCode = 1;
+  } else if (mode === 'locale') {
     // Exactly one source psql connection. Do not fall through to inventory or dump.
     const raw = pg(['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1'], `${RECOVERY_TRANSACTION_SQL}\n${RECOVERY_LOCALE_SQL}\nROLLBACK;`);
     sealed('source-locale', raw);
@@ -246,7 +267,22 @@ try {
   for (const worker of outstanding) worker.child.kill();
   await Promise.all(outstanding.map(worker => worker.done));
   if (clientStarted) {
-    try { pod(['stop', '--time', '5', client]); } catch { console.error('Exporter stop failed; inspect fixed recovery container before proceeding'); process.exitCode = 1; }
+    try {
+      pod(['stop', '--time', '5', client]);
+      if (mode === 'release') {
+        const stopped = JSON.parse(pod(['inspect', client]))[0];
+        if (stopped?.Name !== client || stopped?.Image?.replace(/^sha256:/, '') !== image || stopped?.Config?.Labels?.['io.socius.recovery'] !== project || stopped?.State?.Running !== false || stopped?.State?.Status !== 'exited') throw Error('Exporter stopped-state readback failed');
+        releaseCleanupVerified = true;
+      }
+    } catch { console.error('Exporter stop verification failed; inspect fixed recovery container before proceeding'); process.exitCode = 1; }
   }
   key.fill(0);
+}
+if (releaseReceipt) {
+  releaseReceipt.cleanup = { exporterStoppedVerified: releaseCleanupVerified };
+  releaseReceipt.passed = releaseReceipt.passed && releaseCleanupVerified && process.exitCode !== 1;
+  if (!releaseReceipt.passed) releaseReceipt.state = 'stop_and_review';
+  if (!releaseCleanupVerified) releaseReceipt.failedChecks = [...releaseReceipt.failedChecks, 'exporterStoppedVerified'];
+  fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(releaseReceipt, null, 2), { flag: 'wx' });
+  console.log(JSON.stringify(releaseReceipt));
 }
