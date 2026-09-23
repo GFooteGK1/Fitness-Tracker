@@ -21,10 +21,23 @@ checks in dev and production mode, 10 old/new schema checks, and a consistent
 passed. It found and fixed earlier recommendation-lock contention (five RPCs now
 use a one-second per-lock timeout and recoverable HTTP 409) and explanation text
 overflow. Migration hash is now `0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f`.
-Secure export access and an approved private backup destination remain necessary
-for production-data recovery. A tested operator traffic pause and retained
-revision-compatible application rollback artifact are still missing. Local
-rehearsals do not remove these production gates or authorize deployment.
+Greg approved the private production backup/restore preparation and parallel
+write-pause/application rollback work. The private recovery destination now
+exists with verified restrictive Windows ACLs. Existing CLI project access is
+verified; authorization for its temporary database login is pending because no
+existing database password is supplied. No production export has occurred.
+See [recovery preparation](../docs/verification/programming-quality/production-recovery-preparation-2026-09-23.md).
+The compatible local build is retained and its same-port artifact-switch
+rehearsal passed 15 checks, with the revision schema left installed. It uses two
+builds of the same application source and is not a production rollback artifact.
+The database pause passed 13 ordered CI regressions; the combined pause/revision
+suite passed 29 tests (exclude `output/**` to avoid retained source copies).
+After three failed attempts, Greg approved the corrected method; its first retry
+passed all 14 real PostgreSQL pause/drain/cutover checks. Prior failures remain
+in the investigation, with no count reset or unsupported evidence upgrade. See the
+[pause/rollback receipt](../docs/verification/programming-quality/local-pause-and-rollback-2026-09-23.md)
+and [attempt record](investigations/programming-quality-write-pause.md).
+Local rehearsals do not remove the production recovery gate or authorize deployment.
 
 The saved implementation is committed and pushed on `codex/programming-quality`;
 [draft PR #84](https://github.com/GFooteGK1/Fitness-Tracker/pull/84) is open.
@@ -34,7 +47,9 @@ tests include SQL timezones spanning the UTC date boundary. Full TypeScript and
 focused lint passed for that checkpoint. The September 23 contention and mobile
 fixes now pass 107 focused tests, full TypeScript, focused ESLint and a fresh
 production build. Independent runtime review ran 83 overlapping tests. Final
-candidate CI must be checked after the new checkpoint is pushed.
+CI passed on `923473a04583684d3f9b150c35ffa7e0173a8e25`: 3,471 tests passed,
+19 skipped, 26 browser tests passed, TypeScript/lint/build passed in run
+`35873858574`. New pause/rollback changes require their own evidence.
 
 Four new mobile Chromium tests passed at 320/390px, with light/dark screenshots
 inspected. See [mobile evidence](../docs/verification/programming-quality/mobile-release-verification.md).

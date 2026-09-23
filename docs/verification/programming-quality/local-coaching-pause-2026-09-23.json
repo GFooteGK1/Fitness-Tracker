@@ -1,0 +1,129 @@
+{
+  "kind": "synthetic_local_coaching_pause_rehearsal",
+  "checkedAt": "2026-09-23T20:49:44.020Z",
+  "connection": "sociusfit-local",
+  "container": "supabase_db_sociusfit-programming-local",
+  "database": "socius_pause_20260923204901_1a15ce45",
+  "sourceDatabaseReadOnly": "postgres",
+  "postgresVersion": "17.6",
+  "roles": {
+    "ownedRpcWriter": "authenticated",
+    "directDmlAndReadBeforePauseProbes": "postgres",
+    "concurrentOperator": "postgres",
+    "synchronousOperatorAndFixtureSetup": "supabase_admin",
+    "migrationExecutor": "postgres"
+  },
+  "bootstrapSha256": "465eafbc6eaa995ebeeebf09bffd8d23a1f3d9d481c87f7fcdf642181fb8bb15",
+  "verifiedBaselineSections": 58,
+  "gateMigration": {
+    "path": "supabase/migrations/20260923010000_coaching_write_pause.sql",
+    "sha256": "6c336015b78142da07a091d9f999d7019c13d9ec819064cfd4b82ee16d48a041"
+  },
+  "revisionMigrationSha256": "0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f",
+  "harnessSha256": "ef6f0c210cd4e3de351dc9399018468eef0d98dc9f5c7045f1ade992ac6c4443",
+  "checks": [
+    {
+      "name": "Busy installation refuses atomically without creating gate",
+      "passed": true
+    },
+    {
+      "name": "Old schema installation preserves all output rows and starts open",
+      "passed": true
+    },
+    {
+      "name": "Open-gate actor permission precheck passes for all four authenticated RPC paths and postgres DML probes; disposable transactions preserve outputs",
+      "passed": true
+    },
+    {
+      "name": "Operator lock timeout establishes no pause and both rolled-back transactions preserve outputs",
+      "passed": true,
+      "observedBlockingPids": [
+        9994
+      ],
+      "sqlstate": "55P03",
+      "observedElapsedMs": 5074
+    },
+    {
+      "name": "Transactions with reads before pause fail closed at READ COMMITTED and REPEATABLE READ",
+      "passed": true
+    },
+    {
+      "name": "Successful pause commit drains prior multi-table transaction and fences subsequent writers",
+      "passed": true,
+      "backendIds": [
+        9994,
+        10000,
+        9996
+      ],
+      "observedBlockingPids": [
+        9994
+      ],
+      "preCommitAdmissionSqlstate": "00000",
+      "inFlightProposalCommitted": true
+    },
+    {
+      "name": "Committed pause survives operator disconnect and stale prepared statement fails",
+      "passed": true
+    },
+    {
+      "name": "All six tables and four old SECURITY DEFINER writer paths fail with no output changes",
+      "passed": true,
+      "operationsPerTable": [
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "TRUNCATE"
+      ],
+      "rpcs": [
+        "initial",
+        "accept",
+        "review",
+        "replacement"
+      ],
+      "outputHashes": {
+        "training_programs": "13ab07f139e337d41a49676a01a993fc",
+        "training_plan_versions": "a39aa177e4ac38f4bf6b8ea5ec3572cb",
+        "prescribed_sessions": "cc33ec0cd4e95ff04804fa8465072242",
+        "adaptation_proposals": "b8d580531271c96f8520d3687da3ce42",
+        "coach_weekly_reviews": "582b78fd6bf8c8aad46eb565f9c4fc45",
+        "coach_weekly_review_observations": "d41d8cd98f00b204e9800998ecf8427e"
+      }
+    },
+    {
+      "name": "Owned reads and accepted replay remain available and preserve exact output hashes",
+      "passed": true
+    },
+    {
+      "name": "Anon authenticated and service-role callers cannot inspect mutate or invoke operator gate; FORCE RLS enabled",
+      "passed": true
+    },
+    {
+      "name": "Stale operator resume and exact migration reapply cannot reopen pause",
+      "passed": true
+    },
+    {
+      "name": "Revision migration applies while paused; compatible stamped write works after resume and old pending stays rejected",
+      "passed": true
+    },
+    {
+      "name": "Aborted operator transition rolls back state and releases writer fence",
+      "passed": true
+    },
+    {
+      "name": "Missing control row fails closed without modifying output; fixture control restored by rollback",
+      "passed": true
+    }
+  ],
+  "failure": null,
+  "preserved": [
+    "source database unchanged",
+    "new synthetic database",
+    "private baseline/schema logs and sanitized receipt"
+  ],
+  "limitations": [
+    "SQL-only synthetic users; no HTTP/PostgREST transport or production traffic exercised",
+    "Scoped bootstrap is not a production clone",
+    "Coaching outputs only: source, Auth, nutrition and wearable writes are not paused",
+    "Privileged database operators remain trusted; no hosted actions, role changes, data deletion or deployment"
+  ]
+}

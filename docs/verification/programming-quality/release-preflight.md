@@ -18,8 +18,21 @@ an earlier recommendation lock wait; the revised migration SHA256 is
 `0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f`.
 The older migration hash below is historical. The one-second RPC setting limits
 each lock wait, not total request duration; `55P03` returns a recoverable HTTP409.
-Production recovery, operator traffic pause and compatible app rollback are still
-unverified. Historical setup language below does not supersede these new receipts.
+The [pause and rollback rehearsal](local-pause-and-rollback-2026-09-23.md) now adds
+14 passing real PostgreSQL pause/cutover checks, 13 ordered CI regressions and 15
+local application artifact-switch checks. Production recovery and a
+production-configured rollback artifact remain unverified. The local rollback
+uses two builds of the same compatible source. Historical setup language below
+does not supersede these new receipts.
+
+The additive pause migration `20260923010000_coaching_write_pause.sql` has tested
+file SHA256 `6c336015b78142da07a091d9f999d7019c13d9ec819064cfd4b82ee16d48a041`.
+Install and verify it **before** the earlier-named revision migration, then obtain
+a successfully committed pause and state readback before the coordinated cutover.
+Do not run a chronological migration batch and assume this ordering is enforced.
+The [operator procedure](coaching-write-pause-operator.md) specifies generation
+checks, role prerequisites, timeout handling and explicit resume. Production
+installation/pause/resume/deployment still require target-specific authority.
 
 Use a local Supabase stack and local application with synthetic owners/data for
 the already authorized isolated rehearsal. Supabase documents local development
@@ -38,7 +51,11 @@ Prepare the export/restore manifest (schema, data, roles, migration ledger and
 required Auth/configuration dependencies) using its
 [backup/restore procedure](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore).
 Use an authorized secure database connection; dashboard sign-in alone does not
-establish CLI access. Keep production exports encrypted outside Git, logs and
+establish database-export authentication. The existing CLI account can list the
+correct project, and the private local destination has restrictive Windows ACLs;
+temporary database-login authorization and the actual export/restore remain
+pending in the [recovery preparation receipt](production-recovery-preparation-2026-09-23.md).
+Keep production exports encrypted outside Git, logs and
 test fixtures. An off-device copy requires an existing approved destination;
 no new storage purchase or upload is implied. Account separately for Storage
 objects and secrets/configuration that database exports do not recover.
