@@ -7,14 +7,14 @@ import { getLocalDate, getTimezoneOffset } from '@/app/lib/timezone-utils'
 import type { RecommendationView } from '@/app/lib/client/recommendations'
 let user: { id: string } | null = { id: 'athlete-a' }
 vi.mock('@/app/lib/offline-queue', () => ({ offlineQueue: { captureNeedsReconciliation: async () => false } }))
-let intersect: (entries: Array<{ isIntersecting: boolean }>) => void
+let intersect: ((entries: Array<{ isIntersecting: boolean }>) => void) | undefined
 vi.mock('@/app/lib/auth/AuthContext', () => ({ useAuth: () => ({ user }) }))
 vi.mock('@/app/lib/client/recommendations', async original => ({ ...await original<typeof import('@/app/lib/client/recommendations')>(), refreshRecommendations: vi.fn(), sendRecommendationEvent: vi.fn(), refreshAfterCanonicalSave: vi.fn() }))
 import { refreshRecommendations, sendRecommendationEvent, refreshAfterCanonicalSave, RecommendationNeedsReview } from '@/app/lib/client/recommendations'
 import { NextActionCard } from '@/app/components/NextActionCard'
 function view(): RecommendationView { return { status: 'ready', refreshState: { sourceRevision: 4, responseRevision: 0, pending: false }, recommendations: [{ id: 'saved-decision', lifecycle: 'active', created_at: new Date().toISOString(), decision: { schemaVersion: 1, kind: 'collect_signal', title: 'Confirm your running baseline', reason: 'Your confirmed running outcome needs a comparable measurement.', ruleId: 'missing_signal.baseline', ruleVersion: '1', policyVersion: 'bounded-actions-1', runtimeFingerprint: 'runtime', scopeKey: 'baseline', evidenceFingerprint: 'facts', sourceRevision: 4, responseRevision: 0, localDate: getLocalDate(), tzOffset: getTimezoneOffset(), validUntil: new Date(Date.now() + 60_000).toISOString(), planVersionId: null, intentMemoryId: 'intent', intentVersion: 1, goalId: 'run', reasonCodes: [], missing: ['baseline'], conflicts: [], sources: [], outcome: null, destination: { type: 'baseline', href: '/program?goalId=run' } } }], outcomes: [] } }
 beforeEach(() => {
-  user = { id: 'athlete-a' }; sessionStorage.clear(); localStorage.clear(); vi.clearAllMocks()
+  user = { id: 'athlete-a' }; intersect = undefined; sessionStorage.clear(); localStorage.clear(); vi.clearAllMocks()
   vi.stubGlobal('IntersectionObserver', class { constructor(callback: typeof intersect) { intersect = callback }; observe() {}; disconnect() {} })
   vi.mocked(refreshRecommendations).mockResolvedValue(view()); vi.mocked(sendRecommendationEvent).mockResolvedValue({ event: 'saved' })
 })
@@ -22,8 +22,13 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers() })
 it('shows one persisted action and only acknowledges shown after entering the viewport', async () => {
   render(<NextActionCard />)
   await screen.findByText('Confirm your running baseline')
+  // The title can commit before the passive effect registers its observer.
+  await waitFor(() => expect(intersect).toBeTypeOf('function'))
+  const notifyIntersection = intersect!
   expect(sendRecommendationEvent).not.toHaveBeenCalled()
-  act(() => intersect([{ isIntersecting: true }]))
+  act(() => notifyIntersection([{ isIntersecting: false }]))
+  expect(sendRecommendationEvent).not.toHaveBeenCalled()
+  act(() => notifyIntersection([{ isIntersecting: true }]))
   await waitFor(() => expect(sendRecommendationEvent).toHaveBeenCalledWith('athlete-a', 'saved-decision', 'shown', {}))
   expect(screen.getByRole('link', { name: /^Review your baseline/ })).toHaveAttribute('href', '/program?goalId=run&recommendationId=saved-decision')
 })
