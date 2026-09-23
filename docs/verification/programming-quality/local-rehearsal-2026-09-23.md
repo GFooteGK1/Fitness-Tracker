@@ -140,7 +140,14 @@ two new synthetic local accounts and preserves their records. Default app-flow
 mode reserves the foundation accounts; it fails if they already have a program.
 `--resume-review` is restricted to its still-current, pre-mutation checkpoint.
 Private credentials and dumps remain ignored. Stop the dev server before using
-the server helper's `build` or `start` mode.
+the server helper's `build` or `start` mode. Production start requires the receipt
+written by a successful local build, matching `.next/BUILD_ID`, the fixed local
+API and anonymous-key hash. This prevents accidentally serving an unrelated
+build with a different baked-in public database destination. An unreceipted build
+was rejected before launch; a rebuilt artifact `N1fNUQnlscYENMsnBEVzj` started
+successfully and returned 401 for an anonymous weekly read. The launcher guard
+was independently reviewed; the app source was unchanged from the full
+production-mode flow above. The verification server was stopped afterward.
 
 ## Remaining release boundary
 
