@@ -3,9 +3,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes, randomUUID, createCipheriv, createHash } from 'node:crypto';
 import { classifyRecoveryMetadata, RECOVERY_TRANSACTION_SQL } from './private-recovery-preflight.mjs';
+import { captureEncryptedArchive, authenticateEncryptedArchive } from './private-recovery-archive.mjs';
+import { CANONICAL_FORMAT, RECOVERY_CANONICAL_SETTINGS, RECOVERY_CATALOG_SQL, buildTableScope, tableDigestSql, manifestTransactionSql, createTableDigestSink } from './private-recovery-manifest.mjs';
+import { pipeline } from 'node:stream/promises';
+import { StringDecoder } from 'node:string_decoder';
+import { Readable } from 'node:stream';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const destination = 'C:/Users/foote/AppData/Local/SociusFit/Recovery';
@@ -16,7 +21,6 @@ const podman = path.join(root, 'output/app-quality-release/tools/podman-5.8.3/po
 const pwsh = 'C:/Users/foote/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe';
 const mode = process.argv[2];
 if (!['inspect', 'backup'].includes(mode) || process.argv.length !== 3) throw Error('Use inspect or backup; source and destination are fixed');
-if (mode === 'backup') throw Error('Backup is not implemented or verified; no production access attempted');
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|USERPROFILE|APPDATA|LOCALAPPDATA|HOMEDRIVE|HOMEPATH)$/i.test(key)));
 const options = { cwd: destination, env, windowsHide: true, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 120000 };
 const hash = value => createHash('sha256').update(value).digest('hex');
@@ -74,6 +78,7 @@ function command(binary, args, input) {
 const pod = (args, input) => command(podman, ['--connection', 'sociusfit-local', ...args], input);
 const client = `socius-private-export-${randomUUID().slice(0, 12)}`;
 let clientStarted = false;
+const workers = new Set();
 try {
   // No token-store scraping: the official CLI uses the already approved login.
   const script = command(cli, ['db', 'dump', '--dry-run', '--project-ref', project]);
@@ -105,29 +110,126 @@ try {
   const pgEnv = ['env', ...['PGHOST', 'PGPORT', 'PGUSER', 'PGDATABASE'].map(name => `${name}=${connection[name]}`), 'PGPASSFILE=/tmp/private-recovery/pgpass', 'PGSSLMODE=verify-full', 'PGSSLROOTCERT=/tmp/private-recovery/root.crt', 'PGCONNECT_TIMEOUT=15', 'PGOPTIONS=-c default_transaction_read_only=on -c row_security=off -c statement_timeout=120000 -c lock_timeout=5000'];
   const pg = (args, input) => pod(['exec', '-i', client, ...pgEnv, ...args], input);
   if (pg(['pg_dump', '--version']) !== 'pg_dump (PostgreSQL) 17.6') throw Error('Unexpected pg_dump version');
-  const metadataSql = `${RECOVERY_TRANSACTION_SQL}
-SELECT jsonb_build_object('database',current_database(),'role',current_user,'login',session_user,'version',current_setting('server_version'),'versionNum',current_setting('server_version_num'),'readOnly',current_setting('transaction_read_only'),'rowSecurity',current_setting('row_security'),'isolation',current_setting('transaction_isolation'),'ssl',(SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()),'bytes',pg_database_size(current_database()),
+  const metadataQuery = `SELECT jsonb_build_object('database',current_database(),'role',current_user,'login',session_user,'version',current_setting('server_version'),'versionNum',current_setting('server_version_num'),'readOnly',current_setting('transaction_read_only'),'rowSecurity',current_setting('row_security'),'isolation',current_setting('transaction_isolation'),'ssl',(SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()),'bytes',pg_database_size(current_database()),
 'statementTimeoutMs',(SELECT setting::integer FROM pg_settings WHERE name='statement_timeout'),'lockTimeoutMs',(SELECT setting::integer FROM pg_settings WHERE name='lock_timeout'),
-'schemas',(SELECT jsonb_agg(nspname ORDER BY nspname) FROM pg_namespace WHERE nspname NOT LIKE 'pg_%' AND nspname <> 'information_schema'),
+'schemas',(SELECT jsonb_agg(nspname ORDER BY nspname) FROM pg_namespace WHERE left(nspname,3) <> 'pg_' AND nspname <> 'information_schema'),
 'extensions',(SELECT jsonb_agg(jsonb_build_object('name',extname,'version',extversion,'schema',n.nspname) ORDER BY extname) FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace),
-'roles',(SELECT jsonb_agg(jsonb_build_object('name',rolname,'super',rolsuper,'inherit',rolinherit,'createRole',rolcreaterole,'createDb',rolcreatedb,'login',rolcanlogin,'replication',rolreplication,'bypassRls',rolbypassrls) ORDER BY rolname) FROM pg_roles WHERE rolname NOT LIKE 'pg_%'),
-'tables',(SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'name',c.relname,'owner',pg_get_userbyid(c.relowner),'rls',c.relrowsecurity,'forceRls',c.relforcerowsecurity) ORDER BY n.nspname,c.relname) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind IN ('r','p') AND n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'));
-ROLLBACK;`;
-  const rawMetadata = pg(['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1'], metadataSql);
+'roles',(SELECT jsonb_agg(jsonb_build_object('name',rolname,'super',rolsuper,'inherit',rolinherit,'createRole',rolcreaterole,'createDb',rolcreatedb,'login',rolcanlogin,'replication',rolreplication,'bypassRls',rolbypassrls) ORDER BY rolname) FROM pg_roles WHERE left(rolname,3) <> 'pg_'),
+'tables',(SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'name',c.relname,'owner',pg_get_userbyid(c.relowner),'rls',c.relrowsecurity,'forceRls',c.relforcerowsecurity) ORDER BY n.nspname,c.relname) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind IN ('r','p') AND left(n.nspname,3) <> 'pg_' AND n.nspname <> 'information_schema'));`;
+  const rawMetadata = pg(['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1'], `${RECOVERY_TRANSACTION_SQL}\n${metadataQuery}\nROLLBACK;`);
   sealed('source-inventory', rawMetadata);
   let metadata;
   try { metadata = JSON.parse(rawMetadata); } catch { throw Error('Metadata JSON parse failed; encrypted evidence retained'); }
   const validation = classifyRecoveryMetadata(metadata);
   fs.writeFileSync(path.join(output, 'validation.json'), JSON.stringify(validation, null, 2), { flag: 'wx' });
   if (!validation.passed) throw Error(`Metadata preflight rejected: ${validation.failedChecks.join(', ')}; encrypted evidence retained`);
+  if (mode === 'backup') {
+    function startPg(args, label, lifetimeMs = 120000) {
+      const child = spawn(podman, ['--connection', 'sociusfit-local', 'exec', '-i', client, ...pgEnv, ...args], { cwd: destination, env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+      const worker = { child, done: null };
+      workers.add(worker);
+      let stderrBytes = 0, stderr = [], failure = false;
+      const timeout = setTimeout(() => { failure = true; child.kill(); }, lifetimeMs);
+      child.on('error', () => { failure = true; });
+      child.stdin.on('error', () => { failure = true; });
+      child.stderr.on('data', chunk => {
+        stderrBytes += chunk.length;
+        if (stderrBytes <= 2 * 1024 * 1024) stderr.push(chunk);
+        else { failure = true; child.kill(); }
+      });
+      worker.done = new Promise(resolve => child.on('close', code => {
+        clearTimeout(timeout);
+        try { if (stderr.length) sealed(`${label}-${++commandIndex}-stderr`, Buffer.concat(stderr)); }
+        catch { failure = true; }
+        stderr = []; workers.delete(worker);
+        resolve({ success: code === 0 && !failure });
+      }));
+      worker.requireSuccess = async () => { if (!(await worker.done).success) throw Error('Private capture process failed; encrypted diagnostics retained'); };
+      return worker;
+    }
+    function lineReader(worker) {
+      const iterator = worker.child.stdout[Symbol.asyncIterator]();
+      const decoder = new StringDecoder('utf8');
+      let pending = '';
+      return async () => {
+        while (!pending.includes('\n')) {
+          const part = await iterator.next();
+          if (part.done) throw Error('Snapshot coordinator ended unexpectedly');
+          pending += decoder.write(part.value);
+          if (Buffer.byteLength(pending) > 32 * 1024 * 1024) throw Error('Snapshot coordinator output exceeded bound');
+        }
+        const end = pending.indexOf('\n'), line = pending.slice(0, end).replace(/\r$/, '');
+        pending = pending.slice(end + 1); return line;
+      };
+    }
+    const coordinator = startPg(['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1'], 'coordinator', 15 * 60 * 1000);
+    const nextLine = lineReader(coordinator), openedAt = new Date().toISOString();
+    coordinator.child.stdin.write(`${RECOVERY_TRANSACTION_SQL}\n${RECOVERY_CANONICAL_SETTINGS}\n${metadataQuery}\n`);
+    const snapshotRaw = await nextLine();
+    sealed('snapshot-inventory', snapshotRaw);
+    let snapshotMetadata;
+    try { snapshotMetadata = JSON.parse(snapshotRaw); } catch { throw Error('Snapshot inventory parse failed'); }
+    if (!classifyRecoveryMetadata(snapshotMetadata).passed) throw Error('Snapshot coordinator preflight failed');
+    coordinator.child.stdin.write(`${RECOVERY_CATALOG_SQL}\n`);
+    const rawCatalog = await nextLine();
+    sealed('source-catalog', rawCatalog);
+    let catalog;
+    try { catalog = JSON.parse(rawCatalog); } catch { throw Error('Snapshot catalog parse failed'); }
+    const tableScope = buildTableScope(catalog);
+    // Permission or DDL conflicts fail the whole capture, never a filtered success.
+    const included = tableScope.filter(item => ['full', 'extension_config'].includes(item.scope));
+    const quote = identifier => `"${identifier.replaceAll('"', '""')}"`;
+    for (const item of included) coordinator.child.stdin.write(`LOCK TABLE ONLY ${quote(item.schema)}.${quote(item.table)} IN ACCESS SHARE MODE;\n`);
+    coordinator.child.stdin.write('SELECT pg_export_snapshot();\n');
+    const snapshotId = await nextLine();
+    manifestTransactionSql(snapshotId); // validate before using as an argument or SQL literal
+    const dump = startPg(['pg_dump', '--format=custom', '--no-password', '--role=postgres', `--snapshot=${snapshotId}`, '--lock-wait-timeout=5s'], 'pg-dump', 10 * 60 * 1000);
+    dump.child.stdin.end();
+    const archivePath = path.join(output, 'archive.aes');
+    const archiveManifest = await captureEncryptedArchive({ source: dump.child.stdout, destination: archivePath, key, waitForSuccess: dump.requireSuccess, maxBytes: 256 * 1024 * 1024 });
+    await authenticateEncryptedArchive({ path: archivePath, key, manifest: archiveManifest, maxBytes: 256 * 1024 * 1024 });
+    // Do not write the completion marker until reference manifests also succeed.
+    const tableData = [];
+    for (let index = 0; index < included.length; index++) {
+      const scope = included[index], sink = createTableDigestSink();
+      // The coordinator still owns the original repeatable-read transaction and
+      // its 120s per-statement settings. Reuse it instead of reauthenticating for
+      // every table. COPY emits only 64-hex-plus-newline rows; the sentinel cannot
+      // collide with a valid row digest and arrives only after COPY succeeds.
+      const sentinel = 'SOCIUS_CAPTURE_TABLE_COMPLETE';
+      coordinator.child.stdin.write(`${tableDigestSql(scope)}\nSELECT '${sentinel}';\n`);
+      async function* digestLines() {
+        while (true) {
+          const line = await nextLine();
+          if (line === sentinel) return;
+          yield Buffer.from(`${line}\n`, 'utf8');
+        }
+      }
+      await pipeline(Readable.from(digestLines()), sink.stream);
+      tableData.push({ schema: scope.schema, table: scope.table, scope: scope.scope, predicate: scope.predicate, ...sink.result() });
+    }
+    coordinator.child.stdin.end('COMMIT;\n');
+    await coordinator.requireSuccess();
+    const sourceManifest = { version: 1, canonicalFormat: CANONICAL_FORMAT, snapshot: { id: snapshotId, openedAt, closedAt: new Date().toISOString(), tableDigestConnection: 'held_coordinator' }, catalog, tableScope, tableData,
+      limitations: ['Logical database archive only; platform service state, storage object bytes and Vault root keys are not captured', 'Extension-owned data follows registered extconfig predicates; exclusions are explicit in tableScope', 'Sequences and shared role catalogs are not guaranteed to be at one MVCC instant under concurrent activity', 'Large-object payloads, sequence values and catalog object kinds not listed in catalog are not independently digest-compared, even when pg_dump includes them', 'pg_dump uses its own read-only snapshot transaction and lock-wait timeout; external10minute lifetime bounds the process rather than the psql statement timeout', 'No restore has been performed by capture', 'Runtime buffers rely on host trust; container zero swap does not prove Windows VM/process paging exclusion'] };
+    sealed('source-manifest', JSON.stringify(sourceManifest));
+    fs.writeFileSync(path.join(output, 'archive.manifest.json'), JSON.stringify(archiveManifest, null, 2), { flag: 'wx' });
+    const receipt = { kind: 'encrypted_production_logical_capture', project, runId, checkedAt: new Date().toISOString(), archiveCreated: true, archiveAuthenticated: true, sourceManifestCreated: true, productionRestorePerformed: false, archiveBytes: archiveManifest.bytes, ciphertextSha256: archiveManifest.ciphertextSha256, physicalTableScopes: tableData.length, excludedScopes: tableScope.filter(item => item.scope === 'excluded').length, readOnly: true, keyProtection: 'Windows DPAPI CurrentUser', snapshotConsistency: 'shared exported snapshot for archive and included table data; sequence/shared-role limits recorded' };
+    fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2), { flag: 'wx' });
+    console.log(JSON.stringify(receipt));
+  } else {
   const receipt = { kind: 'production_recovery_inventory', project, runId, checkedAt: new Date().toISOString(), readOnly: true, sslMode: 'verify-full', encryptedInventory: true, keyProtection: 'Windows DPAPI CurrentUser', databaseBytes: metadata.bytes, tableCount: metadata.tables.length, extensionNames: metadata.extensions.map(item => item.name), archiveCreated: false, productionRestorePerformed: false };
   fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2), { flag: 'wx' });
   console.log(JSON.stringify(receipt));
+  }
 } catch (error) {
   fs.writeFileSync(path.join(output, 'failure.json'), JSON.stringify({ project, runId, message: error.message, completedBackup: false, at: new Date().toISOString() }), { flag: 'wx' });
   console.error(JSON.stringify({ project, runId, completedBackup: false, error: error.message }));
   process.exitCode = 1;
 } finally {
+  const outstanding = [...workers];
+  for (const worker of outstanding) worker.child.kill();
+  await Promise.all(outstanding.map(worker => worker.done));
   if (clientStarted) {
     try { pod(['stop', '--time', '5', client]); } catch { console.error('Exporter stop failed; inspect fixed recovery container before proceeding'); process.exitCode = 1; }
   }

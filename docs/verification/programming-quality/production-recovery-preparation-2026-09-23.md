@@ -1,9 +1,11 @@
 # Production recovery preparation — September 23, 2026
 
-Preparation is authorized; production backup and restore are not yet verified.
+Encrypted capture completed. All 93 private-restore table digests matched, but
+six catalog sections differed. Recovery verification is blocked pending approval
+of the revised method after three substantive failures. This is not production deployment approval.
 No production migration, deployment, write pause, password reset or paid service
 has occurred. Greg approved the official temporary CLI database login, which was
-created/refreshed during metadata preflight. No production backup exists yet.
+created/refreshed during metadata preflight and approved export.
 
 ## Destination and access
 
@@ -17,7 +19,8 @@ Windows ACL readback confirmed inheritance disabled, the current Windows user
 as owner, and exactly three explicit inheritable FullControl entries: the
 current user, SYSTEM (`S-1-5-18`), and Administrators (`S-1-5-32-544`).
 This is access-control evidence, not a claim of disk encryption or an off-device
-backup. The folder currently contains no production backup.
+backup. Encrypted recovery artifacts and their keys remain only in this private
+directory; sanitized verification receipts belong in the repository.
 
 The existing Supabase CLI login successfully listed `fitness-tracker`, project
 `auolnfwetmfcwhtvakzy`, organization `xwwgbkrcafrdaguwayns`, region `us-east-1`,
@@ -62,7 +65,10 @@ The existing installed PostgreSQL image is
 An empty private restore container passed synthetic roundtrip and isolation
 checks: network none, no ports/TCP listeners, read-only root, RAM-backed PGDATA,
 zero cgroup swap, disabled core dumps and inactive background workers. No real
-production bytes entered it. Hosted/local extension compatibility remains unknown.
+production bytes entered that synthetic probe. All five exact extension versions
+passed synthetic dump/restore. The real-data restore runner creates a different
+container and additionally disables event triggers. Vault ciphertext preservation
+does not establish Vault decryption or hosted-service restoration.
 
 ## Current blocker and saved helpers
 
@@ -77,8 +83,10 @@ The fix applies row-security and timeout controls explicitly inside the read-onl
 SQL transaction and checks their effective values. Six real PostgreSQL 17.6
 synthetic checks passed, including rollback restoration and rejection of filtered
 reads without changing permissions or table policies. Eighteen crypto/classifier
-checks also pass. The approved one-attempt budget is exhausted; the corrected
-production check awaits approval. See the [attempt record](../../../handoffs/investigations/programming-quality-private-recovery.md).
+checks also passed. Greg then approved one corrected production check, which
+passed all twelve conditions in `inspect-20260923213848-6fbdb3c4`. The connection
+and session-control blocker is resolved. See the
+[attempt record](../../../handoffs/investigations/programming-quality-private-recovery.md).
 
 The revised inspector seals raw metadata before validation and emits separate
 check booleans. It retains verify-full with the official Supabase CA, SHA256
@@ -91,11 +99,28 @@ prerequisite, not a private key or production setting change.
 Private diagnostics use AES-256-GCM with Windows DPAPI CurrentUser key wrapping.
 Separate archive-byte helpers require successful producer completion and full
 authentication before private RAM staging; executing a restore must wait for
-successful staging. Eighteen synthetic helper tests passed and independent review
-found no remaining issue in these bounded contracts. Actual archive orchestration
-is unimplemented; `backup` refuses before any source access. DPAPI recovery depends
+successful staging. Capture and restore orchestration now have independent review,
+38 passing unit/local-catalog checks and additional real PostgreSQL/Windows
+rehearsals in the [tooling receipt](private-recovery-tooling-2026-09-23.md).
+Capture uses one held exported snapshot for the archive and included table
+digests. Restore attempts to preserve owners, ACLs, memberships and extension ownership;
+the real rehearsal exposed role-setting and schema-grant defects that remain
+unfixed. Strict comparison failures are retained privately. DPAPI recovery depends
 on the same Windows key context; this is not an off-device backup. Container swap
 controls do not establish that Windows never pages or dumps VM/process memory.
+
+The final completed capture (`backup-20260923220856-d35a0ccf`) is authenticated
+and has the corrected role inventory. Its private restore matched all 93 included
+physical table digests, but failed six catalog sections. Retained-evidence review
+identified incorrect search-path serialization and missing schema grants, along
+with representation differences and unresolved collation-version evidence.
+The first restore failure, an intermediate capture authentication timeout, and
+this final catalog failure exhaust the three-attempt recovery cycle.
+See the [comparison receipt](production-recovery-restore-comparison-2026-09-23.json)
+and [reviewable correction plan](private-recovery-revised-plan-2026-09-23.md).
+No further blocker probes or fixes may run before Greg approves that method.
+All encrypted packages and diagnostics remain private. No production restore
+has occurred, and full recoverability is not yet established.
 
 ## Parallel release preparation
 

@@ -53,12 +53,14 @@ required Auth/configuration dependencies) using its
 Use an authorized secure database connection; dashboard sign-in alone does not
 establish database-export authentication. The existing CLI account can list the
 correct project, and the private local destination has restrictive Windows ACLs;
-temporary database-login authorization is now granted. After three failed metadata
-preflights, an approved single diagnostic retry identified an ineffective client
-row-security setting. The explicit SQL fix passed six real local checks; its
-production metadata verification requires renewed approval after that one-attempt budget.
-No backup exists and actual export/restore remain unverified in the
-[recovery preparation receipt](production-recovery-preparation-2026-09-23.md).
+temporary database-login authorization is granted. The corrected metadata check
+passed all twelve conditions. A complete encrypted capture now exists, and all
+93 included table digests matched in its separate private restore. Six catalog
+sections failed parity, including real role-setting/schema-grant defects and
+unresolved collation evidence. The three-attempt end-to-end cycle is exhausted;
+execution against this blocker is stopped pending approval of the
+[revised method](private-recovery-revised-plan-2026-09-23.md). Full recovery is
+not yet verified. See the [recovery preparation receipt](production-recovery-preparation-2026-09-23.md).
 Keep production exports encrypted outside Git, logs and
 test fixtures. An off-device copy requires an existing approved destination;
 no new storage purchase or upload is implied. Account separately for Storage

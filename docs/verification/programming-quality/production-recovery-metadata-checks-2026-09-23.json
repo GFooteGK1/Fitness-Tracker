@@ -1,0 +1,19 @@
+{
+  "checks": {
+    "database": true,
+    "effectiveRole": true,
+    "temporaryLogin": true,
+    "readOnly": true,
+    "rowSecurityDisabled": true,
+    "repeatableRead": true,
+    "statementTimeout": true,
+    "lockTimeout": true,
+    "expectedServerVersion": true,
+    "compatibleServerMajor": true,
+    "inventoryShape": true,
+    "databaseSize": true
+  },
+  "backendTlsObserved": false,
+  "passed": true,
+  "failedChecks": []
+}

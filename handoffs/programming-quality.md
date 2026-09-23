@@ -25,17 +25,21 @@ Greg approved the private production backup/restore preparation and parallel
 write-pause/application rollback work. The private recovery destination now
 exists with verified restrictive Windows ACLs. Existing CLI project access is
 verified; Greg approved its temporary CLI database login, which was created/refreshed.
-After three failed metadata preflights, Greg approved one diagnostic retry. It
-retained encrypted evidence and identified `row_security=on` despite the startup
-request for off. All identity/version/read-only/isolation checks passed. The
-explicit transaction-local SQL fix passed six real synthetic PostgreSQL checks
-and 18 helper checks; a corrected production check needs approval because the
-one-attempt budget is exhausted. No backup exists. See the
-[attempt record](investigations/programming-quality-private-recovery.md).
-Eighteen synthetic crypto/metadata tests and independent review passed. A separate
-empty private restore container passed isolation/synthetic checks; real data never
-entered it. Archive orchestration remains unimplemented and fails before access.
-See [recovery preparation](../docs/verification/programming-quality/production-recovery-preparation-2026-09-23.md).
+The corrected production metadata check passed all twelve conditions. Encrypted
+capture and separate private restore are implemented and independently reviewed;
+38 focused helper checks and real synthetic PostgreSQL/Windows checks passed.
+The final authenticated capture contains 93 physical table scopes. All 93 data
+digests matched on private restore, but six catalog sections differed. Exact
+role search paths and schema grants need correction; collation evidence remains
+unresolved. Three substantive end-to-end failures exhausted the retry budget.
+Status: blocked, revised method awaiting approval. Do not run more blocker fixes,
+SQL probes, source connections or restores until approval. Retained-evidence
+analysis, checkpoint saving and unrelated approved work remain allowed.
+See the [attempt record](investigations/programming-quality-private-recovery.md),
+[correction plan](../docs/verification/programming-quality/private-recovery-revised-plan-2026-09-23.md)
+and [recovery preparation](../docs/verification/programming-quality/production-recovery-preparation-2026-09-23.md).
+Private ciphertext and DPAPI keys stay outside Git; real data never entered the
+synthetic canary. Private real-data restore containers stopped after each run.
 The compatible local build is retained and its same-port artifact-switch
 rehearsal passed 15 checks, with the revision schema left installed. It uses two
 builds of the same application source and is not a production rollback artifact.
