@@ -5,7 +5,7 @@ export const quoteIdentifier = value => {
 };
 const literal = value => {
   if (typeof value !== 'string' || value.includes('\0')) throw Error('Invalid recovery literal');
-  return `'${value.replaceAll("'", "''")}'`;
+  return `E'${value.replaceAll('\\', '\\\\').replaceAll("'", "''")}'`;
 };
 
 export function restoreRolesSql(catalog) {
@@ -24,7 +24,24 @@ export function restoreRolesSql(catalog) {
     for (const setting of role.config ?? []) {
       const index = setting.indexOf('=');
       if (index < 1) throw Error('Malformed role setting');
-      sql.push(`ALTER ROLE ${name} SET ${quoteIdentifier(setting.slice(0, index))} TO ${literal(setting.slice(index + 1))};`);
+      const settingName = setting.slice(0, index), value = setting.slice(index + 1);
+      if (settingName === 'search_path') {
+        // search_path is a list GUC. ALTER ROLE ... TO one string quotes the
+        // whole list as one schema. Save PostgreSQL's current list representation
+        // instead. This DO statement runs in one transaction and restores the
+        // caller setting even when its caller already has an open transaction.
+        const block = `DECLARE prior_path pg_catalog.text := pg_catalog.current_setting('search_path');
+BEGIN
+  PERFORM pg_catalog.set_config('search_path', ${literal(value)}, true);
+  ALTER ROLE ${name} SET search_path FROM CURRENT;
+  PERFORM pg_catalog.set_config('search_path', prior_path, true);
+END`;
+        sql.push(`DO ${literal(block)};`);
+      } else {
+        // Persist other settings only. Never activate source preload libraries
+        // in the operator session; the runner must keep its connection guards.
+        sql.push(`ALTER ROLE ${name} SET ${quoteIdentifier(settingName)} TO ${literal(value)};`);
+      }
     }
   }
   return sql.join('\n');
@@ -65,12 +82,4 @@ export function restoreDatabaseAclSql(database, name) {
   return sql.join('\n');
 }
 
-// Only intentional identity/login substitutions are normalized. Object owners,
-// ACLs, RLS, extension ownership, functions and expressions must compare exactly.
-export function compareRecoveryCatalog(source, restored) {
-  const expected = structuredClone(source), actual = structuredClone(restored);
-  for (const role of expected.roles) role.login = role.name === source.bootstrapRole;
-  actual.database.name = expected.database.name;
-  const differences = Object.keys(expected).filter(key => JSON.stringify(expected[key]) !== JSON.stringify(actual[key]));
-  return { matched: differences.length === 0, differingSections: differences, normalized: ['database name', 'NOLOGIN roles except local bootstrap socket operator'] };
-}
+export { compareRecoveryCatalog } from './private-recovery-comparison.mjs';

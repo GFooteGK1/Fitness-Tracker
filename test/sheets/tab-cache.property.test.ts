@@ -254,6 +254,9 @@ describe('Tab Cache - Property Tests', () => {
     month,
     year
   ) => {
+    // Each generated case must start without entries from previous cases.
+    const cache = new TabCache()
+
     // Ensure the two IDs are different
     fc.pre(spreadsheetId !== differentSpreadsheetId)
 

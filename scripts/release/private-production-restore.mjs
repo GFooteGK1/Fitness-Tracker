@@ -6,14 +6,16 @@ import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
-import { RECOVERY_PROJECT, RECOVERY_IMAGE, privateEnvironment, verifyPrivateRecoveryDirectory, privateRunDirectory, unwrapRecoveryKey, readPrivateJson, unsealPrivateMetadata, sealPrivateMetadata } from './private-recovery-files.mjs';
+import { RECOVERY_PROJECT, RECOVERY_RESTORE_IMAGE as RECOVERY_IMAGE, RECOVERY_RESTORE_USER, privateEnvironment, verifyPrivateRecoveryDirectory, privateRunDirectory, privateLocaleRunDirectory, unwrapRecoveryKey, readPrivateJson, unsealPrivateMetadata, sealPrivateMetadata } from './private-recovery-files.mjs';
 import { authenticateEncryptedArchive, restoreAuthenticatedArchive } from './private-recovery-archive.mjs';
 import { CANONICAL_FORMAT, RECOVERY_CATALOG_SQL, RECOVERY_CANONICAL_SETTINGS, tableDigestSql, createTableDigestSink } from './private-recovery-manifest.mjs';
 import { restoreRolesSql, restoreMembershipsSql, restoreDatabaseSql, restoreDatabaseAclSql, compareRecoveryCatalog } from './private-recovery-roles.mjs';
 import { extensionPrecreationPlan, splitExtensionSchemaToc } from './private-recovery-extensions.mjs';
+import { restoreSchemaAclsSql } from './private-recovery-schema-acl.mjs';
+import { RECOVERY_LOCALE_SQL, validateSourceLocale, requireMatchingRecoveryLocale } from './private-recovery-locale.mjs';
 
 const synthetic = process.argv[3] === '--synthetic';
-if (process.argv.length !== (synthetic ? 4 : 3)) throw Error('Supply one completed private backup run ID and optional --synthetic fixture mode');
+if (synthetic ? process.argv.length !== 4 : (process.argv.length !== 5 || process.argv[3] !== '--locale')) throw Error('Supply backup run ID and --locale approved-locale-run-ID, or --synthetic fixture mode');
 verifyPrivateRecoveryDirectory();
 const backup = privateRunDirectory(process.argv[2]);
 const completion = readPrivateJson(backup, 'receipt.json');
@@ -27,7 +29,7 @@ const podman = path.join(root, 'output/app-quality-release/tools/podman-5.8.3/po
 const options = { cwd: output, env: privateEnvironment(), windowsHide: true, encoding: 'utf8', timeout: 120000, maxBuffer: 32 * 1024 * 1024 };
 const container = `socius-private-${restoreId}`;
 const workers = new Set();
-let started = false, diagnostic = 0;
+let started = false, launchAttempted = false, diagnostic = 0, verifiedReceipt;
 function pod(args, input, allowFailure = false) {
   const result = spawnSync(podman, ['--connection', 'sociusfit-local', ...args], { ...options, input });
   if (result.stderr) seal(`command-${++diagnostic}-stderr`, result.stderr);
@@ -60,6 +62,16 @@ function start(args, timeoutMs = 120000) {
   workers.add(worker); return worker;
 }
 try {
+  let sourceLocale, sourceLocaleReceipt;
+  if (!synthetic) {
+    const directory = privateLocaleRunDirectory(process.argv[4]);
+    const localeKey = unwrapRecoveryKey(directory);
+    try { sourceLocale = JSON.parse(unsealPrivateMetadata(directory, 'source-locale', localeKey)); }
+    finally { localeKey.fill(0); }
+    sourceLocaleReceipt = readPrivateJson(directory, 'receipt.json');
+    const age = Date.now() - Date.parse(sourceLocaleReceipt.checkedAt);
+    if (sourceLocaleReceipt.kind !== 'production_locale_metadata' || sourceLocaleReceipt.project !== RECOVERY_PROJECT || sourceLocaleReceipt.runId !== process.argv[4] || sourceLocaleReceipt.sourceConnections !== 1 || sourceLocaleReceipt.tableRowsRead !== false || !Number.isFinite(age) || age < 0 || age > 12 * 60 * 60 * 1000 || !validateSourceLocale(sourceLocale).passed || JSON.stringify(sourceLocaleReceipt.locale) !== JSON.stringify(sourceLocale)) throw Error('Approved source locale evidence is missing, stale or inconsistent');
+  }
   const manifestBytes = unsealPrivateMetadata(backup, 'source-manifest', key);
   let manifest;
   try { manifest = JSON.parse(manifestBytes); } catch { throw Error('Authenticated source manifest is malformed'); }
@@ -78,7 +90,8 @@ umask 077
 mkdir /private/restore
 initdb -D /private/restore/data -U "$RECOVERY_BOOTSTRAP" --auth-local=trust --auth-host=reject --encoding=UTF8 --locale=C >/private/restore/init.log 2>&1
 exec postgres -D /private/restore/data -k /private/restore -c listen_addresses= -c shared_preload_libraries= -c session_preload_libraries= -c local_preload_libraries= -c max_worker_processes=0 -c max_parallel_workers=0 -c max_logical_replication_workers=0 -c event_triggers=off -c autovacuum=off -c logging_collector=off -c log_statement=none -c log_min_messages=panic -c log_min_error_statement=panic -c cron.launch_active_jobs=off -c pg_net.batch_size=0 -c shared_buffers=64MB >/private/restore/postgres.log 2>&1`;
-  pod(['run', '-d', '--name', container, '--label', `io.socius.private-restore=${completion.runId}`, '--network', 'none', '--read-only', '--image-volume', 'ignore', '--user', '100:101', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--memory', '1g', '--memory-swap', '1g', '--pids-limit', '128', '--ulimit', 'core=0:0', '--tmpfs', '/private:rw,nosuid,nodev,noexec,size=768m,mode=1777', '--log-driver', 'none', '--env', `RECOVERY_BOOTSTRAP=${bootstrap}`, '--entrypoint', '/bin/sh', RECOVERY_IMAGE, '-c', boot]);
+  launchAttempted = true; // A client error can occur after the daemon starts it.
+  pod(['run', '-d', '--name', container, '--label', `io.socius.private-restore=${completion.runId}`, '--network', 'none', '--read-only', '--image-volume', 'ignore', '--user', RECOVERY_RESTORE_USER, '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--memory', '1g', '--memory-swap', '1g', '--pids-limit', '128', '--ulimit', 'core=0:0', '--tmpfs', '/private:rw,nosuid,nodev,noexec,size=768m,mode=1777', '--log-driver', 'none', '--env', `RECOVERY_BOOTSTRAP=${bootstrap}`, '--entrypoint', '/bin/sh', RECOVERY_IMAGE, '-c', boot]);
   started = true;
   let ready = false;
   for (let attempt = 0; attempt < 40; attempt++) {
@@ -87,20 +100,26 @@ exec postgres -D /private/restore/data -k /private/restore -c listen_addresses= 
   }
   if (!ready) throw Error('Private empty restore cluster did not become ready');
   const state = JSON.parse(pod(['inspect', container]))[0];
-  if (state.Image.replace(/^sha256:/, '') !== RECOVERY_IMAGE || state.Config.Labels['io.socius.private-restore'] !== completion.runId || state.HostConfig.NetworkMode !== 'none' || Object.keys(state.HostConfig.PortBindings ?? {}).length || !state.HostConfig.ReadonlyRootfs || state.Config.User !== '100:101' || state.HostConfig.LogConfig.Type !== 'none' || state.HostConfig.Memory !== 1073741824 || state.HostConfig.MemorySwap !== 1073741824 || (state.Mounts ?? []).some(item => ['bind', 'volume'].includes(item.Type))) throw Error('Private restore isolation mismatch');
+  if (state.Image.replace(/^sha256:/, '') !== RECOVERY_IMAGE || state.Config.Labels['io.socius.private-restore'] !== completion.runId || state.HostConfig.NetworkMode !== 'none' || Object.keys(state.HostConfig.PortBindings ?? {}).length || !state.HostConfig.ReadonlyRootfs || state.Config.User !== RECOVERY_RESTORE_USER || state.HostConfig.LogConfig.Type !== 'none' || state.HostConfig.Memory !== 1073741824 || state.HostConfig.MemorySwap !== 1073741824 || (state.Mounts ?? []).some(item => ['bind', 'volume'].includes(item.Type))) throw Error('Private restore isolation mismatch');
   if (!state.HostConfig.Tmpfs?.['/private'] || !state.HostConfig.Ulimits?.some(item => item.Name === 'RLIMIT_CORE' && item.Hard === 0 && item.Soft === 0)) throw Error('Private RAM/core-dump controls missing');
   if (pod(['exec', container, 'cat', '/sys/fs/cgroup/memory.swap.max']) !== '0') throw Error('Private restore swap is enabled');
-  if (pod(['exec', container, 'stat', '-c', '%u:%g:%a', '/private/restore']) !== '100:101:700') throw Error('Private RAM permissions mismatch');
+  if (pod(['exec', container, 'stat', '-c', '%u:%g:%a', '/private/restore']) !== `${RECOVERY_RESTORE_USER}:700`) throw Error('Private RAM permissions mismatch');
   for (const file of ['/proc/net/tcp', '/proc/net/tcp6']) if (pod(['exec', container, 'cat', file]).split('\n').length !== 1) throw Error('Private restore has a TCP socket');
   const pgArgs = (database, command = 'psql') => ['exec', '-i', container, 'env', 'PGOPTIONS=-c event_triggers=off -c session_preload_libraries= -c local_preload_libraries= -c statement_timeout=120000 -c lock_timeout=5000', command, '-h', '/private/restore', '-U', bootstrap, '-d', database];
   const sql = (query, database = target) => pod([...pgArgs(database), '-X', '-qAt', '-v', 'ON_ERROR_STOP=1'], query);
   const controls = JSON.parse(sql("SELECT json_build_object('version',current_setting('server_version'),'listen',current_setting('listen_addresses'),'eventTriggers',current_setting('event_triggers'),'preloads',current_setting('shared_preload_libraries'),'workers',current_setting('max_worker_processes'),'logicalWorkers',current_setting('max_logical_replication_workers'),'cron',current_setting('cron.launch_active_jobs'),'bootstrap',(SELECT rolname FROM pg_roles WHERE oid=10));", 'postgres'));
   if (controls.version !== '17.6' || controls.listen !== '' || controls.eventTriggers !== 'off' || controls.preloads !== '' || controls.workers !== '0' || controls.logicalWorkers !== '0' || controls.cron !== 'off' || controls.bootstrap !== bootstrap) throw Error('Private server controls mismatch');
-  seal('isolation', JSON.stringify({ controls, image: RECOVERY_IMAGE, network: 'none', ramMode: '100:101:700', swapMax: 0, coreLimit: 0 }));
+  seal('isolation', JSON.stringify({ controls, image: RECOVERY_IMAGE, network: 'none', ramMode: `${RECOVERY_RESTORE_USER}:700`, swapMax: 0, coreLimit: 0 }));
   sql(rolesSql, 'postgres');
   sql(membershipsSql, 'postgres');
   sql(databaseSql, 'postgres');
   sql(databaseAclSql, 'postgres');
+  let localeComparison;
+  if (!synthetic) {
+    const localLocale = JSON.parse(sql(`BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL row_security=off; ${RECOVERY_LOCALE_SQL} ROLLBACK;`));
+    localeComparison = requireMatchingRecoveryLocale(catalog.database, sourceLocale, localLocale);
+    seal('locale-comparison', JSON.stringify({ ...localeComparison, sourceCheckedAt: sourceLocaleReceipt.checkedAt, image: RECOVERY_IMAGE, source: sourceLocale, local: localLocale, limitation: 'Source runtime observed after archive capture; no retroactive archive-time runtime proof' }));
+  }
   let staging;
   await restoreAuthenticatedArchive({ path: archive, key, manifest: archiveManifest, maxBytes: 256 * 1024 * 1024, createDestination() {
     staging = start(['exec', '-i', container, '/bin/sh', '-c', 'umask 077; cat > /private/restore/archive.dump']);
@@ -126,6 +145,10 @@ exec postgres -D /private/restore/data -k /private/restore -c listen_addresses= 
   const restored = start([...pgArgs(target, 'pg_restore'), '--exit-on-error', '--single-transaction', ...restoreList, '/private/restore/archive.dump'], 10 * 60 * 1000);
   restored.child.stdin.end(); restored.child.stdout.on('data', restored.recordDiagnostic);
   await restored.requireSuccess();
+  const beforeGrants = sql(`BEGIN READ ONLY; ${RECOVERY_CANONICAL_SETTINGS} ${RECOVERY_CATALOG_SQL} COMMIT;`);
+  seal('restored-catalog-before-schema-grants', beforeGrants);
+  const schemaGrantSql = restoreSchemaAclsSql(catalog.schemas, JSON.parse(beforeGrants).schemas);
+  if (schemaGrantSql) sql(schemaGrantSql);
   let actualCatalog;
   const rawCatalog = sql(`BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL row_security=off; ${RECOVERY_CANONICAL_SETTINGS} ${RECOVERY_CATALOG_SQL} COMMIT;`);
   seal('restored-catalog', rawCatalog);
@@ -146,9 +169,8 @@ exec postgres -D /private/restore/data -k /private/restore -c listen_addresses= 
   const covered = (schema, table) => tableData.some(item => item.schema === schema && item.table === table && item.matched);
   const releaseDataCoverage = { acceptedPlans: covered('public', 'training_plan_versions'), prescribedSessions: covered('public', 'prescribed_sessions'), proposals: covered('public', 'adaptation_proposals'), migrationLedger: covered('supabase_migrations', 'schema_migrations'), authIdentities: covered('auth', 'users') };
   if (!synthetic && Object.values(releaseDataCoverage).some(value => !value)) throw Error('Required release recovery table coverage is missing');
-  const receipt = { kind: synthetic ? 'synthetic_private_restore_verified' : 'private_logical_restore_verified', project: completion.project, backupRunId: completion.runId, restoreId, checkedAt: new Date().toISOString(), archiveAuthenticated: true, restored: true, selectedCatalogMatched: true, tableScopesMatched: matchedTables, releaseDataCoverage, container, sourceCiphertextSha256: completion.ciphertextSha256, productionRestorePerformed: false, limitations: [...manifest.limitations, 'Comparison covers captured catalog sections and included physical table scopes; large-object contents and unlisted object kinds are not digest-compared'], substitutions: comparison.normalized };
-  fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2), { flag: 'wx' });
-  console.log(JSON.stringify(receipt));
+  const receipt = { kind: synthetic ? 'synthetic_private_restore_verified' : 'private_logical_restore_verified', project: completion.project, backupRunId: completion.runId, restoreId, checkedAt: new Date().toISOString(), archiveAuthenticated: true, restored: true, selectedCatalogMatched: true, rawCatalogMatched: comparison.rawMatched, localeComparison, tableScopesMatched: matchedTables, releaseDataCoverage, container, restoreImage: RECOVERY_IMAGE, sourceCiphertextSha256: completion.ciphertextSha256, productionRestorePerformed: false, limitations: [...manifest.limitations, 'Comparison covers captured catalog sections and included physical table scopes; large-object contents and unlisted object kinds are not digest-compared', 'Source runtime observed after capture, not retroactive proof of archive-time runtime'], substitutions: comparison.normalized };
+  verifiedReceipt = receipt; // Completion is durable only after cleanup readback.
 } catch (error) {
   try { seal('failure', JSON.stringify({ message: error.message, restoreId, completedRestore: false })); }
   catch { console.error('Private failure diagnostic could not be saved'); }
@@ -157,6 +179,24 @@ exec postgres -D /private/restore/data -k /private/restore -c listen_addresses= 
 } finally {
   const active = [...workers]; for (const worker of active) worker.child.kill();
   await Promise.all(active.map(worker => worker.done));
-  if (started) { try { pod(['stop', '--time', '5', container]); } catch { console.error('Private RAM container stop failed; inspect before proceeding'); process.exitCode = 1; } }
-  key.fill(0);
+  const cleanup = { restoreId, container, checkedAt: new Date().toISOString(), containerStarted: started, launchAttempted, stopped: !launchAttempted, verified: !launchAttempted };
+  try {
+    if (launchAttempted) {
+      const owned = JSON.parse(pod(['inspect', container]))[0];
+      if (owned.Image.replace(/^sha256:/, '') !== RECOVERY_IMAGE || owned.Config.Labels['io.socius.private-restore'] !== completion.runId) throw Error('Private restore cleanup ownership mismatch');
+      pod(['stop', '--time', '5', container]);
+      const stopped = JSON.parse(pod(['inspect', container]))[0];
+      if (stopped.Image.replace(/^sha256:/, '') !== RECOVERY_IMAGE || stopped.Config.Labels['io.socius.private-restore'] !== completion.runId || stopped.State.Running !== false) throw Error('Private restore cleanup readback failed');
+      cleanup.stopped = true; cleanup.verified = true;
+    }
+  } catch { console.error('Private RAM container cleanup unverified; inspect before proceeding'); process.exitCode = 1; }
+  try {
+    fs.writeFileSync(path.join(output, 'cleanup.json'), JSON.stringify(cleanup, null, 2), { flag: 'wx' });
+    if (verifiedReceipt && cleanup.verified) {
+      const completed = { ...verifiedReceipt, containerStopped: true, cleanupVerified: true };
+      fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(completed, null, 2), { flag: 'wx' });
+      console.log(JSON.stringify(completed));
+    } else console.log(JSON.stringify({ restoreId, cleanupVerified: cleanup.verified, completedRestore: false }));
+  } catch { console.error('Private recovery completion evidence could not be saved'); process.exitCode = 1; }
+  finally { key.fill(0); }
 }

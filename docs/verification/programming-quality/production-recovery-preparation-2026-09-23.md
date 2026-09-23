@@ -1,8 +1,10 @@
 # Production recovery preparation — September 23, 2026
 
-Encrypted capture completed. All 93 private-restore table digests matched, but
-six catalog sections differed. Recovery verification is blocked pending approval
-of the revised method after three substantive failures. This is not production deployment approval.
+The encrypted capture and separate private logical restore are verified for
+all 93 included physical table scopes and the selected catalog checks. Cleanup
+readback confirms the private container stopped. See the
+[passing receipt](production-recovery-verified-2026-09-23.json).
+This is not production deployment approval or full hosted-service recovery.
 No production migration, deployment, write pause, password reset or paid service
 has occurred. Greg approved the official temporary CLI database login, which was
 created/refreshed during metadata preflight and approved export.
@@ -59,7 +61,7 @@ Storage object bytes, platform configuration, external credentials, or writes ma
 after its snapshot. A successful restore rehearsal does not authorize restoring
 over production.
 
-The existing installed PostgreSQL image is
+The earlier synthetic/capture PostgreSQL image is
 `public.ecr.aws/supabase/postgres:17.6.1.167`, local image ID
 `66089200353d90686fe9b252a47d17d078364bf47c50190852c33dc850a0191f`.
 An empty private restore container passed synthetic roundtrip and isolation
@@ -70,7 +72,7 @@ passed synthetic dump/restore. The real-data restore runner creates a different
 container and additionally disables event triggers. Vault ciphertext preservation
 does not establish Vault decryption or hosted-service restoration.
 
-## Current blocker and saved helpers
+## Resolved blockers and saved helpers
 
 The first three metadata-preflight attempts failed: missing Supabase CA trust,
 a Podman network-field assertion mismatch, then a combined metadata-validation
@@ -100,27 +102,32 @@ Private diagnostics use AES-256-GCM with Windows DPAPI CurrentUser key wrapping.
 Separate archive-byte helpers require successful producer completion and full
 authentication before private RAM staging; executing a restore must wait for
 successful staging. Capture and restore orchestration now have independent review,
-38 passing unit/local-catalog checks and additional real PostgreSQL/Windows
+51 passing unit/local-catalog checks and additional real PostgreSQL/Windows
 rehearsals in the [tooling receipt](private-recovery-tooling-2026-09-23.md).
 Capture uses one held exported snapshot for the archive and included table
-digests. Restore attempts to preserve owners, ACLs, memberships and extension ownership;
-the real rehearsal exposed role-setting and schema-grant defects that remain
-unfixed. Strict comparison failures are retained privately. DPAPI recovery depends
+digests. The approved correction cycle repaired role-setting serialization and schema
+grants, selected a verified locale-compatible runtime, and passed the final
+private restore. Earlier strict comparison failures remain retained privately. DPAPI recovery depends
 on the same Windows key context; this is not an off-device backup. Container swap
 controls do not establish that Windows never pages or dumps VM/process memory.
 
-The final completed capture (`backup-20260923220856-d35a0ccf`) is authenticated
-and has the corrected role inventory. Its private restore matched all 93 included
-physical table digests, but failed six catalog sections. Retained-evidence review
-identified incorrect search-path serialization and missing schema grants, along
-with representation differences and unresolved collation-version evidence.
-The first restore failure, an intermediate capture authentication timeout, and
-this final catalog failure exhaust the three-attempt recovery cycle.
-See the [comparison receipt](production-recovery-restore-comparison-2026-09-23.json)
-and [reviewable correction plan](private-recovery-revised-plan-2026-09-23.md).
-No further blocker probes or fixes may run before Greg approves that method.
-All encrypted packages and diagnostics remain private. No production restore
-has occurred, and full recoverability is not yet established.
+The final completed capture (backup-20260923220856-d35a0ccf) is authenticated.
+After Greg approved the bounded correction plan, one metadata query proved
+production actually uses ICU 153.120. The previous local runtime used153.121.
+The official source-release image 17.6.1.054 was verified synthetically and pinned
+as74bcceb8123bdc6d9b129eac9446cc0c0fa6fd2e5ee1b5da185c02529b420080,
+with runtime user101:102 and all five required extension versions.
+
+Private restore restore-f5034710-553 passed all 93 physical table digests, required
+release-record coverage, exact runtime locale checks, role settings and schema
+permissions. Selected catalog comparisons passed with disclosed logical-column,
+owner-default-ACL and allowlisted AND-grouping equivalences. Raw catalog equality
+is not claimed. The private container was verified stopped before completion.
+See the [cleanup receipt](production-recovery-cleanup-2026-09-23.json) and
+[approved method](private-recovery-revised-plan-2026-09-23.md).
+Prior failures and their counts remain in the investigation. No production restore
+has occurred. A fresh consistent capture during the approved cutover pause is
+still required; this archive does not include later writes.
 
 ## Parallel release preparation
 

@@ -26,20 +26,21 @@ write-pause/application rollback work. The private recovery destination now
 exists with verified restrictive Windows ACLs. Existing CLI project access is
 verified; Greg approved its temporary CLI database login, which was created/refreshed.
 The corrected production metadata check passed all twelve conditions. Encrypted
-capture and separate private restore are implemented and independently reviewed;
-38 focused helper checks and real synthetic PostgreSQL/Windows checks passed.
-The final authenticated capture contains 93 physical table scopes. All 93 data
-digests matched on private restore, but six catalog sections differed. Exact
-role search paths and schema grants need correction; collation evidence remains
-unresolved. Three substantive end-to-end failures exhausted the retry budget.
-Status: blocked, revised method awaiting approval. Do not run more blocker fixes,
-SQL probes, source connections or restores until approval. Retained-evidence
-analysis, checkpoint saving and unrelated approved work remain allowed.
-See the [attempt record](investigations/programming-quality-private-recovery.md),
-[correction plan](../docs/verification/programming-quality/private-recovery-revised-plan-2026-09-23.md)
-and [recovery preparation](../docs/verification/programming-quality/production-recovery-preparation-2026-09-23.md).
-Private ciphertext and DPAPI keys stay outside Git; real data never entered the
-synthetic canary. Private real-data restore containers stopped after each run.
+capture and separate private restore are implemented and independently reviewed.
+The approved correction cycle resolved exact role search-path/schema-grant
+failures and selected the verified source-version runtime for ICU 153.120.
+All 51 focused helper/local-catalog checks passed. The single permitted private
+restore passed 93 physical table digests, required release-record coverage and
+selected catalog comparisons; cleanup readback confirmed its container stopped.
+The [verified recovery receipt](../docs/verification/programming-quality/production-recovery-verified-2026-09-23.json)
+records scope/qualifications. Raw catalog equality and full hosted-service
+recovery are not claimed. Production data, encrypted catalogs and DPAPI keys stay
+outside Git and synthetic fixtures. Prior failures and exhausted attempt budgets
+remain in the [investigation](investigations/programming-quality-private-recovery.md).
+The recovery gate is resolved for this archive. No more source/restore retries
+are needed. Next release gates are a production-configured compatible rollback
+artifact, refreshed target checks and separate target-specific cutover approval.
+See [recovery preparation](../docs/verification/programming-quality/production-recovery-preparation-2026-09-23.md).
 The compatible local build is retained and its same-port artifact-switch
 rehearsal passed 15 checks, with the revision schema left installed. It uses two
 builds of the same application source and is not a production rollback artifact.
@@ -66,7 +67,11 @@ CI passed on `923473a04583684d3f9b150c35ffa7e0173a8e25`: 3,471 tests passed,
 passed CI `35920252754`: 3,484 tests, 19 skipped, 26 browser journeys, TypeScript,
 lint and build. It fixes a visibility-observer test timing race without changing
 application behavior. Later recovery helper/doc changes have separate local checks.
-Recovery-helper checkpoint `8eebe74` also passed full CI `35922154764`.
+Recovery-helper checkpoint `8eebe74` also passed full CI `35922154764`; e469c10
+passed `35923540505`. CI `35927882780` on e7d1506 found an independent cache
+property-fixture leak. The test-only repair passes the recorded seed, exact
+counterexample and full ten-test file. Current correction checkpoint CI is
+pending. See [fixture receipt](../docs/verification/programming-quality/ci-cache-isolation-2026-09-23.md).
 
 Four new mobile Chromium tests passed at 320/390px, with light/dark screenshots
 inspected. See [mobile evidence](../docs/verification/programming-quality/mobile-release-verification.md).

@@ -11,6 +11,7 @@ import { CANONICAL_FORMAT, RECOVERY_CANONICAL_SETTINGS, RECOVERY_CATALOG_SQL, bu
 import { pipeline } from 'node:stream/promises';
 import { StringDecoder } from 'node:string_decoder';
 import { Readable } from 'node:stream';
+import { RECOVERY_LOCALE_SQL, validateSourceLocale } from './private-recovery-locale.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const destination = 'C:/Users/foote/AppData/Local/SociusFit/Recovery';
@@ -20,7 +21,7 @@ const cli = path.join(root, 'output/app-quality-release/tools/supabase-2.117.0/s
 const podman = path.join(root, 'output/app-quality-release/tools/podman-5.8.3/podman-5.8.3/usr/bin/podman.exe');
 const pwsh = 'C:/Users/foote/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe';
 const mode = process.argv[2];
-if (!['inspect', 'backup'].includes(mode) || process.argv.length !== 3) throw Error('Use inspect or backup; source and destination are fixed');
+if (!['inspect', 'backup', 'locale'].includes(mode) || process.argv.length !== 3) throw Error('Use inspect, backup or locale; source and destination are fixed');
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|USERPROFILE|APPDATA|LOCALAPPDATA|HOMEDRIVE|HOMEPATH)$/i.test(key)));
 const options = { cwd: destination, env, windowsHide: true, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 120000 };
 const hash = value => createHash('sha256').update(value).digest('hex');
@@ -110,6 +111,19 @@ try {
   const pgEnv = ['env', ...['PGHOST', 'PGPORT', 'PGUSER', 'PGDATABASE'].map(name => `${name}=${connection[name]}`), 'PGPASSFILE=/tmp/private-recovery/pgpass', 'PGSSLMODE=verify-full', 'PGSSLROOTCERT=/tmp/private-recovery/root.crt', 'PGCONNECT_TIMEOUT=15', 'PGOPTIONS=-c default_transaction_read_only=on -c row_security=off -c statement_timeout=120000 -c lock_timeout=5000'];
   const pg = (args, input) => pod(['exec', '-i', client, ...pgEnv, ...args], input);
   if (pg(['pg_dump', '--version']) !== 'pg_dump (PostgreSQL) 17.6') throw Error('Unexpected pg_dump version');
+  if (mode === 'locale') {
+    // Exactly one source psql connection. Do not fall through to inventory or dump.
+    const raw = pg(['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1'], `${RECOVERY_TRANSACTION_SQL}\n${RECOVERY_LOCALE_SQL}\nROLLBACK;`);
+    sealed('source-locale', raw);
+    let locale;
+    try { locale = JSON.parse(raw); } catch { throw Error('Locale metadata parse failed; encrypted evidence retained'); }
+    const validation = validateSourceLocale(locale);
+    fs.writeFileSync(path.join(output, 'validation.json'), JSON.stringify(validation, null, 2), { flag: 'wx' });
+    if (!validation.passed) throw Error('Locale session validation failed; encrypted evidence retained');
+    const receipt = { kind: 'production_locale_metadata', project, runId, checkedAt: new Date().toISOString(), readOnly: true, sslMode: 'verify-full', encryptedEvidence: true, sourceConnections: 1, tableRowsRead: false, archiveCreated: false, productionRestorePerformed: false, locale };
+    fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2), { flag: 'wx' });
+    console.log(JSON.stringify(receipt));
+  } else {
   const metadataQuery = `SELECT jsonb_build_object('database',current_database(),'role',current_user,'login',session_user,'version',current_setting('server_version'),'versionNum',current_setting('server_version_num'),'readOnly',current_setting('transaction_read_only'),'rowSecurity',current_setting('row_security'),'isolation',current_setting('transaction_isolation'),'ssl',(SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()),'bytes',pg_database_size(current_database()),
 'statementTimeoutMs',(SELECT setting::integer FROM pg_settings WHERE name='statement_timeout'),'lockTimeoutMs',(SELECT setting::integer FROM pg_settings WHERE name='lock_timeout'),
 'schemas',(SELECT jsonb_agg(nspname ORDER BY nspname) FROM pg_namespace WHERE left(nspname,3) <> 'pg_' AND nspname <> 'information_schema'),
@@ -221,6 +235,7 @@ try {
   const receipt = { kind: 'production_recovery_inventory', project, runId, checkedAt: new Date().toISOString(), readOnly: true, sslMode: 'verify-full', encryptedInventory: true, keyProtection: 'Windows DPAPI CurrentUser', databaseBytes: metadata.bytes, tableCount: metadata.tables.length, extensionNames: metadata.extensions.map(item => item.name), archiveCreated: false, productionRestorePerformed: false };
   fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2), { flag: 'wx' });
   console.log(JSON.stringify(receipt));
+  }
   }
 } catch (error) {
   fs.writeFileSync(path.join(output, 'failure.json'), JSON.stringify({ project, runId, message: error.message, completedBackup: false, at: new Date().toISOString() }), { flag: 'wx' });

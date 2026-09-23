@@ -2,14 +2,14 @@
 
 Issue: `Fitness-Tracker-i40.11`. Owner: root. Workspace: programming-quality.
 Objective: encrypted consistent production export and separate private restore.
-Status: blocked: revised plan awaiting approval. Encrypted capture completed;
-private restore matched all 93 physical table digests but failed catalog parity.
-Connection cycle 1: three failed attempts. Approved cycle 2: one of one attempts
-used. Approved cycle 3: one of one attempts used, passed all twelve checks.
-End-to-end recovery cycle: three substantive failures, budget exhausted.
-Next allowed action: retain evidence, save checkpoint and review the
-[revised method](../../docs/verification/programming-quality/private-recovery-revised-plan-2026-09-23.md).
-No further blocker probes, fixes, source access or restores until approval.
+Status: resolved for the captured logical database recovery scope.
+Approved correction cycle 2: one failed comparator verification, then51 focused
+checks passed and the single real private restore passed with verified cleanup.
+Production locale connections1 of 1 (passed); real private restores1 of 1 (passed).
+Prior three end-to-end failures and connection cycles remain recorded below.
+No source/restore retries remain authorized or needed for this resolved gate.
+Next release work: production-configured compatible rollback artifact, refreshed
+target checks, and the separate target-specific production cutover approval.
 
 ## September 23, 2026 — authority and isolation
 
@@ -266,3 +266,73 @@ defects unresolved. The next method separates local serializer/access-control
 regressions from the missing locale evidence, then reuses the complete archive.
 See the linked revised plan for alternatives, exact bounds, acceptance and
 approval. Production deployment remains a separate gate.
+
+## Approved correction cycle 2 — September 23, 22:28 UTC
+
+Greg approved the reviewed method. Counters start at zero, preserving prior
+failures. Static source-locale branch and exact-locale synthetic query passed.
+The pinned synthetic runtime reports actual/recorded ICU version 153.121, locale
+en-US, LC_COLLATE/LC_CTYPE en_US.UTF-8, UTF8. Source archive records153.120;
+actual source version is still unknown until the single approved query.
+No new source connections or real private restores have run in this cycle.
+
+Source locale attempt1 of 1 is now reserved for the independently reviewed
+`private-production-recovery.mjs locale` invocation. No automatic retry.
+
+Source locale attempt1 of 1 PASSED at 22:29:45UTC; exporter stopped/exit0.
+Run locale-20260923222939-51fb271f confirms actual 153.120 equals recorded 153.120.
+Provider/locale/encoding match the archive. Local actual 153.121 differs: the
+version gap is real, not stale source metadata. No real restore has run.
+The approved method requires a compatible pinned runtime before proceeding.
+Official source-release image 17.6.1.054 is being obtained for isolated verification.
+No source retries remain; query succeeded, so remedy-failure count remains0.
+
+At22:33 UTC, official image 17.6.1.054 (ID74bcceb8123bdc6d9b129eac9446cc0c0fa6fd2e5ee1b5da185c02529b420080) passed the exact-locale synthetic check: actual/recorded 153.120, five matching extension versions, inert event triggers/workers/preloads, networknone, zeroswap. Native runtime UID:GID is101:102. Two preceding read-only layout commands reported a missing guessed extension path and postgres-C without initialized PGDATA; these were inventory-command errors, not recovery remedy attempts. Correct image paths came from pg_config. The actual candidate-runtime acceptance check passed on its first execution; no real restore ran.
+
+Correction-cycle failed verification1: retained catalog check qualified only2of3 CHECK constraints. Lexer omitted PostgreSQL LIKE operator ~~; comparison correctly remained failed. Root approved the narrow lexer correction after evidence review. No source or restore retry occurred. Local role/schema tests passed8checks; locale unit tests and integrated restore review are pending.
+
+Correction-cycle verification: the ~~ lexer fix passed its focused checks and
+retained comparison. Exactly the expected real role/schema/database differences
+remain in the previous failed restore; three CHECKs, two owner-default ACLs and
+visible column positions qualify under disclosed narrow rules. Integrated suite
+passed51 of 51 tests, syntax checks passed. Local role/schema defects are corrected.
+Independent review confirmed strict actual-locale matching and requested durable
+cleanup readback before completion; the runner now records cleanup and withholds
+success until the owned private container is verified stopped. Final cleanup
+review is pending. Cycle failure count1 of 3, source connections1 of 1, real
+private restores0 of 1. No production changes or recapture.
+
+Final independent review cleared cleanup and integrated corrections. The one
+private restore invocation is now reserved: complete archive backup-20260923220856-d35a0ccf,
+source locale evidence locale-20260923222939-51fb271f. No additional source
+connections or archive capture. Success requires cleanup readback; no automatic
+restore retry regardless of the remaining shared failure budget.
+
+## Approved correction cycle 2 — private restore passed at 22:41 UTC
+
+Run restore-f5034710-553 reused complete encrypted capture
+backup-20260923220856-d35a0ccf and the single source-locale observation.
+All 93 physical table digests matched, including accepted plans, prescribed
+sessions, proposals, migration ledger and Auth identities. Selected catalog
+comparison passed after the real search-path/schema-grant repairs. Source and
+restored actual/recorded ICU 153.120 matched on pinned source-version runtime.
+No recorded-version exception was used. Raw catalogs remain unequal only under
+the disclosed identity/login, logical-column, owner-default-ACL and allowlisted
+AND-grouping comparisons. Full encrypted comparisons remain private.
+
+The runner exited0 only after inspecting exact container identity, stopping it,
+verifying State.Running=false, and saving cleanup.json before receipt.json.
+The sanitized [verified receipt](../../docs/verification/programming-quality/production-recovery-verified-2026-09-23.json)
+and [cleanup receipt](../../docs/verification/programming-quality/production-recovery-cleanup-2026-09-23.json)
+are saved. No production restore/migration/pause/deployment, recapture, paid
+service or synthetic-canary contamination occurred.
+
+Remaining limitations: logical database scope and included table/catalog coverage;
+no hosted service/Storage bytes/Vault key recovery, off-device key escrow,
+post-snapshot writes, or retroactive archive-time ICU observation. Fresh capture
+under committed write pause is still required for a separately approved cutover.
+
+Independent post-run review recomputed all93table comparisons and the catalog
+comparison from authenticated retained artifacts. They match the saved result;
+exact schema grants, corrected role settings, runtime parity and cleanup are
+confirmed. No SQL/source access or additional restore was used for that review.

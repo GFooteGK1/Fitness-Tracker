@@ -1,6 +1,6 @@
 # Private recovery correction plan — September 23, 2026
 
-Status: proposed; blocked pending Greg's approval under GUARDRAILS section 8.
+Status: approved and completed within bounds on September 23. One metadata connection and one private restore passed; one local comparator verification failed before its correction. The remaining text preserves the approved method. See production-recovery-verified-2026-09-23.json.
 Issue: `Fitness-Tracker-i40.11`. Complexity: 3, operational/security boundary.
 
 ## Recommendation and evidence

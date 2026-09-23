@@ -1,0 +1,32 @@
+{
+  "kind": "synthetic_locale_query",
+  "checkedAt": "2026-09-23T22:28:52.685Z",
+  "imageId": "66089200353d90686fe9b252a47d17d078364bf47c50190852c33dc850a0191f",
+  "syntheticOnly": true,
+  "database": {
+    "role": "restore_operator",
+    "ctype": "en_US.UTF-8",
+    "login": "restore_operator",
+    "locale": "en-US",
+    "collate": "en_US.UTF-8",
+    "database": "synthetic_locale_b803d78c",
+    "encoding": "UTF8",
+    "provider": "i",
+    "readOnly": "on",
+    "isolation": "repeatable read",
+    "versionNum": "170006",
+    "rowSecurity": "off",
+    "actualVersion": "153.121",
+    "lockTimeoutMs": 5000,
+    "recordedVersion": "153.121",
+    "statementTimeoutMs": 120000
+  },
+  "sourceCaptured": {
+    "provider": "i",
+    "locale": "en-US",
+    "collate": "en_US.UTF-8",
+    "ctype": "en_US.UTF-8",
+    "encoding": "UTF8",
+    "recordedVersion": "153.120"
+  }
+}

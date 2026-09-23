@@ -20,8 +20,8 @@ The older migration hash below is historical. The one-second RPC setting limits
 each lock wait, not total request duration; `55P03` returns a recoverable HTTP409.
 The [pause and rollback rehearsal](local-pause-and-rollback-2026-09-23.md) now adds
 14 passing real PostgreSQL pause/cutover checks, 13 ordered CI regressions and 15
-local application artifact-switch checks. Production recovery and a
-production-configured rollback artifact remain unverified. The local rollback
+local application artifact-switch checks. Private logical recovery is now verified in the receipt below; a
+production-configured rollback artifact remains unverified. The local rollback
 uses two builds of the same compatible source. Historical setup language below
 does not supersede these new receipts.
 
@@ -54,13 +54,14 @@ Use an authorized secure database connection; dashboard sign-in alone does not
 establish database-export authentication. The existing CLI account can list the
 correct project, and the private local destination has restrictive Windows ACLs;
 temporary database-login authorization is granted. The corrected metadata check
-passed all twelve conditions. A complete encrypted capture now exists, and all
-93 included table digests matched in its separate private restore. Six catalog
-sections failed parity, including real role-setting/schema-grant defects and
-unresolved collation evidence. The three-attempt end-to-end cycle is exhausted;
-execution against this blocker is stopped pending approval of the
-[revised method](private-recovery-revised-plan-2026-09-23.md). Full recovery is
-not yet verified. See the [recovery preparation receipt](production-recovery-preparation-2026-09-23.md).
+passed, the encrypted capture completed, and the approved correction cycle's
+single private restore passed all 93 included physical table digests, required
+release-record coverage and qualified catalog/security comparisons. Exact
+actual collation versions matched; cleanup verified the container stopped.
+See [verified recovery](production-recovery-verified-2026-09-23.json) and the
+[recovery preparation receipt](production-recovery-preparation-2026-09-23.md).
+The preserved earlier failures do not supersede that passing scoped result.
+A fresh paused capture is still required before a separately approved cutover.
 Keep production exports encrypted outside Git, logs and
 test fixtures. An off-device copy requires an existing approved destination;
 no new storage purchase or upload is implied. Account separately for Storage

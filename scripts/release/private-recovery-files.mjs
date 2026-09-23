@@ -7,6 +7,9 @@ import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:
 export const RECOVERY_DIRECTORY = 'C:/Users/foote/AppData/Local/SociusFit/Recovery';
 export const RECOVERY_PROJECT = 'auolnfwetmfcwhtvakzy';
 export const RECOVERY_IMAGE = '66089200353d90686fe9b252a47d17d078364bf47c50190852c33dc850a0191f';
+// Source-version runtime verified separately: same ICU actual version as source.
+export const RECOVERY_RESTORE_IMAGE = '74bcceb8123bdc6d9b129eac9446cc0c0fa6fd2e5ee1b5da185c02529b420080';
+export const RECOVERY_RESTORE_USER = '101:102';
 const pwsh = 'C:/Users/foote/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe';
 export const privateEnvironment = () => Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|USERPROFILE|APPDATA|LOCALAPPDATA|HOMEDRIVE|HOMEPATH)$/i.test(key)));
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -38,6 +41,15 @@ export function privateRunDirectory(runId) {
   const directory = path.join(RECOVERY_DIRECTORY, runId);
   const stat = fs.lstatSync(directory);
   if (!stat.isDirectory() || stat.isSymbolicLink()) throw Error('Backup directory is redirected');
+  verifyAcl(directory);
+  return directory;
+}
+
+export function privateLocaleRunDirectory(runId) {
+  if (!/^locale-\d{14}-[a-f0-9]{8}$/.test(runId)) throw Error('Expected an approved locale metadata run ID');
+  const directory = path.join(RECOVERY_DIRECTORY, runId);
+  const stat = fs.lstatSync(directory);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) throw Error('Locale evidence directory is redirected');
   verifyAcl(directory);
   return directory;
 }
