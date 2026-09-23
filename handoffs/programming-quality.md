@@ -6,6 +6,18 @@ Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
 
+Budget steering, September 23: Greg does not want Supabase spending. The selected
+preparation route is a local Supabase/application rehearsal with synthetic data
+and verified manual backup/restore of production in a separate private recovery
+environment. See the [no-cost release route](../docs/verification/programming-quality/release-preflight.md).
+No paid plan, managed backup add-on or paid canary is authorized. Local setup is
+now verified: portable Podman 5.8.3, Supabase CLI 2.117.0, dedicated WSL2 machine,
+PostgreSQL 17.6, coaching schema, two real local Auth accounts, owner-profile RLS
+and distinct concurrent database backends. See [setup receipt](../docs/verification/programming-quality/local-setup-2026-09-23.md).
+Real contention and app/cutover rehearsal remain; secure export access and an
+existing approved backup destination must be established before production-data recovery work. These
+requirements replace the earlier paid recommendation without removing release checks.
+
 The saved implementation is committed and pushed on `codex/programming-quality`;
 [draft PR #84](https://github.com/GFooteGK1/Fitness-Tracker/pull/84) is open.
 The inherited date-fixture defect is fixed in `4c649ef` and `i40.10` is closed.

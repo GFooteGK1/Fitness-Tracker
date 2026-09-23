@@ -4,6 +4,56 @@ Prepared 2026-09-22. This is an execution runbook, not a record of a hosted migr
 
 ## Candidate and current evidence
 
+### Current budget constraint and execution route
+
+Greg declined Supabase spending on September 23. Keep production on Free; no
+paid plan, branching, PITR or paid canary provisioning is authorized. This
+supersedes the paid setup recommendation in the historical hosted receipt.
+
+Local tooling and scoped database/Auth foundation are now verified in the
+[September 23 setup receipt](local-setup-2026-09-23.md). Remaining setup/prerequisite
+language below describes the route, not a claim that contention, application,
+backup restoration or cutover rehearsal has passed.
+
+Use a local Supabase stack and local application with synthetic owners/data for
+the already authorized isolated rehearsal. Supabase documents local development
+as free and provides PostgreSQL, Auth and Storage through its CLI plus a
+Docker-compatible runtime: [local setup](https://supabase.com/docs/guides/local-development).
+Select a runtime with no applicable license charge, bind locally, and record its
+actual PostgreSQL version before testing. CLI/container tools were not found on
+PATH in the September 23 inspection; installing/preparing local tools is the
+next setup step, not a completed prerequisite. Do not substitute PGlite for the
+two-independent-connection checks or repoint the shared production Preview.
+
+Replace the managed-backup requirement with a verified manual recovery process.
+Supabase recommends off-site CLI exports for Free projects:
+[backup guidance](https://supabase.com/docs/guides/platform/backups).
+Prepare the export/restore manifest (schema, data, roles, migration ledger and
+required Auth/configuration dependencies) using its
+[backup/restore procedure](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore).
+Use an authorized secure database connection; dashboard sign-in alone does not
+establish CLI access. Keep production exports encrypted outside Git, logs and
+test fixtures. An off-device copy requires an existing approved destination;
+no new storage purchase or upload is implied. Account separately for Storage
+objects and secrets/configuration that database exports do not recover.
+
+Validate the backup by restoring into a separate private recovery environment;
+production backup contents must not become the synthetic canary's seed data.
+Record restore success, recovery operator and recoverable timestamp. Take a
+fresh consistent backup during the tested write pause before production cutover.
+After reopening writes, preserving later writes requires fix-forward or a
+separately planned reconciliation; restoring an older backup loses newer writes.
+Free operation requires an explicit manual backup cadence and retention owner;
+this plan does not create an automation or claim ongoing backups exist.
+
+Then complete the existing isolation, tenant, concurrency, mobile, compatible
+rollback and target checks below. A second Free hosted project is only an
+optional fallback if eligibility is verified; the primary route does not depend
+on a free hosted slot. Local rehearsal does not establish Vercel networking or
+production configuration, so those readbacks and controlled smoke checks remain
+part of the separately authorized production release. No paid resource is needed
+to continue this preparation.
+
 September 23 follow-up: [hosted preflight receipt](hosted-preflight-2026-09-23.md)
 supersedes the sign-in blocker below. The prior six migrations are recorded;
 the new revision migration is absent. Bounded catalog comparison passed, while
