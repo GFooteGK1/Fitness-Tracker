@@ -14,24 +14,37 @@ No paid plan, managed backup add-on or paid canary is authorized. Local setup is
 now verified: portable Podman 5.8.3, Supabase CLI 2.117.0, dedicated WSL2 machine,
 PostgreSQL 17.6, coaching schema, two real local Auth accounts, owner-profile RLS
 and distinct concurrent database backends. See [setup receipt](../docs/verification/programming-quality/local-setup-2026-09-23.md).
-Real contention and app/cutover rehearsal remain; secure export access and an
-existing approved backup destination must be established before production-data recovery work. These
-requirements replace the earlier paid recommendation without removing release checks.
+The [local rehearsal](../docs/verification/programming-quality/local-rehearsal-2026-09-23.md)
+now passes 21 real PostgreSQL/HTTP concurrency checks, 14 fresh-account app-flow
+checks in dev and production mode, 10 old/new schema checks, and a consistent
+95-table synthetic backup/restore. Real mobile browser acceptance/recovery also
+passed. It found and fixed earlier recommendation-lock contention (five RPCs now
+use a one-second per-lock timeout and recoverable HTTP 409) and explanation text
+overflow. Migration hash is now `0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f`.
+Secure export access and an approved private backup destination remain necessary
+for production-data recovery. A tested operator traffic pause and retained
+revision-compatible application rollback artifact are still missing. Local
+rehearsals do not remove these production gates or authorize deployment.
 
 The saved implementation is committed and pushed on `codex/programming-quality`;
 [draft PR #84](https://github.com/GFooteGK1/Fitness-Tracker/pull/84) is open.
 The inherited date-fixture defect is fixed in `4c649ef` and `i40.10` is closed.
-Full regression now passes: **3,460 passed, 19 skipped**; the 14 focused boundary
+The earlier checkpoint's full regression passed: **3,460 passed, 19 skipped**; the 14 focused boundary
 tests include SQL timezones spanning the UTC date boundary. Full TypeScript and
-focused lint passed; the preceding production build remains applicable because
-this continuation changes only fixtures, browser tests and release documents.
+focused lint passed for that checkpoint. The September 23 contention and mobile
+fixes now pass 107 focused tests, full TypeScript, focused ESLint and a fresh
+production build. Independent runtime review ran 83 overlapping tests. Final
+candidate CI must be checked after the new checkpoint is pushed.
 
 Four new mobile Chromium tests passed at 320/390px, with light/dark screenshots
 inspected. See [mobile evidence](../docs/verification/programming-quality/mobile-release-verification.md).
 The [release runbook and schema readback](../docs/verification/programming-quality/release-preflight.md)
 are prepared, including two executable local metadata-query checks. These do not
-establish hosted database state, real multi-session contention, or a rehearsed
-cutover/rollback. `Fitness-Tracker-i40.11` tracks the remaining release work.
+establish hosted readiness or an operational cutover/rollback. New local real
+contention/schema evidence is in the September 23 receipt above.
+`Fitness-Tracker-i40.11` tracks the remaining release work. Dev/production app
+processes used for this rehearsal are stopped; local Supabase and retained
+synthetic databases remain available. Run the fixed local scripts in the receipt.
 
 Fresh Vercel readback confirms production still serves `f123aa8` and Preview shares
 the production Supabase URL variable. No canary app was found in the verified

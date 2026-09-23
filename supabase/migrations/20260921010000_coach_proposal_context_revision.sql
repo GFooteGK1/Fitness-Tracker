@@ -597,4 +597,16 @@ BEGIN
 END;
 $$;
 
+-- Bound earlier decision/source-lock contention as well as the final NOWAIT
+-- revision fence. Recommendation invalidation can take an owner lock before
+-- that fence is reached. Function-scoped settings restore the caller's timeout
+-- on return; a timeout aborts the statement with retryable SQLSTATE 55P03.
+-- One second is an operational lock-wait cap, not an evidence or dose threshold.
+-- Do not acquire the revision fence earlier: that reverses source-lock order.
+ALTER FUNCTION public.get_coach_context_revision() SET lock_timeout = '1s';
+ALTER FUNCTION public.create_initial_rolling_weekly_proposal(TEXT,TEXT,DATE,DATE,JSONB,TEXT,TEXT,JSONB,JSONB,JSONB,JSONB,TEXT,TEXT) SET lock_timeout = '1s';
+ALTER FUNCTION public.record_coach_weekly_review(UUID,UUID,DATE,TEXT,TEXT,TEXT,TEXT,NUMERIC,JSONB,JSONB,JSONB,JSONB,JSONB,JSONB,JSONB,TEXT,TEXT,TEXT,TEXT) SET lock_timeout = '1s';
+ALTER FUNCTION public.create_rolling_weekly_replacement_proposal(UUID,UUID,UUID,TEXT,TEXT,DATE,DATE,JSONB,TEXT,TEXT,JSONB,JSONB,JSONB,JSONB,TEXT,TEXT) SET lock_timeout = '1s';
+ALTER FUNCTION public.accept_adaptation_proposal(UUID,TEXT) SET lock_timeout = '1s';
+
 COMMIT;

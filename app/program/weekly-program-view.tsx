@@ -363,7 +363,7 @@ function AcceptedDecisionDetails({ context }: { context?: CoachingDecisionContex
   return (
     <details className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
       <summary className="flex min-h-11 cursor-pointer items-center font-semibold">Why this accepted week was chosen</summary>
-      <div className="mt-3 space-y-2 text-sm leading-6">
+      <div className="mt-3 space-y-2 break-words text-sm leading-6">
         <p>This is the review used to choose your accepted week. It is historical context and does not authorize another week or a new change.</p>
         {origin.sourceStatus === 'corrected' && <p>Some source records have since been corrected. The accepted week and its original rationale remain unchanged.</p>}
         {origin.sourceStatus === 'unknown' && <p>Current source validity could not be checked.</p>}
@@ -392,7 +392,7 @@ function SavedDecisionDetails({ context }: { context?: CoachingDecisionContext }
   return (
     <details className="mt-3 rounded-xl border border-current/15">
       <summary className="flex min-h-11 cursor-pointer items-center px-4 py-3 font-semibold">Why this recommendation</summary>
-      <div className="space-y-2 border-t border-current/15 p-4 text-sm leading-6">
+      <div className="space-y-2 break-words border-t border-current/15 p-4 text-sm leading-6">
         {context.decision.rationale.map((message, index) => <p key={index}>{message}</p>)}
         <p>This explains the saved review. New training records or changed goals may need another review. A proposed week takes effect only after acceptance.</p>
       </div>

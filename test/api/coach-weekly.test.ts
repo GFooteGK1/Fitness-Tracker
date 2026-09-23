@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { CoachContextRevisionUnavailableError, fetchCoachContextRevision } from '@/app/lib/coach/proposal-context-revision'
+import { BUSY_COACH_CONTEXT_MESSAGE, CoachContextRevisionConflictError, CoachContextRevisionUnavailableError, fetchCoachContextRevision } from '@/app/lib/coach/proposal-context-revision'
 
 vi.mock('@/app/lib/coach/proposal-context-revision', async importOriginal => ({
   ...await importOriginal<typeof import('@/app/lib/coach/proposal-context-revision')>(),
@@ -36,6 +36,17 @@ const planningInput = {
 }
 
 describe('/api/coach/weekly', () => {
+  it.each(['revision', 'proposal'])('returns retryable 409 for %s lock contention', async stage => {
+    const supabase = postClient()
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+    if (stage === 'revision') vi.mocked(fetchCoachContextRevision).mockRejectedValueOnce(new CoachContextRevisionConflictError(BUSY_COACH_CONTEXT_MESSAGE))
+    else supabase.rpc.mockResolvedValue({ data: null, error: { code: '55P03', message: 'private SQL details' } })
+    const response = await POST(postRequest({ planningInput, goalTargetDate: '2026-12-31', idempotencyKey: 'lock-contention-key' }))
+    expect(response.status).toBe(409)
+    expect((await response.json()).error).toBe(BUSY_COACH_CONTEXT_MESSAGE)
+    if (stage === 'revision') { expect(fetchCoachRuntimeContext).not.toHaveBeenCalled(); expect(supabase.rpc).not.toHaveBeenCalled() }
+    else expect(supabase.rpc).toHaveBeenCalledTimes(1)
+  })
   it('returns an actionable conflict before saving a draft with a stale event date', async () => {
     const supabase = postClient()
     vi.mocked(createServerClient).mockResolvedValue(supabase as never)

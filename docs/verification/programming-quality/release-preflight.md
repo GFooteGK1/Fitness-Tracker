@@ -10,10 +10,16 @@ Greg declined Supabase spending on September 23. Keep production on Free; no
 paid plan, branching, PITR or paid canary provisioning is authorized. This
 supersedes the paid setup recommendation in the historical hosted receipt.
 
-Local tooling and scoped database/Auth foundation are now verified in the
-[September 23 setup receipt](local-setup-2026-09-23.md). Remaining setup/prerequisite
-language below describes the route, not a claim that contention, application,
-backup restoration or cutover rehearsal has passed.
+Local tooling and scoped database/Auth foundation are verified in the
+[September 23 setup receipt](local-setup-2026-09-23.md). The subsequent
+[real local rehearsal](local-rehearsal-2026-09-23.md) passes contention, tenant/API,
+mobile acceptance, synthetic restore and old/new schema checks. It found and fixed
+an earlier recommendation lock wait; the revised migration SHA256 is
+`0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f`.
+The older migration hash below is historical. The one-second RPC setting limits
+each lock wait, not total request duration; `55P03` returns a recoverable HTTP409.
+Production recovery, operator traffic pause and compatible app rollback are still
+unverified. Historical setup language below does not supersede these new receipts.
 
 Use a local Supabase stack and local application with synthetic owners/data for
 the already authorized isolated rehearsal. Supabase documents local development

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { BUSY_COACH_CONTEXT_MESSAGE, CoachContextRevisionConflictError, fetchCoachContextRevision } from '@/app/lib/coach/proposal-context-revision'
 import type { CompleteCoachPlanningInput } from '@/app/lib/coach/complete-intake'
 import { fetchDirectionReconciliation } from '@/app/lib/coach/direction-reconciliation-server'
 import { reconcileTrainingDirection } from '@/app/lib/coach/direction-reconciliation'
@@ -79,6 +80,20 @@ const replacementInput: CompleteCoachPlanningInput = {
 }
 
 describe('POST /api/coach/weekly/review', () => {
+  it.each(['revision', 'review', 'proposal'])('returns retryable 409 for review flow %s contention', async stage => {
+    const supabase = client()
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+    if (stage === 'revision') vi.mocked(fetchCoachContextRevision).mockRejectedValueOnce(new CoachContextRevisionConflictError(BUSY_COACH_CONTEXT_MESSAGE))
+    else {
+      supabase.rpc.mockReset()
+      if (stage === 'proposal') supabase.rpc.mockResolvedValueOnce({ data: [{ review_id: REVIEW_ID, review_action: 'continue', review_presentation_class: 'same_track' }], error: null })
+      supabase.rpc.mockResolvedValueOnce({ data: null, error: { code: '55P03', message: 'private SQL details' } })
+    }
+    const response = await POST(reviewRequest())
+    expect(response.status).toBe(409)
+    expect((await response.json()).error).toBe(BUSY_COACH_CONTEXT_MESSAGE)
+    expect(supabase.rpc).toHaveBeenCalledTimes(stage === 'revision' ? 0 : stage === 'review' ? 1 : 2)
+  })
   afterEach(() => vi.unstubAllEnvs())
   beforeEach(() => {
     vi.clearAllMocks()

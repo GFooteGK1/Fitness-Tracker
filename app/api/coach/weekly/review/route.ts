@@ -1,7 +1,7 @@
 import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
 import { fetchDirectionReconciliation } from '@/app/lib/coach/direction-reconciliation-server'
 import { replacementSetupMatches } from '@/app/lib/coach/direction-reconciliation'
-import { fetchCoachContextRevision, CoachContextRevisionUnavailableError, coachContextConflictMessage } from '@/app/lib/coach/proposal-context-revision'
+import { fetchCoachContextRevision, CoachContextRevisionUnavailableError, CoachContextRevisionConflictError, coachContextConflictMessage, isCoachContextConflict } from '@/app/lib/coach/proposal-context-revision'
 import { applyConfirmedIntentToProfile, refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
@@ -287,7 +287,7 @@ export async function POST(request: Request) {
     })
     if (reviewError) {
       console.error('Weekly review RPC failed:', { code: reviewError.code })
-      if (reviewError.code === '40001' || reviewError.code === '40P01') return apiError(coachContextConflictMessage(reviewError), 409)
+      if (isCoachContextConflict(reviewError)) return apiError(coachContextConflictMessage(reviewError), 409)
       if (reviewError.code === '22023' || reviewError.code === '23505') {
         return apiError('Weekly review request conflicts with an existing review', 409)
       }
@@ -385,7 +385,7 @@ export async function POST(request: Request) {
     )
     if (proposalError) {
       console.error('Next weekly proposal RPC failed:', { code: proposalError.code })
-      if (proposalError.code === '40001' || proposalError.code === '40P01') return apiError(coachContextConflictMessage(proposalError), 409)
+      if (isCoachContextConflict(proposalError)) return apiError(coachContextConflictMessage(proposalError), 409)
       if (proposalError.code === '22023' || proposalError.code === '23505') {
         return apiError('Next-week proposal conflicts with an existing request', 409)
       }
@@ -411,6 +411,7 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     if (error instanceof CoachContextRevisionUnavailableError) return apiError(error.message, 503)
+    if (error instanceof CoachContextRevisionConflictError) return apiError(error.message, 409)
     if (error instanceof ConfirmedEventDateConflictError) return apiError(error.message, 409)
     console.error('Weekly review POST error:', error)
     return apiError(

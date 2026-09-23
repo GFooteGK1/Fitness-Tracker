@@ -1,6 +1,6 @@
 import { decodeDirectionReconciliation, replacementSetupMatches } from '@/app/lib/coach/direction-reconciliation'
 import { fetchDirectionReconciliation } from '@/app/lib/coach/direction-reconciliation-server'
-import { parseCoachContextRevision, STALE_COACH_CONTEXT_MESSAGE, coachContextConflictMessage } from '@/app/lib/coach/proposal-context-revision'
+import { parseCoachContextRevision, STALE_COACH_CONTEXT_MESSAGE, coachContextConflictMessage, isCoachContextConflict } from '@/app/lib/coach/proposal-context-revision'
 import { decodeTargetedGoalReviews, TARGETED_REVIEW_VERSION } from '@/app/lib/coach/targeted-review-contracts'
 import { applyConfirmedIntentToProfile, refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { NextResponse } from 'next/server'
@@ -250,7 +250,7 @@ export async function POST(
     })
     if (error) {
       console.error('Stored weekly review proposal RPC failed:', { code: error.code })
-      if (error.code === '40001' || error.code === '40P01') return apiError(coachContextConflictMessage(error), 409)
+      if (isCoachContextConflict(error)) return apiError(coachContextConflictMessage(error), 409)
       if (error.code === '22023' || error.code === '23505') {
         return apiError('Next-week proposal conflicts with an existing request', 409)
       }

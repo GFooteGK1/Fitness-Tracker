@@ -1,6 +1,6 @@
 import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
-import { fetchCoachContextRevision, parseCoachContextRevision, CoachContextRevisionUnavailableError, coachContextConflictMessage } from '@/app/lib/coach/proposal-context-revision'
+import { fetchCoachContextRevision, parseCoachContextRevision, CoachContextRevisionUnavailableError, CoachContextRevisionConflictError, coachContextConflictMessage, isCoachContextConflict } from '@/app/lib/coach/proposal-context-revision'
 import { fetchCoachingDecisionContext } from '@/app/lib/coach/coaching-decision-context-server'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
@@ -219,7 +219,7 @@ export async function POST(request: Request) {
     })
     if (error) {
       console.error('Initial weekly proposal RPC failed:', { code: error.code })
-      if (error.code === '40001' || error.code === '40P01') return apiError(coachContextConflictMessage(error), 409)
+      if (isCoachContextConflict(error)) return apiError(coachContextConflictMessage(error), 409)
       if (error.code === '55000') return apiError('An active program already exists', 409)
       if (error.code === '22023') return apiError('Proposal request conflicts with an existing request', 409)
       return apiError('Unable to save the first weekly proposal', 503)
@@ -244,6 +244,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Weekly coach POST error:', error)
     if (error instanceof CoachContextRevisionUnavailableError) return apiError(error.message, 503)
+    if (error instanceof CoachContextRevisionConflictError) return apiError(error.message, 409)
     if (error instanceof ConfirmedEventDateConflictError) return apiError(error.message, 409)
     return apiError(
       'Unable to create the first weekly proposal',

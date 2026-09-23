@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { BUSY_COACH_CONTEXT_MESSAGE } from '@/app/lib/coach/proposal-context-revision'
 import { fetchDirectionReconciliation } from '@/app/lib/coach/direction-reconciliation-server'
 import type { CompleteCoachPlanningInput } from '@/app/lib/coach/complete-intake'
 
@@ -58,6 +59,15 @@ const replacementInput: CompleteCoachPlanningInput = {
 }
 
 describe('POST /api/coach/weekly/reviews/[id]/proposal', () => {
+  it('returns retryable 409 when rebuilding a stored review meets lock contention', async () => {
+    const supabase = client()
+    supabase.rpc.mockResolvedValue({ data: null, error: { code: '55P03', message: 'private SQL details' } } as never)
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+    const response = await POST(request(), { params: Promise.resolve({ id: REVIEW_ID }) })
+    expect(response.status).toBe(409)
+    expect((await response.json()).error).toBe(BUSY_COACH_CONTEXT_MESSAGE)
+    expect(supabase.rpc).toHaveBeenCalledTimes(1)
+  })
   afterEach(() => vi.unstubAllEnvs())
   beforeEach(() => {
     vi.clearAllMocks()

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { BUSY_COACH_CONTEXT_MESSAGE, CoachContextRevisionConflictError, fetchCoachContextRevision } from '@/app/lib/coach/proposal-context-revision'
 
 vi.mock('@/app/lib/coach/proposal-context-revision', async importOriginal => ({
   ...await importOriginal<typeof import('@/app/lib/coach/proposal-context-revision')>(),
@@ -39,8 +40,20 @@ const planningInput = {
 }
 
 describe('/api/coach/weekly/convert', () => {
+  it.each(['revision', 'proposal'])('returns retryable 409 for conversion %s contention', async stage => {
+    const supabase = client()
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+    if (stage === 'revision') vi.mocked(fetchCoachContextRevision).mockRejectedValueOnce(new CoachContextRevisionConflictError(BUSY_COACH_CONTEXT_MESSAGE))
+    else supabase.rpc.mockResolvedValue({ data: null, error: { code: '55P03', message: 'private SQL details' } } as never)
+    const response = await POST(request({ planningInput, goalTargetDate: '2026-12-31', hypothesis: 'Repeat the accepted synthetic dose and review evidence.', idempotencyKey: 'lock-conversion-key' }))
+    expect(response.status).toBe(409)
+    expect((await response.json()).error).toBe(BUSY_COACH_CONTEXT_MESSAGE)
+    if (stage === 'revision') expect(supabase.rpc).not.toHaveBeenCalled()
+    else expect(supabase.rpc).toHaveBeenCalledTimes(1)
+  })
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(fetchCoachContextRevision).mockReset().mockResolvedValue(7)
     vi.mocked(fetchCoachRuntimeContext).mockResolvedValue({
       storageAvailable: true,
       assessments: []

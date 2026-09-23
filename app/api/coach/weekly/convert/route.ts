@@ -1,5 +1,5 @@
 import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
-import { fetchCoachContextRevision, CoachContextRevisionUnavailableError, coachContextConflictMessage } from '@/app/lib/coach/proposal-context-revision'
+import { fetchCoachContextRevision, CoachContextRevisionUnavailableError, CoachContextRevisionConflictError, coachContextConflictMessage, isCoachContextConflict } from '@/app/lib/coach/proposal-context-revision'
 import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
     })
     if (error) {
       console.error('Legacy weekly conversion RPC failed:', { code: error.code })
-      if (error.code === '40001' || error.code === '40P01') {
+      if (isCoachContextConflict(error)) {
         return apiError(coachContextConflictMessage(error), 409)
       }
       if (error.code === '22023' || error.code === '23505') {
@@ -171,6 +171,7 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     if (error instanceof CoachContextRevisionUnavailableError) return apiError(error.message, 503)
+    if (error instanceof CoachContextRevisionConflictError) return apiError(error.message, 409)
     if (error instanceof ConfirmedEventDateConflictError) return apiError(error.message, 409)
     console.error('Legacy weekly conversion POST error:', error)
     return apiError(

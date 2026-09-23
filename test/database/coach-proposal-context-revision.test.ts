@@ -83,6 +83,18 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close() })
 
 describe('rolling proposal context revision transactions', () => {
+  it('caps each decision RPC lock wait without changing the caller timeout', async () => {
+    const rows = (await db.query<{ proname: string; proconfig: string[] }>(`SELECT proname,proconfig FROM pg_proc
+      WHERE pronamespace='public'::regnamespace AND proname IN ('get_coach_context_revision','create_initial_rolling_weekly_proposal',
+      'record_coach_weekly_review','create_rolling_weekly_replacement_proposal','accept_adaptation_proposal')`)).rows
+    expect(rows).toHaveLength(5)
+    for (const row of rows) expect(row.proconfig, row.proname).toContain('lock_timeout=1s')
+    await owner()
+    await db.exec("SET lock_timeout='7s'")
+    await revision()
+    expect((await db.query<{ value: string }>("SELECT current_setting('lock_timeout') value")).rows[0].value).toBe('7s')
+    await db.exec('RESET lock_timeout')
+  })
   it('rejects a forged zero stamp when the athlete never read an initialized context revision', async () => {
     await owner()
     const before = await counts()
