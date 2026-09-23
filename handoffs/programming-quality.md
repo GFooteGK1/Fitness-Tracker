@@ -1,6 +1,6 @@
 # SociusFit programming quality — current handoff
 
-Updated: 2026-09-22. Project: Fitness-Tracker/SociusFit. Status: active, partial implementation.
+Updated: 2026-09-23. Project: Fitness-Tracker/SociusFit. Status: active, partial implementation.
 Objective: execute the accepted evidence-conditioned programming QPlan.
 Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
@@ -23,8 +23,12 @@ cutover/rollback. `Fitness-Tracker-i40.11` tracks the remaining release work.
 
 Fresh Vercel readback confirms production still serves `f123aa8` and Preview shares
 the production Supabase URL variable. No canary app was found in the verified
-scope. Supabase remains on sign-in; Greg was asked to sign in and identify a
-separate canary app/database. Complete target metadata/recovery verification and
+scope. Greg signed into Supabase on September 23. Read-only inspection confirmed
+the six September 18 migration entries, six matching baseline release functions,
+and RLS/FORCE RLS on all 14 existing scoped tables. The new revision migration is
+absent. The Free-plan project has no managed scheduled backups; no canary appears
+in its organization. See [hosted preflight](../docs/verification/programming-quality/hosted-preflight-2026-09-23.md)
+for bounded evidence and outstanding full-schema/recovery checks. Complete recovery verification and
 isolated rehearsal before proposing production promotion. The draft PR does not
 authorize merge, production migration, numerical activation or deployment.
 See the original [save receipt](../docs/verification/programming-quality/save-and-release-readiness.md)

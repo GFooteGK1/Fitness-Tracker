@@ -4,6 +4,13 @@ Prepared 2026-09-22. This is an execution runbook, not a record of a hosted migr
 
 ## Candidate and current evidence
 
+September 23 follow-up: [hosted preflight receipt](hosted-preflight-2026-09-23.md)
+supersedes the sign-in blocker below. The prior six migrations are recorded;
+the new revision migration is absent. Bounded catalog comparison passed, while
+full drift reconciliation, recovery and isolated rehearsal remain incomplete.
+The target Free plan has no managed scheduled backups and its organization has
+no separate canary. No hosted writes or deployment occurred.
+
 The inspected checkout was `codex/programming-quality` at `9cfc45814b0531baf69f59096620346ec0f557e6`. Record the final PR head, tree and migration hash after subsequent repairs and this packet are committed; the inspected SHA is not automatically the release candidate. Required CI, build and mobile evidence must identify that final candidate or document why later changes do not affect a check.
 
 The new migration is `supabase/migrations/20260921010000_coach_proposal_context_revision.sql`. Its preparation-time SHA256 is `463C0C501BCC1A85762CEBF3916F0B4DA62995FF22E795AAC9C504203BB97891`. Recompute before execution. The [local revision receipt](proposal-context-revisions.md) records actual SQL/PGlite coverage; PGlite serializes statements and does not establish independent-connection contention. The [signal-fix receipt](signal-review-fixes.md) separates actual evaluator/compiler tests from mocked API persistence and excludes hosted verification. Neither receipt supplies production readiness on its own.
