@@ -24,8 +24,15 @@ overflow. Migration hash is now `0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee3
 Greg approved the private production backup/restore preparation and parallel
 write-pause/application rollback work. The private recovery destination now
 exists with verified restrictive Windows ACLs. Existing CLI project access is
-verified; authorization for its temporary database login is pending because no
-existing database password is supplied. No production export has occurred.
+verified; Greg approved its temporary CLI database login, which was created/refreshed.
+Three metadata preflights failed. TLS CA and container assertion issues are fixed;
+the last combined metadata gate rejected a result it failed to retain. No exact
+cause can be asserted and no backup exists. Production probing stopped per guardrails.
+The revised helper preserves encrypted raw evidence and names each failed check;
+one metadata-only retry awaits approval. See the [attempt record](investigations/programming-quality-private-recovery.md).
+Eighteen synthetic crypto/metadata tests and independent review passed. A separate
+empty private restore container passed isolation/synthetic checks; real data never
+entered it. Archive orchestration remains unimplemented and fails before access.
 See [recovery preparation](../docs/verification/programming-quality/production-recovery-preparation-2026-09-23.md).
 The compatible local build is retained and its same-port artifact-switch
 rehearsal passed 15 checks, with the revision schema left installed. It uses two
@@ -49,7 +56,10 @@ fixes now pass 107 focused tests, full TypeScript, focused ESLint and a fresh
 production build. Independent runtime review ran 83 overlapping tests. Final
 CI passed on `923473a04583684d3f9b150c35ffa7e0173a8e25`: 3,471 tests passed,
 19 skipped, 26 browser tests passed, TypeScript/lint/build passed in run
-`35873858574`. New pause/rollback changes require their own evidence.
+`35873858574`. The newer application checkpoint `7abca86e183f547925ff69d858f453460872133e`
+passed CI `35920252754`: 3,484 tests, 19 skipped, 26 browser journeys, TypeScript,
+lint and build. It fixes a visibility-observer test timing race without changing
+application behavior. Later recovery helper/doc changes have separate local checks.
 
 Four new mobile Chromium tests passed at 320/390px, with light/dark screenshots
 inspected. See [mobile evidence](../docs/verification/programming-quality/mobile-release-verification.md).

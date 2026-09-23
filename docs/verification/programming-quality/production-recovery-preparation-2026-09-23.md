@@ -1,8 +1,9 @@
 # Production recovery preparation — September 23, 2026
 
 Preparation is authorized; production backup and restore are not yet verified.
-No production migration, deployment, write pause, password reset, paid service,
-or credential creation has occurred in this stage.
+No production migration, deployment, write pause, password reset or paid service
+has occurred. Greg approved the official temporary CLI database login, which was
+created/refreshed during metadata preflight. No production backup exists yet.
 
 ## Destination and access
 
@@ -30,9 +31,9 @@ credential stores were not searched.
 Supabase documents that passwordless CLI database access creates or refreshes a
 temporary administrative login role. Its password expires; the role record can
 remain. This is distinct from the read-only project listing already performed.
-Explicit authorization for that credential operation is pending. Alternatively,
-the existing database password can be entered through a private local mechanism,
-without placing it in chat, Git, shell history, or command-line arguments.
+Greg explicitly authorized that credential operation on September 23. Credentials
+were parsed from official CLI output, passed through stdin to a private container
+tmpfs passfile, and never printed or stored in the repository.
 See [Supabase's login-role documentation](https://supabase.com/docs/guides/troubleshooting/permission-denied-when-deleting-the-cli_login_postgres-role-808bae).
 
 ## Recovery evidence still required
@@ -58,16 +59,45 @@ over production.
 The existing installed PostgreSQL image is
 `public.ecr.aws/supabase/postgres:17.6.1.167`, local image ID
 `66089200353d90686fe9b252a47d17d078364bf47c50190852c33dc850a0191f`.
-It is available for isolated recovery tooling; no private recovery container has
-been created and hosted/local extension compatibility is not yet established.
+An empty private restore container passed synthetic roundtrip and isolation
+checks: network none, no ports/TCP listeners, read-only root, RAM-backed PGDATA,
+zero cgroup swap, disabled core dumps and inactive background workers. No real
+production bytes entered it. Hosted/local extension compatibility remains unknown.
+
+## Current blocker and saved helpers
+
+Three metadata-preflight attempts failed: missing Supabase CA trust, a Podman
+network-field assertion mismatch, then a combined metadata-validation failure.
+TLS and container-field issues were resolved. The third returned metadata but
+the tool did not retain rejected fields; its exact cause is unknown. All exporter
+containers stopped. The [attempt record and reviewed restart plan](../../../handoffs/investigations/programming-quality-private-recovery.md)
+preserve the evidence and require approval for one further metadata-only attempt.
+No further source probe ran after that stop.
+
+The revised inspector seals raw metadata before validation and emits separate
+check booleans. It retains verify-full with the official Supabase CA, SHA256
+`700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7`.
+The CA source is [Supabase Studio's configuration](https://raw.githubusercontent.com/supabase/supabase/master/apps/studio/hooks/custom-content/custom-content.json);
+the [SSL guide](https://supabase.com/docs/guides/platform/ssl-enforcement) specifies
+the client trust requirement. The public certificate is an ignored local tool
+prerequisite, not a private key or production setting change.
+
+Private diagnostics use AES-256-GCM with Windows DPAPI CurrentUser key wrapping.
+Separate archive-byte helpers require successful producer completion and full
+authentication before private RAM staging; executing a restore must wait for
+successful staging. Eighteen synthetic helper tests passed and independent review
+found no remaining issue in these bounded contracts. Actual archive orchestration
+is unimplemented; `backup` refuses before any source access. DPAPI recovery depends
+on the same Windows key context; this is not an off-device backup. Container swap
+controls do not establish that Windows never pages or dumps VM/process memory.
 
 ## Parallel release preparation
 
-The application at source `923473a04583684d3f9b150c35ffa7e0173a8e25` passed
-[CI run 35873858574](https://github.com/GFooteGK1/Fitness-Tracker/actions/runs/35873858574):
-3,471 tests passed, 19 skipped, 26 browser tests passed, with TypeScript, lint
-and production build passing. Subsequent pause/rollback tooling requires its own
-verification. The compatible local build has been retained for a same-port
+The application at source `7abca86e183f547925ff69d858f453460872133e` passed
+[CI run 35920252754](https://github.com/GFooteGK1/Fitness-Tracker/actions/runs/35920252754):
+3,484 tests passed, 19 skipped, 26 browser tests passed, with TypeScript, lint
+and production build passing. Later recovery-helper/doc changes have separate
+local evidence and do not modify application behavior. The compatible local build has been retained for a same-port
 rollback rehearsal; its local API configuration is not a production artifact.
 
 The [application artifact-switch rehearsal](local-pause-and-rollback-2026-09-23.md)
