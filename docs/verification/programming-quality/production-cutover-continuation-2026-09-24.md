@@ -1,5 +1,11 @@
 # One corrected production smoke continuation
 
+**Executed after Greg's September 24 approval.** Same-account provisioning and
+paused rejection passed. The later create/accept operator stopped before HTTP on
+expired gate-attestation freshness. Coaching was re-paused at generation 3.
+See the [current execution result](production-continuation-result-2026-09-24.md).
+The proposal below is retained as the exact approved scope, not a pending request.
+
 **Proposed only. Coaching is paused at generation 1; the new build and both
 migrations are already installed. Greg's approval is required for one additional
 provisioning attempt after the first failed profile insert.**

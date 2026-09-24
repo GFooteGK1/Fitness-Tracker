@@ -1,6 +1,6 @@
 # Approved cutover execution investigation
 
-Current state: both migrations are installed, the pinned deployment is promoted, and coaching is paused at generation 1. Fresh recovery passed all 94 scopes. The first synthetic profile insert failed; the corrected same-account continuation is tested and independently reviewed, but requires new approval. Do not reinstall, re-promote or resume before that approval. The sections below preserve the execution history.
+Current state: both migrations are installed, the pinned deployment is promoted, and coaching is paused at generation 3. Greg approved the corrected continuation; same-account profile provisioning and paused rejection passed. Create/accept stopped before HTTP on expired gate-attestation freshness. No proposal exists. The revised pre-armed operator passed five timing/transport tests, two comparator tests and independent review; one separately approved attempt is required. Do not reinstall, re-promote, retry old markers or resume. The sections below preserve the execution history.
 
 ## 2026-09-24: private rendered-evidence transport
 
@@ -33,3 +33,47 @@ Independent SQL read showed the live `set_user_profile_user_id` BEFORE INSERT tr
 Reconciliation found exactly one synthetic Auth user and one identity. All 54 public user-owned table scopes are empty for this owner; sessions and the other inspected Auth user-owned scopes are empty. The existing production trigger is unchanged. Both migrations remain installed, exact deployment is promoted, and coaching remains paused at generation1. The old application is incompatible and is not a rollback target.
 
 Revised method prepared, tested and independently reviewed: reuse the same retained synthetic account/password and frozen public anon binding; sign in first, then create its profile as that authenticated owner. Use one new bounded continuation marker, verify the exact known failure and baseline, then complete remaining originally approved paused rejection/create/accept/re-pause/replay/digest gates. No second API-key read, account, schema change or deletion. This requires explicit approval for one additional provisioning attempt under the approved packet's one-attempt rule; no dependent production action proceeds before that approval.
+
+## Approved corrected continuation: provisioning passed, local freshness failure
+
+Greg explicitly approved the corrected continuation. Fresh platform and catalog/
+ledger preflight passed. The launcher and unchanged pinned continuation helper
+passed independent review. Same-account sign-in, authenticated-owner profile
+upsert and empty weekly read passed. This resolves the production profile defect
+without changing its trigger. Paused creation returned the exact expected 503;
+six protected tables remained empty and revision initialized to zero.
+
+Local preparation encountered three distinct resolved issues: importing the SQL
+renderer in CUA hit the known `process is not defined` module boundary (use native
+Node rendering); passing numeric generations to the renderer failed its required
+decimal-string contract (corrected before any SQL mutation); AX setValue inserted
+at the current Monaco cursor, yielding a read-only SQL42601. Subsequent AX typing
+timed out and the control kernel reset. Reconnection initially failed on a Windows
+ACL helper and then stale tabs reported `Debugger unattached`. A supported reset
+and fresh tabs in the same browser restored control. Locator fill plus select-all/
+copy and exact normalized text comparison proved the complete query before Run.
+No write SQL was submitted through the failed editor path. Do not repeat AX
+setValue or import Node process-dependent operator modules in CUA.
+
+The old process armer reported READY before starting the actual operator. Open
+generation 2 committed at 12:03:22.994023 UTC; fresh read was 12:03:43.902774 UTC.
+The signal file was published at 12:03:58.4391919 UTC, already 14.537 seconds old.
+The child performed local private-file/ACL/decryption preparation and its second
+freshness check failed at 12:04:03.067 UTC. Authenticated evidence contains only
+attempt/failure; independent source review proves no HTTP precedes that check.
+Per-step preparation duration was not instrumented. No retry occurred.
+
+Re-pause started at 12:04:14.386 UTC, committed at 12:04:18.599080 UTC and was
+independently verified at 12:04:37.486111 UTC, paused generation 3. Start and closed
+readback were 30.484 and 53.584 seconds after the open readback, within bounds.
+Final read at 12:06:12.011962 UTC found no program/proposal/prescribed session,
+profile and revision-zero only across 54 public scopes, and unchanged original
+two plan hashes. Encrypted fresh candidate hashes were compared directly to the
+original encrypted pre-revision baseline after CUA reset lost in-memory IDs.
+
+Revised method: complete all private setup while paused, emit READY afterward,
+then consume a new fresh generation-4 open attestation and immediately fetch.
+Publish the readback and signal in one CUA invocation, without an intervening
+model/tool round trip. Preserve 15-second freshness/request and 30-second shared
+budgets, durable response capture and immediate re-pause. The original failed
+marker remains. This is one proposed additional attempt, not authorization.

@@ -6,6 +6,34 @@ Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
 
+**September 24, 12:06 UTC: coaching is paused at generation 3.** Greg approved
+the corrected continuation. Same-account sign-in/profile/empty weekly read and
+the deliberate paused rejection passed. Temporary open generation 2 then closed
+to 3 within the approved timing limits. Create/accept stopped at its second
+freshness check before any HTTP: the attestation arrived at age 14.537 seconds,
+and local setup pushed age to 19.165 seconds. No program, proposal, prescribed
+session, acceptance or replay exists. All 54 public owned scopes were reconciled;
+only profile and revision-zero rows exist. Original two plan hashes still match.
+
+The [current continuation result](../docs/verification/programming-quality/production-continuation-result-2026-09-24.md)
+supersedes the historical execution notes below. The next proposed method finishes
+private setup before READY, then publishes fresh open evidence in the same CUA
+call that captures it. It preserves all deadlines and needs approval for one new
+create/accept attempt; never rerun the previous phase or delete its markers.
+See the [new approval packet](../docs/verification/programming-quality/production-cutover-prearmed-approval-2026-09-24.md).
+Both migrations and the pinned production build remain installed. No new account,
+key retrieval, schema change, deploy, paid resource or numerical activation.
+Checkpoint c28bf61 CI35995061386 passed. i40.11 remains open; i40.12 tracks the
+rehearsal profile-trigger gap. Browser-control recovery and all failed local
+preparation steps are preserved in the execution investigation.
+The reviewed local operator sources/tests are also retained in the private
+`C:/Users/foote/AppData/Local/SociusFit/Recovery/cutover-operators-20260924-continuation.zip`,
+SHA256 `f57cb5ae928bdb5240d08eb6a9098be65d406979f283b1f394dd7f18abe57070`.
+This bundle contains operator code, not account/session data; its tracked release
+helper imports and ignored artifact inputs remain at their existing paths.
+
+## Historical first cutover attempt
+
 **September 24 production state: both approved migrations are installed and the
 pinned deployment is promoted to all three production aliases. Coaching remains
 paused at generation 1. Do not redeploy, reinstall migrations or resume blindly.**

@@ -66,3 +66,15 @@ An exact table/category/count/hash-bound exception passed independent review;
 other differences still fail. Do not globally strip schema qualifiers or equate
 raw inequality with unexplained schema drift. See the
 [artifact investigation](../handoffs/investigations/programming-quality-production-artifact.md).
+
+## Synthetic profile provisioning must preserve the authenticated owner
+
+Verified in production on 2026-09-24. The existing profile BEFORE INSERT trigger
+unconditionally assigns `NEW.user_id = auth.uid()`. A service-role insert has no
+athlete subject and fails with SQLSTATE23502 even when its body supplies a UUID.
+The original rehearsal omitted this historical trigger. Reusing the existing
+synthetic account, signing in and inserting as its authenticated owner passed.
+Do not create a replacement account, retry the admin insert or weaken the trigger.
+Apply this method only to an explicitly authorized account and target. The
+[cutover investigation](../handoffs/investigations/programming-quality-cutover-execution.md)
+records the exact local trigger test and independently verified live result.

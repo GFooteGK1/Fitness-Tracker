@@ -1,5 +1,10 @@
 # Production cutover: verified deployment, coaching paused
 
+**Historical first-attempt result.** The corrected continuation was subsequently
+approved and executed. Profile provisioning and paused rejection passed; the
+create/accept operator stopped before HTTP. Current coaching state is paused at
+generation 3. See the [current result](production-continuation-result-2026-09-24.md).
+
 Greg approved the exact September 23 cutover packet on September 24. Both pinned
 migrations committed and passed exact catalog/ledger verification. The approved
 build is now on all three production domains. **The release is incomplete and
