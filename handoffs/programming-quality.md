@@ -19,13 +19,18 @@ rejection bodies for weekly/intake. Raw HTTP statuses are not exposed by the
 browser interface; source auth branches return 401. No SociusFit login occurred.
 Fresh metadata still shows the old custom domain/current production target and
 31 unchanged runtime bindings. Do not create a bypass token or redeploy.
-Next, complete the production migration and minimal write-verification procedures
-before requesting separate cutover approval. The [release decision packet](../docs/verification/programming-quality/production-release-decision-2026-09-23.md)
-defines the sequence; staging does not authorize its production execution.
-The [proposed cutover packet](../docs/verification/programming-quality/production-cutover-approval-2026-09-23.md)
-records the one-account write/replay scope, temporary global resume exposure,
-and exact remaining procedure decisions. It is not ready for execution or
-approval until those details are fixed; a new automation tool is optional.
+The migration and minimal write-verification procedures are now complete locally.
+The [final cutover packet](../docs/verification/programming-quality/production-cutover-approval-2026-09-23.md)
+defines exact atomic migration/ledger SQL, fresh encrypted capture and isolated
+restore, all-three-alias promotion, one frozen synthetic owner and controlled
+resume/re-pause/replay. Ten actual PostgreSQL checks, eight focused tests and
+TypeScript pass; independent review found no remaining code blocker. Helpers
+are preparation-only. The exact reviewed mixed-ending migration bytes are now
+preserved in Git; its SQL is unchanged. See the [preparation investigation](investigations/programming-quality-cutover-preparation.md).
+Next requires explicit target-specific production cutover approval, successful
+final-checkpoint CI and fresh preflight. No production migration/pause, synthetic
+account, service-key read or promotion has occurred. Prior5ca1ad4 CI35939161527
+passed; current checkpoint/CI status is maintained in Beads i40.11 and PR84.
 Full CI passed on `b4ef53d`: 3,491 tests, 19 skipped and 26 mobile journeys.
 The [staging investigation](investigations/programming-quality-staged-deployment.md)
 preserves startup/diagnostic attempt counts and the corrected metadata verifier.
@@ -63,7 +68,8 @@ outside Git and synthetic fixtures. Prior failures and exhausted attempt budgets
 remain in the [investigation](investigations/programming-quality-private-recovery.md).
 The recovery gate is resolved for this archive. No more source/restore retries
 are needed. The compatible artifact and target refresh subsequently passed;
-reviewed cutover procedures and separate target-specific approval remain.
+reviewed cutover procedures are now complete; separate target-specific approval
+and fresh execution preflight remain.
 See [recovery preparation](../docs/verification/programming-quality/production-recovery-preparation-2026-09-23.md).
 The compatible local build is retained and its same-port artifact-switch
 rehearsal passed 15 checks, with the revision schema left installed. It uses two
@@ -121,7 +127,7 @@ absent. The Free-plan project has no managed scheduled backups; no canary appear
 in its organization. See [hosted preflight](../docs/verification/programming-quality/hosted-preflight-2026-09-23.md)
 for the earlier bounded evidence. Subsequent private recovery and isolated
 rehearsals and bounded hosted staging checks passed as recorded above. Finish
-cutover preparation before proposing production promotion. The draft PR itself does not authorize merge,
+the final CI/approval gates before production promotion. The draft PR itself does not authorize merge,
 production migration, numerical activation or deployment; Greg separately
 authorized only the completed staging action.
 See the original [save receipt](../docs/verification/programming-quality/save-and-release-readiness.md)

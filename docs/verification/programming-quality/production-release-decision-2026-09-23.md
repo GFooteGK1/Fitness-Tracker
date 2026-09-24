@@ -117,9 +117,10 @@ facts established by a successful local build.
 
 ## Later cutover decision, after staged evidence exists
 
-The [proposed approval packet](production-cutover-approval-2026-09-23.md) now pins
-the actual staged deployment and minimum synthetic scope. It lists remaining
-execution details and is explicitly not ready for execution or approval.
+The [final approval packet](production-cutover-approval-2026-09-23.md) pins the
+actual staged deployment, three aliases, exact migrations and minimum synthetic
+scope. Local checks and independent review pass. Production execution requires
+Greg's explicit approval plus successful final-checkpoint CI and fresh preflight.
 
 Staging approval does not authorize these steps. Prepare the final execution
 receipt with the actual hosted artifact ID, current metadata and synthetic-write

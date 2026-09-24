@@ -1,0 +1,30 @@
+{
+  "kind": "cutover_platform_read_only_preparation",
+  "recordedAt": "2026-09-24T00:50:10.6268980Z",
+  "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+  "ownerId": "team_zjdKVgrSBNAYC9gql0Raiocm",
+  "productionDeployment": "dpl_5kZSaXHLmqPPzsCy6odLJyy99utW",
+  "rollingRelease": null,
+  "paginationComplete": true,
+  "domains": [
+    {
+      "redirect": "www.sociusfit.com",
+      "name": "sociusfit.com",
+      "redirectStatusCode": null
+    },
+    {
+      "redirect": null,
+      "name": "www.sociusfit.com",
+      "redirectStatusCode": null
+    },
+    {
+      "redirect": "www.sociusfit.com",
+      "name": "sociusai.vercel.app",
+      "redirectStatusCode": 307
+    }
+  ],
+  "aliasesAllOnProductionDeployment": true,
+  "installedCLI": "56.4.1",
+  "promotionHelpVerified": true,
+  "productionMutationPerformed": false
+}

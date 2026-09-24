@@ -1,0 +1,947 @@
+{
+  "kind": "synthetic_exact_migration_catalog",
+  "source": "recommendationFixture then exact pause then exact revision migrations; PostgreSQL18 PGlite, independently checked on local PostgreSQL17 before operator use",
+  "migrations": {
+    "pause": {
+      "version": "20260923010000",
+      "name": "coaching_write_pause",
+      "sha256": "6c336015b78142da07a091d9f999d7019c13d9ec819064cfd4b82ee16d48a041"
+    },
+    "revision": {
+      "version": "20260921010000",
+      "name": "coach_proposal_context_revision",
+      "sha256": "0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f"
+    }
+  },
+  "snapshots": {
+    "pause": {
+      "metadata": [
+        {
+          "kind": "column",
+          "detail": [
+            5,
+            "changed_at",
+            "timestamp with time zone",
+            true,
+            "",
+            "",
+            "clock_timestamp()"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "changed_at"
+        },
+        {
+          "kind": "column",
+          "detail": [
+            6,
+            "changed_by",
+            "text",
+            true,
+            "",
+            "",
+            "SESSION_USER"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "changed_by"
+        },
+        {
+          "kind": "column",
+          "detail": [
+            3,
+            "generation",
+            "bigint",
+            true,
+            "",
+            "",
+            null
+          ],
+          "relname": "coaching_write_control",
+          "identity": "generation"
+        },
+        {
+          "kind": "column",
+          "detail": [
+            2,
+            "paused",
+            "boolean",
+            true,
+            "",
+            "",
+            null
+          ],
+          "relname": "coaching_write_control",
+          "identity": "paused"
+        },
+        {
+          "kind": "column",
+          "detail": [
+            4,
+            "reason",
+            "text",
+            true,
+            "",
+            "",
+            null
+          ],
+          "relname": "coaching_write_control",
+          "identity": "reason"
+        },
+        {
+          "kind": "column",
+          "detail": [
+            1,
+            "singleton",
+            "boolean",
+            true,
+            "",
+            "",
+            "true"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "singleton"
+        },
+        {
+          "kind": "constraint",
+          "detail": [
+            "c",
+            true,
+            false,
+            false,
+            "CHECK ((generation >= 0))"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "coaching_write_control_generation_check"
+        },
+        {
+          "kind": "constraint",
+          "detail": [
+            "p",
+            true,
+            false,
+            false,
+            "PRIMARY KEY (singleton)"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "coaching_write_control_pkey"
+        },
+        {
+          "kind": "constraint",
+          "detail": [
+            "c",
+            true,
+            false,
+            false,
+            "CHECK (((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 500)))"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "coaching_write_control_reason_check"
+        },
+        {
+          "kind": "constraint",
+          "detail": [
+            "c",
+            true,
+            false,
+            false,
+            "CHECK (singleton)"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "coaching_write_control_singleton_check"
+        },
+        {
+          "kind": "index",
+          "detail": [
+            true,
+            true,
+            "CREATE UNIQUE INDEX coaching_write_control_pkey ON public.coaching_write_control USING btree (singleton)"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "coaching_write_control_pkey"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "coaching_write_pause",
+          "relname": "adaptation_proposals",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER coaching_write_pause BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.adaptation_proposals FOR EACH STATEMENT EXECUTE FUNCTION public.assert_coaching_writes_open()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "coaching_write_pause",
+          "relname": "coach_weekly_review_observations",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER coaching_write_pause BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.coach_weekly_review_observations FOR EACH STATEMENT EXECUTE FUNCTION public.assert_coaching_writes_open()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "coaching_write_pause",
+          "relname": "coach_weekly_reviews",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER coaching_write_pause BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.coach_weekly_reviews FOR EACH STATEMENT EXECUTE FUNCTION public.assert_coaching_writes_open()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "coaching_write_pause",
+          "relname": "prescribed_sessions",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER coaching_write_pause BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.prescribed_sessions FOR EACH STATEMENT EXECUTE FUNCTION public.assert_coaching_writes_open()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "coaching_write_pause",
+          "relname": "training_plan_versions",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER coaching_write_pause BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.training_plan_versions FOR EACH STATEMENT EXECUTE FUNCTION public.assert_coaching_writes_open()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "coaching_write_pause",
+          "relname": "training_programs",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER coaching_write_pause BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.training_programs FOR EACH STATEMENT EXECUTE FUNCTION public.assert_coaching_writes_open()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        }
+      ],
+      "functions": [
+        {
+          "args": "",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "proname": "assert_coaching_writes_open",
+          "proconfig": [
+            "search_path=\"\""
+          ],
+          "prosecdef": true,
+          "definition_md5": "e31e435139224a1b8bd7ef588e3aa884"
+        },
+        {
+          "args": "p_paused boolean, p_expected_generation bigint, p_reason text",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "proname": "set_coaching_write_pause",
+          "proconfig": [
+            "search_path=\"\"",
+            "lock_timeout=5s"
+          ],
+          "prosecdef": false,
+          "definition_md5": "0523bfd8a67fc325a4895c7f0cd3601e"
+        }
+      ],
+      "relations": [
+        {
+          "owner": "postgres",
+          "relname": "coaching_write_control",
+          "privileges": {
+            "anon": {
+              "DELETE": false,
+              "INSERT": false,
+              "SELECT": false,
+              "UPDATE": false,
+              "TRIGGER": false,
+              "MAINTAIN": false,
+              "TRUNCATE": false,
+              "REFERENCES": false
+            },
+            "service_role": {
+              "DELETE": false,
+              "INSERT": false,
+              "SELECT": false,
+              "UPDATE": false,
+              "TRIGGER": false,
+              "MAINTAIN": false,
+              "TRUNCATE": false,
+              "REFERENCES": false
+            },
+            "authenticated": {
+              "DELETE": false,
+              "INSERT": false,
+              "SELECT": false,
+              "UPDATE": false,
+              "TRIGGER": false,
+              "MAINTAIN": false,
+              "TRUNCATE": false,
+              "REFERENCES": false
+            }
+          },
+          "relrowsecurity": true,
+          "relforcerowsecurity": true
+        }
+      ]
+    },
+    "revision": {
+      "metadata": [
+        {
+          "kind": "column",
+          "detail": [
+            2,
+            "revision",
+            "bigint",
+            true,
+            "",
+            "",
+            "0"
+          ],
+          "relname": "coach_context_revisions",
+          "identity": "revision"
+        },
+        {
+          "kind": "column",
+          "detail": [
+            1,
+            "user_id",
+            "uuid",
+            true,
+            "",
+            "",
+            null
+          ],
+          "relname": "coach_context_revisions",
+          "identity": "user_id"
+        },
+        {
+          "kind": "constraint",
+          "detail": [
+            "p",
+            true,
+            false,
+            false,
+            "PRIMARY KEY (user_id)"
+          ],
+          "relname": "coach_context_revisions",
+          "identity": "coach_context_revisions_pkey"
+        },
+        {
+          "kind": "constraint",
+          "detail": [
+            "c",
+            true,
+            false,
+            false,
+            "CHECK (((revision >= 0) AND (revision <= '9007199254740991'::bigint)))"
+          ],
+          "relname": "coach_context_revisions",
+          "identity": "coach_context_revisions_revision_check"
+        },
+        {
+          "kind": "constraint",
+          "detail": [
+            "f",
+            true,
+            false,
+            false,
+            "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+          ],
+          "relname": "coach_context_revisions",
+          "identity": "coach_context_revisions_user_id_fkey"
+        },
+        {
+          "kind": "index",
+          "detail": [
+            true,
+            true,
+            "CREATE UNIQUE INDEX coach_context_revisions_pkey ON public.coach_context_revisions USING btree (user_id)"
+          ],
+          "relname": "coach_context_revisions",
+          "identity": "coach_context_revisions_pkey"
+        },
+        {
+          "kind": "policy",
+          "detail": [
+            "PERMISSIVE",
+            [
+              "authenticated"
+            ],
+            "SELECT",
+            "(user_id = auth.uid())",
+            null
+          ],
+          "relname": "coach_context_revisions",
+          "identity": "coach_context_revision_owner"
+        },
+        {
+          "kind": "column",
+          "detail": [
+            5,
+            "changed_at",
+            "timestamp with time zone",
+            true,
+            "",
+            "",
+            "clock_timestamp()"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "changed_at"
+        },
+        {
+          "kind": "column",
+          "detail": [
+            6,
+            "changed_by",
+            "text",
+            true,
+            "",
+            "",
+            "SESSION_USER"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "changed_by"
+        },
+        {
+          "kind": "column",
+          "detail": [
+            3,
+            "generation",
+            "bigint",
+            true,
+            "",
+            "",
+            null
+          ],
+          "relname": "coaching_write_control",
+          "identity": "generation"
+        },
+        {
+          "kind": "column",
+          "detail": [
+            2,
+            "paused",
+            "boolean",
+            true,
+            "",
+            "",
+            null
+          ],
+          "relname": "coaching_write_control",
+          "identity": "paused"
+        },
+        {
+          "kind": "column",
+          "detail": [
+            4,
+            "reason",
+            "text",
+            true,
+            "",
+            "",
+            null
+          ],
+          "relname": "coaching_write_control",
+          "identity": "reason"
+        },
+        {
+          "kind": "column",
+          "detail": [
+            1,
+            "singleton",
+            "boolean",
+            true,
+            "",
+            "",
+            "true"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "singleton"
+        },
+        {
+          "kind": "constraint",
+          "detail": [
+            "c",
+            true,
+            false,
+            false,
+            "CHECK ((generation >= 0))"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "coaching_write_control_generation_check"
+        },
+        {
+          "kind": "constraint",
+          "detail": [
+            "p",
+            true,
+            false,
+            false,
+            "PRIMARY KEY (singleton)"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "coaching_write_control_pkey"
+        },
+        {
+          "kind": "constraint",
+          "detail": [
+            "c",
+            true,
+            false,
+            false,
+            "CHECK (((length(btrim(reason)) >= 3) AND (length(btrim(reason)) <= 500)))"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "coaching_write_control_reason_check"
+        },
+        {
+          "kind": "constraint",
+          "detail": [
+            "c",
+            true,
+            false,
+            false,
+            "CHECK (singleton)"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "coaching_write_control_singleton_check"
+        },
+        {
+          "kind": "index",
+          "detail": [
+            true,
+            true,
+            "CREATE UNIQUE INDEX coaching_write_control_pkey ON public.coaching_write_control USING btree (singleton)"
+          ],
+          "relname": "coaching_write_control",
+          "identity": "coaching_write_control_pkey"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "coaching_write_pause",
+          "relname": "adaptation_proposals",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER coaching_write_pause BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.adaptation_proposals FOR EACH STATEMENT EXECUTE FUNCTION public.assert_coaching_writes_open()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "zz_guard_coach_proposal_context",
+          "relname": "adaptation_proposals",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER zz_guard_coach_proposal_context BEFORE INSERT OR UPDATE OF status ON public.adaptation_proposals FOR EACH ROW EXECUTE FUNCTION public.guard_coach_proposal_context()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "zz_advance_coach_context_revision",
+          "relname": "coach_checkins",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER zz_advance_coach_context_revision AFTER INSERT OR DELETE OR UPDATE ON public.coach_checkins FOR EACH ROW EXECUTE FUNCTION public.advance_coach_context_revision()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "zz_advance_coach_context_revision",
+          "relname": "coach_memories",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER zz_advance_coach_context_revision AFTER INSERT OR DELETE OR UPDATE ON public.coach_memories FOR EACH ROW EXECUTE FUNCTION public.advance_coach_context_revision()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "zz_advance_coach_context_revision",
+          "relname": "coach_strength_assessments",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER zz_advance_coach_context_revision AFTER INSERT OR DELETE OR UPDATE ON public.coach_strength_assessments FOR EACH ROW EXECUTE FUNCTION public.advance_coach_context_revision()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "coaching_write_pause",
+          "relname": "coach_weekly_review_observations",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER coaching_write_pause BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.coach_weekly_review_observations FOR EACH STATEMENT EXECUTE FUNCTION public.assert_coaching_writes_open()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "coaching_write_pause",
+          "relname": "coach_weekly_reviews",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER coaching_write_pause BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.coach_weekly_reviews FOR EACH STATEMENT EXECUTE FUNCTION public.assert_coaching_writes_open()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "guard_coach_review_context",
+          "relname": "coach_weekly_reviews",
+          "tgenabled": "O",
+          "definition": "CREATE CONSTRAINT TRIGGER guard_coach_review_context AFTER INSERT ON public.coach_weekly_reviews DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.guard_coach_review_context()",
+          "tgdeferrable": true,
+          "tginitdeferred": true
+        },
+        {
+          "tgname": "zz_advance_coach_context_revision",
+          "relname": "measurement_imports",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER zz_advance_coach_context_revision AFTER INSERT OR DELETE OR UPDATE ON public.measurement_imports FOR EACH ROW EXECUTE FUNCTION public.advance_coach_context_revision()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "zz_advance_coach_context_revision",
+          "relname": "performance_observation_groups",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER zz_advance_coach_context_revision AFTER INSERT OR DELETE OR UPDATE ON public.performance_observation_groups FOR EACH ROW EXECUTE FUNCTION public.advance_coach_context_revision()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "zz_advance_coach_context_revision",
+          "relname": "performance_observation_values",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER zz_advance_coach_context_revision AFTER INSERT OR DELETE OR UPDATE ON public.performance_observation_values FOR EACH ROW EXECUTE FUNCTION public.advance_coach_context_revision()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "coaching_write_pause",
+          "relname": "prescribed_sessions",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER coaching_write_pause BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.prescribed_sessions FOR EACH STATEMENT EXECUTE FUNCTION public.assert_coaching_writes_open()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "zz_advance_coach_context_revision",
+          "relname": "prescribed_sessions",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER zz_advance_coach_context_revision AFTER INSERT OR DELETE OR UPDATE ON public.prescribed_sessions FOR EACH ROW EXECUTE FUNCTION public.advance_coach_context_revision()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "coaching_write_pause",
+          "relname": "training_plan_versions",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER coaching_write_pause BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.training_plan_versions FOR EACH STATEMENT EXECUTE FUNCTION public.assert_coaching_writes_open()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "coaching_write_pause",
+          "relname": "training_programs",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER coaching_write_pause BEFORE INSERT OR DELETE OR UPDATE OR TRUNCATE ON public.training_programs FOR EACH STATEMENT EXECUTE FUNCTION public.assert_coaching_writes_open()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        },
+        {
+          "tgname": "zz_advance_coach_context_revision",
+          "relname": "workouts",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER zz_advance_coach_context_revision AFTER INSERT OR DELETE OR UPDATE ON public.workouts FOR EACH ROW EXECUTE FUNCTION public.advance_coach_context_revision()",
+          "tgdeferrable": false,
+          "tginitdeferred": false
+        }
+      ],
+      "functions": [
+        {
+          "args": "p_proposal_id uuid, p_idempotency_key text",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": true
+          },
+          "proname": "accept_adaptation_proposal",
+          "proconfig": [
+            "search_path=\"\"",
+            "lock_timeout=1s"
+          ],
+          "prosecdef": true,
+          "definition_md5": "3f329206286083b1ea1e350c31058e9a"
+        },
+        {
+          "args": "",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "proname": "advance_coach_context_revision",
+          "proconfig": [
+            "search_path=\"\""
+          ],
+          "prosecdef": true,
+          "definition_md5": "b11fd63cb9dd86a7fc6031493ddc1a9d"
+        },
+        {
+          "args": "p_user_id uuid, p_value jsonb",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "proname": "assert_coach_context_revision",
+          "proconfig": [
+            "search_path=\"\""
+          ],
+          "prosecdef": true,
+          "definition_md5": "67089a2152ae84b3db9e05baaa5f054e"
+        },
+        {
+          "args": "p_user_id uuid, p_intent jsonb",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "proname": "assert_coach_plan_intent_current",
+          "proconfig": [
+            "search_path=\"\""
+          ],
+          "prosecdef": true,
+          "definition_md5": "379e4960ff2b4f77fdeaa8fbaf939970"
+        },
+        {
+          "args": "",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "proname": "assert_coaching_writes_open",
+          "proconfig": [
+            "search_path=\"\""
+          ],
+          "prosecdef": true,
+          "definition_md5": "e31e435139224a1b8bd7ef588e3aa884"
+        },
+        {
+          "args": "p_value jsonb",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "proname": "coach_context_revision_value",
+          "proconfig": [
+            "search_path=\"\""
+          ],
+          "prosecdef": false,
+          "definition_md5": "c8b2ba61ae15c95fd1db5f0b3a5b4ef3"
+        },
+        {
+          "args": "p_title text, p_goal_summary text, p_window_start date, p_goal_target_date date, p_direction jsonb, p_reference_version text, p_policy_version text, p_intent jsonb, p_input_snapshot jsonb, p_sessions jsonb, p_rationale jsonb, p_input_fingerprint text, p_idempotency_key text",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": true
+          },
+          "proname": "create_initial_rolling_weekly_proposal",
+          "proconfig": [
+            "search_path=\"\"",
+            "lock_timeout=1s"
+          ],
+          "prosecdef": true,
+          "definition_md5": "0fd721066f8e10cd2536dc492877f6db"
+        },
+        {
+          "args": "p_program_id uuid, p_base_plan_version_id uuid, p_weekly_review_id uuid, p_title text, p_goal_summary text, p_window_start date, p_goal_target_date date, p_direction jsonb, p_reference_version text, p_policy_version text, p_intent jsonb, p_input_snapshot jsonb, p_sessions jsonb, p_rationale jsonb, p_input_fingerprint text, p_idempotency_key text",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": true
+          },
+          "proname": "create_rolling_weekly_replacement_proposal",
+          "proconfig": [
+            "search_path=\"\"",
+            "lock_timeout=1s"
+          ],
+          "prosecdef": true,
+          "definition_md5": "e80a784c2a3c6ad9d022eac5ebd8fa4e"
+        },
+        {
+          "args": "p_user_id uuid, p_program_id uuid, p_review_id uuid",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "proname": "expire_stale_coach_context_proposals",
+          "proconfig": [
+            "search_path=\"\""
+          ],
+          "prosecdef": true,
+          "definition_md5": "d368b71723f6def9d0656cfca8eb6fc2"
+        },
+        {
+          "args": "",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": true
+          },
+          "proname": "get_coach_context_revision",
+          "proconfig": [
+            "search_path=\"\"",
+            "lock_timeout=1s"
+          ],
+          "prosecdef": true,
+          "definition_md5": "920a06ceb6c86dd529d81c62c916b0d6"
+        },
+        {
+          "args": "",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "proname": "guard_coach_proposal_context",
+          "proconfig": [
+            "search_path=\"\""
+          ],
+          "prosecdef": true,
+          "definition_md5": "5efec487c4f11d8c17c69fdcf3ae7d9c"
+        },
+        {
+          "args": "",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "proname": "guard_coach_review_context",
+          "proconfig": [
+            "search_path=\"\""
+          ],
+          "prosecdef": true,
+          "definition_md5": "a227d71407679851a81220c759f2d445"
+        },
+        {
+          "args": "p_program_id uuid, p_base_plan_version_id uuid, p_review_window_start date, p_review_reason text, p_action text, p_presentation_class text, p_evidence_status text, p_confidence numeric, p_evidence_snapshot jsonb, p_evaluation_window jsonb, p_execution_summary jsonb, p_missing_requirements jsonb, p_safety_override jsonb, p_rationale jsonb, p_observations jsonb, p_policy_version text, p_algorithm_version text, p_input_fingerprint text, p_idempotency_key text",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": true
+          },
+          "proname": "record_coach_weekly_review",
+          "proconfig": [
+            "search_path=\"\"",
+            "lock_timeout=1s"
+          ],
+          "prosecdef": true,
+          "definition_md5": "59e0f1567a3644faf035de553f8f2cb7"
+        },
+        {
+          "args": "p_paused boolean, p_expected_generation bigint, p_reason text",
+          "owner": "postgres",
+          "execute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "proname": "set_coaching_write_pause",
+          "proconfig": [
+            "search_path=\"\"",
+            "lock_timeout=5s"
+          ],
+          "prosecdef": false,
+          "definition_md5": "0523bfd8a67fc325a4895c7f0cd3601e"
+        }
+      ],
+      "relations": [
+        {
+          "owner": "postgres",
+          "relname": "coach_context_revisions",
+          "privileges": {
+            "anon": {
+              "DELETE": false,
+              "INSERT": false,
+              "SELECT": false,
+              "UPDATE": false,
+              "TRIGGER": false,
+              "MAINTAIN": false,
+              "TRUNCATE": false,
+              "REFERENCES": false
+            },
+            "service_role": {
+              "DELETE": false,
+              "INSERT": false,
+              "SELECT": false,
+              "UPDATE": false,
+              "TRIGGER": false,
+              "MAINTAIN": false,
+              "TRUNCATE": false,
+              "REFERENCES": false
+            },
+            "authenticated": {
+              "DELETE": false,
+              "INSERT": false,
+              "SELECT": true,
+              "UPDATE": false,
+              "TRIGGER": false,
+              "MAINTAIN": false,
+              "TRUNCATE": false,
+              "REFERENCES": false
+            }
+          },
+          "relrowsecurity": true,
+          "relforcerowsecurity": true
+        },
+        {
+          "owner": "postgres",
+          "relname": "coaching_write_control",
+          "privileges": {
+            "anon": {
+              "DELETE": false,
+              "INSERT": false,
+              "SELECT": false,
+              "UPDATE": false,
+              "TRIGGER": false,
+              "MAINTAIN": false,
+              "TRUNCATE": false,
+              "REFERENCES": false
+            },
+            "service_role": {
+              "DELETE": false,
+              "INSERT": false,
+              "SELECT": false,
+              "UPDATE": false,
+              "TRIGGER": false,
+              "MAINTAIN": false,
+              "TRUNCATE": false,
+              "REFERENCES": false
+            },
+            "authenticated": {
+              "DELETE": false,
+              "INSERT": false,
+              "SELECT": false,
+              "UPDATE": false,
+              "TRIGGER": false,
+              "MAINTAIN": false,
+              "TRUNCATE": false,
+              "REFERENCES": false
+            }
+          },
+          "relrowsecurity": true,
+          "relforcerowsecurity": true
+        }
+      ]
+    }
+  }
+}

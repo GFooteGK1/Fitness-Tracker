@@ -1,170 +1,105 @@
-# Proposed production cutover approval
+# Production cutover approval packet
 
-**Preparation only; not yet approved or ready to execute.** Staging and bounded
-hosted verification are complete. The remaining preparation below must produce
-one reviewed execution sheet before Greg approves production installation,
-pause/resume, promotion and synthetic writes. A dedicated automation script is
-optional; a reproducible manual procedure using existing clients is sufficient.
+**Local preparation is complete and independently reviewed. Production execution
+still requires Greg's explicit approval and successful final-checkpoint CI.**
+The staged deployment is READY and bounded hosted checks passed. No production
+migration, coaching pause, synthetic account creation or promotion has occurred.
 
-## Pinned target and evidence
+## Exact target
 
-| Item | Required identity |
+| Item | Pinned identity |
 | --- | --- |
-| Staged deployment | `dpl_2tZqnshTDrFR5EDQpgi78dcBNns7` |
+| Vercel deployment | `dpl_2tZqnshTDrFR5EDQpgi78dcBNns7` |
 | Application source | `93539b00bef9109f4221d10c9554cd99a3f5d5fe` |
 | Deployment URL | `https://fitness-tracker-je2rwxwh4-gregs-projects-98860c8b.vercel.app` |
-| Next build ID | `u93phgwCcXfUdAb5YKaBh` |
-| Retained tar SHA256 | `461e0bf9e21561e0323c6c2edf53e825d48f8a8a8fc7c9f2a739798c8ea44814` |
+| Build ID | `u93phgwCcXfUdAb5YKaBh` |
 | Vercel project / team | `prj_RocmjxStsTrtmrDaqMddMnb29ENh` / `team_zjdKVgrSBNAYC9gql0Raiocm` |
-| Live domain | `www.sociusfit.com` |
 | Supabase project / database | `auolnfwetmfcwhtvakzy` / `postgres` |
+| Production aliases | `www.sociusfit.com`, `sociusfit.com`, `sociusai.vercel.app`; existing redirects preserved |
+| Artifact tar SHA256 | `461e0bf9e21561e0323c6c2edf53e825d48f8a8a8fc7c9f2a739798c8ea44814` |
+| Pause migration SHA256 | `6c336015b78142da07a091d9f999d7019c13d9ec819064cfd4b82ee16d48a041` |
+| Revision migration SHA256 | `0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f` |
 
-The [hosted receipt](production-hosted-checks-2026-09-23.json) records the exact
-rendered build ID, nine matching script paths, two matching asset hashes and
-signed-out `Unauthorized` bodies. Raw HTTP status was not exposed by the browser;
-the inspected source returns 401. At 2026-09-24 00:29 UTC the live domain still
-pointed to `dpl_5kZSaXHLmqPPzsCy6odLJyy99utW`, and all 31 environment bindings
-were unchanged. CI `35937955529` passed for checkpoint `8080788`. These checks do
-not prove authenticated coaching writes or grant cutover authority.
+## Approval requested
 
-## Exact proposed authority
+Approve one attended production cutover on those exact targets, starting after
+fresh preflight and final CI success. Reserve 45 minutes; this is a soft
+maintenance window, not an automatic resume deadline. The approved actions are:
 
-The eventual approval should name this deployment and database and authorize:
-the two exact migrations below; generation-checked coaching pause/resume;
-a fresh encrypted recovery capture; promotion of the pinned deployment;
-one dedicated synthetic account and the bounded application checks below.
-Preserve all runtime bindings, including the unread sensitive exercise-preference
-flag. No new capability flag or numerical policy is activated. Existing WHOOP
-cron behavior remains as disclosed in the approved staging packet.
+1. Install the exact pause migration with its ledger record in one transaction.
+   Commit the generation-checked coaching pause and independently prove drain.
+2. Capture a fresh encrypted production snapshot, refresh source locale metadata,
+   and restore that new archive once into the existing private isolated local
+   recovery environment. Require complete comparison and stopped-container proof.
+3. Install the exact revision migration while paused, atomically with its ledger
+   record. Verify definitions, grants, RLS, triggers and accepted-plan invariants.
+4. Promote only the pinned production-configured deployment, preserving all 31
+   runtime bindings, all three aliases and their redirect settings. Existing
+   WHOOP cron behavior remains as previously disclosed; no new capability flag
+   or numerical programming policy is enabled.
+5. Read the existing project API keys once through the official Supabase CLI;
+   use only the verified existing service-role value for the one frozen synthetic
+   account/profile and the matching anon value for sign-in. Permit the existing
+   temporary database CLI login refresh needed for recovery. No key creation,
+   rotation, password reset, public bypass token or credential logging is included.
+6. Create the one dedicated synthetic owner, verify paused rejection, briefly
+   resume to create/accept one three-session plan, immediately re-pause, replay
+   the same acceptance and compare immutable records, then resume finally only
+   after all required checks pass. Retain the synthetic records; do not delete.
 
-Install **pause first**, despite filename order:
+Before revision installation, a failed fresh-recovery gate may conditionally
+resume the old application only after independent proof that revision objects
+and ledger entry are absent and the old production mappings remain unchanged.
+After revision installation, failure means preserve/re-establish the verified
+pause and stop. Never return to the old unstamped application. An uncertain
+operation is reconciled read-only; no automatic retry or unpinned rollback.
 
-| Migration | SHA256 |
-| --- | --- |
-| `20260923010000_coaching_write_pause.sql` | `6c336015b78142da07a091d9f999d7019c13d9ec819064cfd4b82ee16d48a041` |
-| `20260921010000_coach_proposal_context_revision.sql` | `0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f` |
+## Material effects and limits
 
-No broad database push, PR merge, new hosting project/cost, production restore,
-account/data deletion, connection termination or automatic retry is included.
-Do not restamp old drafts or rewrite accepted prescriptions.
+The gate stops writes to six coaching-output tables, not the whole database.
+Coaching writes can be unavailable during the maintenance window. During the
+brief global resume, real athletes can also write. Each smoke request has a
+15-second client deadline; start re-pause immediately after acceptance/error and
+no later than 60 seconds, targeting confirmed closed state by 90 seconds. Those
+are attended operator bounds, not guaranteed containment if the connection fails.
+A timeout does not prove that a database transaction or remote promotion stopped.
 
-## Proposed execution sequence
+The new archive remains encrypted on this Windows host; it is not off-device
+recovery or a full restore of hosted services. The retained compatible artifact
+has the same application code as the candidate, so it does not undo a code defect.
+A failure after revision installation can require remaining paused for a fix.
+No PR merge, production restore, broad database push, account deletion, session
+termination, paid plan/resource or numeric VBT-policy activation is authorized.
 
-1. Recheck target identity, deployment readiness, domain mapping, required CI,
-   environment bindings and migration ledger immediately before execution.
-   Verify the existing `postgres` SUPERUSER/BYPASSRLS prerequisite without
-   granting privileges. Record private digests of pre-existing accepted
-   prescriptions before changing schema.
-2. Install only the verified pause file using an error-stopping client. Both
-   migrations own their transactions. Verify its singleton, six statement
-   triggers, definitions, forced RLS and denied application-role privileges.
-   Record successful installation in the migration ledger using the reviewed
-   ledger procedure; do not mark a failed migration applied.
-3. Follow the [operator procedure](coaching-write-pause-operator.md): read the
-   current generation, request pause with that exact generation, require actual
-   COMMIT and independent `paused=true` readback. A returned row before COMMIT
-   is not proof of drain. Installation uses NOWAIT; pause has a five-second
-   per-lock cap. Neither is a whole-request deadline or permission to retry.
-4. Capture a fresh consistent encrypted backup under the committed pause using
-   the existing recovery procedure. Require a completed authenticated manifest
-   and archive identity. Retain the previously verified archive. The earlier
-   93-table restore proves that archive and method, not this new capture; counts
-   can change after installing the control table. The gate protects six coaching
-   output tables and does not freeze unrelated database traffic.
-5. Apply only the verified revision migration while paused. Verify its actual
-   definitions, privileges and ledger entry, and recheck accepted-prescription
-   digests. The existing release metadata classifier expects both new migrations
-   absent; it cannot serve as the post-install verifier unchanged.
-6. Promote only the pinned staged deployment. Verify the custom-domain target,
-   build/asset identity and preserved environment bindings while still paused.
-   Perform the controlled checks below, then record the final gate generation,
-   deployment, results and accepted-prescription digests.
+## Concrete procedures and evidence
 
-## Minimum production synthetic-write scope
+- [Execution sheet](production-cutover-execution-2026-09-23.md): exact promotion,
+  fresh backup/restore commands, all-alias readback, deadlines, failure paths and
+  unique exporter identification/cleanup.
+- [Migration procedure](production-cutover-migrations.md): pinned SQL rendering,
+  atomic ledger insertion, exact postchecks and generation-bound operator SQL.
+- [Smoke procedure](production-cutover-smoke.md) and [frozen input](production-cutover-smoke-input-2026-09-23.json):
+  one run identity, credentials boundary, API requests, three expected sessions,
+  full synthetic-row replay digests and fixed-ID existing-plan invariants.
+- [Real PostgreSQL evidence](../../../scripts/release/cutover-migrations.local-evidence.json):
+  10 checks passed, including injected schema/ledger rollback failures, catalog
+  parity and stale-generation rejection; later read-only editor normalization
+  checks preserve both exact original ledger files. Eight focused tests and full
+  TypeScript pass. Independent review reran the focused tests.
+- [Hosted checks](production-hosted-checks-2026-09-23.json) and
+  [platform readback](production-cutover-platform-2026-09-23.json): rendered build,
+  sampled asset hashes, signed-out rejection bodies, unchanged bindings, three
+  aliases and no configured rolling release. HTTP status was not exposed by the
+  browser; authenticated production behavior remains part of the future smoke.
 
-Use **one new dedicated synthetic owner**, never Greg or another athlete. The
-existing local flow exercises Auth Admin `createUser` with `email_confirm:true`,
-one synthetic profile, normal password sign-in and the actual Next cookie
-adapter. The proposed production procedure must retain those semantics without
-email/invites, logging credentials or inserting directly into `auth.users`.
-Account identity, password, cookies and raw row evidence stay private.
+The revision migration already had mixed line endings. Its reviewed local bytes
+are now preserved in Git with a path-specific attribute; no SQL content changed.
+The staged blob and checkout filtering with autocrlf disabled both match the
+approved hash. Ledger literals escape CR/LF so SQL Editor normalization cannot
+change the stored original. [Preparation investigation](../../../handoffs/investigations/programming-quality-cutover-preparation.md)
+preserves the two failed Git preservation checks and successful third correction.
 
-Freeze one complete synthetic intake, Monday start, future target date, timezone
-and idempotency keys before execution. Use the already exercised bodyweight
-strength intake with three training days and 60-minute sessions; verify its
-exact compiler output and row count offline for the chosen dates. The success
-path is one `POST /api/coach/weekly`, then one
-`POST /api/coach/proposals/{id}/accept`, followed by replay of that same accept
-request with the same key. Expected writes are one program, plan, proposal,
-the compiler-produced prescribed sessions, the owner's context-revision row,
-and necessary profile/Auth bookkeeping. Freeze any additional derived rows
-found in the reviewed procedure before asking for approval.
-
-Record the stored context revision and proposal input snapshot, acceptance IDs
-and private digests of the accepted program/plan/session/proposal rows. Compare
-digests **after first acceptance versus after replay**; activation itself is a
-legitimate first-acceptance change. Retain the account and synthetic records;
-deletion requires separate authority. No workouts, measurements, reviews, source
-corrections, WHOOP connection or second account are needed for this narrow claim.
-Production stale-source and cross-owner behavior remain untested by this smoke;
-existing local evidence is separate.
-
-The controlled gate sequence is:
-
-1. While paused on the compatible app, attempt the synthetic initial proposal
-   and verify maintenance rejection with no protected-table changes. The separate
-   revision-read RPC can initialize the synthetic owner's revision row before
-   the later proposal transaction is rejected; do not claim zero database writes.
-2. Commit a generation-checked resume and independently read back open state.
-   Execute the single successful create and first acceptance, with no automatic
-   retries. Record IDs and accepted-row digests.
-3. Immediately commit a generation-checked re-pause and independently verify it.
-   Replay the accepted request while paused; require the same accepted identity
-   and unchanged accepted-row digests. This demonstrates read-only replay rather
-   than another successful write through the closed gate.
-4. Resume finally only after every approved check passes, using a newly observed
-   exact generation and successful COMMIT/readback. On failure, preserve or
-   re-establish pause and stop. Failed/ambiguous re-pause must be reported as an
-   unknown/open state, never as successful containment.
-
-The gate is global, not synthetic-owner scoped. During the temporary resume,
-real athletes can also write. The final execution sheet must fix the maintenance
-window, operator, request deadlines and maximum open interval, with a separate
-operator connection ready to re-pause. This packet does not claim those bounds
-are already implemented or guarantee unrelated traffic is frozen.
-
-## Required preparation before the approval request
-
-- Specify the credential-safe operator/client procedure, exact migration-ledger
-  transaction/order and post-install readback queries. Existing `psql` with
-  `ON_ERROR_STOP` and the verified files can suffice; no new installer is required.
-- Freeze the production account provisioning, cookie-authenticated API requests,
-  exact intake/keys, expected row counts, private digest queries and failure
-  handling. A reviewed manual/API procedure can suffice. The existing local
-  scripts are deliberately loopback-only and must not be retargeted blindly.
-- Record exact supported promotion and compatible recovery operations, the
-  maintenance window/open-interval bounds and shared failed-attempt budget.
-  Do not substitute the staging deployment command for promotion.
-- State the fresh-backup acceptance boundary explicitly: a completed capture
-  backed by the previously verified restore method, or an additional isolated
-  restore of that fresh archive before migration. If the latter is required,
-  include its runtime/locale prerequisites and bounded execution in the approval.
-
-These are missing execution details, not a requirement to build more tooling.
-No command in this packet is authority to execute them.
-
-## Recovery boundary
-
-The retained compatible floor `923473a` has the same application code as source
-`93539b0`. It can address an artifact/deployment failure, not undo a shared code
-defect. After revision installation, the old live `f123aa8` application is not a
-safe rollback target. Keep both database guards installed and coaching paused
-if compatible operation cannot be established; fix forward or obtain approval
-for a separately identified compatible artifact. Database restoration is a
-different, destructive action and is not authorized by this proposed cutover.
-
-Source contracts and evidence: [release decision](production-release-decision-2026-09-23.md),
-[pause operator](coaching-write-pause-operator.md),
-[local pause/rollback](local-pause-and-rollback-2026-09-23.md),
-`scripts/release/local-app-flow.mjs`, `scripts/release/private-production-recovery.mjs`,
-`app/api/coach/weekly/route.ts`, and `app/api/coach/proposals/[id]/accept/route.ts`.
+Full CI passed for prior checkpoint `5ca1ad4`, run `35939161527`. The final saved
+checkpoint's CI must also pass before production execution; Beads i40.11 and PR84
+carry its exact commit/run status. The application source and deployed artifact
+remain unchanged by these operator helpers and documentation.
