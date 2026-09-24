@@ -1,0 +1,85 @@
+{
+  "recordedAt": "2026-09-24T00:28:57.859Z",
+  "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7",
+  "url": "https://fitness-tracker-je2rwxwh4-gregs-projects-98860c8b.vercel.app",
+  "sourceCommit": "93539b00bef9109f4221d10c9554cd99a3f5d5fe",
+  "access": "Existing Vercel browser SSO; no SociusFit sign-in or bypass token creation",
+  "signIn": {
+    "rendered": true,
+    "visualInspection": "Desktop sign-in page, empty email/password fields, charcoal/mint styles rendered",
+    "renderedBuildId": "u93phgwCcXfUdAb5YKaBh",
+    "expectedBuildId": "u93phgwCcXfUdAb5YKaBh",
+    "buildIdMatches": true,
+    "scriptPaths": [
+      "static/_next/static/chunks/4bd1b696-f785427dddbba9fb.js",
+      "static/_next/static/chunks/2804-1bf22e595b5bd4cb.js",
+      "static/_next/static/chunks/main-app-f2b3590dff0c4e5f.js",
+      "static/_next/static/chunks/2619-3c9e02e22d10480a.js",
+      "static/_next/static/chunks/8371-bfb8477b625796bc.js",
+      "static/_next/static/chunks/app/layout-41d0ea2a395e4d64.js",
+      "static/_next/static/chunks/app/auth/signin/page-65cdd04faaa2a9b2.js",
+      "static/_next/static/chunks/polyfills-42372ed130431b0a.js",
+      "static/_next/static/chunks/webpack-35eec86cd4df139d.js"
+    ],
+    "scriptPathManifestMatches": true
+  },
+  "assets": [
+    {
+      "path": "static/_next/static/css/28181877abc77b83.css",
+      "bytes": 58505,
+      "sha256": "b17811d44cfc968287fb01c62161296f1ed91b750d26cb26bed299f183260179",
+      "matched": true
+    },
+    {
+      "path": "static/icon-192.png",
+      "bytes": 96,
+      "sha256": "abbd4841ba31f4d7195c0bae44b30cbebbb9c7cc91f3dad94f68614c6ce4bee8",
+      "matched": true
+    }
+  ],
+  "signedOutRoutes": [
+    {
+      "path": "/api/coach/weekly",
+      "renderedBody": {
+        "error": "Unauthorized"
+      }
+    },
+    {
+      "path": "/api/coach/intake",
+      "renderedBody": {
+        "error": "Unauthorized"
+      }
+    }
+  ],
+  "limitations": [
+    "Route JSON bodies observed through browser navigation. Raw response status/headers are not exposed by this browser interface; matching source auth branches return HTTP 401 before athlete queries.",
+    "Two downloaded static assets matched byte-for-byte; JavaScript source paths matched, but their bytes were not independently downloaded.",
+    "No authenticated athlete flows, database migration, promotion or numerical-policy activation was performed.",
+    "Visual inspection covered desktop sign-in only; prior local mobile journeys remain separate evidence."
+  ],
+  "platformReadback": {
+    "at": "2026-09-24T00:29:04.197Z",
+    "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+    "teamId": "team_zjdKVgrSBNAYC9gql0Raiocm",
+    "nodeVersion": "24.x",
+    "framework": "nextjs",
+    "liveAlias": {
+      "alias": "www.sociusfit.com",
+      "deploymentId": "dpl_5kZSaXHLmqPPzsCy6odLJyy99utW",
+      "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh"
+    },
+    "currentProductionTarget": {
+      "id": "dpl_5kZSaXHLmqPPzsCy6odLJyy99utW",
+      "url": "fitness-tracker-807ju161o-gregs-projects-98860c8b.vercel.app",
+      "sha": "f123aa8aa848716e894ea7bec340d693995e4b36"
+    },
+    "environmentBindingCount": 31,
+    "environmentMetadataUnchanged": true,
+    "privateValuesExported": false
+  },
+  "priorCheckpointCI": {
+    "sha": "8080788c9db1ea8ca2a8b56b59f90af7f52d1a2a",
+    "runId": 35937955529,
+    "conclusion": "success"
+  }
+}

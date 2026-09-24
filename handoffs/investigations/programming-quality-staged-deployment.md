@@ -64,3 +64,15 @@ The completed upload container was stopped and read back as exited/running false
 the failed first container is created/running false. Both are preserved. The
 three failed unshare diagnostics remain stopped, with no fourth attempt.
 See the [staging receipt](../../docs/verification/programming-quality/production-staging-2026-09-23.md).
+
+## Browser sign-in resolved the access boundary
+
+Greg signed into Vercel. The exact staged hostname now renders the SociusFit
+sign-in page without an athlete login. Its rendered build ID matches the retained
+artifact; all nine DOM script paths exist in the manifest. Browser-exported CSS
+and icon match expected bytes and SHA256. Weekly/intake GET navigation returns
+the application Unauthorized JSON body. The interface does not expose raw HTTP
+status/headers; source auth branches return 401 before athlete queries. No full
+JavaScript-byte or authenticated-flow claim is made. Fresh metadata at
+2026-09-24T00:29:04.197Z confirms the old custom domain/current target and unchanged
+31 bindings. No bypass credential, new deployment or production mutation occurred.

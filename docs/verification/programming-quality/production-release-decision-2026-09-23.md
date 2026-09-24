@@ -2,7 +2,8 @@
 
 The approved preparation and staging are complete. The exact artifact is hosted
 as READY deployment `dpl_2tZqnshTDrFR5EDQpgi78dcBNns7`; the custom live domain
-remains on the old deployment. Protected application checks await Vercel login.
+remains on the old deployment. Bounded hosted checks passed after Vercel login:
+rendered build ID, two asset hashes, script paths and signed-out rejection bodies.
 See the [staging receipt](production-staging-2026-09-23.md) for current evidence
 and limits. No migration, pause, promotion or merge has occurred. The database
 pre-install readback below remains a timestamped preparation result.
@@ -75,8 +76,8 @@ structural/build evidence; hosted runtime execution is not claimed.
 
 Greg approved the production-target **staged deployment** on the existing Vercel
 project using the exact retained tar. The procedure below was executed once and
-succeeded. No paid project, plan, backup add-on or dependency was added. Hosted
-application verification remains pending as recorded in the staging receipt.
+succeeded. No paid project, plan, backup add-on or dependency was added. Bounded
+hosted checks passed with the explicit limits recorded in the staging receipt.
 
 After verifying the tar and project binding, preserve its Linux structure in a
 clean upload directory and use pinned CLI 56.4.1 through an explicitly authorized
@@ -115,6 +116,10 @@ Runtime secret validity and effective flag behavior remain hosted checks, not
 facts established by a successful local build.
 
 ## Later cutover decision, after staged evidence exists
+
+The [proposed approval packet](production-cutover-approval-2026-09-23.md) now pins
+the actual staged deployment and minimum synthetic scope. It lists remaining
+execution details and is explicitly not ready for execution or approval.
 
 Staging approval does not authorize these steps. Prepare the final execution
 receipt with the actual hosted artifact ID, current metadata and synthetic-write

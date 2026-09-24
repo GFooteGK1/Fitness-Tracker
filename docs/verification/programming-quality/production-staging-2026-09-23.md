@@ -1,4 +1,4 @@
-# Production artifact staged; protected checks pending
+# Production artifact staged; bounded hosted checks passed
 
 Greg approved staging the retained artifact on the existing SociusFit Vercel
 project, including possible execution of the existing WHOOP cron. The first
@@ -18,7 +18,7 @@ was performed.
 | Target / state | production / READY |
 | Application source | `93539b00bef9109f4221d10c9554cd99a3f5d5fe` |
 | Artifact SHA256 | `461e0bf9e21561e0323c6c2edf53e825d48f8a8a8fc7c9f2a739798c8ea44814` |
-| Local artifact build ID | `u93phgwCcXfUdAb5YKaBh` |
+| Local and rendered hosted build ID | `u93phgwCcXfUdAb5YKaBh` |
 | Readback times (UTC) | before `2026-09-24T00:10:09.016Z`; after `2026-09-24T00:12:33.865Z` |
 | Framework / runtime | Next.js / Node 24.x |
 | Production environment bindings | All 31 unchanged by key, ID, type, update time and branch; all names present in deployment |
@@ -48,34 +48,49 @@ vercel deploy --prebuilt --prod --skip-domain --scope gregs-projects-98860c8b
 The deployment log reports 1,122 downloaded entries, use of existing
 `.vercel/output`, and READY in 19 seconds. Source identity is bound through the
 verified artifact and upload evidence: this artifact-only deployment has no Git
-commit metadata. Hosted asset hashes and the hosted build ID have not yet been
-read back.
+commit metadata. Subsequent browser checks matched the rendered build ID, nine
+script paths and both downloaded CSS/icon hashes to the retained artifact.
 
 Full CI `35935064279` passed on saved preparation checkpoint `b4ef53d`: 3,491
 tests passed, 19 skipped, 26 mobile browser journeys, TypeScript, lint and build.
 Application source `93539b0` independently passed CI `35930249161`. Later
 preparation changes do not alter application/public trees or build inputs.
+The documentation checkpoint `8080788` subsequently passed full CI
+`35937955529`; this result was read back after the hosted checks.
 
-## Access limitation and next action
+## Hosted checks after Vercel sign-in
 
-Anonymous requests to `/auth/signin` and `/api/coach/weekly` return HTTP 302 to
-Vercel SSO. Chrome also reaches the Vercel login page. These are protection-layer
-responses; they do not prove the sign-in page renders or that the application
-returns its expected unauthenticated 401. No SociusFit login was attempted.
+Initial anonymous requests to `/auth/signin` and `/api/coach/weekly` returned
+HTTP 302 to Vercel SSO. Greg then signed into Vercel. The existing Chrome session
+now reaches the exact staged hostname without changing deployment protection.
+No SociusFit login was attempted.
 
-Greg was asked to sign into Vercel in the retained Chrome tab. Once access exists,
-finish static asset/build identity and unauthenticated application checks on the
-exact staged hostname. Do not run `/api/health` or authenticated athlete flows as
-part of these checks. Do not use standard `vercel curl`: independent review of
-CLI 56.4.1 confirmed it can create a protection-bypass token when none exists.
-No bypass token or protection configuration was created or changed.
+The desktop sign-in page renders with empty login fields and its expected
+charcoal/mint styles. Its rendered Next payload contains the exact retained
+build ID. All nine script paths present in the DOM exist in the artifact manifest.
+The browser's asset export downloaded the observed stylesheet and icon; their
+sizes and SHA256 digests match the artifact byte-for-byte. These two hashes do
+not constitute a byte comparison of all hosted scripts or functions.
+
+Browser navigation to `/api/coach/weekly` and `/api/coach/intake` returns exactly
+`{"error":"Unauthorized"}`. The source branches return HTTP 401 before athlete
+queries. The browser interface exposes the rendered body, not raw response
+status/headers, so direct transport-status verification is not claimed. No
+authenticated athlete flow or `/api/health` call was performed.
+
+At `2026-09-24T00:29:04.197Z`, fresh read-only metadata again confirmed the live
+custom domain/current production target remain old and all 31 runtime bindings
+are unchanged. See [hosted check receipt](production-hosted-checks-2026-09-23.json).
+Do not use standard `vercel curl`: independent review of CLI 56.4.1 confirmed it
+can create a protection-bypass token when none exists. No bypass token or
+protection configuration was created or changed.
 
 The upload container `socius-stage-upload-93539b0-b` was stopped; readback reports
 `exited`, running false. The first startup container remains `created`, running
 false. The original tar is retained locally. Startup and diagnostic failures are
 recorded in the [investigation](../../../handoffs/investigations/programming-quality-staged-deployment.md).
 
-This is a successful staged deployment with incomplete hosted application
-verification. Production cutover still requires separate approval, following
+The bounded staging checks passed. Authenticated behavior and new-schema writes
+remain later cutover checks. Production cutover still requires separate approval, following
 the [release sequence](production-release-decision-2026-09-23.md#later-cutover-decision-after-staged-evidence-exists).
 Do not deploy a duplicate or treat READY alone as permission to migrate/promote.

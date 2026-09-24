@@ -13,12 +13,19 @@ The custom live domain and current production target remain on `dpl_5kZSaXHLmqPP
 Vercel automatically assigned its generated project alias to the new deployment.
 All 31 runtime bindings are unchanged. No migration, pause, promotion or merge
 occurred. The upload container is stopped; the exact tar remains retained.
-Hosted asset/build identity and unauthenticated app checks are pending because
-Vercel SSO blocks access. Greg was asked to sign into Vercel in the retained Chrome
-tab; no SociusFit login is needed. Do not use CLI curl to create a bypass token,
-and do not redeploy. Finish those checks when access is available, then prepare
-the cutover in the [release decision packet](../docs/verification/programming-quality/production-release-decision-2026-09-23.md).
-Cutover still requires separate approval.
+Greg signed into Vercel, and bounded hosted checks passed: sign-in rendering,
+exact build ID, nine script paths, two downloaded asset hashes, and signed-out
+rejection bodies for weekly/intake. Raw HTTP statuses are not exposed by the
+browser interface; source auth branches return 401. No SociusFit login occurred.
+Fresh metadata still shows the old custom domain/current production target and
+31 unchanged runtime bindings. Do not create a bypass token or redeploy.
+Next, complete the production migration and minimal write-verification procedures
+before requesting separate cutover approval. The [release decision packet](../docs/verification/programming-quality/production-release-decision-2026-09-23.md)
+defines the sequence; staging does not authorize its production execution.
+The [proposed cutover packet](../docs/verification/programming-quality/production-cutover-approval-2026-09-23.md)
+records the one-account write/replay scope, temporary global resume exposure,
+and exact remaining procedure decisions. It is not ready for execution or
+approval until those details are fixed; a new automation tool is optional.
 Full CI passed on `b4ef53d`: 3,491 tests, 19 skipped and 26 mobile journeys.
 The [staging investigation](investigations/programming-quality-staged-deployment.md)
 preserves startup/diagnostic attempt counts and the corrected metadata verifier.
@@ -56,7 +63,7 @@ outside Git and synthetic fixtures. Prior failures and exhausted attempt budgets
 remain in the [investigation](investigations/programming-quality-private-recovery.md).
 The recovery gate is resolved for this archive. No more source/restore retries
 are needed. The compatible artifact and target refresh subsequently passed;
-protected hosted checks and separate target-specific cutover approval remain.
+reviewed cutover procedures and separate target-specific approval remain.
 See [recovery preparation](../docs/verification/programming-quality/production-recovery-preparation-2026-09-23.md).
 The compatible local build is retained and its same-port artifact-switch
 rehearsal passed 15 checks, with the revision schema left installed. It uses two
@@ -113,8 +120,8 @@ and RLS/FORCE RLS on all 14 existing scoped tables. The new revision migration i
 absent. The Free-plan project has no managed scheduled backups; no canary appears
 in its organization. See [hosted preflight](../docs/verification/programming-quality/hosted-preflight-2026-09-23.md)
 for the earlier bounded evidence. Subsequent private recovery and isolated
-rehearsals passed as recorded above. Finish protected staging checks before
-proposing production promotion. The draft PR itself does not authorize merge,
+rehearsals and bounded hosted staging checks passed as recorded above. Finish
+cutover preparation before proposing production promotion. The draft PR itself does not authorize merge,
 production migration, numerical activation or deployment; Greg separately
 authorized only the completed staging action.
 See the original [save receipt](../docs/verification/programming-quality/save-and-release-readiness.md)
