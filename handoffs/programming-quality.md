@@ -6,18 +6,22 @@ Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
 
-September 23 follow-up: approved artifact/metadata preparation is complete.
-The [release decision packet](../docs/verification/programming-quality/production-release-decision-2026-09-23.md)
-identifies the retained production-configured Linux Vercel tar at application
-source `93539b0`, SHA256 `461e0bf9e21561e0323c6c2edf53e825d48f8a8a8fc7c9f2a739798c8ea44814`.
-Offline build and structural checks passed; builder is stopped. Current hosted
-metadata passed with the exact documented UUID-default qualification; the
-original rejection and raw inequality remain preserved. No source retry was
-needed. The next decision is approval to stage this artifact on the existing
-Vercel production target, including its existing WHOOP cron possibility, without
-domain promotion or database changes. Hosting, runtime validation, fresh paused
-backup and final cutover are still unexecuted. New attempt evidence is in the
-[artifact investigation](investigations/programming-quality-production-artifact.md).
+September 23 follow-up: Greg approved staging, and the exact retained source
+`93539b0` artifact is now hosted as `dpl_2tZqnshTDrFR5EDQpgi78dcBNns7`, READY.
+See the [staging receipt](../docs/verification/programming-quality/production-staging-2026-09-23.md).
+The custom live domain and current production target remain on `dpl_5kZSaXHLmqPPzsCy6odLJyy99utW`;
+Vercel automatically assigned its generated project alias to the new deployment.
+All 31 runtime bindings are unchanged. No migration, pause, promotion or merge
+occurred. The upload container is stopped; the exact tar remains retained.
+Hosted asset/build identity and unauthenticated app checks are pending because
+Vercel SSO blocks access. Greg was asked to sign into Vercel in the retained Chrome
+tab; no SociusFit login is needed. Do not use CLI curl to create a bypass token,
+and do not redeploy. Finish those checks when access is available, then prepare
+the cutover in the [release decision packet](../docs/verification/programming-quality/production-release-decision-2026-09-23.md).
+Cutover still requires separate approval.
+Full CI passed on `b4ef53d`: 3,491 tests, 19 skipped and 26 mobile journeys.
+The [staging investigation](investigations/programming-quality-staged-deployment.md)
+preserves startup/diagnostic attempt counts and the corrected metadata verifier.
 
 Budget steering, September 23: Greg does not want Supabase spending. The selected
 preparation route is a local Supabase/application rehearsal with synthetic data
@@ -51,8 +55,8 @@ recovery are not claimed. Production data, encrypted catalogs and DPAPI keys sta
 outside Git and synthetic fixtures. Prior failures and exhausted attempt budgets
 remain in the [investigation](investigations/programming-quality-private-recovery.md).
 The recovery gate is resolved for this archive. No more source/restore retries
-are needed. Next release gates are a production-configured compatible rollback
-artifact, refreshed target checks and separate target-specific cutover approval.
+are needed. The compatible artifact and target refresh subsequently passed;
+protected hosted checks and separate target-specific cutover approval remain.
 See [recovery preparation](../docs/verification/programming-quality/production-recovery-preparation-2026-09-23.md).
 The compatible local build is retained and its same-port artifact-switch
 rehearsal passed 15 checks, with the revision schema left installed. It uses two
@@ -64,7 +68,9 @@ passed all 14 real PostgreSQL pause/drain/cutover checks. Prior failures remain
 in the investigation, with no count reset or unsupported evidence upgrade. See the
 [pause/rollback receipt](../docs/verification/programming-quality/local-pause-and-rollback-2026-09-23.md)
 and [attempt record](investigations/programming-quality-write-pause.md).
-Local rehearsals do not remove the production recovery gate or authorize deployment.
+Local rehearsals alone did not satisfy production recovery or authorize deployment.
+The subsequent private recovery and approved staging results above supersede
+those historical gates. No further recovery-method retry is needed.
 
 The saved implementation is committed and pushed on `codex/programming-quality`;
 [draft PR #84](https://github.com/GFooteGK1/Fitness-Tracker/pull/84) is open.
@@ -106,9 +112,11 @@ the six September 18 migration entries, six matching baseline release functions,
 and RLS/FORCE RLS on all 14 existing scoped tables. The new revision migration is
 absent. The Free-plan project has no managed scheduled backups; no canary appears
 in its organization. See [hosted preflight](../docs/verification/programming-quality/hosted-preflight-2026-09-23.md)
-for bounded evidence and outstanding full-schema/recovery checks. Complete recovery verification and
-isolated rehearsal before proposing production promotion. The draft PR does not
-authorize merge, production migration, numerical activation or deployment.
+for the earlier bounded evidence. Subsequent private recovery and isolated
+rehearsals passed as recorded above. Finish protected staging checks before
+proposing production promotion. The draft PR itself does not authorize merge,
+production migration, numerical activation or deployment; Greg separately
+authorized only the completed staging action.
 See the original [save receipt](../docs/verification/programming-quality/save-and-release-readiness.md)
 for the earlier checkpoint; its failed-test count is historical.
 

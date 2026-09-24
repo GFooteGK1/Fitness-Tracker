@@ -1,9 +1,11 @@
 # Production artifact and next release decision
 
-The approved local preparation is complete. A production-configured Linux
-Vercel artifact is retained, and the current production database matches the
-reviewed pre-install definitions with one explicitly documented deparser
-qualification. Nothing has been hosted, migrated, paused, promoted or merged.
+The approved preparation and staging are complete. The exact artifact is hosted
+as READY deployment `dpl_2tZqnshTDrFR5EDQpgi78dcBNns7`; the custom live domain
+remains on the old deployment. Protected application checks await Vercel login.
+See the [staging receipt](production-staging-2026-09-23.md) for current evidence
+and limits. No migration, pause, promotion or merge has occurred. The database
+pre-install readback below remains a timestamped preparation result.
 
 ## Exact artifact and targets
 
@@ -26,7 +28,8 @@ API v3 output and the fixed project link. It excludes local dotenv input files,
 host credentials and private server secrets. Do not reconstruct it from the
 Windows `.next` build. Preserve the original tar and verify its SHA before any
 later extraction/upload. It is retained on this host only, not hosted or backed
-up off-device.
+up off-device as a tar. The extracted output has since been staged on Vercel;
+the original tar remains host-local.
 
 This is a compatible build of the same application as the candidate. It can
 recover an artifact/deployment problem; it is not a different implementation for
@@ -68,12 +71,12 @@ Receipts: [artifact](production-artifact-2026-09-23.json),
 The build container was stopped after export and verification. This is local
 structural/build evidence; hosted runtime execution is not claimed.
 
-## Next approval: stage the retained artifact
+## Approved staging procedure (executed)
 
-The next proposed action is a production-target **staged deployment** on the
-existing Vercel project using the exact retained tar. It is a production-connected
-external action, so it requires explicit target authority under repository
-AGENTS.md. No paid project, plan, backup add-on or dependency is proposed.
+Greg approved the production-target **staged deployment** on the existing Vercel
+project using the exact retained tar. The procedure below was executed once and
+succeeded. No paid project, plan, backup add-on or dependency was added. Hosted
+application verification remains pending as recorded in the staging receipt.
 
 After verifying the tar and project binding, preserve its Linux structure in a
 clean upload directory and use pinned CLI 56.4.1 through an explicitly authorized
