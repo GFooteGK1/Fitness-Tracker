@@ -6,6 +6,27 @@ Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
 
+**September 24, 13:31 UTC: pre-armed packet APPROVED; blocked on signed-in SQL
+browser access. The one attempt is unused.** Local session expiry is September
+25, 11:58:50 UTC, so no sign-in/refresh of the synthetic account is needed now.
+Fresh Vercel metadata passed; cccdcf4 CI35997751350 passed. Three browser-control
+timeouts exhausted the connection recovery cycle. Chrome is now browser ID 1;
+ID 2 is the Codex browser, which is signed out of Supabase. Do not reuse the old
+numeric browser ID as proof of Chrome. The Supabase SQL URL was queued in the
+Codex right panel for user sign-in. Restore access, refresh schema/ledger, owner
+scope, original fixed plan hashes and paused generation 3, then continue the
+existing approved attempt. No new production approval is needed for that same
+scope. No database read, gate mutation or pre-armed operator invocation occurred
+in this turn. Last independently verified gate remains the historical generation
+3 read at 12:06:12 UTC; its current state must be refreshed before execution.
+
+Prepared SQL files: `output/app-quality-release/cutover-20260924/prearmed-open.sql`,
+`prearmed-repause.sql`, `prearmed-final-resume.sql` (expected generations 3, 4, 5).
+These are rendered only, not executed. See the
+[access-stop receipt](../docs/verification/programming-quality/production-prearmed-access-stop-2026-09-24.json).
+
+## Previous continuation result
+
 **September 24, 12:06 UTC: coaching is paused at generation 3.** Greg approved
 the corrected continuation. Same-account sign-in/profile/empty weekly read and
 the deliberate paused rejection passed. Temporary open generation 2 then closed

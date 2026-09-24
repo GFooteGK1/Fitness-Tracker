@@ -1,5 +1,14 @@
 # One pre-armed create/accept attempt
 
+**Approved by Greg on September 24; attempt still unused.** At 13:27 UTC the
+encrypted session was verified valid through September 25, 11:58:50 UTC. Fresh
+platform preflight and checkpoint CI passed. The signed-in SQL browser connection
+could not be restored; the Codex browser is signed out of Supabase. No operator
+invocation, database query or gate mutation occurred in this approval turn.
+Restore browser access, refresh the required live preflight, then continue this
+same approved scope. See the [access-stop receipt](production-prearmed-access-stop-2026-09-24.json).
+The original proposal below is retained as the approved scope.
+
 **Proposed only. Coaching is paused at generation 3.** The same synthetic account
 now has its profile, session and context revision zero. No program, proposal or
 prescribed session exists. The [latest result](production-continuation-result-2026-09-24.md)

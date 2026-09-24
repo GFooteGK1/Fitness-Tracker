@@ -1,6 +1,6 @@
 # Approved cutover execution investigation
 
-Current state: both migrations are installed, the pinned deployment is promoted, and coaching is paused at generation 3. Greg approved the corrected continuation; same-account profile provisioning and paused rejection passed. Create/accept stopped before HTTP on expired gate-attestation freshness. No proposal exists. The revised pre-armed operator passed five timing/transport tests, two comparator tests and independent review; one separately approved attempt is required. Do not reinstall, re-promote, retry old markers or resume. The sections below preserve the execution history.
+Current state: Greg approved the revised pre-armed packet. The attempt remains unused because signed-in SQL browser access is unavailable. Last verified database state is paused generation 3 at 12:06:12 UTC; no database read or mutation occurred in the latest approval turn. Restore user browser access and refresh all required preflight before using the existing approval. Both migrations and the pinned build were previously verified installed; fresh 13:28 platform metadata passed. The sections below preserve execution history.
 
 ## 2026-09-24: private rendered-evidence transport
 
@@ -77,3 +77,30 @@ Publish the readback and signal in one CUA invocation, without an intervening
 model/tool round trip. Preserve 15-second freshness/request and 30-second shared
 budgets, durable response capture and immediate re-pause. The original failed
 marker remains. This is one proposed additional attempt, not authorization.
+
+## Pre-armed packet approved; operator connection unavailable
+
+Greg approved the revised packet. At 13:27:16 UTC, local authenticated private
+read confirmed the existing synthetic session expires September 25, 11:58:50 UTC,
+and both pre-armed attempt/failure markers are absent. This sent no network call.
+Fresh platform metadata passed at 13:28:28 UTC (seven GETs; pinned production,
+three aliases, 31 bindings, no rollout). cccdcf4 CI35997751350 completed success.
+
+Browser-control recovery attempt 1: retained tab state call timed out after 30
+seconds and reset the kernel. A fresh tab using historical browser ID 2 opened
+successfully but current discovery showed ID 2 is now Codex IAB, signed out of
+Supabase; current Chrome is ID 1 with a different extension instance. Attempt 2:
+current Chrome tab inventory timed out after 30 seconds. Revised hypothesis:
+the old connection or tab state is stale; explicitly create a fresh tab through
+the current named Chrome. Attempt 3 also timed out after 30 seconds. Stop this
+browser recovery cycle; do not keep retrying stale controls or change permissions.
+
+The reviewed operator itself was not invoked and no SQL query, gate mutation,
+credential refresh, new account, proposal or acceptance was attempted. Current
+generation cannot be claimed from a historical receipt. Generation-bound 3/4/5
+SQL was rendered locally. A Supabase SQL panel was queued for user sign-in.
+The next method requires user-restored authenticated browser access, then a fresh
+read-only gate/schema/owner/invariant preflight and the already approved one-shot
+operator. Approval remains scoped to the existing packet; no new auth, retry or
+production scope is inferred. This is an access prerequisite, not a failed smoke
+attempt. See production-prearmed-access-stop-2026-09-24.json.
