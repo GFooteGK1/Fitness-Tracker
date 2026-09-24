@@ -1,5 +1,11 @@
 # Production artifact and next release decision
 
+**Superseded operational status, September 24:** both migrations and promotion
+completed, but coaching remains paused after a synthetic profile-insert failure.
+Use the [current result](production-cutover-result-2026-09-24.md) and
+[continuation packet](production-cutover-continuation-2026-09-24.md). The text below
+is the historical September 23 preparation record, not current live state.
+
 The approved preparation and staging are complete. The exact artifact is hosted
 as READY deployment `dpl_2tZqnshTDrFR5EDQpgi78dcBNns7`; the custom live domain
 remains on the old deployment. Bounded hosted checks passed after Vercel login:

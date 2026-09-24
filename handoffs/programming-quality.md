@@ -1,10 +1,51 @@
 # SociusFit programming quality — current handoff
 
-Updated: 2026-09-23. Project: Fitness-Tracker/SociusFit. Status: active, partial implementation.
+Updated: 2026-09-24. Project: Fitness-Tracker/SociusFit. Status: active, partial implementation.
 Objective: execute the accepted evidence-conditioned programming QPlan.
 Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
+
+**September 24 production state: both approved migrations are installed and the
+pinned deployment is promoted to all three production aliases. Coaching remains
+paused at generation 1. Do not redeploy, reinstall migrations or resume blindly.**
+
+Greg approved the exact cutover packet. Fresh recovery passed all 94 scopes,
+selected catalog/security and ICU checks; exporter/restore cleanup is verified.
+Both exact migration ledger hashes, 14 functions/16 triggers and the fixed two
+accepted-plan hashes passed. Build/aliases/redirects/31bindings match. A page
+comparison error (server HTML ten scripts versus earlier browser nine) was
+reconciled read-only by exact pinned-tar HTML and asset hashes; original failure
+is preserved. Preparation checkpoint e9555ce passed CI3499/19skipped/26mobile.
+
+One synthetic Auth account and identity were created. The one profile upsert
+failed400/23502 because the pre-existing BEFORE INSERT trigger unconditionally
+sets NEW.user_id=auth.uid(); service-role has no athlete subject. Read-only
+reconciliation found all54 owned public scopes empty and no session. No sign-in,
+coaching request, proposal, acceptance, resume, deletion or retry occurred.
+
+The [current execution result](../docs/verification/programming-quality/production-cutover-result-2026-09-24.md)
+and [sanitized receipt](../docs/verification/programming-quality/production-cutover-result-2026-09-24.json)
+are authoritative over the historical preparation notes below. The
+[corrected continuation packet](../docs/verification/programming-quality/production-cutover-continuation-2026-09-24.md)
+is ready for approval: reuse the existing encrypted account/password and frozen
+public anon, sign in first, create profile as owner, then finish the original
+smoke/re-pause/replay/digest/final-resume gates. Three focused tests and independent
+review pass. **No second attempt is authorized yet.** The original packet allows
+no automatic second smoke attempt. No new account/key retrieval/schema change.
+
+Release issue i40.11 remains in progress. Fixture gap is tracked as i40.12.
+Private backup: backup-20260924111117-678fe2da; locale: locale-20260924111249-92cb2a35;
+restore: restore-e7e23977-df8. Raw IDs, credentials and responses are encrypted.
+Operator scripts/evidence are retained under output/app-quality-release/cutover-20260924;
+continuation helper SHA6d9b780644f6c5385934c2404469ee929da2af768d79b61798a79d4463364285.
+The [execution investigation](investigations/programming-quality-cutover-execution.md)
+preserves all failures and fixes. Local evidence persistence succeeded on the
+third bounded method; do not restart the two failed CUA private-folder methods.
+Fresh production preflight is required after the next approval. The old app is
+incompatible after revision; keep verified pause on any unresolved failure.
+
+## Historical September 23 preparation
 
 September 23 follow-up: Greg approved staging, and the exact retained source
 `93539b0` artifact is now hosted as `dpl_2tZqnshTDrFR5EDQpgi78dcBNns7`, READY.
