@@ -1,5 +1,9 @@
 # Corrected continuation: profile passed, coaching paused
 
+**Historical result.** The subsequent approved pre-armed opening also stopped
+before HTTP. Coaching is now paused at generation 5. See the
+[September 25 result](production-prearmed-result-2026-09-25.md).
+
 Greg approved the corrected continuation on September 24. The existing synthetic
 account signed in, created its profile as the authenticated owner, and returned
 an empty weekly program. The deliberate paused create returned the expected 503.

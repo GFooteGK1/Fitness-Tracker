@@ -1,29 +1,42 @@
 # SociusFit programming quality — current handoff
 
-Updated: 2026-09-24. Project: Fitness-Tracker/SociusFit. Status: active, partial implementation.
+Updated: 2026-09-25 UTC (September 24 Chicago). Project: Fitness-Tracker/SociusFit. Status: active, partial implementation.
 Objective: execute the accepted evidence-conditioned programming QPlan.
 Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
 
-**September 24, 13:31 UTC: pre-armed packet APPROVED; blocked on signed-in SQL
-browser access. The one attempt is unused.** Local session expiry is September
-25, 11:58:50 UTC, so no sign-in/refresh of the synthetic account is needed now.
-Fresh Vercel metadata passed; cccdcf4 CI35997751350 passed. Three browser-control
-timeouts exhausted the connection recovery cycle. Chrome is now browser ID 1;
-ID 2 is the Codex browser, which is signed out of Supabase. Do not reuse the old
-numeric browser ID as proof of Chrome. The Supabase SQL URL was queued in the
-Codex right panel for user sign-in. Restore access, refresh schema/ledger, owner
-scope, original fixed plan hashes and paused generation 3, then continue the
-existing approved attempt. No new production approval is needed for that same
-scope. No database read, gate mutation or pre-armed operator invocation occurred
-in this turn. Last independently verified gate remains the historical generation
-3 read at 12:06:12 UTC; its current state must be refreshed before execution.
+**September 25, 02:47 UTC: coaching paused at generation 5; new attended method
+awaits approval.** The user restored the signed-in Chrome SQL tab. The approved
+pre-armed opening committed 3-to-4, but a premature UI assertion returned before
+publishing the helper signal. Root contained 4-to-5; no create/accept HTTP was sent.
+The native helper exited1 after its five-minute wait and must not be relaunched.
+All 66 owner scope counts, revision 0 and both original fixed-plan hashes match.
+Both exact migrations and pinned build remain installed; the release is incomplete.
+The original 60/90-second containment timing was not demonstrated. See the
+[current result](../docs/verification/programming-quality/production-prearmed-result-2026-09-25.md).
 
-Prepared SQL files: `output/app-quality-release/cutover-20260924/prearmed-open.sql`,
-`prearmed-repause.sql`, `prearmed-final-resume.sql` (expected generations 3, 4, 5).
-These are rendered only, not executed. See the
-[access-stop receipt](../docs/verification/programming-quality/production-prearmed-access-stop-2026-09-24.json).
+The one-opening authorization is used. The concrete
+[attended approval packet](../docs/verification/programming-quality/production-cutover-attended-approval-2026-09-25.md)
+encloses open/read/signal/helper observation/re-pause in one CUA invocation with
+finally-based containment and a 55-second invocation budget. It uses prep5/open6/
+pause7/final8, distinct markers and exact existing frozen inputs. Local tests and
+independent review cover delayed/stale result rendering, late openings and bounded
+clock catch-up. The reviewed shared read-only adapter qualified live whilepaused5;
+its opening and containment paths remain unexecuted. All 28 focused tests passed
+and independent review found no remaining blocker. No credential refresh/new
+account/key read or new production attempt is authorized yet. Session expires
+September 25 11:58:50 UTC; refresh its local lifetime check before any approved launch.
+
+New ignored artifacts: `output/app-quality-release/cutover-20260924/attended-*`.
+Do not use old `prearmed-*` SQL/markers. Preserve all earlier failures. The
+[preparation receipt](../docs/verification/programming-quality/production-attended-preparation-2026-09-25.json)
+records exact artifact hashes and qualification evidence. Fresh preflight required
+before an approved launch. Last checkpoint before these evidence edits was
+c4a8ed8 with CI36006358927 SUCCESS. Beads i40.11 remains in_progress; i40.12 remains open.
+The 12-file operator code archive is byte-verified and saved in the existing
+private recovery directory as `cutover-attended-operators-20260925-v2.zip`, SHA256
+`0e51ad8dd1e74c8df6cba70535f6cb3c39768163994aec59411194ded7815789`.
 
 ## Previous continuation result
 

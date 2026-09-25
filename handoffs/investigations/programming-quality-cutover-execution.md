@@ -1,6 +1,6 @@
 # Approved cutover execution investigation
 
-Current state: Greg approved the revised pre-armed packet. The attempt remains unused because signed-in SQL browser access is unavailable. Last verified database state is paused generation 3 at 12:06:12 UTC; no database read or mutation occurred in the latest approval turn. Restore user browser access and refresh all required preflight before using the existing approval. Both migrations and the pinned build were previously verified installed; fresh 13:28 platform metadata passed. The sections below preserve execution history.
+Current state: blocked; revised method preparation and approval required. The approved pre-armed opening was used once (3 to 4), then contained at paused generation 5, independently verified September 25 02:37:07 UTC. The one-shot helper sent no HTTP and expired waiting for its unpublished signal. Both migrations and the pinned build remain installed. Current pre-armed cycle: one of one authorized attempts used; no automatic retry. Earlier provisioning, freshness and browser-access failures below remain part of cumulative history. The sections below preserve execution history.
 
 ## 2026-09-24: private rendered-evidence transport
 
@@ -104,3 +104,45 @@ read-only gate/schema/owner/invariant preflight and the already approved one-sho
 operator. Approval remains scoped to the existing packet; no new auth, retry or
 production scope is inferred. This is an access prerequisite, not a failed smoke
 attempt. See production-prearmed-access-stop-2026-09-24.json.
+
+## September 25: pre-armed opening committed; UI completion assertion raced
+
+The user supplied a logged-in Chrome SQL tab. Fresh read-only platform,
+schema/ledger, all 66 synthetic-owner scope counts and original fixed two-plan
+hashes passed. The existing synthetic session still covered the execution window.
+No sign-in, key retrieval, new account or schema/deployment change occurred.
+
+Hypothesis: completing private preparation before READY and publishing the fresh
+open readback in one browser invocation would avoid the prior freshness failure.
+The reviewed helper saved its new exclusive marker at 02:32:21.522 UTC and
+reported READY with zero network calls. The exact reviewed open SQL was submitted
+once. An immediate AX assertion expected `row false 4` while Supabase was still
+rendering the result and raised `Open commit result not verified`. It returned
+before the independent gate read and signal publication. Context compaction then
+delayed containment. A later AX observation showed the committed `false 4` result;
+the root submitted the already prepared separate re-pause exactly once.
+
+Re-pause committed 02:36:13.270170 UTC. Independent read verified true/generation5
+at 02:36:25.118853 UTC and the full owner reconciliation at 02:37:07.188415 UTC.
+No independent open timestamp was captured; compliance with the approved 60/90s
+limits is not established. Other athletes could write while open. This is a
+failed execution-control check, not a claim that the SQL transaction failed.
+
+The native helper exited1 at 02:37:21.967 UTC with authenticated
+`prepared-readiness-wait-expired`. The signal file and all create/accept response
+and success artifacts are absent. Source order plus authenticated evidence proves
+zero helper HTTP dispatch. All owner scope counts, context revision0 and original
+two immutable plan hashes are unchanged. No replay or final resume occurred.
+Evidence: `output/app-quality-release/cutover-20260924/prearmed-stop-reconciliation.json`,
+`prearmed-contained-gate.json`, authenticated encrypted before/after owner evidence,
+and the tracked `production-prearmed-result-2026-09-25.json` receipt.
+
+Independent review confirmed the asynchronous completion race and that the used
+one-opening packet does not authorize another opening even with zero HTTP.
+The correction must wait for terminal query state and enclose open, readback,
+signal, helper observation and containment in one invocation with finally-based
+containment. Start the deadline before submitting open; never repeat a mutation
+because its result is delayed. Qualify the actual adapter with read-only SQL while
+paused, then request approval only after the concrete method survives review.
+No further production opening is authorized. Browser/tool cancellation remains
+a limitation and must not be presented as a guaranteed server-side timeout.

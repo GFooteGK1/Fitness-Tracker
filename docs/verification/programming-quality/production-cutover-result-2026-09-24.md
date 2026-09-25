@@ -3,7 +3,8 @@
 **Historical first-attempt result.** The corrected continuation was subsequently
 approved and executed. Profile provisioning and paused rejection passed; the
 create/accept operator stopped before HTTP. Current coaching state is paused at
-generation 3. See the [current result](production-continuation-result-2026-09-24.md).
+generation 5 after the subsequent pre-armed attempt. See the
+[current result](production-prearmed-result-2026-09-25.md).
 
 Greg approved the exact September 23 cutover packet on September 24. Both pinned
 migrations committed and passed exact catalog/ledger verification. The approved

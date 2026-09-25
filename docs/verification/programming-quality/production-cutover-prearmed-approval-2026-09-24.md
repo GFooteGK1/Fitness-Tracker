@@ -1,6 +1,14 @@
 # One pre-armed create/accept attempt
 
-**Approved by Greg on September 24; attempt still unused.** At 13:27 UTC the
+**Approved by Greg on September 24; opening used and attempt stopped.** The
+user restored browser access. The generation-3-to-4 opening committed; a browser
+completion assertion failed before signal publication. Coaching was re-paused at
+generation 5, and no create/accept HTTP was sent. See the
+[September 25 result](production-prearmed-result-2026-09-25.md). Do not reuse this
+packet or its operator for another opening. The earlier access stop and original
+approved scope below are retained as history.
+
+**Historical access stop.** At 13:27 UTC the
 encrypted session was verified valid through September 25, 11:58:50 UTC. Fresh
 platform preflight and checkpoint CI passed. The signed-in SQL browser connection
 could not be restored; the Codex browser is signed out of Supabase. No operator
@@ -9,7 +17,7 @@ Restore browser access, refresh the required live preflight, then continue this
 same approved scope. See the [access-stop receipt](production-prearmed-access-stop-2026-09-24.json).
 The original proposal below is retained as the approved scope.
 
-**Proposed only. Coaching is paused at generation 3.** The same synthetic account
+**Original proposal (subsequently approved and attempted).** The same synthetic account
 now has its profile, session and context revision zero. No program, proposal or
 prescribed session exists. The [latest result](production-continuation-result-2026-09-24.md)
 records the completed provisioning and paused rejection, the local timing stop,
@@ -83,4 +91,4 @@ acceptance; stale/wrong-generation evidence sends no request; and an acceptance
 error signals re-pause before saving/validation. Original-plan comparisons reject
 changed, missing, duplicate and extra rows. Syntax check passed. Independent
 review found no blocker. These tests do not establish production latency or
-database containment. No pre-armed attempt has been executed.
+database containment. The later attempted execution is recorded in the result above.
