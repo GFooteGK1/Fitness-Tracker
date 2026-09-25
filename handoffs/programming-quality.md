@@ -6,6 +6,21 @@ Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
 
+**September 25, 03:09 UTC: attended packet APPROVED, attempt unused; browser
+control unavailable.** Three control requests timed out: retained-tab lookup,
+surface inventory, and a fresh tab on verified Chrome. Browser metadata still
+lists Chrome ID2, but that is not proof that control works. Do not repeat this
+exhausted connection cycle without restored access. No SQL query, gate mutation,
+receiver launch or smoke HTTP occurred in this approval turn. The last database
+read remains the historical paused5 qualification below. Fresh platform preflight
+passed seven GETs; checkpoint 0b98ab0 CI36088244299 passed. The existing session
+remains valid to September 25 11:58:50 UTC; attended markers are absent and all
+12 reviewed artifact hashes match. Restore browser access, refresh the required
+preflight, then execute the existing approved packet without asking again.
+See [access-stop evidence](../docs/verification/programming-quality/production-attended-access-stop-2026-09-25.json).
+
+## Previous attempt and prepared correction
+
 **September 25, 02:47 UTC: coaching paused at generation 5; new attended method
 awaits approval.** The user restored the signed-in Chrome SQL tab. The approved
 pre-armed opening committed 3-to-4, but a premature UI assertion returned before

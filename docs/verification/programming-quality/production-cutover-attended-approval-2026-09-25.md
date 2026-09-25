@@ -1,9 +1,17 @@
-# One attended smoke interval — proposed, not approved
+# One attended smoke interval — approved, awaiting browser access
+
+**Greg approved this packet on September 24 Chicago time (September 25 UTC).**
+The attempt remains unused. At 03:09 UTC, platform preflight and checkpoint CI
+passed, the existing session was valid, and both attended attempt/failure markers
+were absent. Three browser-control requests timed out before any SQL or receiver
+launch. Restore browser control, refresh the required preflight, and continue this
+same approval. No repeat approval is needed for the unchanged scope. See the
+[access-stop receipt](production-attended-access-stop-2026-09-25.json).
 
 **Coaching remains paused at generation 5.** The previous opening was used and
 the smoke sent no HTTP. Its [result](production-prearmed-result-2026-09-25.md)
 records the failure, containment and unchanged original plans. This packet
-requests one corrected opening on Supabase `auolnfwetmfcwhtvakzy` and the existing
+authorizes one corrected opening on Supabase `auolnfwetmfcwhtvakzy` and the existing
 production deployment `dpl_2tZqnshTDrFR5EDQpgi78dcBNns7`.
 
 ## Concrete method
@@ -83,6 +91,6 @@ independently reviewed; they have not been run in this new method.
 
 The prior approved execution sheet says **"Do not issue a second installation,
 backup, restore, promotion or smoke attempt automatically."** Its specific
-generation3-to-4 opening has been used. Approval of this packet would authorize
+generation3-to-4 opening has been used. Greg's approval of this packet authorizes
 the single generation5-to-6 opening and the bounded continuation above; it does
 not authorize further retries.

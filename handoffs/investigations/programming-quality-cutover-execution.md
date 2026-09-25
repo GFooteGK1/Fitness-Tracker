@@ -1,6 +1,6 @@
 # Approved cutover execution investigation
 
-Current state: blocked; revised method preparation and approval required. The approved pre-armed opening was used once (3 to 4), then contained at paused generation 5, independently verified September 25 02:37:07 UTC. The one-shot helper sent no HTTP and expired waiting for its unpublished signal. Both migrations and the pinned build remain installed. Current pre-armed cycle: one of one authorized attempts used; no automatic retry. Earlier provisioning, freshness and browser-access failures below remain part of cumulative history. The sections below preserve execution history.
+Current state: attended method approved, blocked on restored browser control; its attempt remains unused. Three browser-control requests timed out September 25 03:06-03:08 UTC before any SQL or receiver invocation. Last database read is historical paused5 at02:47:16 UTC. The preceding pre-armed opening was used once (3 to4) and contained at5; its helper sent no HTTP. Both migrations and the pinned build remain installed. Earlier failures below remain cumulative history. Resume only after restored browser access and fresh required preflight; the unchanged attended scope needs no new approval.
 
 ## 2026-09-24: private rendered-evidence transport
 
@@ -146,3 +146,28 @@ because its result is delayed. Qualify the actual adapter with read-only SQL whi
 paused, then request approval only after the concrete method survives review.
 No further production opening is authorized. Browser/tool cancellation remains
 a limitation and must not be presented as a guaranteed server-side timeout.
+
+## September 25: attended approval received; browser transport unavailable
+
+Greg approved the concrete attended packet. Attempt1 to bind the user-supplied
+Supabase SQL URL in Chrome timed out after 30 seconds and reset the kernel.
+Attempt2 to discover live surfaces also timed out after 30 seconds. The initial
+reference to a previous kernel variable failed locally before any browser action;
+it did not send SQL or mutate browser state.
+
+Reassessment: documented troubleshooting says stale tabs may require a fresh tab
+on the same browser. Browser-only metadata succeeded and identified Chrome ID2.
+Attempt3 created a fresh tab at the same approved URL on that verified Chrome;
+it too timed out after 30 seconds and reset the kernel. Exact sanitized error:
+`js execution timed out; kernel reset, rerun your request`. Stop this control
+recovery cycle. Metadata presence does not establish working control. No further
+control retry is permitted without changed connection evidence.
+
+Seven independent fixed Vercel metadata GETs passed at 03:08:10 UTC. Checkpoint
+0b98ab0 CI36088244299 passed. Local authenticated session inspection at 03:09:07 UTC
+confirmed expiry11:58:50 UTC, sufficient lifetime, and absent attended attempt and
+failure markers. All 12 approved artifact hashes match. No SQL, gate mutation,
+receiver launch, HTTP smoke, credentials, schema or deployment action occurred.
+The approved attended attempt remains unused. User-restored Chrome control,
+followed by fresh required preflight, is the next prerequisite; repeat production
+approval is not needed for the unchanged packet.
