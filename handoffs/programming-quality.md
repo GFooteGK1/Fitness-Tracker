@@ -1,10 +1,42 @@
 # SociusFit programming quality — current handoff
 
-Updated: 2026-09-25 UTC (September 24 Chicago). Project: Fitness-Tracker/SociusFit. Status: active, partial implementation.
+Updated: 2026-09-25 UTC and Chicago. Project: Fitness-Tracker/SociusFit. Status: active, partial implementation.
 Objective: execute the accepted evidence-conditioned programming QPlan.
 Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
+
+**September 25, 12:56 UTC: production coaching writes resumed at generation 8.**
+The approved release cutover is complete. Final resume 7-to-8 committed at
+12:55:48.978981 UTC; independent readback at 12:56:06.356958 UTC verified
+`paused:false`, generation 8 on the exact project and pinned deployment.
+See the [attended release result](../docs/verification/programming-quality/production-attended-result-2026-09-25.md)
+and [sanitized receipt](../docs/verification/programming-quality/production-attended-result-2026-09-25.json).
+
+The separately approved same-account session renewal passed. The attended
+controller opened 5-to-6 once, the helper created and accepted the frozen plan
+with HTTP 201/200, and re-pause 6-to-7 was independently verified within 10.462
+seconds of opening submission. Paused replay returned HTTP 200 with the exact
+accepted identity. All seven full-row count/digest pairs, owner state, exact
+session dates/fingerprint, revision zero and both original fixed plan hashes
+passed. No smoke or gate mutation was retried.
+
+Fresh final checks passed for all three aliases, the exact build and sampled
+asset bytes, both redirects, unchanged 31 bindings, and all 14 functions/16
+triggers. Checkpoint e16c2f2 CI36134389423 and app93539b0 CI35930249161 passed.
+The retained fresh recovery matched 94 scopes with authenticated archive,
+selected catalog/locale checks and verified exporter/restore cleanup.
+
+This completes the hosted release gate, not the broader programming-quality
+QPlan. Programming quality and remaining plan work are still partial; numerical
+policy remains disabled and PR #84 remains draft. Preserve the synthetic records
+and all private evidence. No merge, deletion, new paid resource or numerical
+activation was included. Earlier failures and the earlier unproven 60/90-second
+interval remain historical evidence; the successful interval does not erase them.
+The external board remains unmapped; no board update was saved. Beads remains the
+task source of truth; this handoff update does not change issue status.
+
+## Historical session-expiry stop
 
 **September 25, 12:14 UTC: IAB connection restored; coaching freshly verified
 paused5.** The synthetic session expired at 11:58:50 UTC. Local inspection found

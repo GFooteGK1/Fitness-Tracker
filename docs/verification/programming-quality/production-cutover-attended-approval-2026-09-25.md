@@ -1,4 +1,10 @@
-# One attended smoke interval — approved, session renewal required
+# One attended smoke interval — approved and completed
+
+**Completed September 25:** the separately approved renewal succeeded, then the
+single attended interval, paused replay and original release gates passed.
+Final resume committed generation 8; an independent read confirmed open state
+at 12:56:06 UTC. See the [completed result](production-attended-result-2026-09-25.md).
+The scope and prior access/session history below are retained as historical evidence.
 
 **September 25, 12:14 UTC: browser access restored; coaching verified paused5.**
 The retained test-account session expired at 11:58:50 UTC before reconnection.

@@ -1,4 +1,10 @@
-# Test-account session renewal — proposed amendment
+# Test-account session renewal — approved and completed
+
+**Completed September 25:** Greg approved this amendment. One renewal succeeded
+for the same synthetic account, followed by the approved attended smoke, paused
+replay and final resume. Coaching was independently verified open at generation 8
+at 12:56:06 UTC. See the [completed result](production-attended-result-2026-09-25.md).
+The proposal below is retained as the exact scope that was approved.
 
 **Browser access is restored. Coaching was independently verified paused at
 generation 5 at 12:14:08 UTC (7:14 a.m. Central).** The automated test-account

@@ -1,10 +1,11 @@
 # Approved cutover execution investigation
 
-Latest state (September 25, 12:14 UTC): browser access restored through Codex IAB.
-One read-only query independently verified paused5. The test-account session is
-expired; the unused attended approval explicitly excludes refresh, so a narrowly
-reviewed renewal amendment is being prepared for approval. No renewal or smoke
-invocation occurred. Earlier connection failures below remain historical evidence.
+Latest state (September 25, 12:56 UTC): approved hosted cutover complete; coaching
+writes independently verified resumed at generation 8. Same-account renewal,
+attended create/accept, re-pause, immutable paused replay and final resume passed.
+The broader QPlan remains partial and numerical policy remains disabled. The
+sections below preserve prior failures and their original authority boundaries;
+the successful execution is appended at the end.
 
 Current state: attended method approved, blocked on restored browser control; its attempt remains unused. Three browser-control requests timed out September 25 03:06-03:08 UTC before any SQL or receiver invocation. Last database read is historical paused5 at02:47:16 UTC. The preceding pre-armed opening was used once (3 to4) and contained at5; its helper sent no HTTP. Both migrations and the pinned build remain installed. Earlier failures below remain cumulative history. Resume only after restored browser access and fresh required preflight; the unchanged attended scope needs no new approval.
 
@@ -201,3 +202,56 @@ account while paused; preserve original evidence and use a distinct renewed
 session name. Review exact receiver/replay lookup copies and focused tests before
 requesting approval of the additional credential action. No production opening,
 HTTP smoke, credential refresh, new account or deployment occurred.
+
+## September 25: approved renewal and attended release completed
+
+Greg approved the narrow session-renewal amendment. One refresh request used the
+same encrypted test account and retained public anon input. Authenticated private
+proof verified HTTP 200, same owner, exact validated returned session and expiry,
+and preservation of the original session. Separate receiver/replay copies changed
+only the saved-session lookup. No new account, password, admin-key retrieval or
+automatic credential refresh was used.
+
+Fresh platform and schema preflight passed. The attended receiver completed its
+private preparation while paused at generation 5. The reviewed controller then
+submitted one 5-to-6 opening, published the independently observed fresh gate
+attestation, and observed the helper's re-pause signal. Create returned HTTP 201;
+first acceptance returned HTTP 200. Authenticated response checks verified the
+frozen key, accepted identity and all three session dates. One 6-to-7 re-pause
+was independently verified within 10.462 seconds of opening submission;
+containment began after 6.690 seconds. No mutation or HTTP retry occurred.
+The controller signal alone was not treated as proof of acceptance.
+
+Independent SQL owner checks and authenticated private comparisons verified the
+accepted program/plan/proposal joins, exact statuses, frozen fingerprint/window,
+context revision zero and expected seven scope counts. The original two fixed
+plan hashes still matched the encrypted pre-revision baseline. A single paused
+replay returned HTTP 200 with exactly the original accepted identity. Before and
+after replay both showed paused generation 7; all seven full-row count/digest
+pairs and the entire owner state were unchanged. Replay proof completed at
+12:55:09 UTC against the SQL readback at 12:53:26.407021 UTC.
+
+Final independent read-only gates passed: exact pinned deployment and all three
+aliases, unchanged 31 bindings, exact canonical HTML/build and sampled asset
+hashes, both redirects, and all 14 function/16 trigger catalog identities.
+Checkpoint e16c2f2 CI36134389423 and unchanged app93539b0 CI35930249161 were
+confirmed successful. Retained private recovery receipts directly confirmed all
+94 table scopes, authenticated archive, selected catalog match and stopped,
+verified restore cleanup. Original exporter cleanup and same paused-generation
+capture receipts remained valid; no new backup or restore was performed.
+
+After those gates passed, root submitted final resume 7-to-8 once. It committed
+at 12:55:48.978981 UTC, and independent readback at 12:56:06.356958 UTC verified
+`paused:false`, generation 8. The maintenance duration was a soft limit, not
+permission to skip gates or an automatic resume deadline. The earlier failed
+interval's timing remains unproven; this successful interval does not change it.
+
+Evidence: [attended result](../../docs/verification/programming-quality/production-attended-result-2026-09-25.md)
+and [sanitized receipt](../../docs/verification/programming-quality/production-attended-result-2026-09-25.json),
+plus retained `attended-interval-result.json`, authenticated acceptance/owner/
+replay proofs, `final-resume-independent-gates.json`, final platform/app/schema
+receipts and `attended-final-resume-readback.json` under the ignored cutover
+directory. Raw owner identities, sessions and state remain encrypted privately.
+Synthetic records and all earlier failure markers are retained. The release is
+complete; the broader QPlan remains partial, numerical policy remains disabled,
+and PR #84 remains draft. No merge, deletion or new paid resource occurred.
