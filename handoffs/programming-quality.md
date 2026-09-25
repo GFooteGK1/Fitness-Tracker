@@ -6,6 +6,20 @@ Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
 
+**September 25, 12:14 UTC: IAB connection restored; coaching freshly verified
+paused5.** The synthetic session expired at 11:58:50 UTC. Local inspection found
+both attended attempt/failure markers absent. The approved attended attempt is
+still unused, but its explicit no-refresh scope prevents automatic renewal.
+The [narrow amendment](../docs/verification/programming-quality/production-session-renewal-approval-2026-09-25.md)
+prepares one existing-token refresh and separate session-lookup copies of the
+receiver and paused replay. Approval is needed only for that added renewal and
+session consumption; all original smoke limits remain. No auth refresh, smoke
+HTTP, gate mutation, new account or deployment occurred in this turn. Current
+signed-in browser is Codex IAB ID1, SQL tab2 at the user-provided project. Use
+fresh browser context next turn rather than historical numeric identity alone.
+
+## Previous browser access stop
+
 **September 25, 03:09 UTC: attended packet APPROVED, attempt unused; browser
 control unavailable.** Three control requests timed out: retained-tab lookup,
 surface inventory, and a fresh tab on verified Chrome. Browser metadata still

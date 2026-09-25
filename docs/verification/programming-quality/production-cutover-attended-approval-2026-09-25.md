@@ -1,6 +1,13 @@
-# One attended smoke interval — approved, awaiting browser access
+# One attended smoke interval — approved, session renewal required
 
-**Greg approved this packet on September 24 Chicago time (September 25 UTC).**
+**September 25, 12:14 UTC: browser access restored; coaching verified paused5.**
+The retained test-account session expired at 11:58:50 UTC before reconnection.
+The attended attempt remains unused. Its approval persists, but the explicit
+no-refresh limit below requires approval of the narrow
+[session-renewal amendment](production-session-renewal-approval-2026-09-25.md)
+before a usable test session can be obtained. No refresh or smoke was attempted.
+
+**Earlier access stop: Greg approved this packet on September 24 Chicago time (September 25 UTC).**
 The attempt remains unused. At 03:09 UTC, platform preflight and checkpoint CI
 passed, the existing session was valid, and both attended attempt/failure markers
 were absent. Three browser-control requests timed out before any SQL or receiver

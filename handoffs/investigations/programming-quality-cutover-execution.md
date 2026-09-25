@@ -1,5 +1,11 @@
 # Approved cutover execution investigation
 
+Latest state (September 25, 12:14 UTC): browser access restored through Codex IAB.
+One read-only query independently verified paused5. The test-account session is
+expired; the unused attended approval explicitly excludes refresh, so a narrowly
+reviewed renewal amendment is being prepared for approval. No renewal or smoke
+invocation occurred. Earlier connection failures below remain historical evidence.
+
 Current state: attended method approved, blocked on restored browser control; its attempt remains unused. Three browser-control requests timed out September 25 03:06-03:08 UTC before any SQL or receiver invocation. Last database read is historical paused5 at02:47:16 UTC. The preceding pre-armed opening was used once (3 to4) and contained at5; its helper sent no HTTP. Both migrations and the pinned build remain installed. Earlier failures below remain cumulative history. Resume only after restored browser access and fresh required preflight; the unchanged attended scope needs no new approval.
 
 ## 2026-09-24: private rendered-evidence transport
@@ -171,3 +177,27 @@ receiver launch, HTTP smoke, credentials, schema or deployment action occurred.
 The approved attended attempt remains unused. User-restored Chrome control,
 followed by fresh required preflight, is the next prerequisite; repeat production
 approval is not needed for the unchanged packet.
+
+## September25: IAB reconnected; retained test session expired
+
+The user reported connected after signing into the in-app Supabase browser.
+Binding the current `/sql/new` tab succeeded. Local authenticated inspection at
+12:13:17 UTC verified the retained synthetic session expired at11:58:50 UTC and
+both attended attempt/failure markers are absent. The latest approval explicitly
+prohibits refresh/sign-in; no credential operation was attempted.
+
+The exact reviewed read-only gate query was filled and clipboard verified, then
+submitted once. A local loop exhausted its15 observation count while the result
+was still rendering and raised `Paused5 not verified`. No SQL was repeated. The
+next AX read showed the completed JSON and the same reader consumed it: paused5,
+commit02:36:13.270170 UTC, readback12:14:08.488910 UTC. This is an observation-loop
+limit in the ad hoc precheck, not failure of SQL or the approved controller. The
+actual controller retains bounded time/polling semantics; do not reuse the ad hoc
+15-read loop for a gate-opening interval.
+
+Browser connection blocker is resolved. Existing session expiry is now the
+limiting prerequisite. Prepare a single refresh-token request for the same test
+account while paused; preserve original evidence and use a distinct renewed
+session name. Review exact receiver/replay lookup copies and focused tests before
+requesting approval of the additional credential action. No production opening,
+HTTP smoke, credential refresh, new account or deployment occurred.
