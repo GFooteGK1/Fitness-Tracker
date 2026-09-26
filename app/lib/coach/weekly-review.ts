@@ -41,6 +41,7 @@ import {
 import type { RollingWeeklyPlanDraft } from './rolling-weekly-plan'
 import type { WeeklyCoverageAssignment } from './weekly-coverage'
 import { evaluateConfirmedOutcome, matchingAssignments, outcomesShareDemand, TARGETED_REVIEW_VERSION, type TargetedGoalReview } from './targeted-review'
+import type { DirectionReconciliation } from './direction-reconciliation'
 
 export type RollingWeeklyReviewReason =
   | 'all_sessions_terminal'
@@ -78,6 +79,7 @@ export interface RollingWeeklyProposalBoundary {
 }
 
 export interface RollingWeeklyReadyReview {
+  directionReconciliation?: DirectionReconciliation
   observationSources?: Array<{ observationId: string; valueId: string }>
   executionSources?: Array<{ observationId: string; workoutId: string; captureRevision: 1; executionRevision: 0 }>
   goalReviews?: TargetedGoalReview[]
@@ -127,6 +129,7 @@ export interface RollingWeeklyPendingReview {
 export type RollingWeeklyReview = RollingWeeklyReadyReview | RollingWeeklyPendingReview
 
 export interface BuildRollingWeeklyReviewInput {
+  directionReconciliation?: DirectionReconciliation
   programId: string
   basePlanVersionId: string
   goalId: string
@@ -215,8 +218,33 @@ export function buildRollingWeeklyReview(
       } else selected.goal.disposition = 'selected'
     }
   }
+  const reconciliation = input.directionReconciliation
+  const reconciliationNeeded = reconciliation !== undefined && reconciliation.status !== 'unchanged'
+  const safetyDecision = mapped.action === 'pause_review' || mapped.action === 'recover'
+  const reconciliationBlocked = reconciliationNeeded && (reconciliation.status !== 'changed' || safetyDecision)
+  if (reconciliationNeeded) {
+    for (const goal of goalReviews) goal.disposition = 'held'
+    if (safetyDecision) {
+      // Preserve the safety finding, but never apply the old direction's
+      // recovery edit to an unconfirmed replacement direction.
+      mapped = { ...mapped, doseChange: null, signalRequest: null,
+        additionalRationale: ['The safety finding takes priority. Resolve it and confirm the current direction before generating another week.'] }
+    } else {
+      mapped = {
+        action: reconciliation.status === 'changed' ? 'shift_emphasis' : 'collect_signal',
+        presentationClass: reconciliation.status === 'changed' ? 'material_change' : 'needs_signal',
+        evidenceStatus: 'insufficient', doseChange: null, signalRequest: null, safetyBoundary: null,
+        additionalRationale: [], missing: [`direction_reconciliation:${reconciliation.status}`]
+      }
+    }
+  }
   const rationale = [
-    ...evaluatorReview.rationale,
+    ...(reconciliationNeeded && safetyDecision ? evaluatorReview.rationale : []),
+    ...(reconciliationNeeded ? [
+      ...reconciliation.reasons,
+      'Performance evidence below reviews the accepted direction; it does not evaluate a replacement goal or authorize a new dose.'
+    ] : []),
+    ...(!reconciliationNeeded || !safetyDecision ? evaluatorReview.rationale : []),
     ...executionRationale(execution),
     ...mapped.additionalRationale
   ]
@@ -227,7 +255,7 @@ export function buildRollingWeeklyReview(
     ...goalReviews.flatMap(goal => goal.missing.map(reason => `${goal.goalId}:${reason}`))
   ])].sort()
   const directionConfirmationRequired = mapped.action === 'shift_emphasis'
-  const generationReady = mapped.action === 'pause_review'
+  const generationReady = reconciliationNeeded ? false : mapped.action === 'pause_review'
     ? false
     : mapped.action === 'shift_emphasis'
       ? false
@@ -237,10 +265,11 @@ export function buildRollingWeeklyReview(
           ? mapped.signalRequest !== null
           : true
   const blockingReasons = [
+    ...(reconciliationNeeded ? reconciliation.reasons : []),
     ...(directionConfirmationRequired
       ? ['Confirm the replacement training emphasis before generating the next week.']
       : []),
-    ...(!generationReady && mapped.action !== 'shift_emphasis' && mapped.action !== 'pause_review'
+    ...(!reconciliationNeeded && !generationReady && mapped.action !== 'shift_emphasis' && mapped.action !== 'pause_review'
       ? ['No safe bounded plan change could be generated from the accepted weekly dose.']
       : []),
     ...(mapped.action === 'pause_review'
@@ -255,6 +284,7 @@ export function buildRollingWeeklyReview(
 
   return {
     status: 'ready',
+    ...(reconciliation ? { directionReconciliation: structuredClone(reconciliation) } : {}),
     executionSources,
     observationSources: [...new Map([input.context, input.recoveryContext].flatMap(context => context?.evidenceSeries.flatMap(series => series.samples) ?? []).filter(sample => included.has(sample.observationId)).map(sample => [sample.observationValueId, { observationId: sample.observationId, valueId: sample.observationValueId }])).values()],
     ...(goalReviews.length ? { goalReviews, targetedReviewVersion: TARGETED_REVIEW_VERSION } : {}),
@@ -282,14 +312,14 @@ export function buildRollingWeeklyReview(
     signalRequest: mapped.signalRequest,
     safetyBoundary: mapped.safetyBoundary,
     proposal: {
-      eligible: mapped.action !== 'pause_review',
-      requiresAcceptance: mapped.action !== 'pause_review',
+      eligible: !reconciliationBlocked && mapped.action !== 'pause_review',
+      requiresAcceptance: !reconciliationBlocked && mapped.action !== 'pause_review',
       activePlanUnchanged: true,
       generationReady,
       directionConfirmationRequired,
       blockingReasons
     },
-    goalMetMaintenance: goalReviews.length ? goalReviews.every(goal => goal.attained) : evaluatorReview.action === 'maintain',
+    goalMetMaintenance: !reconciliationNeeded && (goalReviews.length ? goalReviews.every(goal => goal.attained) : evaluatorReview.action === 'maintain'),
     evaluatorReview
   }
 }
@@ -406,6 +436,7 @@ function readinessReason(
   safetySignals: readonly AdaptationSafetySignal[]
 ): RollingWeeklyReviewReason | null {
   if (safetySignals.some(signal => signal.severity === 'pause')) return 'safety_override'
+  if (input.directionReconciliation && input.directionReconciliation.status !== 'unchanged') return 'athlete_requested'
   if (input.athleteRequestedReview) return 'athlete_requested'
   if (
     execution.plannedSessions > 0
@@ -505,31 +536,17 @@ function mapDecision(
     }
   }
   if (evaluator.action === 'progress') {
-    if (matchingAssignmentIds.length !== 1) return {
-      action: 'collect_signal', presentationClass: 'needs_signal', evidenceStatus: 'insufficient', doseChange: null,
-      signalRequest: null, safetyBoundary: null, additionalRationale: ['The evidence does not identify one supported assignment change. Keep the accepted work unchanged.'],
-      missing: ['exact_assignment_target_unavailable'] }
-    const doseChange = findDoseChange(currentWeek, 'adjust_dose', matchingAssignmentIds)
-    if (!doseChange) {
-      return {
-        action: 'continue',
-        presentationClass: 'same_track',
-        evidenceStatus: 'sufficient',
-        doseChange: null,
-        signalRequest: null,
-        safetyBoundary: null,
-        additionalRationale: ['The accepted dose is already at its validated bound, so the next week holds steady.'],
-        missing: []
-      }
-    }
+    // Detecting an improved outcome does not select or justify a prescription
+    // operation. Preserve the successful accepted work until that separate
+    // decision exists, regardless of how many assignments match the evidence.
     return {
-      action: 'adjust_dose',
-      presentationClass: 'small_adjustment',
+      action: 'continue',
+      presentationClass: 'same_track',
       evidenceStatus: 'sufficient',
-      doseChange,
+      doseChange: null,
       signalRequest: null,
       safetyBoundary: null,
-      additionalRationale: ['One validated dose variable can progress by one bounded step.'],
+      additionalRationale: ['The measured outcome improved. Improvement alone does not justify increasing the prescription; continue the accepted dose until a separate review justifies a specific change.'],
       missing: []
     }
   }

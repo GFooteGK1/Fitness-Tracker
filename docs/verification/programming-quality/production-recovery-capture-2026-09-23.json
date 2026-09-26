@@ -1,0 +1,17 @@
+{
+  "kind": "encrypted_production_logical_capture",
+  "project": "auolnfwetmfcwhtvakzy",
+  "runId": "backup-20260923220856-d35a0ccf",
+  "checkedAt": "2026-09-23T22:09:33.112Z",
+  "archiveCreated": true,
+  "archiveAuthenticated": true,
+  "sourceManifestCreated": true,
+  "productionRestorePerformed": false,
+  "archiveBytes": 1511966,
+  "ciphertextSha256": "6b3d551769515845083a9e93f8415e3f28bdd617921f0ea603938dae94f3795d",
+  "physicalTableScopes": 93,
+  "excludedScopes": 0,
+  "readOnly": true,
+  "keyProtection": "Windows DPAPI CurrentUser",
+  "snapshotConsistency": "shared exported snapshot for archive and included table data; sequence/shared-role limits recorded"
+}

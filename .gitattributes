@@ -1,0 +1,7 @@
+# Preserve the exact migration bytes pinned in the reviewed production packet.
+supabase/migrations/20260923010000_coaching_write_pause.sql text eol=lf
+# This reviewed file has mixed line endings; preserve its exact pinned bytes.
+supabase/migrations/20260921010000_coach_proposal_context_revision.sql -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Frozen operator inputs and verification artifacts must hash identically on checkout.
+scripts/release/cutover-* text eol=lf
+docs/verification/programming-quality/production-cutover-* text eol=lf

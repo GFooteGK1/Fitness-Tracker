@@ -112,14 +112,18 @@ async function rpc(client: SupabaseClient, name: string, args: Record<string, un
   if (result.error) throw Object.assign(Error(result.error.message), result.error)
   return result.data
 }
-async function setup(plan: boolean) {
+async function setup(plan: boolean, databaseTimeZone?: string) {
   const db = await recommendationFixture(), scope = recommendationScope(0)
+  if (databaseTimeZone) await db.query("SELECT set_config('TimeZone', $1, false)", [databaseTimeZone])
   await db.exec('ALTER TABLE daily_targets ENABLE ROW LEVEL SECURITY; CREATE POLICY target_owner ON daily_targets TO authenticated USING(user_id=auth.uid()) WITH CHECK(user_id=auth.uid()); GRANT SELECT,INSERT,UPDATE ON daily_targets TO authenticated;')
   let owner: string = randomUUID(), session: string | null = null, planId: string | null = null
   if (plan) {
     const seed = sqlFile('docs/migrations/verify-atomic-coach-session-completion-migration.sql').split('SET LOCAL ROLE authenticated;')[0]
       .replaceAll(', TRUE)', ', FALSE)').replaceAll('CURRENT_DATE,', 'CURRENT_DATE + 7,')
       .replaceAll('CURRENT_DATE - 2,', 'CURRENT_DATE,').replaceAll('CURRENT_DATE - 1,', 'CURRENT_DATE,')
+      // Match the reader's captured day even when PostgreSQL's local day differs.
+      // Stage dates before immutable accepted prescriptions are inserted.
+      .replaceAll('CURRENT_DATE', `DATE '${scope.localDate}'`)
     await db.exec(seed + ' COMMIT;')
     const setting = async (key: string) => (await db.query<{ v: string }>('SELECT current_setting($1) v', ['atomic_completion_test.' + key])).rows[0].v
     owner = await setting('user_1'); session = await setting('session_as_prescribed'); planId = await setting('plan_1')
@@ -166,10 +170,10 @@ function visible(snapshot: RecommendationSnapshot, onlyId?: string) {
 
 /** Original heldout is exposed engineering development now. Facts alone choose
  * source/transition materialization; expected labels never enter this function. */
-export async function executeEngineeringBoundaryFacts(rule: EngineeringRule, athlete: string, facts: Facts): Promise<EngineeringBoundaryActual> {
+export async function executeEngineeringBoundaryFacts(rule: EngineeringRule, athlete: string, facts: Facts, options: { databaseTimeZone?: string } = {}): Promise<EngineeringBoundaryActual> {
   validateBoundaryFacts(rule, facts)
-  const original = JSON.stringify(facts), f = await setup(rule === 'accepted_plan')
-  const limitations = ['Synthetic actual PostgreSQL/app execution, not hosted or qualified-coach evidence.', 'Symbolic fixture identities map to isolated owner UUIDs. Fixture dates map to the real database day while preserving day differences.', 'Initial audit counters and elapsed lease/day/deadline clock state are staged as fixture prehistory; publication, responses, source writes and outcomes execute actual RPCs.']
+  const original = JSON.stringify(facts), f = await setup(rule === 'accepted_plan', options.databaseTimeZone)
+  const limitations = ['Synthetic actual PostgreSQL/app execution, not hosted or qualified-coach evidence.', 'Symbolic fixture identities map to isolated owner UUIDs. Fixture dates map to the captured application scope day while preserving day differences.', 'Initial audit counters and elapsed lease/day/deadline clock state are staged as fixture prehistory; publication, responses, source writes and outcomes execute actual RPCs.']
   let predicates: Record<string, any> = { numericPolicyEligible: personalizedCoachingCapabilities().initialDosePolicy, athlete, sourceIdentityMap: { ...(facts.planId ? { [String(facts.planId)]: f.planId } : {}), ...(facts.targetId ? { [String(facts.targetId)]: f.owner } : {}) } }, result: ReturnType<typeof visible>
   try {
     if (rule === 'logged_nutrition' && Array.isArray(facts.authorizedChildIds)) {

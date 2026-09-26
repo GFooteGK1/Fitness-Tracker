@@ -1,0 +1,105 @@
+{
+  "kind": "local_preparation_only_not_authorization",
+  "at": "2026-09-25T02:51:40.1272522Z",
+  "files": [
+    {
+      "sha256": "0c3c15234ad9db022df6f1995bc5237f1365f4dbcfaa00a571b99d115a9ac352",
+      "name": "attended-create-accept.mjs"
+    },
+    {
+      "sha256": "5c38dbb82e05ae246ccf1b3197f56a964a1b36c0be8f6cbd2953321dbacebec7",
+      "name": "attended-create-accept.test.mjs"
+    },
+    {
+      "sha256": "c8d879aec6bfbb5cadf3be500775671b6b4bc64a903b8ebfe125ce8bd907dff9",
+      "name": "attended-smoke-orchestration.mjs"
+    },
+    {
+      "sha256": "eaa368f51e1173c2271d5602e96ae7a87907defe00d3fe3929908faf8f48065c",
+      "name": "attended-smoke-orchestration.test.mjs"
+    },
+    {
+      "sha256": "f53848d61063ba08312ffc3b563bcf1d98ef2edae6830a0807daf833477cd496",
+      "name": "attended-smoke-orchestration.md"
+    },
+    {
+      "sha256": "b1836870989bdc4c58170b386feb1d8fe599d9525fdb3f6b244acc52af1bd1e5",
+      "name": "attended-browser-adapter.mjs"
+    },
+    {
+      "sha256": "80b502a798175a9436b6d29074f0463717944c820ddbf8ec059f49dd596a98bf",
+      "name": "attended-browser-adapter.test.mjs"
+    },
+    {
+      "sha256": "0746f69235776b4033369d28f6da471e1c5ca60846a0a9292c1d0056786c589f",
+      "name": "render-attended-gates.mjs"
+    },
+    {
+      "sha256": "d6e6b8282a411257124e0e6ee25e10aad8e116c7851710bc867429116c5a7805",
+      "name": "attended-open.sql"
+    },
+    {
+      "sha256": "41d2f3ff46e61d2c74adf7555c2e14711ff99b9b85bb11bfb1cdbea7aee22812",
+      "name": "attended-repause.sql"
+    },
+    {
+      "sha256": "c82be3c3065f98ef1022fb05304ecf7859420cee5845ba5367cbdfc806353db0",
+      "name": "attended-final-resume.sql"
+    },
+    {
+      "sha256": "a66cb34e9c72411cba5f750e381490362ec146b1cdeec9c9a2abb13aa01689fb",
+      "name": "attended-gate-read.sql"
+    }
+  ],
+  "archive": {
+    "entries": 12,
+    "allEntriesByteVerified": true,
+    "name": "cutover-attended-operators-20260925-v2.zip",
+    "sha256": "0e51ad8dd1e74c8df6cba70535f6cb3c39768163994aec59411194ded7815789",
+    "content": "operator code SQL and tests only; no credentials or private evidence",
+    "privateSavedPath": "C:/Users/foote/AppData/Local/SociusFit/Recovery/cutover-attended-operators-20260925-v2.zip",
+    "savedCopyHashVerified": true
+  },
+  "tests": {
+    "failed": 0,
+    "scope": "injected receiver controller and adapter behaviors",
+    "passed": 28
+  },
+  "independentReview": {
+    "blockingFindingsResolved": true,
+    "reviewer": "plan_review"
+  },
+  "readOnlyQualification": {
+    "at": "2026-09-25T02:47:14.855Z",
+    "readOnly": true,
+    "mutations": 0,
+    "oneSubmission": true,
+    "reads": 7,
+    "intermediateRunningObservations": 6,
+    "durationsMs": [
+      734,
+      195,
+      211,
+      196,
+      184,
+      235,
+      199
+    ],
+    "elapsedMs": 1954,
+    "gate": {
+      "role": "postgres",
+      "paused": true,
+      "database": "postgres",
+      "generation": 5,
+      "readbackAt": "2026-09-25T02:47:16.259173+00:00",
+      "committedAt": "2026-09-25T02:36:13.27017+00:00"
+    },
+    "staleCellProtection": true,
+    "scope": "reviewed shared readGate adapter; open,signal,repause unexecuted"
+  },
+  "priorPrearmedSha256": "d03b83fbbad757b0514713e8db5907560563439a0ce0bbe7fc16e4ca5f88126e",
+  "newReceiverLaunched": false,
+  "newGateOpening": false,
+  "productionMutationQualification": false,
+  "approvalRequired": true
+}

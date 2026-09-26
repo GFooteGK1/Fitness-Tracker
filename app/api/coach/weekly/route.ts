@@ -1,5 +1,7 @@
 import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
+import { fetchCoachContextRevision, parseCoachContextRevision, CoachContextRevisionUnavailableError, CoachContextRevisionConflictError, coachContextConflictMessage, isCoachContextConflict } from '@/app/lib/coach/proposal-context-revision'
+import { fetchCoachingDecisionContext } from '@/app/lib/coach/coaching-decision-context-server'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -11,6 +13,7 @@ import {
 } from '@/app/lib/coach/complete-intake'
 import {
   buildStoredRollingWeeklyIntent,
+  ConfirmedEventDateConflictError,
   isIsoDate,
   isMonday,
   isRecord,
@@ -58,7 +61,7 @@ export async function GET() {
     const [plansResult, reviewsResult, proposalsResult] = await Promise.all([
       supabase
         .from('training_plan_versions')
-        .select('id, version, status, window_start, window_end, sequence_number, intent, accepted_at, created_at')
+        .select('id, version, status, window_start, window_end, sequence_number, intent, input_snapshot, accepted_at, created_at')
         .eq('user_id', user.id)
         .eq('program_id', program.id)
         .eq('plan_mode', 'rolling_weekly')
@@ -98,16 +101,29 @@ export async function GET() {
     if (checks.some(result => result.error)) return apiError('Unable to verify current review sources', 503)
     const invalidated = new Set(checks.filter(result => result.data?.length).map(result => result.reviewId))
     const plans = plansResult.data ?? []
+    let pendingCurrent: typeof pending | null = pending
+    if (pending) {
+      const revisionResult = await supabase.from('coach_context_revisions').select('revision')
+        .eq('user_id', user.id).limit(1)
+      if (revisionResult.error) return apiError('Unable to verify current proposal sources', 503)
+      const currentRevision = parseCoachContextRevision(revisionResult.data?.[0]?.revision ?? 0)
+      const draftRevision = parseCoachContextRevision(plans.find(plan => plan.id === pending.proposed_plan_version_id)?.input_snapshot?.contextRevision)
+      if (draftRevision === null || currentRevision === null || draftRevision !== currentRevision) pendingCurrent = null
+    }
     const rollingProgram = program.program_mode === 'rolling_weekly' ? program : null
     const activePlan = rollingProgram
       ? plans.find(plan => plan.id === program.active_plan_version_id) ?? null
       : null
+    const coachingDecision = activePlan
+      ? await fetchCoachingDecisionContext(supabase, user.id, program.id, activePlan.id)
+      : undefined
     return NextResponse.json({
+      ...(coachingDecision ? { coachingDecision } : {}),
       capabilities: { feedbackV2: personalizedCoachingCapabilities().captureReceiptsV2 },
       mode: 'rolling_weekly',
       program: rollingProgram,
       currentWeek: activePlan,
-      pendingProposal: pending?.weekly_review_id && invalidated.has(pending.weekly_review_id) ? null : pending,
+      pendingProposal: pendingCurrent?.weekly_review_id && invalidated.has(pendingCurrent.weekly_review_id) ? null : pendingCurrent,
       history: {
         plans,
         reviews: reviews.map(r => ({ ...r, sourceInvalidated: invalidated.has(r.id) }))
@@ -147,6 +163,7 @@ export async function POST(request: Request) {
     const idempotencyKey = validIdempotencyKey(body.idempotencyKey)
     if (!idempotencyKey) return apiError('A valid idempotency key is required', 400)
 
+    const contextRevision = await fetchCoachContextRevision(supabase)
     const runtimeContext = await fetchCoachRuntimeContext(supabase, user.id)
     if (!runtimeContext.storageAvailable) return apiError('Coach storage is unavailable', 503)
 
@@ -172,6 +189,7 @@ export async function POST(request: Request) {
     const adaptivePlan = buildAdaptivePlanContract(profile, [result])
     const intent = buildStoredRollingWeeklyIntent(result, adaptivePlan)
     const sourceSnapshot = {
+      contextRevision,
       reason: 'initial_rolling_weekly_proposal',
       planningInput: validated.value,
       goalTargetDate,
@@ -201,6 +219,7 @@ export async function POST(request: Request) {
     })
     if (error) {
       console.error('Initial weekly proposal RPC failed:', { code: error.code })
+      if (isCoachContextConflict(error)) return apiError(coachContextConflictMessage(error), 409)
       if (error.code === '55000') return apiError('An active program already exists', 409)
       if (error.code === '22023') return apiError('Proposal request conflicts with an existing request', 409)
       return apiError('Unable to save the first weekly proposal', 503)
@@ -224,6 +243,9 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('Weekly coach POST error:', error)
+    if (error instanceof CoachContextRevisionUnavailableError) return apiError(error.message, 503)
+    if (error instanceof CoachContextRevisionConflictError) return apiError(error.message, 409)
+    if (error instanceof ConfirmedEventDateConflictError) return apiError(error.message, 409)
     return apiError(
       'Unable to create the first weekly proposal',
       500,

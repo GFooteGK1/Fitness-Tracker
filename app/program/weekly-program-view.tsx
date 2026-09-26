@@ -5,6 +5,8 @@ import type { ActiveCoachProgramSummary } from '@/app/lib/coach/types'
 import type { RollingTrainingDirection } from '@/app/lib/coach/rolling-weekly-contracts'
 import type { RollingWeeklyPlanDraft } from '@/app/lib/coach/rolling-weekly-plan'
 import type { RollingWeeklyReview } from '@/app/lib/coach/weekly-review'
+import type { CoachingDecisionContext } from '@/app/lib/coach/coaching-decision-context'
+import { decodeDirectionReconciliation, type DirectionReconciliation } from '@/app/lib/coach/direction-reconciliation'
 import { getLocalDate, parseDateString } from '@/app/lib/timezone-utils'
 import { ExercisePreferenceNotes } from './exercise-preferences-editor'
 import { PrescriptionBasisDetails } from './prescription-basis-details'
@@ -41,6 +43,7 @@ export interface WeeklyReviewHistoryView {
 }
 
 export interface WeeklyCoachState {
+  coachingDecision?: CoachingDecisionContext
   capabilities?: { feedbackV2: boolean }
   mode: 'rolling_weekly'
   program: {
@@ -124,7 +127,17 @@ export function WeeklyProgramView({
     && session.scheduledDate >= acceptedWeek.windowStart
     && session.scheduledDate <= acceptedWeek.windowEnd
   ))
-  const latestReview = review ?? historyReview(state)
+  const savedDecisionUsable = !state.coachingDecision || state.coachingDecision.status === 'current'
+  const latestReview = review ?? (savedDecisionUsable ? historyReview(state) : null)
+  const liveReviewId = (review as (RollingWeeklyReview & { id?: string }) | null)?.id
+  const liveProposalMatches = review?.status === 'ready' && review.proposal?.eligible
+    && Boolean(liveReviewId) && liveReviewId === proposal?.proposal.reviewDecision?.reviewId
+  const suppliedProposal = proposal && (review ? liveProposalMatches : (!state.coachingDecision
+    || (state.coachingDecision.programId === state.program?.id
+      && state.coachingDecision.basePlanVersionId === state.currentWeek?.id
+      && state.coachingDecision.decision?.proposal.state === 'proposed'
+      && state.coachingDecision.decision.proposal.id === proposal.proposalId
+      && state.coachingDecision.decision.reviewId === proposal.proposal.reviewDecision?.reviewId))) ? proposal : null
 
   if (!acceptedWeek || !state.program) {
     return (
@@ -207,8 +220,9 @@ export function WeeklyProgramView({
       </section>
 
       <CoachReviewSection
+        savedDecision={review ? undefined : state.coachingDecision}
         review={latestReview}
-        proposal={proposal ?? pendingProposal(state)}
+        proposal={review ? suppliedProposal : savedDecisionUsable ? suppliedProposal ?? pendingProposal(state) : null}
         reviewing={reviewing}
         creatingProposal={creatingProposal}
         accepting={accepting}
@@ -218,6 +232,8 @@ export function WeeklyProgramView({
         onRequestDirectionChange={onRequestDirectionChange}
       />
 
+      <AcceptedDecisionDetails context={state.coachingDecision} />
+
       <TrainingDirection direction={state.program.direction} />
 
       <WeeklyHistory state={state} />
@@ -226,6 +242,7 @@ export function WeeklyProgramView({
 }
 
 function CoachReviewSection({
+  savedDecision,
   review,
   proposal,
   reviewing,
@@ -236,6 +253,7 @@ function CoachReviewSection({
   onAccept,
   onRequestDirectionChange
 }: {
+  savedDecision?: CoachingDecisionContext
   review: RollingWeeklyReview | WeeklyReviewHistoryView | null
   proposal: WeeklyProposalView | null
   reviewing: boolean
@@ -248,11 +266,15 @@ function CoachReviewSection({
 }) {
   const presentation = reviewPresentation(review)
   const action = reviewAction(review)
+  const reconciliation = reviewDirectionReconciliation(review)
+  const directionBlocked = reconciliation && (!['unchanged', 'changed'].includes(reconciliation.status)
+    || (reconciliation.status === 'changed' && action === 'recover'))
   return (
     <section className={`rounded-2xl border p-5 shadow-sm sm:p-6 ${presentation.className}`}>
       <p className="text-xs font-semibold uppercase tracking-[0.18em]">Coach review and next week</p>
       <h2 className="mt-2 text-xl font-bold text-gray-950 dark:text-white">{presentation.title}</h2>
       <p className="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-200">{presentation.message}</p>
+      <SavedDecisionDetails context={savedDecision} />
       <GoalReviewDetails value={isLiveReview(review) && review.status === 'ready' ? review.goalReviews : review && 'rationale' in review && !Array.isArray(review.rationale) ? review.rationale.goalReviews : undefined} />
 
       {isLiveReview(review) && review.status === 'ready' && (
@@ -275,8 +297,17 @@ function CoachReviewSection({
         </div>
       )}
 
+      {directionBlocked && <p className="mt-3 text-sm leading-6" role="status">{reconciliation.reasons.join(' ')}</p>}
       {proposal ? (
         <NextWeekProposal proposal={proposal.proposal} />
+      ) : directionBlocked && action !== 'pause_review' ? (
+        <div className="mt-5 flex flex-wrap gap-3">
+          <a className="app-secondary inline-flex items-center" href="#confirmed-training-direction">Review confirmed goals and setup</a>
+          {reconciliation.status === 'confirmation_required' && <button className="app-secondary" type="button" onClick={onRequestDirectionChange}>Confirm training setup</button>}
+          <button className="app-primary" type="button" disabled={reviewing} onClick={() => void onReview()}>
+            {reviewing ? 'Reviewing your week…' : 'Review this week again'}
+          </button>
+        </div>
       ) : action === 'shift_emphasis' ? (
         <button
           type="button"
@@ -323,6 +354,49 @@ function CoachReviewSection({
         </button>
       )}
     </section>
+  )
+}
+
+function AcceptedDecisionDetails({ context }: { context?: CoachingDecisionContext }) {
+  const origin = context?.acceptedOrigin
+  if (!origin) return null
+  return (
+    <details className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+      <summary className="flex min-h-11 cursor-pointer items-center font-semibold">Why this accepted week was chosen</summary>
+      <div className="mt-3 space-y-2 break-words text-sm leading-6">
+        <p>This is the review used to choose your accepted week. It is historical context and does not authorize another week or a new change.</p>
+        {origin.sourceStatus === 'corrected' && <p>Some source records have since been corrected. The accepted week and its original rationale remain unchanged.</p>}
+        {origin.sourceStatus === 'unknown' && <p>Current source validity could not be checked.</p>}
+        {origin.decision.rationale.map((message, index) => <p key={index}>{message}</p>)}
+        {origin.decision.evidence.map((series, index) => <p key={index}>
+          {series.metricId}: baseline {series.baselineAverage ?? 'unknown'}, recent {series.recentAverage ?? 'unknown'} {series.unit}. {series.exposureCount} exposures; protocol {series.protocol.id} v{series.protocol.version}.
+        </p>)}
+        {origin.decision.missing.length > 0 && <p>Limitations recorded: {origin.decision.missing.join('; ')}</p>}
+        {(origin.decision.evidenceSnapshot?.excludedObservations.length ?? 0) > 0 && <p>Excluded from that review: {origin.decision.evidenceSnapshot!.excludedObservations.map(source => source.reason).join('; ')}</p>}
+      </div>
+    </details>
+  )
+}
+
+function SavedDecisionDetails({ context }: { context?: CoachingDecisionContext }) {
+  if (!context || context.status === 'absent') return null
+  if (context.status !== 'current' || !context.decision) return (
+    <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-200" role="status">
+      {context.status === 'context_changed'
+        ? 'Your training information changed after this review. Review this week again before creating a proposal.'
+        : context.status === 'invalidated'
+        ? 'A source used by the saved review changed. Review the corrected evidence before using its recommendation.'
+        : 'The saved review could not be verified for this week. Refresh or create a new review before using its recommendation.'}
+    </p>
+  )
+  return (
+    <details className="mt-3 rounded-xl border border-current/15">
+      <summary className="flex min-h-11 cursor-pointer items-center px-4 py-3 font-semibold">Why this recommendation</summary>
+      <div className="space-y-2 break-words border-t border-current/15 p-4 text-sm leading-6">
+        {context.decision.rationale.map((message, index) => <p key={index}>{message}</p>)}
+        <p>This explains the saved review. New training records or changed goals may need another review. A proposed week takes effect only after acceptance.</p>
+      </div>
+    </details>
   )
 }
 
@@ -423,11 +497,21 @@ function WeeklyHistory({ state }: { state: WeeklyCoachState }) {
   )
 }
 
-function pendingProposal(state: WeeklyCoachState): WeeklyProposalView | null {
+export function pendingProposal(state: WeeklyCoachState): WeeklyProposalView | null {
   if (!state.pendingProposal || Array.isArray(state.history)) return null
+  if (state.coachingDecision) {
+    const context = state.coachingDecision
+    const decision = context.decision
+    if (context.status !== 'current' || context.programId !== state.program?.id
+      || context.basePlanVersionId !== state.currentWeek?.id || !decision
+      || decision.proposal.state !== 'proposed' || decision.proposal.id !== state.pendingProposal.id
+      || decision.proposal.proposedPlanVersionId !== state.pendingProposal.proposed_plan_version_id
+      || decision.reviewId !== state.pendingProposal.weekly_review_id) return null
+  }
   const plan = state.history.plans.find(item => item.id === state.pendingProposal?.proposed_plan_version_id)
   const proposal = plan?.intent.weekly_plan
   if (!proposal) return null
+  if (state.coachingDecision && proposal.reviewDecision?.reviewId !== state.coachingDecision.decision?.reviewId) return null
   return {
     proposalId: state.pendingProposal.id,
     idempotencyKey: state.pendingProposal.idempotency_key,
@@ -435,8 +519,18 @@ function pendingProposal(state: WeeklyCoachState): WeeklyProposalView | null {
   }
 }
 
-function historyReview(state: WeeklyCoachState): WeeklyReviewHistoryView | null {
+export function historyReview(state: WeeklyCoachState): WeeklyReviewHistoryView | null {
   if (Array.isArray(state.history)) return null
+  if (state.coachingDecision) {
+    const context = state.coachingDecision
+    const decision = context.decision
+    if (context.status !== 'current' || context.programId !== state.program?.id
+      || context.basePlanVersionId !== state.currentWeek?.id || !decision) return null
+    return state.history.reviews.find(review => review.id === decision.reviewId
+      && review.base_plan_version_id === context.basePlanVersionId && !review.sourceInvalidated
+      && review.action === decision.action && review.presentation_class === decision.presentationClass
+      && review.evidence_status === decision.evidenceStatus) ?? null
+  }
   return state.history.reviews.find(review => (
     review.base_plan_version_id === state.currentWeek?.id
   )) ?? null
@@ -478,6 +572,12 @@ function reviewPresentation(review: RollingWeeklyReview | WeeklyReviewHistoryVie
     message: 'The coach will use completed work, missed work, session feedback, and compatible performance evidence.',
     className: 'border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
   }
+}
+
+export function reviewDirectionReconciliation(review: RollingWeeklyReview | WeeklyReviewHistoryView | null): DirectionReconciliation | null {
+  if (!review) return null
+  if ('status' in review) return review.status === 'ready' ? decodeDirectionReconciliation(review.directionReconciliation) : null
+  return decodeDirectionReconciliation(review.rationale.directionReconciliation)
 }
 
 function reviewAction(review: RollingWeeklyReview | WeeklyReviewHistoryView | null): string | null {

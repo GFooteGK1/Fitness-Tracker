@@ -25,19 +25,29 @@ export interface FactualPlanningContext {
 const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value))
 const MAX_WORKOUTS = 100
 const MAX_REVISIONS = 400
-const canonicalFields = 'id,user_id,workout_date,blocks,created_at,updated_at,execution_revision,execution_source,execution_status'
+const canonicalFields = 'id,user_id,workout_date,blocks,rpe,created_at,updated_at,execution_revision,execution_source,execution_status'
 
 /** Raw timezone convention. Missing new columns alone allow a legacy current-state read. */
 export async function fetchFactualPlanningContext(supabase: SupabaseClient, userId: string, input: {
   startDate: string; asOf?: string; tzOffset?: number; mode?: FactualPlanningContext['mode']
 }): Promise<FactualPlanningContext> {
+  return buildFactualPlanningContext(await fetchPlanningHistorySnapshot(supabase, userId, input))
+}
+
+/** Shared bounded, owned source read; consumers retain separate interpretation authority. */
+export async function fetchPlanningHistorySnapshot(supabase: SupabaseClient, userId: string, input: {
+  startDate: string; asOf?: string; tzOffset?: number; mode?: FactualPlanningContext['mode']; windowDays?: number
+}): Promise<PlanningHistorySnapshot> {
   const asOf = input.asOf ?? new Date().toISOString()
   const tzOffset = input.tzOffset ?? 0
+  const windowDays = input.windowDays ?? 28
+  if (!userId) throw new Error('History needs an owner')
+  if (!Number.isInteger(windowDays) || windowDays < 1 || windowDays > 180) throw new Error('History window must be between 1 and 180 days')
   if (!isValidTimezoneOffset(tzOffset) || !Number.isFinite(Date.parse(asOf))) throw new Error('Invalid history date or timezone')
   if (!validDay(input.startDate)) throw new Error('Invalid history start date')
   const today = formatUTCAsLocalDateWithOffset(asOf, tzOffset)
   const endsOn = input.startDate < today ? input.startDate : today
-  const startsOn = formatUTCAsLocalDateWithOffset(new Date(Date.parse(localDateToUTCStart(endsOn, 0)) - 27 * 86400000).toISOString(), 0)
+  const startsOn = formatUTCAsLocalDateWithOffset(new Date(Date.parse(localDateToUTCStart(endsOn, 0)) - (windowDays - 1) * 86400000).toISOString(), 0)
   const mode = input.mode ?? 'current'
   const query = (columns: string) => supabase.from('workouts').select(columns).eq('user_id', userId)
     .gte('workout_date', startsOn).lte('workout_date', endsOn).lte('created_at', asOf)
@@ -53,21 +63,23 @@ export async function fetchFactualPlanningContext(supabase: SupabaseClient, user
     .eq('user_id', userId).eq('entity_kind', 'workout').lte('captured_at', asOf)
     // Select terminal revisions even when a correction moved the event outside this window.
     .order('revision', { ascending: false }).limit(MAX_REVISIONS + 1) : { data: [], error: null }
-  return buildFactualPlanningContext({ userId, asOf, startsOn, endsOn, mode,
+  return { userId, asOf, startsOn, endsOn, mode,
     workouts: history.error ? [] : (history.data ?? []).slice(0, MAX_WORKOUTS) as unknown as HistoryWorkoutRow[],
     completions: (checkins.data ?? []).slice(0, MAX_WORKOUTS) as HistoryCompletion[],
     revisions: (revisionResult.error ? [] : (revisionResult.data ?? []).slice(0, MAX_REVISIONS)) as ActivityHistoryRevision[],
     available: !history.error && !revisionResult.error && !checkins.error,
     complete: !history.error && !revisionResult.error && !checkins.error && (checkins.data?.length ?? 0) <= MAX_WORKOUTS && (history.data?.length ?? 0) <= MAX_WORKOUTS && (revisionResult.data?.length ?? 0) <= MAX_REVISIONS,
     missing: [...(legacySchema ? ['legacy_capture_provenance_unknown'] : []), ...(history.error ? ['workout_history_unavailable'] : []),
-      ...(revisionResult.error ? ['revision_history_unavailable'] : []), ...(checkins.error ? ['completion_links_unavailable'] : [])] })
+      ...(revisionResult.error ? ['revision_history_unavailable'] : []), ...(checkins.error ? ['completion_links_unavailable'] : [])] }
 }
 
-export function buildFactualPlanningContext(input: {
+export interface PlanningHistorySnapshot {
   userId: string; asOf: string; startsOn: string; endsOn: string; mode: FactualPlanningContext['mode'];
   workouts: HistoryWorkoutRow[]; revisions?: ActivityHistoryRevision[]; completions?: HistoryCompletion[]; available: boolean; complete: boolean;
   missing?: string[]; outsideTraining?: FactualPlanningContext['outsideTraining']
-}): FactualPlanningContext {
+}
+
+export function buildFactualPlanningContext(input: PlanningHistorySnapshot): FactualPlanningContext {
   const resolved = resolveHistorySnapshot({ ...input, revisions: input.revisions ?? [] })
   const missing = [...(input.missing ?? []), ...resolved.issues.map(issue => `${issue.sourceId}:${issue.reason}`)]
   if (!input.complete) missing.push('retrieval_incomplete')

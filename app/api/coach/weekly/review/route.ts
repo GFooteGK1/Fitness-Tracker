@@ -1,5 +1,8 @@
 import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
-import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
+import { fetchDirectionReconciliation } from '@/app/lib/coach/direction-reconciliation-server'
+import { replacementSetupMatches } from '@/app/lib/coach/direction-reconciliation'
+import { fetchCoachContextRevision, CoachContextRevisionUnavailableError, CoachContextRevisionConflictError, coachContextConflictMessage, isCoachContextConflict } from '@/app/lib/coach/proposal-context-revision'
+import { applyConfirmedIntentToProfile, refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
@@ -11,12 +14,15 @@ import {
 } from '@/app/lib/coach/complete-intake'
 import { validateStoredCoachSessionCheckin } from '@/app/lib/coach/execution-feedback'
 import { fetchCoachEvidenceContext } from '@/app/lib/coach/evidence-context'
+import { fetchPerformedWorkContextForCoaching } from '@/app/lib/coach/performed-work-context'
+import { buildSignalEvidenceContext } from '@/app/lib/coach/signal-evidence-context'
 import type {
   CoachExecutionSession,
   CoachSessionCheckinSummary
 } from '@/app/lib/coach/execution-feedback'
 import {
   buildStoredRollingWeeklyIntent,
+  ConfirmedEventDateConflictError,
   isIsoDate,
   isRecord,
   isoTimestamp,
@@ -98,6 +104,7 @@ export async function POST(request: Request) {
       return apiError('Athlete-requested review must be true or false', 400)
     }
     const athleteLocalDate = formatUTCAsLocalDateWithOffset(asOf, tzOffset)
+    const contextRevision = await fetchCoachContextRevision(supabase)
 
     const { data: programs, error: programError } = await supabase
       .from('training_programs')
@@ -142,10 +149,14 @@ export async function POST(request: Request) {
     }
     const goalId = storedIntent.adaptive_programming.goals[0]?.goalId ?? ''
     const targetedReview = personalizedCoachingCapabilities().targetedReview
+      && Boolean(storedIntent.weekly_plan.profileSnapshot.trainingIntent)
 
-    const [context, recoveryContext, runtimeContext, checkinResult] = await Promise.all([
+    const [context, recoveryContext, runtimeContext, checkinResult, directionReconciliation, performedWork] = await Promise.all([
       fetchCoachEvidenceContext(supabase, user.id, {
-        purpose: 'adaptation_review', ...(targetedReview ? {} : { goalId }), asOf, windowDays
+        // Retrieve across confirmed outcomes; the targeted evaluator applies each
+        // exact outcome binding before invoking existing adaptation policy gates.
+        purpose: targetedReview ? 'new_planning' : 'adaptation_review',
+        ...(targetedReview ? {} : { goalId }), asOf, windowDays
       }),
       fetchCoachEvidenceContext(supabase, user.id, {
         purpose: 'general_coaching', asOf, windowDays: Math.min(windowDays, 90)
@@ -157,7 +168,9 @@ export async function POST(request: Request) {
         .eq('user_id', user.id)
         .eq('checkin_type', 'session')
         .in('prescribed_session_id', (sessionResult.data ?? []).map(session => session.id))
-        .order('occurred_at', { ascending: true })
+        .order('occurred_at', { ascending: true }),
+      fetchDirectionReconciliation(supabase, user.id, storedIntent.weekly_plan, nextIsoDate(storedIntent.weekly_plan.windowEnd)),
+      fetchPerformedWorkContextForCoaching(supabase, user.id, { includeCoachContext: true, agentTzOffset: -tzOffset, asOf, windowDays })
     ])
     if (
       context.activePlan?.programId !== program.id
@@ -168,6 +181,7 @@ export async function POST(request: Request) {
       return apiError('The active plan changed; refresh and review again', 409)
     }
     if (checkinResult.error) return apiError('Unable to read weekly session feedback', 503)
+    const signalEvidence = buildSignalEvidenceContext(context, user.id, performedWork)
 
     const sessions = (sessionResult.data ?? []).map(row => ({
       id: row.id,
@@ -188,7 +202,7 @@ export async function POST(request: Request) {
         ...validation.value
       })
     }
-    const review = buildRollingWeeklyReview({
+    const rawReview = buildRollingWeeklyReview({
       programId: program.id,
       basePlanVersionId: planRow.id,
       goalId,
@@ -200,8 +214,10 @@ export async function POST(request: Request) {
       checkins,
       athleteLocalDate,
       athleteRequestedReview: body.athleteRequestedReview === true,
-      targetedReview
+      targetedReview,
+      directionReconciliation
     })
+    const review = { ...rawReview, signalEvidence }
     if (review.status === 'not_ready') {
       return NextResponse.json({ review, activePlanChanged: false }, {
         headers: { 'Cache-Control': 'private, no-store' }
@@ -209,6 +225,9 @@ export async function POST(request: Request) {
     }
 
     const reviewFingerprint = rollingFingerprint({
+      signalEvidence,
+      directionReconciliation,
+      contextRevision,
       programId: program.id,
       basePlanVersionId: planRow.id,
       reviewedAt: review.reviewedAt,
@@ -242,6 +261,9 @@ export async function POST(request: Request) {
       p_missing_requirements: review.missing,
       p_safety_override: review.safetyOverride,
       p_rationale: {
+        signalEvidence,
+        directionReconciliation,
+        contextRevision,
         messages: review.rationale,
         goalMetMaintenance: review.goalMetMaintenance,
         observationSources: review.observationSources,
@@ -265,7 +287,7 @@ export async function POST(request: Request) {
     })
     if (reviewError) {
       console.error('Weekly review RPC failed:', { code: reviewError.code })
-      if (reviewError.code === '40001') return apiError('The active plan changed; refresh and review again', 409)
+      if (isCoachContextConflict(reviewError)) return apiError(coachContextConflictMessage(reviewError), 409)
       if (reviewError.code === '22023' || reviewError.code === '23505') {
         return apiError('Weekly review request conflicts with an existing review', 409)
       }
@@ -319,6 +341,7 @@ export async function POST(request: Request) {
     if (!nextWeek.ok) return apiError(nextWeek.error, 409)
 
     const sourceSnapshot = {
+      contextRevision,
       reason: 'rolling_weekly_review',
       basePlanVersionId: planRow.id,
       weeklyReviewId: reviewRow.review_id,
@@ -362,7 +385,7 @@ export async function POST(request: Request) {
     )
     if (proposalError) {
       console.error('Next weekly proposal RPC failed:', { code: proposalError.code })
-      if (proposalError.code === '40001') return apiError('The active plan changed; refresh and review again', 409)
+      if (isCoachContextConflict(proposalError)) return apiError(coachContextConflictMessage(proposalError), 409)
       if (proposalError.code === '22023' || proposalError.code === '23505') {
         return apiError('Next-week proposal conflicts with an existing request', 409)
       }
@@ -387,6 +410,9 @@ export async function POST(request: Request) {
       headers: { 'Cache-Control': 'private, no-store' }
     })
   } catch (error) {
+    if (error instanceof CoachContextRevisionUnavailableError) return apiError(error.message, 503)
+    if (error instanceof CoachContextRevisionConflictError) return apiError(error.message, 409)
+    if (error instanceof ConfirmedEventDateConflictError) return apiError(error.message, 409)
     console.error('Weekly review POST error:', error)
     return apiError(
       'Unable to review the weekly dose',
@@ -411,7 +437,7 @@ async function buildNextWeek(input: {
   | { ok: true; plan: RollingWeeklyPlanDraft; adaptivePlan: NonNullable<ReturnType<typeof parseStoredRollingWeeklyIntent>>['adaptive_programming'] }
   | { ok: false; error: string }
 > {
-  let profile = profileForDirectionHorizon(
+  let profile = input.review.action === 'shift_emphasis' ? structuredClone(input.currentWeek.profileSnapshot) : profileForDirectionHorizon(
     input.currentWeek.profileSnapshot,
     input.nextWindowStart,
     input.programGoalTargetDate
@@ -420,22 +446,23 @@ async function buildNextWeek(input: {
   let adaptivePlan = input.storedIntent.adaptive_programming
 
   if (input.review.action === 'shift_emphasis') {
-    if (personalizedCoachingCapabilities().trainingIntent && (input.body.replacementPlanningInput as { setupConfirmed?: boolean } | undefined)?.setupConfirmed !== true) throw new Error('Confirm current training days, session duration and equipment')
+    if ((input.body.replacementPlanningInput as { setupConfirmed?: boolean } | undefined)?.setupConfirmed !== true) {
+      return { ok: false, error: 'Confirm current training days, session duration and equipment' }
+    }
     const validated = validateCompleteCoachPlanningInput(input.body.replacementPlanningInput)
     if (!validated.ok || validated.value.startDate !== input.nextWindowStart) {
       return { ok: false, error: 'Confirm a replacement setup that starts on the adjacent Monday' }
     }
-    const goalTargetDate = isIsoDate(input.body.replacementGoalTargetDate)
+    if (input.review.directionReconciliation && !replacementSetupMatches(validated.value, input.review.directionReconciliation)) {
+      return { ok: false, error: 'The replacement setup differs from your latest confirmed settings. Save the current setup and create a fresh review.' }
+    }
+    const goalTargetDate = input.body.replacementGoalTargetDate === null ? null : isIsoDate(input.body.replacementGoalTargetDate)
       ? input.body.replacementGoalTargetDate
       : input.programGoalTargetDate
-    if (!goalTargetDate || goalTargetDate < input.nextWindowStart) {
+    if (goalTargetDate !== null && goalTargetDate < input.nextWindowStart) {
       return { ok: false, error: 'Confirm a valid target date for the replacement direction' }
     }
-    profile = profileForDirectionHorizon(
-      buildProgrammingProfile(validated.value, input.assessments),
-      input.nextWindowStart,
-      goalTargetDate
-    )
+    profile = buildProgrammingProfile(validated.value, input.assessments)
     const hypothesis = typeof input.body.replacementHypothesis === 'string'
       ? input.body.replacementHypothesis.trim()
       : ''
@@ -444,6 +471,10 @@ async function buildNextWeek(input: {
     }
     profile = await refreshConfirmedPlanningContext(input.supabase, input.userId, profile,
       { tzOffset: typeof input.body.tzOffset === 'number' ? input.body.tzOffset : 0 })
+    if (input.review.directionReconciliation?.currentIntent) {
+      profile = applyConfirmedIntentToProfile(profile, input.review.directionReconciliation.currentIntent)
+    }
+    profile = profileForDirectionHorizon(profile, input.nextWindowStart, goalTargetDate)
     direction = buildRollingTrainingDirection(profile, { hypothesis, goalTargetDate })
   }
 

@@ -12,6 +12,7 @@ import {
   getWeekStart
 } from '@/app/lib/agents/context-builder'
 import { MOVEMENT_ALIASES } from '@/app/lib/agents/constants'
+import { workSnapshot } from '../fixtures/coach-performed-work'
 import type { MealSummary, MacroTargets, MacroTotals } from '@/app/lib/agents/types'
 
 // ─── aggregateMacros ─────────────────────────────────────────────────
@@ -773,6 +774,7 @@ describe('buildSociusContext', () => {
       tableChain.eq = vi.fn((col: string, val: any) => { params.eqCalls.push([col, val]); return tableChain })
       tableChain.gte = vi.fn(() => { params.hasGte = true; return tableChain })
       tableChain.lt = vi.fn(tableSelf)
+      tableChain.lte = vi.fn(tableSelf)
       tableChain.is = vi.fn(() => { params.hasIs = true; return tableChain })
       tableChain.order = vi.fn(tableSelf)
       tableChain.limit = vi.fn((n: number) => { params.limitVal = n; return tableChain })
@@ -836,6 +838,30 @@ describe('buildSociusContext', () => {
 
     return { from: mockFrom }
   }
+
+  it('adds owned performed work only through the existing history capability', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-21T01:00:00Z'))
+    vi.stubEnv('COACH_HISTORY_CONTEXT_ENABLED', 'true')
+    try {
+      const snapshot = workSnapshot()
+      const client = createMockSupabaseForSocius({ workouts: snapshot.workouts })
+      const { createServerClient } = await import('@/app/lib/auth/supabase-server')
+      vi.mocked(createServerClient).mockResolvedValue(client as any)
+      const { buildSociusContext } = await import('@/app/lib/agents/context-builder')
+      const context = await buildSociusContext(snapshot.userId, -300, 30, true)
+      expect(context.coach_performed_work_context).toMatchObject({
+        userId: snapshot.userId, asOf: '2026-09-21T01:00:00.000Z', numericPolicyEligible: false,
+        window: { endsOn: '2026-09-20' }, status: 'available',
+      })
+      expect(context.coach_performed_work_context?.records[0].recordedWeight?.value).toBe('175 lb')
+      const passive = await buildSociusContext(snapshot.userId, -300, 30, false)
+      expect(passive.coach_performed_work_context).toBeUndefined()
+    } finally {
+      vi.unstubAllEnvs()
+      vi.useRealTimers()
+    }
+  })
 
   it.each(['idle', 'syncing'])('rechecks the completed generation after historical aggregate retrieval: %s', async finalStatus => {
     const client = createMockSupabaseForSocius({ recoveries: [{ recovery_score: 31 }], sleeps: [{ sleep_score: 75 }] })

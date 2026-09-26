@@ -1,0 +1,9 @@
+{
+  "syntheticOnly": true,
+  "sourceSnapshotRows": 1,
+  "currentSourceRows": 2,
+  "sourceAndRestoredDigestMatch": true,
+  "restoredRows": 1,
+  "restoreDb": "synthetic_capture_c1355b6ec4",
+  "coordinatorClosed": true
+}

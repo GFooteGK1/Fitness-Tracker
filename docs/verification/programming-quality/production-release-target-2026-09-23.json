@@ -1,0 +1,133 @@
+{
+  "kind": "production_release_target_metadata",
+  "project": "auolnfwetmfcwhtvakzy",
+  "runId": "release-20260923233048-22dfac49",
+  "checkedAt": "2026-09-23T23:30:56.508Z",
+  "readOnly": true,
+  "sslMode": "verify-full",
+  "encryptedEvidence": true,
+  "keyProtection": "Windows DPAPI CurrentUser",
+  "sourceConnections": 1,
+  "athleteRowsRead": false,
+  "applicationRpcsInvoked": false,
+  "archiveCreated": false,
+  "productionRestorePerformed": false,
+  "migrations": [
+    {
+      "file": "20260915220000_exercise_preferences.sql",
+      "sha256": "503ec49d352a7cec33b4ca53c68474b91e75a2b7bdfb7e409f6b8fd9114862e2"
+    },
+    {
+      "file": "20260918010000_optional_session_feedback.sql",
+      "sha256": "36339db6e81283427475d7afd6b4d2dec153ffc625d02916c389beb47204bd5e"
+    },
+    {
+      "file": "20260918011000_session_capture_signals.sql",
+      "sha256": "3261e2abf7d439022ffdb614ae357098e624fa8ad2a6b22232db0614a4655e5c"
+    },
+    {
+      "file": "20260918020000_capture_receipts.sql",
+      "sha256": "40fe621dc51cc5712bf3fb59733eefa43af070977966d7c6ffa684446da298f9"
+    },
+    {
+      "file": "20260918030000_training_intent.sql",
+      "sha256": "8cee6e059f9775f35c055d234bbfcf8796d8908213cdad8ac95479ac89eb5755"
+    },
+    {
+      "file": "20260918040000_targeted_review_sources.sql",
+      "sha256": "d4a94e8efda49439f8d4b270b78de864ceeff8e114bb45a10dafbd98c067be84"
+    },
+    {
+      "file": "20260918050000_recommendations.sql",
+      "sha256": "37e52b7aa19ad37dd92daedee0d4a2454fe88e8311293300de6b57152e543f58"
+    },
+    {
+      "file": "20260921010000_coach_proposal_context_revision.sql",
+      "sha256": "0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f"
+    },
+    {
+      "file": "20260923010000_coaching_write_pause.sql",
+      "sha256": "6c336015b78142da07a091d9f999d7019c13d9ec819064cfd4b82ee16d48a041"
+    }
+  ],
+  "querySha256": "37b2eb148c248fcb128951db763827b6c9e81699588099f301d83e5c5ab5f2da",
+  "counts": {
+    "ledgerEntries": 9,
+    "recordedMigrations": 7,
+    "newerLedgerEntries": 0,
+    "functions": 90,
+    "functionAccessEntries": 16,
+    "relations": 16,
+    "metadataGroups": 80
+  },
+  "passed": true,
+  "state": "reviewed_pre_install_baseline",
+  "checks": {
+    "format": true,
+    "fixedTarget": true,
+    "database": true,
+    "role": true,
+    "login": true,
+    "version": true,
+    "backendSslObserved": true,
+    "readOnly": true,
+    "isolation": true,
+    "rowSecurity": true,
+    "boundedStatement": true,
+    "boundedLock": true,
+    "timestamp": true,
+    "postgresRlsBypass": true,
+    "ledgerScope": true,
+    "prerequisitesRecorded": true,
+    "pauseAndRevisionAbsent": true,
+    "noUnreviewedNewerMigration": true,
+    "relationScope": true,
+    "existingRelationsForcedRls": true,
+    "newRelationsAbsent": true,
+    "publicFunctionDefinitionsUnchanged": true,
+    "groupIdentityScope": true,
+    "existingMetadataMatchesReviewedDefinitions": true,
+    "internalHelpersAbsent": true,
+    "existingFunctionSecurity": true
+  },
+  "failedChecks": [],
+  "limitations": [
+    "Project identity comes from the verified transport, not a SQL-invented project label.",
+    "pg_stat_ssl reports the database backend connection; a session pooler backend may be unencrypted while the client connection requires verified TLS. Client TLS is attested by transport.tlsVerifyFull.",
+    "No athlete rows, application RPCs or pause-state rows are read.",
+    "Ledger presence is not a file-content hash; candidate file SHA256 is recorded separately.",
+    "A disclosed exact workout-default qualification may match reviewed definitions while raw metadata equality remains false; all other differences fail.",
+    "Metadata covers the 14 previously inspected relations and the two new boundaries; it is not a full platform inventory.",
+    "Passing pre-install readback neither installs migrations nor authorizes deployment."
+  ],
+  "cleanup": {
+    "exporterStoppedVerified": true
+  },
+  "metadataComparison": {
+    "rawExistingMetadataUnchanged": false,
+    "qualifications": [
+      {
+        "rule": "exact-workout-default-deparser-qualification",
+        "relation": "workouts",
+        "category": "columns",
+        "count": 28,
+        "priorHash": "826dacdb2e159803a162a9bf1c073ad4",
+        "currentHash": "66f7424856047a9ba8407991d8fb12c4",
+        "evidence": "docs/verification/programming-quality/release-workout-default-qualification-2026-09-23.json"
+      }
+    ]
+  },
+  "missingReleaseMigrations": [
+    "20260921010000",
+    "20260923010000"
+  ],
+  "reclassifiedAt": "2026-09-23T23:38:16.184Z",
+  "originalClassifierPassed": false,
+  "originalFailedChecks": [
+    "existingMetadataUnchanged"
+  ],
+  "sourceObservationTime": "2026-09-23T23:30:56.797848+00:00",
+  "authenticatedSourceSha256": "56fa72799166e92d10795b262e94dfd85b29df92632e4c90105f1adb25e807b6",
+  "reclassificationSourceConnections": 0,
+  "originalReceiptPreserved": true
+}

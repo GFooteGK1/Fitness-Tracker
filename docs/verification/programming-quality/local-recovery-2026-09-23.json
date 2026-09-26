@@ -1,0 +1,47 @@
+{
+  "kind": "synthetic_local_recovery_rehearsal",
+  "checkedAt": "2026-09-23T14:03:09.800Z",
+  "connection": "sociusfit-local",
+  "container": "supabase_db_sociusfit-programming-local",
+  "sourceDatabase": "postgres",
+  "restoredDatabase": "socius_recovery_20260923140303_35183c68",
+  "versions": {
+    "server": "17.6",
+    "dump": "pg_dump (PostgreSQL) 17.6",
+    "restore": "pg_restore (PostgreSQL) 17.6"
+  },
+  "localExecutorRole": "supabase_admin",
+  "snapshotConsistent": true,
+  "checks": {
+    "tableCountsAndHashes": true,
+    "schemaDefinitionsOwnersGrants": true,
+    "securityAndAcceptedRecords": true,
+    "representativeRls": true,
+    "representativeFunctions": true
+  },
+  "sourceTables": 95,
+  "sourceRows": 351,
+  "acceptedPlanRows": 1,
+  "acceptedPlanHash": "3bea81efd23c1c1e681267bba6788d1b",
+  "sourceSchemaSha256": "9a7665334b209d90f86756b23fe083f936695b7d92144142101c4fee4cb6e74b",
+  "restoredSchemaSha256": "9a7665334b209d90f86756b23fe083f936695b7d92144142101c4fee4cb6e74b",
+  "schemaComparison": "Exact schema dump except random restrict markers and inline CHECK bodies; all CHECK definitions/validation compared with pg_get_constraintdef(pretty=true) from the same source snapshot",
+  "archiveSha256": "521c12970a96dbf8fdd5dd74f162032aa12a912675626fa7d50c64dba4658583",
+  "restoreOptions": [
+    "exit-on-error",
+    "single-transaction",
+    "new-template0-database"
+  ],
+  "preserved": [
+    "original postgres database",
+    "restored database",
+    "local archive and manifests"
+  ],
+  "limitations": [
+    "Synthetic local data only; not production backup or recovery proof",
+    "Cluster roles, extension binaries and local configuration reused, not restored",
+    "No object-storage blobs, external services or point-in-time recovery tested",
+    "Sequence values are restored by pg_restore but not compared against an MVCC table snapshot",
+    "Content digests establish equality, not clinical or programming validity"
+  ]
+}

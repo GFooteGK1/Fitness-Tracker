@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
+import { coachContextConflictMessage, isCoachContextConflict } from '@/app/lib/coach/proposal-context-revision'
 
 interface AcceptanceRequest {
   idempotencyKey?: unknown
@@ -32,7 +33,8 @@ export async function POST(
 
     if (error) {
       console.error('Coach proposal acceptance failed:', { code: error.code })
-      if (error.code === '40001') return apiError('This proposal is stale; create a new review', 409)
+      if (isCoachContextConflict(error)) return apiError(coachContextConflictMessage(error), 409)
+      if (error.code === '55000') return apiError('This proposal is no longer available; refresh and create a new proposal', 409)
       if (error.code === 'P0002') return apiError('Coach proposal not found', 404)
       if (error.code === '22023') return apiError('Proposal request does not match', 409)
       return apiError('Unable to accept coach proposal', 503)

@@ -434,6 +434,40 @@ describe('purpose-specific coach evidence context', () => {
     expect(context.missing).toContain('context_selection_truncated')
   })
 
+  it('marks eligible memory selection incomplete below the source query limit', () => {
+    const fixture = source(), memory = fixture.memories[0]
+    fixture.memories = Array.from({ length: 17 }, (_, index) => ({ ...structuredClone(memory),
+      id: `bounded-memory-${index}`, memory_key: `goal-${index}`, version: index + 1 }))
+    const context = assembleCoachEvidenceContext('user-1', { purpose: 'general_coaching', asOf }, fixture)
+
+    expect(context.memories).toHaveLength(16)
+    expect(context.memories[0].id).toBe('bounded-memory-16')
+    expect(context.limits.sourceTruncated).toBe(false)
+    expect(context.limits.selectionTruncated).toBe(true)
+    expect(context.selectionComplete).toBe(false)
+    expect(context.missing).toContain('memory_selection_truncated')
+    expect(context.missing).toContain('context_selection_truncated')
+    expect(context.selectionExclusions?.records).toContainEqual({ kind: 'memory', id: 'bounded-memory-0', reason: 'memory_selection_limit' })
+  })
+
+  it('does not count foreign, invalid or ineligible memories against the selection limit', () => {
+    const fixture = source(), memory = fixture.memories[0]
+    fixture.memories = Array.from({ length: 16 }, (_, index) => ({ ...structuredClone(memory),
+      id: `eligible-memory-${index}`, memory_key: `goal-${index}` }))
+    fixture.memories.push(
+      { ...memory, id: 'foreign-memory', user_id: 'other-user' },
+      { ...memory, id: 'withdrawn-memory', status: 'withdrawn' },
+      { ...memory, id: 'invalid-memory', content: null },
+      { ...memory, id: 'ineligible-kind', kind: 'baseline' }
+    )
+    const context = assembleCoachEvidenceContext('user-1', { purpose: 'general_coaching', asOf }, fixture)
+
+    expect(context.memories).toHaveLength(16)
+    expect(context.limits.selectionTruncated).toBe(false)
+    expect(context.missing).not.toContain('memory_selection_truncated')
+    expect(context.missing).not.toContain('context_selection_truncated')
+  })
+
   it('returns explicit missingness for empty but available storage', () => {
     const context = assembleCoachEvidenceContext('user-1', {
       purpose: 'metric_history', asOf, metricId: 'run.time'
@@ -460,6 +494,67 @@ describe('purpose-specific coach evidence context', () => {
     expect(context.storageAvailable).toBe(false)
     expect(context.selectionComplete).toBe(false)
     expect(context.missing).toContain('performance_observations_unavailable')
+  })
+})
+
+describe('factual provenance and exclusion coverage', () => {
+  it('retains per-value provenance independently of group verification', () => {
+    const fixture = source(), entry = fixture.observationValues.find(row => row.group_id === 'strength-1')!
+    entry.provenance = { origin: 'athlete_reported', reviewState: 'corrected', fieldPath: 'sets[1].reps' }
+    const context = assembleCoachEvidenceContext('user-1', { purpose: 'general_coaching', asOf }, fixture)
+    const sample = context.evidenceSeries.flatMap(series => series.samples).find(sample => sample.observationValueId === entry.id)!
+    expect(sample.valueProvenance).toEqual(entry.provenance)
+    expect(sample.source.verificationStatus).toBe('athlete_confirmed')
+    sample.valueProvenance!.origin = 'projection-only edit'
+    expect(entry.provenance).toMatchObject({ origin: 'athlete_reported' })
+  })
+
+  it.each(['comparison', 'memory_provenance', 'value_provenance'] as const)('omits oversized meaningful %s explicitly', field => {
+    const fixture = source(), group = fixture.observationGroups.find(row => row.id === 'strength-1')!, value = fixture.observationValues.find(row => row.group_id === group.id)!, memory = fixture.memories[0]
+    if (field === 'comparison') group.comparison_modifiers = { requiredContext: 'x'.repeat(5_001) }
+    if (field === 'memory_provenance') memory.provenance = { source: 'x'.repeat(4_001) }
+    if (field === 'value_provenance') value.provenance = { source: 'x'.repeat(4_001) }
+    const context = assembleCoachEvidenceContext('user-1', { purpose: 'general_coaching', asOf }, fixture)
+    expect(context.selectionExclusions?.records).toContainEqual(expect.objectContaining({ id: field === 'memory_provenance' ? memory.id : field === 'comparison' ? group.id : value.id,
+      reason: `${field}_invalid_or_oversized` }))
+    expect(context.selectionComplete).toBe(false)
+    expect(context.missing).toContain('invalid_or_oversized_evidence_omitted')
+    if (field === 'memory_provenance') expect(context.memories.some(row => row.id === memory.id)).toBe(false)
+    else expect(context.evidenceIds).not.toContain(group.id)
+    expect(context.evidenceIds).toContain('strength-2')
+  })
+
+  it('reports queried import, protocol and feedback exclusions while usable evidence remains', () => {
+    const fixture = source()
+    const context = assembleCoachEvidenceContext('user-1', { purpose: 'general_coaching', asOf }, fixture)
+    expect(context.selectionExclusions?.records).toContainEqual({ kind: 'observation_group', id: 'import-superseded', reason: 'import_not_confirmed' })
+    expect(context.selectionExclusions?.records.some(record => record.reason === 'completion_feedback_not_verified')).toBe(true)
+    expect(context.evidenceIds).toContain('strength-1')
+    const scoped = assembleCoachEvidenceContext('user-1', { purpose: 'metric_history', metricId: 'strength.repetitions', asOf,
+      protocol: { id: 'strength-repetition-capacity-standard', version: '1.0.0' } }, fixture)
+    expect(scoped.selectionExclusions?.records.some(record => record.reason === 'protocol_selector_mismatch')).toBe(true)
+  })
+
+  it('bounds the owned ledger and reports omitted counts without foreign records', () => {
+    const fixture = source(), memory = fixture.memories[0]
+    fixture.memories = Array.from({ length: 140 }, (_, i) => ({ ...structuredClone(memory), id: `withdrawn-${i}`, status: 'withdrawn' }))
+    fixture.memories.push({ ...memory, id: 'foreign-memory-secret', user_id: 'foreign-owner-secret' })
+    fixture.observationGroups = []; fixture.observationValues = []; fixture.strengthAssessments = []
+    const context = assembleCoachEvidenceContext('user-1', { purpose: 'general_coaching', asOf }, fixture)
+    expect(context.selectionExclusions).toMatchObject({ complete: false, omittedCount: 12, countsByReason: { memory_lifecycle_or_purpose_ineligible: 140 } })
+    expect(context.selectionExclusions?.records).toHaveLength(128)
+    expect(context.selectionComplete).toBe(false)
+    expect(context.missing).toContain('exclusion_ledger_truncated')
+    expect(JSON.stringify(context)).not.toContain('foreign-')
+  })
+
+  it.each([null, [], 'unsupported'])('never replaces malformed value provenance %j with an empty object', provenance => {
+    const fixture = source(), value = fixture.observationValues.find(row => row.group_id === 'strength-1')!
+    value.provenance = provenance
+    const context = assembleCoachEvidenceContext('user-1', { purpose: 'general_coaching', asOf }, fixture)
+    expect(context.evidenceIds).not.toContain('strength-1')
+    expect(context.selectionExclusions?.records).toContainEqual({ kind: 'observation_value', id: value.id, reason: 'value_provenance_invalid_or_oversized' })
+    expect(context.selectionComplete).toBe(false)
   })
 })
 
@@ -589,6 +684,21 @@ function jumpKey() {
 
 
 describe('current execution evidence revision',()=>{
+  it('excludes foreign execution identifiers from the entire evidence packet', () => {
+    const data = source()
+    const foreign = { ...structuredClone(data.observationGroups[0]),
+      id: 'foreign-observation-secret', user_id: 'foreign-athlete-secret', workout_id: 'foreign-workout-secret' }
+    data.observationGroups.push(foreign)
+    data.workoutRevisions = [{ id: data.observationGroups[0].workout_id!, user_id: 'user-1', capture_revision: 1, execution_revision: 0 }]
+
+    const context = assembleCoachEvidenceContext('user-1', { purpose: 'weekly_review', asOf, windowDays: 35 }, data)
+    const serialized = JSON.stringify(context)
+    expect(serialized).not.toContain(foreign.id)
+    expect(serialized).not.toContain(foreign.workout_id)
+    expect(serialized).not.toContain(foreign.user_id)
+    expect(context.evidenceIds).toContain('strength-1')
+  })
+
   it('withholds amended and missing canonical sources without deleting their original observations',()=>{
     const data=source(),g=data.observationGroups.find(g=>g.id==='strength-1')!
     g.workout_id='workout:source'

@@ -67,6 +67,7 @@ scripts/eval/manifest.*.json
 /output/playwright/app-quality-report/
 
 /output/app-quality-release/
+/supabase/.temp/
 
 # Local UI audit logs and working evidence
 /output/ui-consistency/

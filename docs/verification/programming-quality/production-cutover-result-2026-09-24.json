@@ -1,0 +1,254 @@
+{
+  "kind": "production_cutover_stopped_before_authenticated_smoke",
+  "at": "2026-09-24T11:39:28.383Z",
+  "authority": "User approved pinned production-cutover-approval-2026-09-23.md packet",
+  "checkpoint": "e9555ce3fd501965dc4f0a504f5b35872206aca5",
+  "applicationSource": "93539b00bef9109f4221d10c9554cd99a3f5d5fe",
+  "projectRef": "auolnfwetmfcwhtvakzy",
+  "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7",
+  "buildId": "u93phgwCcXfUdAb5YKaBh",
+  "ci": {
+    "runId": 35941132518,
+    "testsPassed": 3499,
+    "testsSkipped": 19,
+    "mobileJourneysPassed": 26
+  },
+  "migrations": [
+    {
+      "name": "coach_proposal_context_revision",
+      "sha256": "0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f",
+      "version": "20260921010000",
+      "statements": 1
+    },
+    {
+      "name": "coaching_write_pause",
+      "sha256": "6c336015b78142da07a091d9f999d7019c13d9ec819064cfd4b82ee16d48a041",
+      "version": "20260923010000",
+      "statements": 1
+    }
+  ],
+  "catalog": {
+    "pauseMatched": true,
+    "revisionMatched": true,
+    "functions": 14,
+    "triggers": 16
+  },
+  "acceptedPlanVersions": {
+    "fixedBaselineCount": 2,
+    "afterRevisionUnchanged": true,
+    "rawIdsAndDigests": "Encrypted private evidence only"
+  },
+  "recovery": {
+    "backupRunId": "backup-20260924111117-678fe2da",
+    "localeRunId": "locale-20260924111249-92cb2a35",
+    "restoreId": "restore-e7e23977-df8",
+    "archiveAuthenticated": true,
+    "tableScopesMatched": 94,
+    "selectedCatalogMatched": true,
+    "localeMatched": true,
+    "backupCleanup": {
+      "at": "2026-09-24T11:12:48.2523869Z",
+      "container": "b6de4812cf8d7ceab879fe13f329551e0b3f4f6821608cd8fa1d8e520f3c9954",
+      "status": "exited",
+      "verified": true,
+      "created": "2026-09-24T06:11:21.690221979-05:00",
+      "runId": "backup-20260924111117-678fe2da",
+      "running": false
+    },
+    "localeCleanup": {
+      "at": "2026-09-24T11:13:48.9103114Z",
+      "verified": true,
+      "runId": "locale-20260924111249-92cb2a35",
+      "container": "379de7d7d57462dea525dfd31ac1d0be2f39edb45c75721101de73b9a5de1155",
+      "running": false,
+      "status": "exited",
+      "created": "2026-09-24T06:12:51.131568356-05:00"
+    },
+    "restoreCleanupVerified": true,
+    "productionRestore": false
+  },
+  "promotedPlatform": {
+    "passed": true,
+    "checks": {
+      "exactProjectOwner": true,
+      "promotedTarget": true,
+      "noRollingRelease": true,
+      "exactDeployment": true,
+      "bindingsUnchanged": true,
+      "completeDomains": true,
+      "exactAliases": true
+    },
+    "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+    "owner": "team_zjdKVgrSBNAYC9gql0Raiocm",
+    "currentProduction": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7",
+    "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7",
+    "environmentCount": 31,
+    "domains": [
+      {
+        "name": "sociusai.vercel.app",
+        "redirect": "www.sociusfit.com",
+        "redirectStatusCode": 307
+      },
+      {
+        "name": "sociusfit.com",
+        "redirect": "www.sociusfit.com",
+        "redirectStatusCode": null
+      },
+      {
+        "name": "www.sociusfit.com",
+        "redirect": null,
+        "redirectStatusCode": null
+      }
+    ],
+    "aliases": [
+      {
+        "alias": "www.sociusfit.com",
+        "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+        "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7"
+      },
+      {
+        "alias": "sociusfit.com",
+        "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+        "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7"
+      },
+      {
+        "alias": "sociusai.vercel.app",
+        "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+        "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7"
+      }
+    ]
+  },
+  "originalPageComparison": {
+    "passed": false,
+    "reason": "Compared raw server HTML ten-script list to earlier nine-script browser observation",
+    "retainedReceiptSha256": "45f537d01302076daccfc7a125c31ba6d30b71a157ab0589b439d1862a3fcb0e"
+  },
+  "pageReconciliation": {
+    "at": "2026-09-24T11:33:20.616Z",
+    "passed": true,
+    "reconciliation": {
+      "archiveSha256": "461e0bf9e21561e0323c6c2edf53e825d48f8a8a8fc7c9f2a739798c8ea44814",
+      "preservedFailureSha256": "45f537d01302076daccfc7a125c31ba6d30b71a157ab0589b439d1862a3fcb0e",
+      "preservedFailureAt": "2026-09-24T11:27:33.039Z",
+      "platformEvidenceSource": "Preserved successful platform section of original postcheck; no repeat platform operation.",
+      "observation": {
+        "passed": true,
+        "checks": {
+          "originalFailureShape": true,
+          "recordedHtmlExactlyMatchesPinnedArtifact": true,
+          "exactPinnedBuildAndSameOrigin": true,
+          "nineObservationPathsAreExactSubsetOfTenArtifactPaths": true
+        },
+        "htmlSha256": "d96a2fe9afc205c55a8ca5c47b4eabe29f9445a4958651e7f454e744cc8e5543",
+        "htmlBytes": 10613,
+        "serverRenderedBuildId": "u93phgwCcXfUdAb5YKaBh",
+        "artifactScriptPaths": [
+          "/_next/static/chunks/2619-3c9e02e22d10480a.js",
+          "/_next/static/chunks/2804-1bf22e595b5bd4cb.js",
+          "/_next/static/chunks/4bd1b696-f785427dddbba9fb.js",
+          "/_next/static/chunks/8371-bfb8477b625796bc.js",
+          "/_next/static/chunks/8760-75fbdc0ed9c27408.js",
+          "/_next/static/chunks/app/auth/signin/page-65cdd04faaa2a9b2.js",
+          "/_next/static/chunks/app/layout-41d0ea2a395e4d64.js",
+          "/_next/static/chunks/main-app-f2b3590dff0c4e5f.js",
+          "/_next/static/chunks/polyfills-42372ed130431b0a.js",
+          "/_next/static/chunks/webpack-35eec86cd4df139d.js"
+        ],
+        "earlierBrowserScriptCount": 9,
+        "interpretation": "Exact server HTML bytes equal the pinned deployed artifact. The earlier nine-script browser observation was not an exact server-HTML script manifest. The reason the browser observation omitted the chunk was not measured."
+      }
+    },
+    "assets": [
+      {
+        "path": "/_next/static/css/28181877abc77b83.css",
+        "status": 200,
+        "bytes": 58505,
+        "sha256": "b17811d44cfc968287fb01c62161296f1ed91b750d26cb26bed299f183260179",
+        "matched": true
+      },
+      {
+        "path": "/icon-192.png",
+        "status": 200,
+        "bytes": 96,
+        "sha256": "abbd4841ba31f4d7195c0bae44b30cbebbb9c7cc91f3dad94f68614c6ce4bee8",
+        "matched": true
+      },
+      {
+        "path": "/_next/static/chunks/8760-75fbdc0ed9c27408.js",
+        "status": 200,
+        "bytes": 205925,
+        "sha256": "91be7562b8abd901eccc00b49324337acb190c50bf5bcb0e0cb53f2b6afa9c2e",
+        "matched": true
+      }
+    ],
+    "redirects": [
+      {
+        "alias": "sociusfit.com",
+        "status": 307,
+        "location": "https://www.sociusfit.com/auth/signin",
+        "matched": true
+      },
+      {
+        "alias": "sociusai.vercel.app",
+        "status": 307,
+        "location": "https://www.sociusfit.com/auth/signin",
+        "matched": true
+      }
+    ],
+    "methods": [
+      "GET"
+    ],
+    "platformCalls": 0,
+    "productionMutations": 0,
+    "athleteRequests": 0,
+    "limitation": "Artifact identity plus anonymous static-asset and redirect checks; not hydrated visual QA or authenticated coaching behavior. Original failed check remains retained."
+  },
+  "synthetic": {
+    "frozenRunId": "342ef896-6dd9-4bb4-acbc-ebab7b7b0baf",
+    "existingApiKeyReadCount": 1,
+    "authAccountCreated": true,
+    "profileInsertAttempts": 1,
+    "profileInsertSucceeded": false,
+    "error": {
+      "httpStatus": 400,
+      "code": "23502",
+      "message": "null value in column user_id of relation user_profiles violates not-null constraint"
+    },
+    "rootCause": "Pre-existing BEFORE INSERT trigger unconditionally sets NEW.user_id = auth.uid(); service-role request has no athlete subject",
+    "reconciliation": {
+      "authUsers": 1,
+      "publicScopes": 54,
+      "publicNonzero": [],
+      "authNonzero": [
+        {
+          "count": 1,
+          "relation": "auth.identities"
+        }
+      ]
+    },
+    "signinPerformed": false,
+    "coachingRequests": 0,
+    "retries": 0
+  },
+  "lastVerifiedGate": {
+    "role": "postgres",
+    "paused": true,
+    "database": "postgres",
+    "generation": 1,
+    "readbackAt": "2026-09-24T11:37:51.974079+00:00",
+    "committedAt": "2026-09-24T11:10:38.082705+00:00"
+  },
+  "status": "STOPPED: corrected same-account authenticated-owner profile continuation needs approval",
+  "excluded": {
+    "merge": false,
+    "paidResources": false,
+    "numericalPolicyActivation": false,
+    "productionRestore": false,
+    "recordDeletion": false
+  },
+  "limitations": [
+    "Authenticated coaching smoke and final resume are incomplete.",
+    "Logical recovery does not cover all hosted services or off-device disaster recovery.",
+    "Synthetic checks do not establish training-policy or athlete outcome quality."
+  ]
+}

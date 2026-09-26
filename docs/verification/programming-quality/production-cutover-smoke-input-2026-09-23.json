@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "runId": "342ef896-6dd9-4bb4-acbc-ebab7b7b0baf",
+  "syntheticEmail": "release-smoke-342ef896-6dd9-4bb4-acbc-ebab7b7b0baf@sociusfit-smoke.invalid",
+  "profile": {
+    "fitness_goals": [
+      "performance"
+    ],
+    "body_metrics": {
+      "age": 35,
+      "height_cm": 175,
+      "weight_kg": 75
+    },
+    "preferences": {
+      "units": "imperial",
+      "notifications": false,
+      "privacy_level": "private"
+    }
+  },
+  "create": {
+    "route": "/api/coach/weekly",
+    "method": "POST",
+    "body": {
+      "tzOffset": 300,
+      "goalTargetDate": "2027-04-05",
+      "planningInput": {
+        "format": "complete_programming_intake_v0_3",
+        "primaryDomain": "strength",
+        "goal": "Build useful full-body strength",
+        "experience": "consistent",
+        "trainingDays": [
+          "monday",
+          "wednesday",
+          "friday"
+        ],
+        "sessionMinutes": 60,
+        "equipment": "Bodyweight",
+        "resolvedEquipmentIds": [
+          "bodyweight"
+        ],
+        "constraints": "",
+        "constraintKinds": [],
+        "secondaryGoals": [],
+        "startDate": "2026-09-28",
+        "setupConfirmed": true
+      },
+      "idempotencyKey": "cutover-342ef896-6dd9-4bb4-acbc-ebab7b7b0baf-initial"
+    }
+  },
+  "acceptanceBody": {
+    "idempotencyKey": "cutover-342ef896-6dd9-4bb4-acbc-ebab7b7b0baf-initial"
+  },
+  "timing": {
+    "requestDeadlineMs": 15000,
+    "successfulCreateAcceptTargetMs": 30000,
+    "startRepauseNoLaterThanMs": 60000,
+    "closedReadbackTargetMs": 90000,
+    "wholeMaintenanceSoftLimitMs": 2700000,
+    "automaticRetries": 0,
+    "abortGuaranteesServerStopped": false
+  },
+  "expected": {
+    "pausedCreate": {
+      "status": 503,
+      "body": {
+        "error": "Unable to save the first weekly proposal"
+      }
+    },
+    "created": {
+      "status": 201,
+      "acceptanceRequired": true,
+      "activePlanChanged": false
+    },
+    "acceptanceStatus": 200,
+    "afterPausedCreate": {
+      "training_programs": 0,
+      "training_plan_versions": 0,
+      "prescribed_sessions": 0,
+      "adaptation_proposals": 0,
+      "coach_weekly_reviews": 0,
+      "coach_weekly_review_observations": 0,
+      "coach_context_revisions": 1
+    },
+    "afterAccepted": {
+      "training_programs": 1,
+      "training_plan_versions": 1,
+      "prescribed_sessions": 3,
+      "adaptation_proposals": 1,
+      "coach_weekly_reviews": 0,
+      "coach_weekly_review_observations": 0,
+      "coach_context_revisions": 1
+    },
+    "contextRevision": 0,
+    "sessionDates": [
+      "2026-09-28",
+      "2026-09-30",
+      "2026-10-02"
+    ]
+  }
+}

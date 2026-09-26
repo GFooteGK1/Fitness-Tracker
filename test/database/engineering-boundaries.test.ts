@@ -18,6 +18,18 @@ afterAll(() => {
   writeFileSync(`${directory}/exposed-engineering-boundaries-report${suffix}.json`, JSON.stringify({ adapterVersion: ENGINEERING_BOUNDARY_VERSION, split: 'exposed-original-heldout-development', fixtureHash: createHash('sha256').update(frozen).digest('hex'), results }, null, 2))
 })
 describe('exposed frozen facts against actual SQL boundaries', () => {
+  // These zones span 26 hours, so at least one database day differs from UTC.
+  // Run the actual SQL/app boundary rather than only checking transformed text.
+  for (const databaseTimeZone of ['Etc/GMT+12', 'Etc/GMT-14']) {
+    it(`selects the scoped accepted session with database timezone ${databaseTimeZone}`, async () => {
+      const scenario = scenarios.find(s => s.id === 'heldout-plan-01')!
+      const actual = await executeEngineeringBoundaryFacts(scenario.rule, scenario.athlete, scenario.facts, { databaseTimeZone })
+      expect(actual.decision).toBe(scenario.expected.decision)
+      expect(actual.fixtureFactsUnchanged).toBe(true)
+      expect(actual.predicates.sameRevisionTakeover).toBe(true)
+      expect(actual.predicates.publicationError).toContain('lease or authority')
+    }, 30000)
+  }
   for (const scenario of scenarios) for (const variant of ['base', 'counterfactual'] as const) {
     const facts = variant === 'base' ? scenario.facts : { ...scenario.facts, [scenario.counterfactual.field]: scenario.counterfactual.value }
     const expected = variant === 'base' ? scenario.expected : scenario.counterfactual.expected

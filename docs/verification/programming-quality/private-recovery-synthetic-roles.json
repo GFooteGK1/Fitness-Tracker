@@ -1,0 +1,25 @@
+{
+  "syntheticOnly": true,
+  "delegatedAclRestored": true,
+  "grantorsAndGrantabilityPreserved": true,
+  "grants": [
+    {
+      "grantor": "a_delegate",
+      "grantee": "reader",
+      "privilege": "CONNECT",
+      "grantable": false
+    },
+    {
+      "grantor": "z_owner",
+      "grantee": "a_delegate",
+      "privilege": "CONNECT",
+      "grantable": true
+    },
+    {
+      "grantor": "z_owner",
+      "grantee": "z_owner",
+      "privilege": "CONNECT",
+      "grantable": false
+    }
+  ]
+}

@@ -1,0 +1,1146 @@
+{
+  "schemaVersion": 1,
+  "artifactKind": "p3_strategy_development_case_specs",
+  "createdOn": "2026-09-21",
+  "status": "development_only",
+  "synthetic": true,
+  "sealedHoldout": false,
+  "expectedNumericalGold": false,
+  "runtimeActivationAuthorized": false,
+  "coachingReviewStatus": "pending",
+  "engineeringAssertionStatus": "specifications_not_executed",
+  "sourceDocuments": [
+    "docs/plans/coaching-programming-quality.md"
+  ],
+  "scope": "P3 strategy preparation: proposed contracts and development assertions only. These specifications do not establish current runtime support, physiological thresholds, reviewed prescriptions, or comparative coaching quality.",
+  "relationshipNotes": [
+    "p3-dev-08 and p3-dev-09 are deliberately paired counterfactual arrangements and must remain in the same evaluation split.",
+    "Fixed quantities and time estimates are synthetic input facts. Expected assertions check preservation and feasibility, not the coaching suitability of those numbers."
+  ],
+  "cases": [
+    {
+      "id": "p3-dev-01",
+      "family": "outcome_breadth",
+      "title": "Five confirmed training domains remain visible",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "outcomes": [
+          {
+            "id": "goal-strength",
+            "domain": "strength",
+            "status": "active"
+          },
+          {
+            "id": "goal-power",
+            "domain": "power_explosiveness",
+            "status": "active"
+          },
+          {
+            "id": "goal-speed",
+            "domain": "speed_agility",
+            "status": "active"
+          },
+          {
+            "id": "goal-aerobic",
+            "domain": "aerobic",
+            "status": "active"
+          },
+          {
+            "id": "goal-resilience",
+            "domain": "resilience",
+            "status": "active"
+          }
+        ],
+        "priorityOrder": [
+          "goal-aerobic",
+          "goal-strength",
+          "goal-speed",
+          "goal-power",
+          "goal-resilience"
+        ],
+        "availability": {
+          "days": 5,
+          "minutesPerSession": 60
+        },
+        "currentCompiler": {
+          "maximumDistinctDomains": 3
+        },
+        "event": {
+          "name": "Synthetic mixed fitness event",
+          "date": "2027-04-17",
+          "demands": "not specified"
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Account for every confirmed outcome by stable identifier in the proposed strategy contract.",
+        "Expose the current compiler domain limit as a capability gap until a supporting implementation exists.",
+        "Keep domain allocation separate from the full outcome list."
+      ],
+      "prohibitedInferences": [
+        "Do not delete two outcomes to fit the existing three-domain schema.",
+        "Do not infer event stations, distances or standards from the event name.",
+        "Do not label a schema-valid supported subset a complete event program."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "What development or maintenance role should each outcome receive within the confirmed time budget?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-02",
+      "family": "same_domain_outcomes",
+      "title": "Two running outcomes keep distinct measurement bindings",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "outcomes": [
+          {
+            "id": "run-short",
+            "domain": "aerobic",
+            "binding": {
+              "distanceM": 1600,
+              "protocolId": "synthetic-run-short-v1"
+            }
+          },
+          {
+            "id": "run-long",
+            "domain": "aerobic",
+            "binding": {
+              "distanceM": 5000,
+              "protocolId": "synthetic-run-long-v1"
+            }
+          }
+        ],
+        "priorityOrder": [
+          "run-long",
+          "run-short"
+        ],
+        "observations": [
+          {
+            "outcomeId": "run-long",
+            "sourceId": "observation-long",
+            "verification": "athlete_confirmed"
+          }
+        ],
+        "availability": {
+          "days": 5,
+          "minutesPerSession": 60
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Preserve both outcome identities and their independent measurement bindings.",
+        "Associate the long-run observation only with its compatible outcome.",
+        "Represent shared aerobic work without collapsing the two outcome records."
+      ],
+      "prohibitedInferences": [
+        "Do not treat one running observation as direct attainment of both outcomes.",
+        "Do not invent a cross-distance conversion or missing assessment."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "Which training can support both outcomes, and where does each need a separate exposure or assessment?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-03",
+      "family": "whole_week_time",
+      "title": "Five sessions require complete time accounting",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "availability": [
+          {
+            "day": "monday",
+            "minutes": 60
+          },
+          {
+            "day": "tuesday",
+            "minutes": 60
+          },
+          {
+            "day": "thursday",
+            "minutes": 60
+          },
+          {
+            "day": "friday",
+            "minutes": 60
+          },
+          {
+            "day": "saturday",
+            "minutes": 60
+          }
+        ],
+        "candidateSessionTemplates": [
+          "template-a",
+          "template-b",
+          "template-c",
+          "template-d",
+          "template-e"
+        ],
+        "timeModel": {
+          "appliesToEachTemplate": true,
+          "componentsMinutes": {
+            "generalPreparation": 8,
+            "rampSets": 6,
+            "monitoring": 6,
+            "workingExecution": 16,
+            "rest": 16,
+            "transitions": 5,
+            "cooldown": 3
+          },
+          "origin": "synthetic engineering fixture estimates"
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Count every supplied time component exactly once for each session.",
+        "Check every session against its own availability window and the whole week against all five windows.",
+        "Retain the time estimate origin and any uncertainty in the strategy artifact."
+      ],
+      "prohibitedInferences": [
+        "Do not treat work-set time alone as session duration.",
+        "Do not claim the supplied synthetic estimates are measured athlete-specific durations.",
+        "Do not add a sixth session to hide overflow."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "Are these component estimates realistic enough for review, and which athlete-specific timing observations would change them?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-04",
+      "family": "outside_training_confirmed",
+      "title": "Confirmed outside training occupies a fixed calendar window",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "availability": {
+          "days": [
+            "monday",
+            "tuesday",
+            "thursday",
+            "friday",
+            "saturday"
+          ],
+          "minutesPerSession": 60
+        },
+        "outsideTraining": {
+          "status": "confirmed",
+          "id": "outside-class-1",
+          "day": "thursday",
+          "window": {
+            "startsAtLocal": "18:00",
+            "endsAtLocal": "18:45"
+          },
+          "reportedDemands": [
+            "running",
+            "loaded_carries"
+          ],
+          "intensity": "unknown",
+          "replaceable": false
+        },
+        "thursdayAvailableWindow": {
+          "startsAtLocal": "18:00",
+          "endsAtLocal": "19:00"
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Reserve the confirmed outside-training window before considering additional Thursday work.",
+        "Preserve the activity's reported demands and unknown intensity.",
+        "Account for outside training in feasibility without generating a replacement for the fixed booking."
+      ],
+      "prohibitedInferences": [
+        "Do not schedule another full session concurrently in the same window.",
+        "Do not infer exact work or physiological dose from a class label.",
+        "Do not cancel a confirmed outside activity without athlete authorization."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "How should the outside activity influence the remaining exposures without assuming an unmeasured dose?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-05",
+      "family": "outside_training_unknown",
+      "title": "Unknown outside training remains an explicit uncertainty",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "availability": {
+          "days": 5,
+          "minutesPerSession": 60
+        },
+        "outsideTraining": {
+          "status": "unknown"
+        },
+        "recentLogs": {
+          "coverage": "reported_partial",
+          "daysWithRecords": 2
+        },
+        "planningQuestion": "Athlete has not confirmed whether sport practice continues this week."
+      },
+      "expectedEngineeringAssertions": [
+        "Keep outside-training status unknown in the strategy input and output.",
+        "Identify whether confirmation is needed before promising a feasible week.",
+        "Keep missing records separate from a confirmed absence of outside work."
+      ],
+      "prohibitedInferences": [
+        "Do not infer no outside training from empty app records.",
+        "Do not infer low fitness or a need for catch-up volume from two logged days."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "What single clarification would most reduce uncertainty about the week's competing demands?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-06",
+      "family": "fixed_monitoring_protocol",
+      "title": "Accepted monitoring protocol stays fixed during rescheduling",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "acceptedPlan": {
+          "id": "accepted-week-1",
+          "monitoringProtocol": {
+            "id": "synthetic-bench-monitor",
+            "version": 1,
+            "movement": "barbell_bench_press",
+            "variation": "standard",
+            "load": {
+              "value": 50,
+              "unit": "kg"
+            },
+            "sets": 1,
+            "repetitions": 2,
+            "restAfterSeconds": 90,
+            "placement": "after ramp sets before working sets",
+            "device": "synthetic-device-a",
+            "metric": "mean_concentric_velocity",
+            "unit": "m_per_s",
+            "purpose": "monitoring"
+          },
+          "workingBundle": {
+            "id": "accepted-bench-work-a",
+            "signature": "unchanged-accepted-bundle"
+          }
+        },
+        "requestedChange": {
+          "kind": "reschedule",
+          "from": "thursday",
+          "to": "saturday"
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Carry the full accepted protocol identity and every fixed field into the candidate operation.",
+        "Represent monitoring and working work as distinct roles.",
+        "Include the protocol's execution, rest and transition time in the destination session budget.",
+        "Keep the accepted plan immutable until a separate replacement is accepted."
+      ],
+      "prohibitedInferences": [
+        "Do not treat the fixture's fixed load as a newly recommended dose.",
+        "Do not change repetitions, rest, device or placement merely to improve fit.",
+        "Do not derive progression from the monitoring values."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "Can the unchanged monitoring protocol and accepted working bundle fit the destination session without degrading its intended measurement context?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-07",
+      "family": "monitoring_missing_samples",
+      "title": "One sensor sample missing from two performed repetitions",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "protocol": {
+          "id": "synthetic-bench-monitor",
+          "version": 1,
+          "expectedRepetitions": 2
+        },
+        "performedReport": {
+          "repetitions": 2,
+          "origin": "athlete_reported",
+          "reviewState": "confirmed"
+        },
+        "velocitySamples": [
+          {
+            "ordinal": 0,
+            "value": 0.51,
+            "unit": "m_per_s",
+            "sourceId": "sensor-sample-1"
+          }
+        ],
+        "missingSensorOrdinals": [
+          1
+        ]
+      },
+      "expectedEngineeringAssertions": [
+        "Keep performed repetitions and measured sample count as separate facts.",
+        "Preserve the missing sensor ordinal and source provenance.",
+        "Carry protocol continuity requirements into any strategy candidate."
+      ],
+      "prohibitedInferences": [
+        "Do not change the performed report to one repetition.",
+        "Do not fabricate the second velocity value or a complete two-repetition average.",
+        "Do not change the monitoring protocol to match the available sample count."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "Does the incomplete measurement change the usefulness of this observation for the existing reviewed decision process?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-08",
+      "family": "consolidation_grouped",
+      "title": "Qualitatively examine grouped overlapping demands",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "priorityOutput": {
+          "outcomeId": "priority-speed",
+          "description": "High-quality acceleration practice"
+        },
+        "candidateArrangement": {
+          "id": "grouped",
+          "monday": [
+            "acceleration",
+            "lower_body_strength"
+          ],
+          "thursday": [
+            "easy_aerobic"
+          ]
+        },
+        "reportedSharedDemands": [
+          "lower_body_force",
+          "high_intent_output"
+        ],
+        "sessionWindows": {
+          "mondayMinutes": 60,
+          "thursdayMinutes": 60
+        },
+        "timeAccounting": {
+          "status": "pending_component_estimates"
+        },
+        "athleteResponseHistory": {
+          "status": "unknown"
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Describe the grouped arrangement's overlapping demands and priority session output.",
+        "Identify downstream session-quality questions and missing time estimates.",
+        "Keep the arrangement a candidate rather than declaring it universally superior."
+      ],
+      "prohibitedInferences": [
+        "Do not assign an invented fatigue score.",
+        "Do not impose a universal recovery-spacing threshold.",
+        "Do not claim unknown athlete response establishes interference or safety."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "Under what athlete-specific evidence would grouping protect or compromise the priority output?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-09",
+      "family": "consolidation_separated",
+      "title": "Compare a separated arrangement using the same demands",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "comparisonCaseId": "p3-dev-08",
+        "priorityOutput": {
+          "outcomeId": "priority-speed",
+          "description": "High-quality acceleration practice"
+        },
+        "candidateArrangement": {
+          "id": "separated",
+          "monday": [
+            "acceleration"
+          ],
+          "tuesday": [
+            "lower_body_strength"
+          ],
+          "thursday": [
+            "easy_aerobic"
+          ]
+        },
+        "reportedSharedDemands": [
+          "lower_body_force",
+          "high_intent_output"
+        ],
+        "sessionWindows": {
+          "mondayMinutes": 60,
+          "tuesdayMinutes": 60,
+          "thursdayMinutes": 60
+        },
+        "timeAccounting": {
+          "status": "pending_component_estimates"
+        },
+        "athleteResponseHistory": {
+          "status": "unknown"
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Compare grouped and separated arrangements against the same priority and factual uncertainty.",
+        "Explain which session may inherit competing demands.",
+        "Retain both arrangements when available evidence cannot establish a preferred choice."
+      ],
+      "prohibitedInferences": [
+        "Do not declare separation automatically better because sessions are on different days.",
+        "Do not introduce a mandatory number of recovery hours.",
+        "Do not count this related case as an independent sealed evaluation example."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "What evidence would distinguish the separated candidate from the grouped candidate for this athlete?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-10",
+      "family": "adherence_reschedule",
+      "title": "Missed bench volume prompts a schedule candidate",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "acceptedWork": {
+          "id": "bench-volume-a",
+          "doseSignature": "accepted-dose-a",
+          "monitoringProtocolSignature": "accepted-monitor-a"
+        },
+        "adherenceReports": [
+          {
+            "day": "thursday",
+            "status": "missed",
+            "reason": "work meeting"
+          },
+          {
+            "day": "thursday",
+            "status": "missed",
+            "reason": "commute delay"
+          }
+        ],
+        "currentAvailability": {
+          "thursday": false,
+          "saturday": {
+            "minutes": 60
+          }
+        },
+        "performanceEvidence": {
+          "newCapacityFinding": "none"
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Treat the repeated scheduling barrier as an adherence fact.",
+        "Offer a reschedule operation that preserves the accepted dose and monitoring signatures.",
+        "Recheck the complete destination-session time budget and competing work.",
+        "Explain schedule rationale independently of physiological adaptation."
+      ],
+      "prohibitedInferences": [
+        "Do not infer reduced bench capacity from missed sessions.",
+        "Do not prescribe catch-up volume or alter load without a separate authorized policy decision.",
+        "Do not silently activate the rescheduled week."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "Which available placement best protects adherence and the intended quality of both bench work and neighboring sessions?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-11",
+      "family": "attainment_and_maintenance",
+      "title": "An attained outcome remains distinct from other active goals",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "savedReview": {
+          "id": "review-attainment-1",
+          "outcomes": [
+            {
+              "id": "strength-goal",
+              "attained": true,
+              "attainmentBasis": "existing accepted review result"
+            },
+            {
+              "id": "aerobic-goal",
+              "attained": false
+            }
+          ]
+        },
+        "currentIntent": {
+          "outcomes": [
+            {
+              "id": "strength-goal",
+              "role": "maintenance_requested"
+            },
+            {
+              "id": "aerobic-goal",
+              "role": "development_requested"
+            }
+          ]
+        },
+        "numericMaintenancePolicy": {
+          "status": "not_supplied"
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Preserve the separate attainment states and explicit requested roles.",
+        "Represent maintenance as an intent that still needs an authorized prescription option.",
+        "Keep the unattained outcome in the weekly strategy."
+      ],
+      "prohibitedInferences": [
+        "Do not declare the whole event goal attained.",
+        "Do not invent a maintenance dose from the fixture's attained flag.",
+        "Do not delete strength work solely because its outcome is attained."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "What reviewed maintenance option would preserve the attained outcome while supporting the remaining priority?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-12",
+      "family": "priority_ambiguity",
+      "title": "Conflicting active outcomes lack a confirmed priority",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "outcomes": [
+          {
+            "id": "sprint-goal",
+            "domain": "speed_agility",
+            "status": "active"
+          },
+          {
+            "id": "run-goal",
+            "domain": "aerobic",
+            "status": "active"
+          },
+          {
+            "id": "strength-goal",
+            "domain": "strength",
+            "status": "active"
+          }
+        ],
+        "priorityOrder": null,
+        "candidateConflict": {
+          "sharedWindow": "saturday",
+          "requestedQuality": [
+            "fresh_sprint_output",
+            "longer_running_exposure"
+          ]
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Keep every active outcome visible.",
+        "Expose the specific unresolved priority conflict.",
+        "Request priority confirmation when the conflict changes the selected candidate."
+      ],
+      "prohibitedInferences": [
+        "Do not assign priority from array order, prose length or the most recent metric.",
+        "Do not silently label an outcome maintenance to make the week fit."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "What priority question makes the competing Saturday demands reviewable without asking the athlete to restate all goals?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-13",
+      "family": "infeasible_time",
+      "title": "Complete time accounting exposes an infeasible session",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "availableSessionMinutes": 60,
+        "candidateComponentsMinutes": {
+          "generalPreparation": 10,
+          "rampSets": 8,
+          "monitoring": 7,
+          "workingExecution": 20,
+          "rest": 24,
+          "transitions": 8,
+          "cooldown": 3
+        },
+        "outsideTraining": {
+          "status": "confirmed_none"
+        },
+        "acceptedBundles": {
+          "canChangeDoseWithoutSeparateReview": false
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Mark the proposed session as exceeding its available time.",
+        "Identify the retained components responsible for the conflict.",
+        "Surface supported alternatives or missing authorization rather than presenting the candidate as executable."
+      ],
+      "prohibitedInferences": [
+        "Do not remove rest, ramp sets or monitoring time from the accounting.",
+        "Do not silently cut an accepted dose.",
+        "Do not claim an infeasible session is a complete usable program."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "Which reviewed operation or athlete-confirmed availability change could make the week feasible?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-14",
+      "family": "current_intent_conflict",
+      "title": "Current event intent conflicts with an accepted historical date",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "acceptedPlan": {
+          "id": "accepted-week-1",
+          "eventDate": "2026-12-12",
+          "intentVersion": 1
+        },
+        "currentConfirmedIntent": {
+          "memoryId": "intent-2",
+          "version": 2,
+          "event": {
+            "name": "Synthetic mixed fitness event",
+            "date": "2027-04-17"
+          }
+        },
+        "unconfirmedChatStatement": {
+          "eventDate": "2027-03-01",
+          "status": "unconfirmed"
+        },
+        "currentSetup": {
+          "days": 5,
+          "minutesPerSession": 60
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Distinguish accepted historical intent, current confirmed intent and unconfirmed chat data.",
+        "Bind a replacement candidate to the current confirmed intent version.",
+        "Expose the date change in the proposal explanation without rewriting the accepted snapshot."
+      ],
+      "prohibitedInferences": [
+        "Do not use the historical date as current merely because it is in the accepted plan.",
+        "Do not promote the unconfirmed chat date.",
+        "Do not infer event-specific demands from the synthetic event label."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "How does the confirmed date change strategic emphasis without using calendar time alone to justify a dose change?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-15",
+      "family": "correction_and_immutability",
+      "title": "Corrected repetitions invalidate a pending strategy draft",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "acceptedPlan": {
+          "id": "accepted-week-1",
+          "contentSignature": "immutable-base-a"
+        },
+        "sourceHistory": [
+          {
+            "id": "workout-1",
+            "revision": 1,
+            "workingRepetitionsPerSet": 3,
+            "status": "superseded"
+          },
+          {
+            "id": "workout-1",
+            "revision": 2,
+            "workingRepetitionsPerSet": 2,
+            "status": "current",
+            "origin": "athlete_correction"
+          }
+        ],
+        "pendingDraft": {
+          "id": "draft-1",
+          "sourceRevision": 1,
+          "status": "unaccepted"
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Use the current correction for future strategy evidence.",
+        "Mark the pending draft based on the superseded revision as requiring regeneration.",
+        "Retain the accepted plan and original source history with their identities.",
+        "Require explicit acceptance for a replacement built from the corrected evidence."
+      ],
+      "prohibitedInferences": [
+        "Do not rewrite the accepted plan to hide the correction.",
+        "Do not treat aggregate repetitions as a maximal-effort set.",
+        "Do not claim correction alone authorizes a higher or lower future dose."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "Which parts of the strategic explanation change when the performed repetition fact is corrected?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-16",
+      "family": "ownership_isolation",
+      "title": "Foreign evidence cannot enter a strategy or its omission ledger",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "authenticatedOwner": "athlete-a",
+        "acceptedPlan": {
+          "id": "plan-a",
+          "owner": "athlete-a"
+        },
+        "queriedRecords": [
+          {
+            "id": "owned-workout",
+            "owner": "athlete-a",
+            "kind": "workout"
+          },
+          {
+            "id": "foreign-workout-secret",
+            "owner": "athlete-b",
+            "kind": "workout"
+          },
+          {
+            "id": "foreign-goal-secret",
+            "owner": "athlete-b",
+            "kind": "confirmed_intent"
+          }
+        ],
+        "requestSuppliedOwner": "athlete-b"
+      },
+      "expectedEngineeringAssertions": [
+        "Use the authenticated owner for all retrieval and proposed strategy bindings.",
+        "Exclude foreign record contents and identifiers from strategy output, counts and explanatory ledgers.",
+        "Reject any attempt to override ownership through model or request arguments."
+      ],
+      "prohibitedInferences": [
+        "Do not describe another athlete's evidence as a useful benchmark.",
+        "Do not leak foreign identifiers while explaining exclusions.",
+        "Do not derive a recommendation from mixed-owner records."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "Does the visible explanation remain useful after private foreign data is excluded?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-17",
+      "family": "unsupported_outcome",
+      "title": "An unsupported outcome remains visible beside supported goals",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "outcomes": [
+          {
+            "id": "supported-strength",
+            "domain": "strength",
+            "capability": "supported"
+          },
+          {
+            "id": "supported-run",
+            "domain": "aerobic",
+            "capability": "supported"
+          },
+          {
+            "id": "unsupported-skill",
+            "domain": null,
+            "capability": "unsupported",
+            "reason": "No reviewed sport-specific adapter"
+          }
+        ],
+        "eventGoalIds": [
+          "supported-strength",
+          "supported-run",
+          "unsupported-skill"
+        ],
+        "priorityOrder": [
+          "unsupported-skill",
+          "supported-strength",
+          "supported-run"
+        ]
+      },
+      "expectedEngineeringAssertions": [
+        "List the unsupported outcome and its named capability gap.",
+        "Distinguish any supported partial strategy from a complete event plan.",
+        "Do not replace the athlete's priority with a supported lower-priority goal without confirmation."
+      ],
+      "prohibitedInferences": [
+        "Do not map the unsupported skill to a vaguely similar domain.",
+        "Do not invent event movements or scoring.",
+        "Do not use confident prose to conceal missing compiler or policy support."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "What useful supported work or clarification can be offered while the highest-priority capability remains unavailable?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-18",
+      "family": "equipment_feasibility",
+      "title": "Current equipment excludes an accepted exercise option",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "acceptedWork": {
+          "id": "barbell-bench-bundle",
+          "requiredEquipment": [
+            "barbell",
+            "bench",
+            "rack"
+          ],
+          "doseSignature": "accepted-a"
+        },
+        "currentConfirmedEquipment": {
+          "memoryVersion": 3,
+          "ids": [
+            "bodyweight",
+            "dumbbell"
+          ]
+        },
+        "availableOperationCandidates": [
+          {
+            "id": "repeat-accepted-a",
+            "requiredEquipment": [
+              "barbell",
+              "bench",
+              "rack"
+            ]
+          },
+          {
+            "id": "alternative-b",
+            "status": "requires_reviewed_prescription_option"
+          }
+        ]
+      },
+      "expectedEngineeringAssertions": [
+        "Use current confirmed equipment when checking candidate feasibility.",
+        "Reject the unavailable accepted exercise option as a new executable candidate while preserving accepted history.",
+        "Expose that an alternative needs its own supported prescription basis."
+      ],
+      "prohibitedInferences": [
+        "Do not infer access to a rack from the word gym.",
+        "Do not transfer barbell loads directly to dumbbells.",
+        "Do not silently preserve infeasible equipment requirements."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "Which supported alternative best preserves the athlete's intended outcome within the available equipment?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-19",
+      "family": "shared_demands_conflict",
+      "title": "Two outcome-specific recommendations compete for the same work",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "outcomes": [
+          {
+            "id": "bench-strength",
+            "domain": "strength",
+            "priority": 1
+          },
+          {
+            "id": "bench-capacity",
+            "domain": "hypertrophy",
+            "priority": 2
+          }
+        ],
+        "sharedMovement": "barbell_bench_press",
+        "savedOutcomeReviews": [
+          {
+            "outcomeId": "bench-strength",
+            "candidate": "repeat_accepted_bundle"
+          },
+          {
+            "outcomeId": "bench-capacity",
+            "candidate": "collect_comparable_signal",
+            "missing": "compatible_recent_measurement"
+          }
+        ],
+        "availableWindows": {
+          "count": 5,
+          "minutesEach": 60
+        },
+        "newNumericalPolicy": "none"
+      },
+      "expectedEngineeringAssertions": [
+        "Map both outcomes to the shared movement demand.",
+        "Make the conflict between retained work and signal collection explicit.",
+        "Check any combined candidate's time and monitoring context before presenting it.",
+        "Retain each review's source and missingness."
+      ],
+      "prohibitedInferences": [
+        "Do not apply the highest-priority isolated adjustment without checking the other outcome.",
+        "Do not double-count one exposure as two independent measurements.",
+        "Do not invent a compromise numerical dose."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "Can the accepted work and required signal coexist usefully, or must one outcome's role be explicitly changed?"
+        ]
+      }
+    },
+    {
+      "id": "p3-dev-20",
+      "family": "partial_history_and_symptom_scope",
+      "title": "Partial logs and different-activity symptom relief preserve uncertainty",
+      "synthetic": true,
+      "assumptions": [
+        "All athlete records, dates, quantities, protocol identifiers and arrangements in this case are fabricated development inputs.",
+        "Any accepted plan or saved review is a fixture fact, not a claim of real athlete acceptance or qualified coaching approval."
+      ],
+      "inputFacts": {
+        "recentHistory": {
+          "coverage": "reported_partial",
+          "knownWorkouts": [
+            {
+              "id": "work-1",
+              "movement": "bench_press",
+              "quantityStatus": "bounded"
+            }
+          ]
+        },
+        "athleteReports": [
+          {
+            "id": "report-1",
+            "activity": "loaded_lower_body_work",
+            "symptom": "tightness",
+            "timing": "earlier_week"
+          },
+          {
+            "id": "report-2",
+            "activity": "easy_cycling",
+            "symptom": "none",
+            "timing": "later_week"
+          },
+          {
+            "id": "report-3",
+            "activity": "current_general_checkin",
+            "symptom": "none",
+            "timing": "today"
+          }
+        ],
+        "exerciseSpecificClearance": {
+          "status": "not_established"
+        },
+        "acceptedPlan": {
+          "id": "accepted-week-1",
+          "contentSignature": "immutable-base-a"
+        }
+      },
+      "expectedEngineeringAssertions": [
+        "Preserve logging coverage and bounded performed quantities.",
+        "Keep each symptom report attached to its activity and time.",
+        "Surface the unresolved exercise-specific uncertainty without claiming a diagnosis.",
+        "Keep any proposed strategy limitation distinct from changes to the immutable accepted plan."
+      ],
+      "prohibitedInferences": [
+        "Do not infer low capacity from partial logging.",
+        "Do not use symptom-free cycling as clearance for loaded lower-body work.",
+        "Do not diagnose injury or prescribe rehabilitation from the reports.",
+        "Do not invent exact quantities from bounded entries."
+      ],
+      "coachingJudgment": {
+        "status": "pending",
+        "questions": [
+          "What focused clarification is needed before choosing the affected exercise or session arrangement?"
+        ]
+      }
+    }
+  ]
+}

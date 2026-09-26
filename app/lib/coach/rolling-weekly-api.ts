@@ -85,6 +85,13 @@ export function parseStoredRollingWeeklyIntent(value: unknown): StoredRollingWee
   return value as unknown as StoredRollingWeeklyIntent
 }
 
+export class ConfirmedEventDateConflictError extends Error {
+  constructor(eventDate: string) {
+    super(`Goal target date must match the confirmed event date (${eventDate}); confirm the date before creating a proposal`)
+    this.name = 'ConfirmedEventDateConflictError'
+  }
+}
+
 export function profileForDirectionHorizon(
   profile: ProgrammingProfile,
   startDate: string,
@@ -111,6 +118,14 @@ export function profileForDirectionHorizon(
   }
   const validation = validateProgrammingProfile(next)
   if (!validation.ok) throw new Error(validation.errors.join('; '))
+  const confirmedIntent = next.trainingIntent?.content
+  const event = confirmedIntent?.event
+  const eventHasActiveOutcome = event && confirmedIntent.outcomes.some(outcome => (
+    outcome.goal.status === 'active' && event.goalIds.includes(outcome.goal.id)
+  ))
+  if (eventHasActiveOutcome && event.date !== null && goalTargetDate !== event.date) {
+    throw new ConfirmedEventDateConflictError(event.date)
+  }
   return next
 }
 

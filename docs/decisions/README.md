@@ -15,3 +15,15 @@
 - [ADR-0014: Confirmed exercise preferences](ADR-0014-exercise-preference-memory.md) — versioned favorites, correction, and programming boundaries.
 
 - [ADR-0021: Capture and personalized coaching contracts](ADR-0021-capture-and-personalized-coaching-contracts.md) — accepted local implementation; capture, intent, evidence and refresh boundaries. Numbers through 0020 are reserved by experimental worktrees.
+
+- [ADR-0022: Evidence-conditioned coaching proposals](ADR-0022-evidence-conditioned-coaching-proposals.md) — shared selected evidence, bounded whole-record projection, and staged proposal authority.
+
+- [ADR-0023: Transactional coaching context revisions](ADR-0023-coach-proposal-context-revisions.md) — source mutation checks for unaccepted rolling drafts and preserved accepted replay.
+
+- [ADR-0024: Explicit training direction reconciliation](ADR-0024-explicit-training-direction-reconciliation.md) — current intent and setup yield a confirmed replacement or explicit supported-scope boundary.
+
+- [ADR-0025: Accepted week decision origin](ADR-0025-accepted-week-decision-origin.md) — preserve why an accepted replacement was chosen without treating that history as a new recommendation.
+
+- [ADR-0026: Bounded evidence retrieval fidelity](ADR-0026-bounded-evidence-retrieval-fidelity.md) — explicit provenance/exclusions, confirmed-outcome lookup and deliberate older performed-work retrieval.
+
+- [ADR-0027: Signal facts before prescription changes](ADR-0027-signal-facts-before-prescription-changes.md) — improved outcomes retain accepted work; source-linked sensor coverage and working evidence support review without numerical authority.

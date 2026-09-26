@@ -1,0 +1,24 @@
+{
+  "kind": "synthetic_private_restore_verified",
+  "project": "synthetic-only",
+  "backupRunId": "backup-20260923215232-611c0548",
+  "restoreId": "restore-6e4a8444-905",
+  "checkedAt": "2026-09-23T21:53:10.592Z",
+  "archiveAuthenticated": true,
+  "restored": true,
+  "selectedCatalogMatched": true,
+  "tableScopesMatched": 1,
+  "container": "socius-private-restore-6e4a8444-905",
+  "sourceCiphertextSha256": "694d49f38a180b9673ba336c8a1687594f0be9bcf154d43a82aaddc89fbdc723",
+  "productionRestorePerformed": false,
+  "limitations": [
+    "Synthetic generated local fixture only; no production connection or data",
+    "All source catalog fields captured; minimal synthetic schema is not production extension/service parity",
+    "Sequence values and unlisted object kinds are not independently digest-compared",
+    "Comparison covers captured catalog sections and included physical table scopes; large-object contents and unlisted object kinds are not digest-compared"
+  ],
+  "substitutions": [
+    "database name",
+    "NOLOGIN roles except local bootstrap socket operator"
+  ]
+}

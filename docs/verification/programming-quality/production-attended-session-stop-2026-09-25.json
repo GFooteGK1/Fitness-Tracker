@@ -1,0 +1,37 @@
+{
+  "kind": "attended_connection_restored_session_expired",
+  "at": "2026-09-25T12:17:21.7386811Z",
+  "browserConnected": true,
+  "browser": "Codex in-app browser",
+  "sqlQueries": 1,
+  "gateMutations": 0,
+  "authRequests": 0,
+  "smokeHttpRequests": 0,
+  "attendedAttemptUnused": true,
+  "gateRead": {
+    "browser": "iab",
+    "readOnly": true,
+    "mutations": 0,
+    "querySubmissions": 1,
+    "gate": {
+      "role": "postgres",
+      "paused": true,
+      "database": "postgres",
+      "generation": 5,
+      "readbackAt": "2026-09-25T12:14:08.48891+00:00",
+      "committedAt": "2026-09-25T02:36:13.27017+00:00"
+    },
+    "earlyObservationLimitReached": true
+  },
+  "session": {
+    "checkedAt": "2026-09-25T12:13:17.825Z",
+    "expiresAt": "2026-09-25T11:58:50.000Z",
+    "sufficientLifetime": false,
+    "attendedAttemptExists": false,
+    "attendedFailureExists": false,
+    "networkCalls": 0
+  },
+  "existingSmokeApprovalPreserved": true,
+  "sessionRenewalAuthorized": false,
+  "next": "Approve one existing-account session renewal amendment; preserve all original smoke limits"
+}

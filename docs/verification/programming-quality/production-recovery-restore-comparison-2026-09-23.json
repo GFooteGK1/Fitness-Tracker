@@ -1,0 +1,17 @@
+{
+  "kind": "private_production_archive_restore_partial_verification",
+  "sourceRunId": "backup-20260923220856-d35a0ccf",
+  "restoreRunId": "restore-abb072d3-e2a",
+  "archiveAuthenticated": true,
+  "physicalTableScopesCompared": 93,
+  "tableDigestDifferences": 0,
+  "catalogMatched": false,
+  "differingSections": ["roles", "columns", "schemas", "database", "relations", "constraints"],
+  "fullRecoveryGatePassed": false,
+  "privateRestoreContainerStopped": true,
+  "productionRestorePerformed": false,
+  "productionDeploymentPerformed": false,
+  "endToEndFailedAttempts": 3,
+  "status": "blocked_revised_plan_awaiting_approval",
+  "evidence": "Full source/restored catalogs and comparison diagnostics retained encrypted outside Git"
+}

@@ -1,0 +1,499 @@
+{
+  "runId": "53be07cf-4a56-454f-beca-a491a1ae8f8d",
+  "startedAt": "2026-09-23T14:12:26.426Z",
+  "completedAt": "2026-09-23T14:12:50.991Z",
+  "passed": true,
+  "scope": "Real local PostgreSQL contention, synthetic tenant/ACL and revision transaction verification only",
+  "target": {
+    "connection": "sociusfit-local",
+    "container": "supabase_db_sociusfit-programming-local",
+    "project": "sociusfit-programming-local",
+    "api": "http://127.0.0.1:55321",
+    "databaseHostPort": 55322
+  },
+  "harnessSha256": "11a0f855265744cc7ceebef1aad66d8f3772194f4693aa42097d1c2a14d79e33",
+  "candidateMigrationSha256": "0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f",
+  "liveFunctions": [
+    {
+      "function": "accept_adaptation_proposal",
+      "config": [
+        "search_path=\"\"",
+        "lock_timeout=1s"
+      ],
+      "definitionMd5": "3f329206286083b1ea1e350c31058e9a"
+    },
+    {
+      "function": "create_initial_rolling_weekly_proposal",
+      "config": [
+        "search_path=\"\"",
+        "lock_timeout=1s"
+      ],
+      "definitionMd5": "0fd721066f8e10cd2536dc492877f6db"
+    },
+    {
+      "function": "create_rolling_weekly_replacement_proposal",
+      "config": [
+        "search_path=\"\"",
+        "lock_timeout=1s"
+      ],
+      "definitionMd5": "e80a784c2a3c6ad9d022eac5ebd8fa4e"
+    },
+    {
+      "function": "get_coach_context_revision",
+      "config": [
+        "search_path=\"\"",
+        "lock_timeout=1s"
+      ],
+      "definitionMd5": "920a06ceb6c86dd529d81c62c916b0d6"
+    },
+    {
+      "function": "record_coach_weekly_review",
+      "config": [
+        "search_path=\"\"",
+        "lock_timeout=1s"
+      ],
+      "definitionMd5": "59e0f1567a3644faf035de553f8f2cb7"
+    }
+  ],
+  "backends": [
+    {
+      "name": "source-A",
+      "pid": 1758,
+      "version": "17.6",
+      "database": "postgres",
+      "role": "postgres"
+    },
+    {
+      "name": "decision-B",
+      "pid": 1762,
+      "version": "17.6",
+      "database": "postgres",
+      "role": "postgres"
+    },
+    {
+      "name": "observer",
+      "pid": 1760,
+      "version": "17.6",
+      "database": "postgres",
+      "role": "postgres"
+    }
+  ],
+  "checks": [
+    {
+      "name": "fixed local target and three independent PostgreSQL backends",
+      "passed": true,
+      "guards": {
+        "revisionTable": true,
+        "proposalGuard": true,
+        "reviewDeferred": true
+      }
+    },
+    {
+      "name": "function-scoped one-second operational lock caps",
+      "passed": true,
+      "timeouts": [
+        {
+          "function": "accept_adaptation_proposal",
+          "config": [
+            "search_path=\"\"",
+            "lock_timeout=1s"
+          ],
+          "definitionMd5": "3f329206286083b1ea1e350c31058e9a"
+        },
+        {
+          "function": "create_initial_rolling_weekly_proposal",
+          "config": [
+            "search_path=\"\"",
+            "lock_timeout=1s"
+          ],
+          "definitionMd5": "0fd721066f8e10cd2536dc492877f6db"
+        },
+        {
+          "function": "create_rolling_weekly_replacement_proposal",
+          "config": [
+            "search_path=\"\"",
+            "lock_timeout=1s"
+          ],
+          "definitionMd5": "e80a784c2a3c6ad9d022eac5ebd8fa4e"
+        },
+        {
+          "function": "get_coach_context_revision",
+          "config": [
+            "search_path=\"\"",
+            "lock_timeout=1s"
+          ],
+          "definitionMd5": "920a06ceb6c86dd529d81c62c916b0d6"
+        },
+        {
+          "function": "record_coach_weekly_review",
+          "config": [
+            "search_path=\"\"",
+            "lock_timeout=1s"
+          ],
+          "definitionMd5": "59e0f1567a3644faf035de553f8f2cb7"
+        }
+      ]
+    },
+    {
+      "name": "first revision read contends with uncommitted source initialization",
+      "passed": true,
+      "conflictSqlState": "55P03",
+      "conflictMs": 1006,
+      "noPartialInitialization": true
+    },
+    {
+      "name": "source-first insert ROLLBACK",
+      "passed": true,
+      "conflictSqlState": "55P03",
+      "conflictMs": 1015,
+      "blocking": {
+        "blockedPid": 1762,
+        "blockerPid": 1758,
+        "blockers": [
+          1758
+        ],
+        "waitEventType": "Lock",
+        "waitEvent": "transactionid",
+        "ungrantedLocks": 1,
+        "tupleRelations": []
+      },
+      "errorFrames": [
+        {
+          "function": "public.dirty_recommendations",
+          "line": 4
+        },
+        {
+          "function": "public.invalidate_recommendation_source",
+          "line": 10
+        },
+        {
+          "function": "public.create_initial_rolling_weekly_proposal",
+          "line": 84
+        }
+      ],
+      "decisionWritesRolledBack": true,
+      "freshRetry": true,
+      "sourceOutcome": "ROLLBACK"
+    },
+    {
+      "name": "source-first insert COMMIT",
+      "passed": true,
+      "conflictSqlState": "55P03",
+      "conflictMs": 1010,
+      "blocking": {
+        "blockedPid": 1762,
+        "blockerPid": 1758,
+        "blockers": [
+          1758
+        ],
+        "waitEventType": "Lock",
+        "waitEvent": "transactionid",
+        "ungrantedLocks": 1,
+        "tupleRelations": []
+      },
+      "errorFrames": [
+        {
+          "function": "public.dirty_recommendations",
+          "line": 4
+        },
+        {
+          "function": "public.invalidate_recommendation_source",
+          "line": 10
+        },
+        {
+          "function": "public.create_initial_rolling_weekly_proposal",
+          "line": 84
+        }
+      ],
+      "decisionWritesRolledBack": true,
+      "freshRetry": true,
+      "sourceOutcome": "COMMIT"
+    },
+    {
+      "name": "source-first correct ROLLBACK",
+      "passed": true,
+      "conflictSqlState": "55P03",
+      "conflictMs": 1010,
+      "blocking": {
+        "blockedPid": 1762,
+        "blockerPid": 1758,
+        "blockers": [
+          1758
+        ],
+        "waitEventType": "Lock",
+        "waitEvent": "transactionid",
+        "ungrantedLocks": 1,
+        "tupleRelations": []
+      },
+      "errorFrames": [
+        {
+          "function": "public.dirty_recommendations",
+          "line": 4
+        },
+        {
+          "function": "public.invalidate_recommendation_source",
+          "line": 10
+        },
+        {
+          "function": "public.create_initial_rolling_weekly_proposal",
+          "line": 84
+        }
+      ],
+      "decisionWritesRolledBack": true,
+      "freshRetry": true,
+      "sourceOutcome": "ROLLBACK"
+    },
+    {
+      "name": "source-first correct COMMIT",
+      "passed": true,
+      "conflictSqlState": "55P03",
+      "conflictMs": 1011,
+      "blocking": {
+        "blockedPid": 1762,
+        "blockerPid": 1758,
+        "blockers": [
+          1758
+        ],
+        "waitEventType": "Lock",
+        "waitEvent": "transactionid",
+        "ungrantedLocks": 1,
+        "tupleRelations": []
+      },
+      "errorFrames": [
+        {
+          "function": "public.dirty_recommendations",
+          "line": 4
+        },
+        {
+          "function": "public.invalidate_recommendation_source",
+          "line": 10
+        },
+        {
+          "function": "public.create_initial_rolling_weekly_proposal",
+          "line": 84
+        }
+      ],
+      "decisionWritesRolledBack": true,
+      "freshRetry": true,
+      "sourceOutcome": "COMMIT"
+    },
+    {
+      "name": "source-first delete ROLLBACK",
+      "passed": true,
+      "conflictSqlState": "55P03",
+      "conflictMs": 1012,
+      "blocking": {
+        "blockedPid": 1762,
+        "blockerPid": 1758,
+        "blockers": [
+          1758
+        ],
+        "waitEventType": "Lock",
+        "waitEvent": "transactionid",
+        "ungrantedLocks": 1,
+        "tupleRelations": []
+      },
+      "errorFrames": [
+        {
+          "function": "public.dirty_recommendations",
+          "line": 4
+        },
+        {
+          "function": "public.invalidate_recommendation_source",
+          "line": 10
+        },
+        {
+          "function": "public.create_initial_rolling_weekly_proposal",
+          "line": 84
+        }
+      ],
+      "decisionWritesRolledBack": true,
+      "freshRetry": true,
+      "sourceOutcome": "ROLLBACK"
+    },
+    {
+      "name": "source-first delete COMMIT",
+      "passed": true,
+      "conflictSqlState": "55P03",
+      "conflictMs": 1014,
+      "blocking": {
+        "blockedPid": 1762,
+        "blockerPid": 1758,
+        "blockers": [
+          1758
+        ],
+        "waitEventType": "Lock",
+        "waitEvent": "transactionid",
+        "ungrantedLocks": 1,
+        "tupleRelations": []
+      },
+      "errorFrames": [
+        {
+          "function": "public.dirty_recommendations",
+          "line": 4
+        },
+        {
+          "function": "public.invalidate_recommendation_source",
+          "line": 10
+        },
+        {
+          "function": "public.create_initial_rolling_weekly_proposal",
+          "line": 84
+        }
+      ],
+      "decisionWritesRolledBack": true,
+      "freshRetry": true,
+      "sourceOutcome": "COMMIT"
+    },
+    {
+      "name": "final proposal revision fence remains NOWAIT",
+      "passed": true,
+      "sqlState": "40001",
+      "elapsedMs": 4,
+      "noDecisionWrites": true
+    },
+    {
+      "name": "proposal-fence-before-source ROLLBACK",
+      "passed": true,
+      "blocking": {
+        "blockedPid": 1758,
+        "blockerPid": 1762,
+        "blockers": [
+          1762
+        ],
+        "waitEventType": "Lock",
+        "waitEvent": "transactionid",
+        "ungrantedLocks": 1,
+        "tupleRelations": [
+          "coach_context_revisions"
+        ]
+      },
+      "decisionOutcome": "ROLLBACK",
+      "revisionFenceProbeSqlState": "55P03",
+      "sourceCommittedAfterFenceRelease": true
+    },
+    {
+      "name": "proposal-fence-before-source COMMIT",
+      "passed": true,
+      "blocking": {
+        "blockedPid": 1758,
+        "blockerPid": 1762,
+        "blockers": [
+          1762
+        ],
+        "waitEventType": "Lock",
+        "waitEvent": "transactionid",
+        "ungrantedLocks": 1,
+        "tupleRelations": [
+          "coach_context_revisions"
+        ]
+      },
+      "decisionOutcome": "COMMIT",
+      "revisionFenceProbeSqlState": "55P03",
+      "sourceCommittedAfterFenceRelease": true
+    },
+    {
+      "name": "real local authenticated HTTP acceptance conflict",
+      "passed": true,
+      "status": 409,
+      "noAcceptanceReported": true
+    },
+    {
+      "name": "stale first acceptance and fresh recovery",
+      "passed": true,
+      "staleSqlState": "40001",
+      "heldSourceConflict": "55P03",
+      "heldSourceConflictMs": 1016,
+      "freshAccepted": true
+    },
+    {
+      "name": "accepted replay remains immutable after source mutation",
+      "passed": true,
+      "sameResult": true,
+      "entireAcceptedPlanUnchanged": true,
+      "noDuplicateDecisionRows": true
+    },
+    {
+      "name": "review-earlier-recommendation-lock ROLLBACK",
+      "passed": true,
+      "rpcSqlState": "55P03",
+      "rpcMs": 1018,
+      "reviewWritesRolledBack": true,
+      "sourceOutcome": "ROLLBACK"
+    },
+    {
+      "name": "review-earlier-recommendation-lock COMMIT",
+      "passed": true,
+      "rpcSqlState": "55P03",
+      "rpcMs": 975,
+      "reviewWritesRolledBack": true,
+      "sourceOutcome": "COMMIT"
+    },
+    {
+      "name": "deferred-review-source-conflict ROLLBACK",
+      "passed": true,
+      "rpcReturnedBeforeDeferredCheck": true,
+      "commitSqlState": "40001",
+      "commitMs": 3,
+      "reviewWritesRolledBack": true,
+      "sourceOutcome": "ROLLBACK"
+    },
+    {
+      "name": "deferred-review-source-conflict COMMIT",
+      "passed": true,
+      "rpcReturnedBeforeDeferredCheck": true,
+      "commitSqlState": "40001",
+      "commitMs": 3,
+      "reviewWritesRolledBack": true,
+      "sourceOutcome": "COMMIT"
+    },
+    {
+      "name": "stale stored review cannot be rebound; fresh successor recovers",
+      "passed": true,
+      "staleRebindSqlState": "40001",
+      "oldPendingExpired": true,
+      "newReviewAndProposal": true,
+      "acceptedPlanUnchanged": true
+    },
+    {
+      "name": "tenant isolation and internal authority",
+      "passed": true,
+      "foreignTablesHidden": [
+        "coach_context_revisions",
+        "training_programs",
+        "training_plan_versions",
+        "adaptation_proposals",
+        "coach_weekly_reviews"
+      ],
+      "foreignAcceptSqlState": "P0002",
+      "helperSqlState": "42501",
+      "directWriteSqlState": "42501",
+      "acl": [
+        {
+          "role": "authenticated",
+          "directWrite": false,
+          "internalExecute": false
+        },
+        {
+          "role": "anon",
+          "directWrite": false,
+          "internalExecute": false
+        },
+        {
+          "role": "service_role",
+          "directWrite": false,
+          "internalExecute": false
+        }
+      ],
+      "foreignMutationDidNotAdvanceOwnerRevision": true
+    }
+  ],
+  "failure": null,
+  "limitations": [
+    "Local bootstrap has documented differences from production; no hosted state accessed",
+    "SQL role claims simulate authenticated actors; local Auth created the separate synthetic accounts",
+    "App/browser, pre-revision cutover, pause, backup restoration and compatible-artifact rollback are separate checks",
+    "Synthetic accounts/data retained; no reset, migration, deletion or production credential use",
+    "Minimal SQL fixture intent does not establish programming or compiler quality"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "syntheticOnly": true,
+  "sourceSnapshotRows": 2,
+  "currentSourceRows": 3,
+  "sourceAndRestoredDigestMatch": true,
+  "restoredRows": 2,
+  "restoreDb": "synthetic_capture_8085490fd5",
+  "coordinatorClosed": true,
+  "tableDigestConnection": "held_coordinator",
+  "newReferenceConnections": 0,
+  "sequentialDigestCopiesMatched": true,
+  "settings": {
+    "readOnly": "on",
+    "isolation": "repeatable read",
+    "statementTimeout": "2min",
+    "lockTimeout": "5s",
+    "rowSecurity": "off"
+  }
+}

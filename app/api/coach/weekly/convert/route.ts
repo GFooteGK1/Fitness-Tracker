@@ -1,4 +1,5 @@
 import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
+import { fetchCoachContextRevision, CoachContextRevisionUnavailableError, CoachContextRevisionConflictError, coachContextConflictMessage, isCoachContextConflict } from '@/app/lib/coach/proposal-context-revision'
 import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/app/lib/api-response'
@@ -11,6 +12,7 @@ import {
 } from '@/app/lib/coach/complete-intake'
 import {
   buildStoredRollingWeeklyIntent,
+  ConfirmedEventDateConflictError,
   isIsoDate,
   isMonday,
   isRecord,
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
     const idempotencyKey = validIdempotencyKey(body.idempotencyKey)
     if (!idempotencyKey) return apiError('A valid idempotency key is required', 400)
 
+    const contextRevision = await fetchCoachContextRevision(supabase)
     const { data: programs, error: programError } = await supabase
       .from('training_programs')
       .select('id, active_plan_version_id')
@@ -107,6 +110,7 @@ export async function POST(request: Request) {
     const adaptivePlan = buildAdaptivePlanContract(profile, [result])
     const intent = buildStoredRollingWeeklyIntent(result, adaptivePlan)
     const sourceSnapshot = {
+      contextRevision,
       reason: 'legacy_to_rolling_weekly_proposal',
       basePlanVersionId: basePlan.id,
       planningInput: validated.value,
@@ -139,8 +143,8 @@ export async function POST(request: Request) {
     })
     if (error) {
       console.error('Legacy weekly conversion RPC failed:', { code: error.code })
-      if (error.code === '40001') {
-        return apiError('The active legacy plan changed; refresh and try again', 409)
+      if (isCoachContextConflict(error)) {
+        return apiError(coachContextConflictMessage(error), 409)
       }
       if (error.code === '22023' || error.code === '23505') {
         return apiError('Weekly replacement conflicts with an existing request', 409)
@@ -166,6 +170,9 @@ export async function POST(request: Request) {
       headers: { 'Cache-Control': 'private, no-store' }
     })
   } catch (error) {
+    if (error instanceof CoachContextRevisionUnavailableError) return apiError(error.message, 503)
+    if (error instanceof CoachContextRevisionConflictError) return apiError(error.message, 409)
+    if (error instanceof ConfirmedEventDateConflictError) return apiError(error.message, 409)
     console.error('Legacy weekly conversion POST error:', error)
     return apiError(
       'Unable to create the weekly replacement',

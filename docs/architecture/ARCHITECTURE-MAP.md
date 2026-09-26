@@ -909,3 +909,69 @@ Avoidance participates in movement eligibility, including substitutions.
 `COACH_EXERCISE_PREFERENCES_ENABLED` gates collection and fresh interpretation.
 Apply `20260915220000_exercise_preferences.sql` before enabling the flag. Existing
 accepted plans and ordinary weekly continuation keep their anchors.
+
+### Selected evidence for coaching reasoning (ADR-0022)
+
+`app/lib/coach/evidence-context.ts` selects canonical owned evidence.
+`app/lib/coach/evidence-reasoning-context.ts` projects complete selected records
+and measured samples under an explicit record budget. Socius consumes this view
+when programming context is included, preserving source/protocol boundaries and
+reporting every projection omission. The read-only `get_coach_evidence` tool adds
+five validated retrieval purposes with trusted ownership/time and existing window
+limits; accepted sessions remain available through `get_coach_state`.
+`performed-work-context.ts` shares planning's bounded canonical history reader and
+preserves factual quantities, effort and provenance behind the existing history
+capability. Neither projection chooses numerical prescriptions or activates a
+policy. See [ADR-0022](../decisions/ADR-0022-evidence-conditioned-coaching-proposals.md)
+for staged authority and remaining integration boundaries.
+
+`coaching-decision-context.ts` provides the shared validated read model of the
+existing persisted weekly review and linked proposal. Its server helper scopes
+reads to one athlete, program and accepted base, then checks included-source
+invalidations and supersession. Coach runtime/chat and weekly GET use the same
+projection; Program controls bind to the projected review/proposal identity.
+This is saved-decision readback, not fresh reconciliation of all athlete context.
+`profileForDirectionHorizon` rejects a supplied target that conflicts with a dated
+confirmed active event, after refreshed intent is applied for new directions.
+
+Rolling proposal creation captures `get_coach_context_revision()` before source
+reads. Reviews persist it in `rationale.contextRevision`; draft plans persist it
+in `input_snapshot.contextRevision`. The database owns the counter and compares
+it transactionally when saving reviews/proposals and first accepting proposals.
+Saved-review proposals retain the review's revision. This prevents source changes
+from silently reusing a draft without changing accepted prescription snapshots.
+See [ADR-0023](../decisions/ADR-0023-coach-proposal-context-revisions.md).
+
+Fresh weekly reviews use `direction-reconciliation-server.ts` and the pure
+`direction-reconciliation.ts` to compare latest owned intent/setup with the
+accepted week. Supported changes use an explicitly confirmed replacement;
+unsupported or unresolved input blocks generation with persisted reasons.
+Accepted performance is still evaluated against the accepted profile. Saving
+setup requires a fresh review, and live proposal controls bind to its exact ID.
+See [ADR-0024](../decisions/ADR-0024-explicit-training-direction-reconciliation.md).
+
+Shared coaching decision context also reads an optional `acceptedOrigin` through
+the owned accepted proposal that created the active plan. Its prior-base review
+remains historical, with explicit source correction status, separate from the
+current review and all action controls. Chat and Program use the same origin.
+See [ADR-0025](../decisions/ADR-0025-accepted-week-decision-origin.md).
+
+Evidence selector `coach-context-selection-0.4.0` retains value provenance and a
+bounded ledger of queried-owned exclusions; malformed meaningful record data is
+omitted explicitly. `confirmed-outcome-scope.ts` resolves accepted outcome IDs
+with exact measurement/binding matches and original semantic roles. Direct
+adaptation eligibility remains a separate evaluator gate. The read-only
+`get_coach_performed_work` tool deliberately widens the canonical history window
+to at most 180 days; passive/planning defaults remain 28 days and session effort
+remains separate from set effort. See
+[ADR-0026](../decisions/ADR-0026-bounded-evidence-retrieval-fidelity.md).
+
+Weekly review `weekly-review-0.4.0` preserves the accepted prescription when the
+evaluator detects improvement; a possible numerical increment is not itself a
+reason to change work. `signal-evidence-context.ts` projects explicit sensor
+counts, selected values and associated performed work as factual review context.
+The review endpoint stores it in existing rationale JSON under the same context
+revision fence. `signal-evidence-readback.ts` validates the optional persisted
+context for shared decision readback. It does not supply a physiological
+reconciliation policy or promote working sets into direct assessments. See
+[ADR-0027](../decisions/ADR-0027-signal-facts-before-prescription-changes.md).
