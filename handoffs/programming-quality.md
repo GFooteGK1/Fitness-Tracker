@@ -6,6 +6,24 @@ Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
 
+**September 26 release planning:** Greg requested a plan to get the completed batch
+into production. [Proposed closeout plan](../docs/plans/programming-quality-production-closeout-2026-09-26.md)
+is tracked as `Fitness-Tracker-i40.14` (open), independently reviewed with no material
+gaps. Local checkpoint `6c833e5` is unpushed; current PR84 remote head remains
+`0b012ba` with successful CI. Fresh GitHub main is `f123aa8`, an ancestor. Fresh
+Vercel metadata retains READY production `dpl_2tZqnshTDrFR5EDQpgi78dcBNns7` and
+production branch `main`. App code is unchanged from deployed source `93539b0`;
+the migration byte-preservation difference has no SQL content change and both
+approved hashes match. Recommended next step after plan approval: save the plan,
+push the scoped branch, obtain exact-candidate CI/review, then merge and verify
+the ordinary production deployment. No cutover replay or numerical activation.
+No push, PR mutation, merge or production change occurred during planning. This
+plan and handoff are documentation additions after `6c833e5`. Greg subsequently
+approved the plan. Task i40.14 is now in progress: save/push the candidate, obtain
+exact-head CI and full independent review, complete read-only production checks,
+then perform the authorized merge and normal deployment verification. The plan's
+conditional compatible rollback is authorized; its exclusions remain in force.
+
 **September 26: persistent local Podman fix passes a cold restart; i40.12 and
 i40.13 acceptance verified. Production cutover remains complete.** Run `36138184715` succeeded at exact
 checkpoint `0b012bae7ab2d75e5ddb67e19c1ca18136191c2f`; PR84 remains draft. The
