@@ -61,7 +61,7 @@ describe('new capture adapter persistence boundary',()=>{
   it('does not trust model PR flags or fabricated parser confidence',async()=>{
     const db=boundary();model({blocks:[{block_type:'STRENGTH',movements:[{name:'Squat',reps:5,weight:'100 lb'}],block_score:{is_pr:true,tonnage_lb:90000}}],rpe:7.5})
     const result=await workout(req('/api/parse-workout',{text:'Squat 100 lb x5',date:'2026-09-17'}));const body=await result.json()
-    expect(result.status).toBe(200);expect(body.receipts[0].entityKind).toBe('workout');expect(db.operations[0].record).toMatchObject({parse_confidence:null,rpe:null,reported_rpe:7.5});expect(db.operations[0].blocks[0]).toMatchObject({is_pr:false,tonnage_lb:500})
+    expect(result.status).toBe(200);expect(body.receipts[0].entityKind).toBe('workout');expect(db.operations[0].record).toMatchObject({parse_confidence:null,rpe:7.5,reported_rpe:7.5});expect(db.operations[0].blocks[0]).toMatchObject({is_pr:false,tonnage_lb:500})
   })
   it('photo saves only transient analysis with a shared receipt',async()=>{
     const db=boundary();model({items,total_protein:6,total_carbs:0,total_fat:5,total_calories:69,confidence:.85})

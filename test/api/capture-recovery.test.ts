@@ -16,7 +16,7 @@ function dbFixture(){
  const state:any={ledger:{id:ledgerId,user_id:owner,request_key:'meal:key-12345678',status:'processing',entities:[]},items:[],mutation:null,current:meal,schema:true}
  const writes=vi.fn()
  const read=(table:string)=> table==='logging_requests'?state.ledger:table==='logging_request_items'?state.items:table==='activity_mutations'?state.mutation:table==='activity_revisions'?{record:meal,provenance:meal.capture_provenance}:table==='food_catalog_entries'?{id:'catalog-one'}:state.current
- const from=vi.fn((table:string)=>{const q:any={select:()=>q,eq:()=>q,order:async()=>({data:read(table),error:null}),maybeSingle:async()=>({data:read(table),error:null}),single:async()=>({data:read(table),error:null}),limit:async()=>({data:[],error:state.schema?null:{code:'42703'}}),upsert:(...args:any[])=>{writes(table,...args);return q}};return q})
+ const from=vi.fn((table:string)=>{const q:any={select:()=>q,eq:()=>q,in:async()=>({data:[],error:null}),order:async()=>({data:read(table),error:null}),maybeSingle:async()=>({data:read(table),error:null}),single:async()=>({data:read(table),error:null}),limit:async()=>({data:[],error:state.schema?null:{code:'42703'}}),upsert:(...args:any[])=>{writes(table,...args);return q}};return q})
  const rpc=vi.fn(async(name:string,args:any):Promise<any>=>{
  if(name==='begin_logging_request') return {data:{...state.ledger,claimed:!state.claimed},error:null}
  if(name==='finish_logging_request'){
@@ -37,6 +37,14 @@ function dbFixture(){
 beforeEach(()=>{vi.stubEnv('CAPTURE_RECEIPTS_V2_ENABLED','true');vi.clearAllMocks()})
 afterEach(()=>vi.unstubAllEnvs())
 describe('capture API recovery boundaries',()=>{
+ it.each(['GET','POST','replay'])('returns confirmed-unsaved legacy workout proof through %s without rerunning a provider',async method=>{
+ const {db,state}=dbFixture();state.claimed=true;Object.assign(state.ledger,{request_key:'workout-text:key-12345678',status:'complete',http_status:500,response:{error:'Failed to parse workout',retryAllowed:false}})
+ const baseRpc=db.rpc.getMockImplementation()!;db.rpc.mockImplementation(async(name,args)=>name==='confirm_failed_workout_request'?{data:{retryAllowed:true},error:null}:baseRpc(name,args))
+ const process=vi.fn();const path='/api/logging/requests/key?expectedUserId='+owner;const params={params:Promise.resolve({id:state.ledger.request_key})}
+ const response=method==='replay'?await replayJsonRequest(makeRequest('/api/parse-workout',{requestId:'key-12345678',expectedUserId:owner}),'workout-text',process):method==='POST'?await retry(makeRequest(path,{}),params):await status(new Request('http://localhost'+path),params)
+ expect(response.status).toBe(method==='replay'?500:200);expect(await response.json()).toMatchObject({state:'draft',retryAllowed:true,savedEntities:[]});expect(process).not.toHaveBeenCalled();expect(state.ledger.response.retryAllowed).toBe(false)
+ expect(db.rpc.mock.calls.filter(call=>call[0]==='finish_logging_request')).toHaveLength(0)
+ })
  it('lost amendment response remains uncertain then recovers without rerunning the process',async()=>{
  const {db,state}=dbFixture();const baseRpc=db.rpc.getMockImplementation()!;db.rpc.mockImplementation(async(name,args)=>{
  if(name==='amend_logged_activity'){state.mutation={receipt};state.claimed=true;throw new TypeError('response lost after commit')}

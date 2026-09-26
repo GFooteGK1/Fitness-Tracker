@@ -2,6 +2,21 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CaptureReceipt, CaptureRequestItem } from './contracts'
 import { CaptureError } from './service'
 
+/** A terminal legacy workout request is releasable only after the database proves no write. */
+export async function recoverFailedWorkoutRequest(supabase: SupabaseClient, request: {
+  id: string; request_key: string; status: string; http_status?: number; response?: Record<string, unknown>
+}): Promise<Record<string, unknown> | null> {
+  if (!request.request_key.startsWith('workout-text:') || request.status !== 'complete'
+    || !request.http_status || request.http_status < 400 || request.response?.retryAllowed === true) return null
+  try {
+    const { data, error } = await supabase.rpc('confirm_failed_workout_request', { p_id: request.id })
+    if (error || data?.retryAllowed !== true) return null // Missing migration or unavailable proof stays closed.
+    return { ...request.response, error: 'This workout was not saved. Submit your entry again.',
+      details: 'The previous attempt is confirmed unsaved. A new submission can now be saved safely.',
+      state: 'draft', requestStatus: 'complete', retryAllowed: true, savedEntities: [] }
+  } catch { return null }
+}
+
 export async function readCaptureRequest(supabase: SupabaseClient, userId: string, key: string) {
   const { data: request, error } = await supabase.from('logging_requests').select('*').eq('user_id', userId).eq('request_key', key).maybeSingle()
   if (error) throw new CaptureError('Request status is unavailable.', 'unavailable', true)

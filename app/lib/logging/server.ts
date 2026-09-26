@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
 import { captureProvenance, type CaptureInputMethod, type CaptureProvenance, type CaptureReceipt, type CaptureOperation } from '@/app/lib/capture/contracts'
 import { freezeCapture, commitCaptureItem, commitCaptureBundle, CaptureError } from '@/app/lib/capture/service'
-import { readCaptureRequest, recoveredCaptureResponse } from '@/app/lib/capture/reconciliation'
+import { readCaptureRequest, recoveredCaptureResponse, recoverFailedWorkoutRequest } from '@/app/lib/capture/reconciliation'
 import { normalizeActivity } from '@/app/lib/capture/normalize'
 import { resolveAuthorizedSource } from '@/app/lib/capture/intent'
 import { amendActivity, validCorrection, type CorrectionIdentity } from '@/app/lib/capture/corrections'
@@ -40,7 +40,10 @@ export async function beginRequest(supabase: SupabaseClient, key: string, input:
   if (error || !data) return { response: NextResponse.json({
     error: error?.code === '22023' ? 'This request ID belongs to different input.' : 'Logging is unavailable. Your request was not started.'
   }, { status: error?.code === '22023' ? 409 : 503 }) }
-  if (data.status === 'complete') return { response: NextResponse.json(data.response, { status: data.http_status }) }
+  if (data.status === 'complete') {
+    const recovered = await recoverFailedWorkoutRequest(supabase, { ...data, request_key: key })
+    return { response: NextResponse.json(recovered ?? data.response, { status: data.http_status }) }
+  }
   if (!data.claimed) {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
@@ -128,7 +131,15 @@ export async function saveActivity(supabase: SupabaseClient, kind: 'meal' | 'wor
     p_kind: kind, p_record: record, p_blocks: blocks,
     p_request_id: loggingContext.getStore()?.id ?? null, p_response: response ?? null
   })
-  if (error || typeof data !== 'string') throw new ActivitySaveError('Unable to save the complete activity. Check history before retrying.')
+  if (error || typeof data !== 'string') {
+    // SQL data/constraint errors abort this atomic RPC. Transport failures remain uncertain.
+    const code = error?.code ?? ''
+    if (context && /^2[23][0-9A-Z]{3}$/.test(code)) context.canonicalNoWriteConfirmed = true
+    console.error('Activity save failed:', { kind, requestId: context?.id, code: code || 'unavailable' })
+    throw new ActivitySaveError(context?.canonicalNoWriteConfirmed
+      ? 'This activity was not saved. Review the entry and submit again.'
+      : 'Unable to save the complete activity. Check history before retrying.')
+  }
   return data
   } catch (error) {
     markCaptureCorrectionFailure(error)

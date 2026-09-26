@@ -13,6 +13,23 @@ const receipt: CaptureReceipt = { schemaVersion: 2, userId: 'athlete-a', request
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 beforeEach(() => { sessionStorage.clear(); auth.user = { id: 'athlete-a' } })
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
+
+it('explains confirmed-unsaved workout recovery before explicitly releasing the old request', async () => {
+  const key = 'socius-pending:athlete-a:/api/parse-workout'
+  sessionStorage.setItem(key, JSON.stringify({ requestId: 'failed-workout', json: JSON.stringify({ text: 'APEX RPE 5.5', date: '2026-09-25' }) }))
+  const fetch = vi.fn(async (url: string) => url === '/api/capture/drafts'
+    ? json({ userId: 'athlete-a', drafts: [] })
+    : json({ state: 'draft', retryAllowed: true, receipts: [], pendingItems: [] }))
+  vi.stubGlobal('fetch', fetch)
+  render(<CaptureRecovery />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry original save' }))
+  await screen.findByText('No workout was saved. Choose Log another occurrence, then submit your workout again.')
+  expect(sessionStorage.getItem(key)).not.toBeNull()
+  expect(screen.queryByText('Workout saved', { exact: true })).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Log another occurrence' }))
+  expect(sessionStorage.getItem(key)).toBeNull()
+  expect(fetch.mock.calls.filter(call => call[0] !== '/api/capture/drafts')).toHaveLength(1)
+})
 it('keeps estimated origin visible after review and hides other-account receipts', () => {
   expect(captureSourceLabel(receipt)).toBe('Estimated · reviewed')
   render(<CaptureReceiptPanel result={{ receipts: [receipt, { ...receipt, entityId: 'other', userId: 'athlete-b' }], state: 'save_unconfirmed' }} />)

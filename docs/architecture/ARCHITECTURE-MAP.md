@@ -877,6 +877,11 @@ ADR-0008 extends shared logging to the agent, text parsing, and meal-photo route
 `app/lib/logging/server.ts` claims and finalizes authenticated database receipts;
 `save_logged_activity` owns canonical workout/block or meal inserts. Uncertain
 writes stop processing and remain reconcilable through their saved entity IDs.
+Session RPE uses the existing NUMERIC column without rounding. The narrowly scoped
+`confirm_failed_workout_request` RPC proves an exact terminal legacy failure has
+no saved entities or capture operations before permitting a fresh submission.
+Historic receipts remain unchanged and their keys stay closed. See
+[ADR-0029](../decisions/ADR-0029-fractional-workout-effort-and-failed-save-recovery.md).
 Photo response persistence shares the meal transaction. No worker automatically
 re-executes a claimed request. See the release notes for precise scope/limitations.
 
