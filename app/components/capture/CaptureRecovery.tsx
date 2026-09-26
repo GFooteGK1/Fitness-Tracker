@@ -61,6 +61,9 @@ export function CaptureRecovery() {
       if (!response.ok) throw new Error(data.error ?? 'Save remains unconfirmed. Retry the original entry or check your history.')
       if (hasConfirmedCapture(data)) refreshAfterCanonicalSave(owner)
       if (data.state === 'saved' || data.retryAllowed === true) markCaptureCertainty(owner, entry.storageKey, true)
+      if (entry.kind === 'workout-text' && data.state === 'draft' && data.retryAllowed === true && !data.receipts?.length && !entry.originalReceipt) {
+        setMessage('No workout was saved. Choose Log another occurrence, then submit your workout again.')
+      }
       setPending(current => current.map(item => item.storageKey === entry.storageKey ? { ...item, result: !data.receipts?.length && item.originalReceipt ? { ...data, receipts: [item.originalReceipt] } : data, pendingItems: data.pendingItems ?? data.receiptBundle?.unresolved?.map((item: { operationId: string }) => item.operationId) ?? [], resolved: data.state === 'saved' || data.retryAllowed === true } : item))
     } catch (error) { if (currentOwner.current === owner) setMessage(error instanceof Error ? error.message : 'Save remains unconfirmed.') }
     finally { if (currentOwner.current === owner) setBusy(false) }

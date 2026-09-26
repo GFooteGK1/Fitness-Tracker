@@ -28,10 +28,10 @@ describe('capture authority and source semantics', () => {
     expect(normalizeActivity('meal', meal).record).not.toHaveProperty('user_id')
     expect(() => normalizeActivity('meal', { ...meal, items: [{ food: 'Egg', portion: '1' }] })).toThrow('Review the food')
   })
-  it('does not turn a prescribed range, missing unit, or fractional effort into an exact legacy projection', () => {
+  it('preserves reported fractional effort without turning a prescribed range or missing unit into exact performance', () => {
     const normalized = normalizeActivity('workout', { workout_date: '2026-09-17', rpe: 7.5, blocks: [
       { block_type: 'STRENGTH', movements: [{ name: 'Squat', reps: { min: 5, max: 8 }, weight: '100' }] }] })
-    expect(normalized.record).toMatchObject({ rpe: null, reported_rpe: 7.5 })
+    expect(normalized.record).toMatchObject({ rpe: 7.5, reported_rpe: 7.5 })
     expect(normalized.blocks[0]).toMatchObject({ total_reps: null, tonnage_lb: null, is_pr: false })
   })
   it('does not let a model tool grant its own logging or memory authority', async () => {
