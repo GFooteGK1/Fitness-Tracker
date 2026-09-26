@@ -27,3 +27,5 @@
 - [ADR-0026: Bounded evidence retrieval fidelity](ADR-0026-bounded-evidence-retrieval-fidelity.md) — explicit provenance/exclusions, confirmed-outcome lookup and deliberate older performed-work retrieval.
 
 - [ADR-0027: Signal facts before prescription changes](ADR-0027-signal-facts-before-prescription-changes.md) — improved outcomes retain accepted work; source-linked sensor coverage and working evidence support review without numerical authority.
+
+- [ADR-0029: Fractional workout effort and failed-save recovery](ADR-0029-fractional-workout-effort-and-failed-save-recovery.md) — exact session effort, transactional migration and owner-locked no-write proof without reopening failed identities.

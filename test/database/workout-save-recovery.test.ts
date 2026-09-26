@@ -17,6 +17,8 @@ let original: any, viewBefore: any
 
 beforeAll(async () => {
   db = await recommendationFixture()
+  await db.exec(sqlFile('supabase/migrations/20260921010000_coach_proposal_context_revision.sql'))
+  await db.exec(sqlFile('supabase/migrations/20260923010000_coaching_write_pause.sql'))
   await db.query('INSERT INTO auth.users(id) VALUES($1),($2)', [owner, other]); await actor()
   original = await claim()
   await expect(rpc('save_logged_activity', ['workout', record, blocks, original.id])).rejects.toMatchObject({ code: '22P02' })
