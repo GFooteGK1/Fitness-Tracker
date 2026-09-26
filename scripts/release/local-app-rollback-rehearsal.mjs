@@ -7,6 +7,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { CookieAuthStorageAdapter } from '@supabase/auth-helpers-shared';
+import { provisionLocalOwnerProfile } from './local-owner-profile.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const outputRoot = path.join(root, 'output/app-quality-release');
@@ -132,9 +133,9 @@ async function account(name) {
   const email=`rollback-${name}-${randomUUID()}@sociusfit-local.invalid`,password=randomUUID()+randomUUID();
   const made=await admin.auth.admin.createUser({email,password,email_confirm:true});if(made.error)throw new Error('Synthetic Auth creation failed');
   credentials.push({id:made.data.user.id,email,password});fs.writeFileSync(path.join(run,'users.private.json'),JSON.stringify(credentials,null,2));
-  const profile=await admin.from('user_profiles').upsert({user_id:made.data.user.id,fitness_goals:['performance'],body_metrics:{age:35,height_cm:175,weight_kg:75},preferences:{units:'imperial',notifications:false,privacy_level:'private'}});if(profile.error)throw new Error('Synthetic profile creation failed');
   const client=createClient(status.API_URL,status.ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
   const login=await client.auth.signInWithPassword({email,password});if(login.error)throw new Error('Synthetic Auth login failed');
+  await provisionLocalOwnerProfile(client,made.data.user.id);
   const parts=[];class Cookies extends CookieAuthStorageAdapter {setCookie(name,value){parts.push(`${name}=${encodeURIComponent(value)}`);}}
   new Cookies().setItem('sb-127-auth-token',JSON.stringify(login.data.session));
   return {id:made.data.user.id,client,cookie:parts.join('; ')};

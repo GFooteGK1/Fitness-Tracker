@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { randomUUID, createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { CookieAuthStorageAdapter } from '@supabase/auth-helpers-shared';
+import { provisionLocalOwnerProfile } from './local-owner-profile.mjs';
 
 const localOutput = new URL('../../output/app-quality-release/', import.meta.url);
 const status = JSON.parse(fs.readFileSync(new URL('local-supabase-status.private.json', localOutput), 'utf8'));
@@ -22,10 +23,6 @@ if (fresh) {
     if (user.error) throw new Error(`Local synthetic account creation failed: ${user.error.code}`);
     accounts.push({ name, email, password, id: user.data.user.id });
     fs.writeFileSync(new URL('synthetic-users.private.json', output), JSON.stringify(accounts, null, 2));
-    const profile = await admin.from('user_profiles').upsert({ user_id: user.data.user.id,
-      fitness_goals: ['performance'], body_metrics: { age: 35, height_cm: 175, weight_kg: 75 },
-      preferences: { units: 'imperial', notifications: false, privacy_level: 'private' } });
-    if (profile.error) throw new Error(`Local synthetic profile creation failed: ${profile.error.code}`);
   }
 }
 if (accounts.length !== 2 || accounts.some(account => !account.email.endsWith('@sociusfit-local.invalid'))) throw new Error('Expected two synthetic local accounts');
@@ -46,6 +43,7 @@ async function login(account) {
   const signedIn = await client.auth.signInWithPassword({ email: account.email, password: account.password });
   if (signedIn.error) throw new Error('Synthetic direct owner sign-in failed');
   assert(signedIn.data.user.id === account.id, `${account.name}: real Auth identity`);
+  if (fresh) await provisionLocalOwnerProfile(client, account.id);
   // Same helper/format used by the browser auth client. UI sign-in is verified separately.
   const parts = [];
   class LocalCookieAdapter extends CookieAuthStorageAdapter {

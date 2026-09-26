@@ -1,0 +1,19 @@
+{
+  "runId": "07673765-c76c-43f9-b239-7f09883441e5",
+  "at": "2026-09-26T04:02:41.852Z",
+  "passed": true,
+  "checks": [
+    "fixed local target and exact enabled profile trigger verified",
+    "owner: service-role profile upsert reproduces 23502",
+    "owner: failed upsert left no profile",
+    "owner: real owner Auth sign-in",
+    "owner: owner profile create and repeated upsert readback passed",
+    "other: service-role profile upsert reproduces 23502",
+    "other: failed upsert left no profile",
+    "other: real owner Auth sign-in",
+    "other: owner profile create and repeated upsert readback passed",
+    "other owner cannot read profile",
+    "other owner cannot update profile",
+    "owner readback remains unchanged"
+  ]
+}

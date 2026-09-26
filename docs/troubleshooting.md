@@ -1,5 +1,28 @@
 # Troubleshooting
 
+## Local Podman reports a missing network after VM startup
+
+Verified September 26, 2026 UTC / September 25 Chicago on WSL2.6.3.0 and the
+`sociusfit-local` rootless VM. `ssh: rejected: connect failed (open failed)` was
+caused by user@1000.service failing to spawn its executor with EBUSY in an
+occupied shared cgroup. The retained network existed; the old helper suppressed
+the connection error and mislabeled it. The helper now checks connectivity first.
+
+Inspect the VM's actual systemd namespace, user manager, user bus and socket.
+A slice override alone did not clear the existing unit's cached cgroup path.
+A separately named transient manager in `sociusfitlocal.slice` first restored the
+rootless socket. The durable fix is an instance-specific
+`/etc/systemd/system/user@1000.service.d/90-sociusfit-isolation.conf` containing
+`[Service]` and `Slice=sociusfitlocal.slice`, applied only inside the named Podman
+VM. Install before a clean scoped restart so systemd does not retain the old
+occupied cgroup path. On September26 the normal manager cold-started in the new
+path, the transient manager was absent, nine container IDs and 48 data-scope
+digests/counts matched, and twelve real Auth/PostgREST checks passed. See the
+[durable result](../handoffs/investigations/programming-quality-durable-podman.md).
+Do not terminate foreign
+cgroup processes, reset Supabase, switch to rootful mode or restart all WSL
+distributions. See the [RCA and exact attempts](../handoffs/investigations/programming-quality-profile-rehearsal.md).
+
 ## Private logical restore has matching data but catalog differences
 
 Verified 2026-09-23 on PostgreSQL 17.6. All 93 table digests matched while

@@ -1,10 +1,48 @@
 # SociusFit programming quality — current handoff
 
-Updated: 2026-09-25 UTC and Chicago. Project: Fitness-Tracker/SociusFit. Status: active, partial implementation.
+Updated: 2026-09-26 UTC and Chicago. Project: Fitness-Tracker/SociusFit. Status: active, partial implementation.
 Objective: execute the accepted evidence-conditioned programming QPlan.
 Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
+
+**September 26: persistent local Podman fix passes a cold restart; i40.12 and
+i40.13 acceptance verified. Production cutover remains complete.** Run `36138184715` succeeded at exact
+checkpoint `0b012bae7ab2d75e5ddb67e19c1ca18136191c2f`; PR84 remains draft. The
+canonical root Beads tracker confirms i40.11, i40.12 and i40.13 closed.
+
+Worktree: `C:/Dev/Personal/repos/Fitness-Tracker/.worktrees/programming-quality`,
+branch `codex/programming-quality`. This checkpoint's local rehearsal changes add the
+exact retained profile ownership trigger, owner-authenticated provisioning in
+both app-flow callers, seven passing focused regressions and a fixed-local HTTP
+verification runner. All twelve real Auth/PostgREST checks passed; two new local
+synthetic accounts/profiles are retained. Full TypeScript, focused lint, syntax
+and whitespace checks passed. Independent review found no actionable defects. See
+[receipt and acceptance boundary](../docs/verification/programming-quality/profile-provisioning-rehearsal.md).
+
+Greg authorized RCA, replan and execution. The existing rootless user manager
+could not start in an occupied shared WSL cgroup; a separate transient manager
+in sociusfitlocal.slice restored the socket. The existing stack is running and
+its four host listeners are loopback-only. Only the missing local profile trigger
+was installed; all eight prior profile rows retained their digest. No production
+action, reset, deletion or push occurred. All attempts and the successful
+result are retained in the [RCA](investigations/programming-quality-profile-rehearsal.md).
+Greg then authorized the durable fix. A persistent instance-specific drop-in
+now places the normal user@1000 manager in sociusfitlocal.slice from boot.
+The named VM was stopped and started; the normal manager is active in that exact
+cgroup and the temporary manager is absent. The same nine containers and all 48
+checked data-scope counts/digests survived unchanged; twelve post-restart real
+Auth checks passed. Four endpoints remain loopback-only and OpenClawGateway stayed
+running. See [durable repair evidence](../docs/verification/programming-quality/durable-rootless-startup-2026-09-26.json)
+and [execution record](investigations/programming-quality-durable-podman.md).
+The local stack remains running. No Windows reboot or WSL-upgrade test is claimed.
+Greg authorized a local checkpoint commit. Hosted CI for this checkpoint has not
+run; the successful CI linked above covers the earlier commit. No push is included.
+Next core package is i40.1/P0 baseline adjudication and sealed holdout, without
+repeating Greg's six accepted qualitative judgments. Numerical policy remains
+disabled. External board reporting remains unmapped; no board event was saved.
+
+## Completed production cutover — retain as evidence, do not repeat
 
 **September 25, 12:56 UTC: production coaching writes resumed at generation 8.**
 The approved release cutover is complete. Final resume 7-to-8 committed at

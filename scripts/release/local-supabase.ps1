@@ -41,8 +41,11 @@ try {
       & $podman machine start $machine
       if ($LASTEXITCODE -ne 0) { throw 'Local machine start failed' }
     }
-    & $podman --connection $machine network inspect $network *> $null
-    if ($LASTEXITCODE -ne 0) { throw 'Dedicated local network missing; inspect setup before creating it' }
+    $connectionResult = & $podman --connection $machine info --format '{{.Host.Security.Rootless}}' 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Local Podman connection unavailable; inspect its user manager/socket before network recovery: $($connectionResult -join ' ')" }
+    if (($connectionResult -join '').Trim() -ne 'true') { throw 'Expected the existing rootless local Podman connection' }
+    $networkResult = & $podman --connection $machine network inspect $network 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Dedicated local network inspection failed; do not recreate it without diagnosis: $($networkResult -join ' ')" }
     & $supabase start --workdir $project --network-id $network *> (Join-Path $output 'local-supabase-start.log')
     if ($LASTEXITCODE -ne 0) { throw 'Local start failed; inspect ignored local-supabase-start.log' }
   }

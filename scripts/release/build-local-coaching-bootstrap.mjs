@@ -77,6 +77,7 @@ const holistic = 'docs/migrations/complete-holistic-migration.sql'
 for (const name of ['workouts', 'block_scores', 'benchmark_prs', 'movements']) table(original, name)
 for (const name of ['meals', 'daily_targets']) table(food, name)
 table(holistic, 'user_profiles')
+whole('scripts/release/fixtures/profile-owner-trigger.sql')
 source('test/database/fixture.ts')
 add('explicit fixture prerequisites', `
 -- Present in the existing tested fixture; historical installation source is
