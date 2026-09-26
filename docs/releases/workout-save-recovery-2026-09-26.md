@@ -1,6 +1,8 @@
 # Workout save recovery — September 26, 2026
 
-Tracker: Fitness-Tracker-h5r. Status: locally implemented; not deployed.
+Tracker: Fitness-Tracker-h5r. Status: production database migration verified; application release approved and awaiting CI/merge.
+
+Migration 20260926120000 was applied atomically with its ledger record. Readback confirmed numeric RPE, retained range checks, unchanged view definitions/identities/access controls, unchanged capture wrapper and unchanged coaching control. Owner-scoped proof confirms the failed request is eligible for resubmission while its historical receipt remains unchanged. No workout was submitted. Do not reapply the migration during the application release.
 
 ## Evidence and scope
 
