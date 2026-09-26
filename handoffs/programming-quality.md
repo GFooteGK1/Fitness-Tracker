@@ -6,6 +6,20 @@ Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
 
 ## Current state and next action
 
+**September 26, 17:04 UTC: approved batch integration is complete.** PR84 merged
+as `a9373b4fc108f65dc43052f0fdf31359d87b47ac`; normal Vercel Git deployment
+`dpl_FDUA3myrStJpKmcPFk4iKHU1wvim` is READY on all three production aliases.
+Candidate CI36255450735 and main CI36256099306 passed, as did full independent
+review and read-only schema/platform/build/asset verification. Existing-owner
+program/accepted-plan reads passed with the accepted plan unchanged. No observed
+post-merge 5xx rows. Numerical policy remains disabled; cutover was not repeated.
+See [complete result](../docs/verification/programming-quality/production-closeout-2026-09-26.md).
+Task i40.14 is complete; broader i40 remains partial. Next core package is
+i40.1/P0 baseline adjudication and sealed holdout, without repeating the six
+accepted qualitative judgments. The compatible prior deployment remains the
+rollback target. Final release evidence is saved separately on the work branch
+after the merge; it does not change the deployed application.
+
 **September 26 release planning:** Greg requested a plan to get the completed batch
 into production. [Proposed closeout plan](../docs/plans/programming-quality-production-closeout-2026-09-26.md)
 is tracked as `Fitness-Tracker-i40.14` (open), independently reviewed with no material

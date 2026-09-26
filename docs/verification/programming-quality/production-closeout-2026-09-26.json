@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "status": "completed",
+  "task": "Fitness-Tracker-i40.14",
+  "recordedAt": "2026-09-26T17:06:41.752Z",
+  "pr": 84,
+  "mergedAt": "2026-09-26T16:37:09Z",
+  "candidate": "afa6e1769a3acc5403fd11be79aec6734cf8f650",
+  "main": "a9373b4fc108f65dc43052f0fdf31359d87b47ac",
+  "ci": {
+    "candidate": {
+      "run": 36255450735,
+      "conclusion": "success",
+      "testFilesPassed": 313,
+      "testFilesSkipped": 6,
+      "testsPassed": 3506,
+      "testsSkipped": 19,
+      "browserJourneysPassed": 26
+    },
+    "main": {
+      "run": 36256099306,
+      "conclusion": "success"
+    }
+  },
+  "independentReview": {
+    "materialFindings": 0,
+    "focusedVitestPassed": 619,
+    "operatorTestsPassed": 58
+  },
+  "schemaPreflight": {
+    "role": "postgres",
+    "ledger": [
+      {
+        "name": "coach_proposal_context_revision",
+        "sha256": "0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f",
+        "version": "20260921010000",
+        "statements": 1
+      },
+      {
+        "name": "coaching_write_pause",
+        "sha256": "6c336015b78142da07a091d9f999d7019c13d9ec819064cfd4b82ee16d48a041",
+        "version": "20260923010000",
+        "statements": 1
+      }
+    ],
+    "paused": false,
+    "database": "postgres",
+    "readOnly": "on",
+    "triggers": 16,
+    "functions": 14,
+    "relations": 2,
+    "catalogMd5": "be096d617047c0e5e3c69275fac5b5af",
+    "generation": 8,
+    "observedAt": "2026-09-26T16:30:10.749214+00:00",
+    "catalogMatched": true
+  },
+  "platform": {
+    "at": "2026-09-26T17:04:00.514Z",
+    "expectedMainSha": "a9373b4fc108f65dc43052f0fdf31359d87b47ac",
+    "passed": true,
+    "methods": [
+      "GET"
+    ],
+    "productionMutations": 0,
+    "environmentDecryptionRequested": false,
+    "deployment": {
+      "id": "dpl_FDUA3myrStJpKmcPFk4iKHU1wvim",
+      "url": "fitness-tracker-nkiog0cw2-gregs-projects-98860c8b.vercel.app",
+      "readyState": "READY",
+      "target": "production",
+      "githubCommitSha": "a9373b4fc108f65dc43052f0fdf31359d87b47ac",
+      "githubCommitRef": "main",
+      "createdAt": 1790440633170
+    },
+    "checks": {
+      "identity": true,
+      "expectedArtifact": true,
+      "ready": true,
+      "source": true,
+      "bindings": true,
+      "domains": true,
+      "aliases": true,
+      "noRollingRelease": true
+    },
+    "aliases": [
+      {
+        "alias": "www.sociusfit.com",
+        "deploymentId": "dpl_FDUA3myrStJpKmcPFk4iKHU1wvim"
+      },
+      {
+        "alias": "sociusfit.com",
+        "deploymentId": "dpl_FDUA3myrStJpKmcPFk4iKHU1wvim"
+      },
+      {
+        "alias": "sociusai.vercel.app",
+        "deploymentId": "dpl_FDUA3myrStJpKmcPFk4iKHU1wvim"
+      }
+    ],
+    "bindingCount": 31,
+    "signIn": {
+      "status": 200,
+      "buildId": "S-ZHoJzhSQW6IpgPdEbSt"
+    },
+    "scriptPathsMatched": true,
+    "scriptCount": 10,
+    "assets": [
+      {
+        "path": "/_next/static/css/28181877abc77b83.css",
+        "status": 200,
+        "bytes": 58505,
+        "sha256": "b17811d44cfc968287fb01c62161296f1ed91b750d26cb26bed299f183260179",
+        "matched": true
+      }
+    ],
+    "redirects": [
+      {
+        "alias": "sociusfit.com",
+        "status": 307,
+        "location": "https://www.sociusfit.com/auth/signin",
+        "matched": true
+      },
+      {
+        "alias": "sociusai.vercel.app",
+        "status": 307,
+        "location": "https://www.sociusfit.com/auth/signin",
+        "matched": true
+      }
+    ],
+    "completedAt": "2026-09-26T17:04:11.922Z"
+  },
+  "existingOwnerReadback": {
+    "checkedAt": "2026-09-26T17:02:35.594Z",
+    "existingAuthenticatedSession": true,
+    "mode": "rolling_weekly",
+    "sameProgram": true,
+    "sameAcceptedPlan": true,
+    "acceptedPlanContentUnchanged": true,
+    "planStatus": "accepted",
+    "historyPlans": 2,
+    "error": null,
+    "mutations": 0
+  },
+  "errorLogObservation": {
+    "deploymentId": "dpl_FDUA3myrStJpKmcPFk4iKHU1wvim",
+    "since": "2026-09-26T16:37:09Z",
+    "filter": "5xx",
+    "matchingRows": 0,
+    "querySucceeded": true,
+    "checkedAt": "2026-09-26T17:02:56.2955380Z"
+  },
+  "rollback": {
+    "retainedDeployment": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7",
+    "used": false
+  },
+  "scope": {
+    "normalGitDeployment": true,
+    "newMigrations": 0,
+    "coachingPauseChanges": 0,
+    "newSyntheticAccounts": 0,
+    "productionCoachingWrites": 0,
+    "manualDeployment": false,
+    "numericalInitialDosePolicy": false
+  },
+  "limitations": [
+    "Broader i40 QPlan remains partial.",
+    "No new create/accept/write smoke; existing authenticated readback only.",
+    "One CSS asset byte-verified; all ten entrypoint script paths and exact build compared.",
+    "No long-term monitoring or athlete-outcome claim.",
+    "Browser CSS capture took approximately22minutes; unsuitable for time-critical recovery.",
+    "External board remains unmapped."
+  ]
+}
