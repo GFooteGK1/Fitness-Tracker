@@ -9,6 +9,8 @@ import {
 } from '@/app/lib/coach/rolling-weekly-plan'
 import type { ProgrammingProfile } from '@/app/lib/coach/programming-schema'
 import { GOLDEN_PROGRAMMING_PROFILES } from './golden-programming-profiles'
+import { intent, runningOutcome } from '../fixtures/personalized-coaching/intent'
+import { MOVEMENT_CATALOG } from '@/app/lib/coach/movement-catalog'
 
 const baseProfile = withStart(GOLDEN_PROGRAMMING_PROFILES[1].profile, '2026-09-07')
 const baseDirection = buildRollingTrainingDirection(baseProfile, {
@@ -218,6 +220,63 @@ describe('rolling weekly planning kernel', () => {
       expect(result.omittedMovementIds).toEqual([movementId])
       expect(result).not.toHaveProperty('sessions')
     }
+  })
+
+  it('rebuilds an explicitly confirmed schedule correction without requiring a different goal domain', () => {
+    const prior = buildInitial(), original = structuredClone(prior)
+    const profile = withStart(baseProfile, '2026-09-14')
+    profile.sessionAvailability = profile.sessionAvailability.map((session, index) => ({
+      ...session, day: (['tuesday', 'thursday', 'saturday'] as const)[index]
+    }))
+    const next = requirePlan(buildRollingWeeklyPlan({ source: 'weekly_review', windowStart: '2026-09-14',
+      profile, direction: baseDirection, priorWeek: prior,
+      decision: decision({ action: 'shift_emphasis', presentationClass: 'material_change' }) }))
+    expect(next.directionSnapshot.currentEmphasis).toEqual(prior.directionSnapshot.currentEmphasis)
+    expect(next.sessions.every(session => ['tuesday', 'thursday', 'saturday'].includes(session.day))).toBe(true)
+    expect(next.profileSnapshot.sessionAvailability).toEqual(profile.sessionAvailability)
+    expect(prior).toEqual(original)
+  })
+
+  it('rebuilds an event-date-only correction with unchanged goal allocation and immutable accepted intent', () => {
+    const originalProfile = withStart(GOLDEN_PROGRAMMING_PROFILES[4].profile, '2026-09-07')
+    const content = intent(runningOutcome())
+    content.event = { name: 'Synthetic race', date: '2026-12-31', goalIds: [content.outcomes[0].goal.id] }
+    originalProfile.trainingIntent = { schemaVersion: 1, memoryId: '11111111-1111-4111-8111-111111111111', memoryVersion: 1, content }
+    const originalDirection = buildRollingTrainingDirection(originalProfile, { hypothesis: 'Repeat compatible aerobic exposures.', goalTargetDate: '2026-12-31' })
+    const prior = requirePlan(buildRollingWeeklyPlan({ source: 'initial', windowStart: '2026-09-07', profile: originalProfile, direction: originalDirection }))
+    const original = structuredClone(prior), profile = withStart(originalProfile, '2026-09-14')
+    profile.trainingIntent!.content.event!.date = '2027-04-10'
+    const direction = buildRollingTrainingDirection(profile, { hypothesis: originalDirection.hypothesis, goalTargetDate: '2027-04-10' })
+    const next = requirePlan(buildRollingWeeklyPlan({ source: 'weekly_review', windowStart: '2026-09-14', profile, direction,
+      priorWeek: prior, decision: decision({ action: 'shift_emphasis', presentationClass: 'material_change' }) }))
+    expect(next.directionSnapshot.currentEmphasis).toEqual(prior.directionSnapshot.currentEmphasis)
+    expect(next.directionSnapshot.goalTargetDate).toBe('2027-04-10')
+    expect(next.profileSnapshot.trainingIntent?.content.event?.date).toBe('2027-04-10')
+    expect(prior).toEqual(original)
+  })
+
+  it.each(['no_change', 'hypothesis', 'retrieval_timestamp', 'equipment_order'] as const)(
+    'rejects a nominal emphasis shift caused only by %s and adjacent start date', change => {
+      const prior = buildInitial(), profile = withStart(baseProfile, '2026-09-14')
+      const direction = structuredClone(baseDirection)
+      if (change === 'hypothesis') direction.hypothesis = 'Reworded explanation of the same training.'
+      if (change === 'retrieval_timestamp') profile.recentTraining.asOfDate = '2026-09-14'
+      if (change === 'equipment_order') profile.equipment.resolvedIds.reverse()
+      expect(() => buildRollingWeeklyPlan({ source: 'weekly_review', windowStart: '2026-09-14', profile, direction,
+        priorWeek: prior, decision: decision({ action: 'shift_emphasis', presentationClass: 'material_change' }) }))
+        .toThrow('changed confirmed goals, event, or training setup')
+    })
+
+  it('still rejects a fully infeasible explicitly confirmed replacement through whole-week validation', () => {
+    const prior = buildInitial(), profile = withStart(GOLDEN_PROGRAMMING_PROFILES[4].profile, '2026-09-14')
+    profile.equipment.resolvedIds = ['bodyweight']
+    profile.explicitConstraints = [{ id: 'constraint:no_running', kind: 'no_running', description: 'Avoid running.', source: 'athlete_confirmed' }]
+    profile.preferences = MOVEMENT_CATALOG.filter(movement => movement.domains.includes('aerobic'))
+      .map(movement => ({ movementId: movement.id, preference: 'avoid', source: 'athlete_confirmed' }))
+    const direction = buildRollingTrainingDirection(profile, { hypothesis: 'Confirmed aerobic direction with limited equipment.', goalTargetDate: '2026-12-31' })
+    expect(() => buildRollingWeeklyPlan({ source: 'weekly_review', windowStart: '2026-09-14', profile, direction,
+      priorWeek: prior, decision: decision({ action: 'shift_emphasis', presentationClass: 'material_change' }) }))
+      .toThrow('at least one actionable session')
   })
 
   it('rejects an oversized progression and a silent direction change', () => {

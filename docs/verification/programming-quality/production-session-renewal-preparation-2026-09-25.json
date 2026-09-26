@@ -1,0 +1,55 @@
+{
+  "preparedAt": "2026-09-25T12:18:11.286Z",
+  "productionExecuted": false,
+  "privateCredentialReads": 0,
+  "networkCalls": 0,
+  "tests": {
+    "command": "node --test output/app-quality-release/cutover-20260924/renew-attended-session.test.mjs output/app-quality-release/cutover-20260924/attended-create-accept.test.mjs",
+    "passed": 16,
+    "failed": 0,
+    "independentReviewer": "plan_review",
+    "independentlyPassed": 16
+  },
+  "receiverAndReplayDiff": "single saved session lookup only; originals unchanged",
+  "files": [
+    {
+      "name": "renew-attended-session.mjs",
+      "bytes": 9061,
+      "sha256": "29c4083de9c4303b8fb34fe47c3b4c2fca938e6cf04c206d4b47562e569b9007"
+    },
+    {
+      "name": "renew-attended-session.test.mjs",
+      "bytes": 6298,
+      "sha256": "806b7d0ca7520cd2c1fd1531e0fe2d235493a67057a3df5818bae5d226b9493b"
+    },
+    {
+      "name": "attended-create-accept-renewed.mjs",
+      "bytes": 11428,
+      "sha256": "f1f0ddae5e8358459dac4efd1bcf919261588d8753f3ac506d94ef0fc4d05623"
+    },
+    {
+      "name": "smoke-operator-renewed.mjs",
+      "bytes": 15304,
+      "sha256": "17afe73660ec8f77bc0631cacfc42b2381a19dccd7a3a5bf88d8951d074b1069"
+    },
+    {
+      "name": "replay-renewed-session.mjs",
+      "bytes": 755,
+      "sha256": "1b540624dfba527a07ab751575812efd5a4afaf644aeb0f57677ec7fa4c6ed4c"
+    },
+    {
+      "name": "session-renewal-amendment.md",
+      "bytes": 3391,
+      "sha256": "4aa6de83c4da3de7dd4ed9b2ef43d2488c58f95f3501a742c8b5bc109b5d0aaf"
+    }
+  ],
+  "archive": {
+    "name": "cutover-session-renewal-20260925.zip",
+    "entries": 6,
+    "sha256": "2dc75a2ebee95a7440c7dab5f5382a41ed84aae56a792a82f8abe53bf01efb29",
+    "allEntriesByteVerified": true,
+    "containsPrivateData": false,
+    "privateSavedPath": "C:/Users/foote/AppData/Local/SociusFit/Recovery/cutover-session-renewal-20260925.zip",
+    "savedCopyHashVerified": true
+  }
+}

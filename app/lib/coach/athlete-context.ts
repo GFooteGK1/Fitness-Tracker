@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { personalizedCoachingCapabilities } from '../personalized-coaching-capabilities'
+import { fetchCoachingDecisionContext } from './coaching-decision-context-server'
 import { COACH_REFERENCE_MANIFEST } from './reference'
 import { COMPLETE_PROGRAMMING_POLICY_VERSION } from './programming-policy'
 import {
@@ -65,6 +66,7 @@ interface CoachMemoryRow {
 }
 
 interface TrainingProgramRow {
+  program_mode?: string
   id: string
   title: string
   goal_summary: string
@@ -136,7 +138,7 @@ export async function fetchCoachRuntimeContext(
       .limit(MAX_MEMORIES),
     supabase
       .from('training_programs')
-      .select('id, title, goal_summary, start_date, end_date, active_plan_version_id')
+      .select('id, title, goal_summary, start_date, end_date, active_plan_version_id, program_mode')
       .eq('user_id', userId)
       .eq('status', 'active')
       .order('start_date', { ascending: false })
@@ -165,7 +167,12 @@ export async function fetchCoachRuntimeContext(
     ? await fetchActiveProgram(supabase, userId, program, referenceDate)
     : null
 
+  const coachingDecision = program?.program_mode === 'rolling_weekly' && activeProgram
+    ? await fetchCoachingDecisionContext(supabase, userId, program.id, activeProgram.activePlanVersionId)
+    : undefined
+
   return {
+    ...(coachingDecision ? { coachingDecision } : {}),
     generatedAt: new Date().toISOString(),
     userId,
     capabilities: { feedbackV2: personalizedCoachingCapabilities().captureReceiptsV2 },

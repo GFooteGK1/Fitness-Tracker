@@ -267,18 +267,10 @@ function validateInputShape(input: BuildRollingWeeklyPlanInput): void {
     ) {
       throw new Error('Shift emphasis must rebuild from the changed direction without hidden dose edits')
     }
-    if (
-      input.decision.action === 'shift_emphasis'
-      && stableStringify(input.priorWeek.directionSnapshot) === stableStringify(input.direction)
-    ) {
-      throw new Error('Shift emphasis needs a changed durable direction')
-    }
-    if (
-      input.decision.action === 'shift_emphasis'
-      && stableStringify(input.priorWeek.directionSnapshot.currentEmphasis)
-        === stableStringify(input.direction.currentEmphasis)
-    ) {
-      throw new Error('Shift emphasis needs a changed goal allocation')
+    if (input.decision.action === 'shift_emphasis'
+      && stableStringify(durableDirectionBasis(input.priorWeek.profileSnapshot, input.priorWeek.directionSnapshot))
+        === stableStringify(durableDirectionBasis(input.profile, input.direction))) {
+      throw new Error('Shift emphasis needs changed confirmed goals, event, or training setup')
     }
     if (
       input.decision.action === 'pause_review'
@@ -479,6 +471,33 @@ function profileContinuity(profile: ProgrammingProfile): unknown {
     planningContext: profile.planningContext ?? null,
     prescriptionBasis: profile.prescriptionBasis ?? null,
     executionPriority: profile.executionPriority ?? null
+  }
+}
+
+/** Explicit replacement may correct setup without changing the goal domain.
+ * New evidence, calendar advancement and explanatory wording alone do not
+ * authorize rebuilding a dose. Ordinary continuation uses the stricter guard.
+ */
+function durableDirectionBasis(profile: ProgrammingProfile, direction: RollingTrainingDirection): unknown {
+  const goals = [profile.primaryGoal, ...profile.secondaryGoals].map(goal => ({
+    id: goal.id, domain: goal.domain, role: goal.role, allocation: goal.allocation,
+    athleteIntent: goal.athleteIntent,
+    outcome: goal.outcome ? { statement: goal.outcome.statement, kind: goal.outcome.kind, target: goal.outcome.target } : null
+  })).sort((a, b) => a.id.localeCompare(b.id))
+  return {
+    goals,
+    goalTargetDate: direction.goalTargetDate,
+    // A reconfirmed version must explicitly rebind the new draft: acceptance
+    // requires the current owned snapshot even when its goal text is unchanged.
+    trainingIntent: profile.trainingIntent ?? null,
+    trainingExperience: profile.trainingExperience,
+    sessionAvailability: [...profile.sessionAvailability].sort((a, b) => a.day.localeCompare(b.day)),
+    equipment: { ...profile.equipment, resolvedIds: [...profile.equipment.resolvedIds].sort() },
+    explicitConstraints: [...profile.explicitConstraints].sort((a, b) => a.id.localeCompare(b.id)),
+    unresolvedConstraintNote: profile.unresolvedConstraintNote,
+    preferences: [...profile.preferences].sort((a, b) => a.movementId.localeCompare(b.movementId)),
+    exercisePreferences: profile.exercisePreferences ? { ...profile.exercisePreferences,
+      entries: [...profile.exercisePreferences.entries].sort((a, b) => stableStringify(a).localeCompare(stableStringify(b))) } : null
   }
 }
 

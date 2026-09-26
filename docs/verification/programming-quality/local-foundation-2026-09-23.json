@@ -1,0 +1,32 @@
+{
+  "verifiedAt": "2026-09-23T13:41:43.936Z",
+  "scope": "Local synthetic foundation; not migration contention or deployment rehearsal",
+  "authChecks": [
+    {
+      "owner": "owner-a",
+      "signIn": true,
+      "ownProfile": true,
+      "foreignProfileHidden": true,
+      "revisionRpc": true
+    },
+    {
+      "owner": "owner-b",
+      "signIn": true,
+      "ownProfile": true,
+      "foreignProfileHidden": true,
+      "revisionRpc": true
+    }
+  ],
+  "backends": [
+    {
+      "pid": 416,
+      "version": "17.6",
+      "database": "postgres"
+    },
+    {
+      "pid": 418,
+      "version": "17.6",
+      "database": "postgres"
+    }
+  ]
+}

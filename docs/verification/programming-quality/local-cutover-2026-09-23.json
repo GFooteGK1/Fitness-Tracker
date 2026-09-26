@@ -1,0 +1,54 @@
+{
+  "kind": "synthetic_local_cutover_rehearsal",
+  "checkedAt": "2026-09-23T14:13:43.351Z",
+  "connection": "sociusfit-local",
+  "container": "supabase_db_sociusfit-programming-local",
+  "database": "socius_cutover_20260923141328_7491f2fd",
+  "sourceDatabaseReadOnly": "postgres",
+  "schemaExecutorRole": "postgres",
+  "fixtureSetupRole": "supabase_admin",
+  "writerRole": "authenticated",
+  "verifiedBaselineSections": 58,
+  "bootstrapSha256": "465eafbc6eaa995ebeeebf09bffd8d23a1f3d9d481c87f7fcdf642181fb8bb15",
+  "uuidExtensionVersion": "1.1",
+  "excludedCachedRevisionSectionSha256": "ccf93af97e82c471e4b6f56f9bee2083db105231672e62baa7bebd06c6034ec5",
+  "appliedCurrentRevisionSha256": "0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f",
+  "baselineGuardTransformation": "Only expected database name changed from postgres to this unique local database; empty Auth/public and real Auth/role/extension checks retained",
+  "checks": {
+    "oldSchemaBeforeMigration": true,
+    "acceptedAndPendingUnchangedByMigration": true,
+    "oldPendingFirstAcceptanceRejected40001": true,
+    "oldUnstampedNewWriterRejected40001": true,
+    "rejectedWritesRollback": true,
+    "acceptedReplayReturnsSameResult": true,
+    "acceptedReplayPreservesAllOriginalRecords": true,
+    "newStampedWriterAccepted": true,
+    "newSchemaAndFunctionTimeouts": true,
+    "exactMigrationReapplyPreservesRecordsAndCatalog": true
+  },
+  "beforeOriginalRecordHashes": {
+    "plans": "be92dea3dc04f948e87f58366fb5c2c6",
+    "proposals": "8a251eb35d9b580be292846d76b4bf41",
+    "programs": "1ad42efb0d14c4d359abb1d657e9a19e",
+    "sessions": "5bdd2f0fe3fd8bf41ddb7de242fcf0cd"
+  },
+  "afterReplayOriginalRecordHashes": {
+    "plans": "be92dea3dc04f948e87f58366fb5c2c6",
+    "proposals": "8a251eb35d9b580be292846d76b4bf41",
+    "programs": "1ad42efb0d14c4d359abb1d657e9a19e",
+    "sessions": "5bdd2f0fe3fd8bf41ddb7de242fcf0cd"
+  },
+  "preserved": [
+    "original source database",
+    "new cutover database",
+    "baseline/schema/migration/catalog artifacts"
+  ],
+  "limitations": [
+    "Synthetic SQL-only users; no Auth login or external services exercised",
+    "Scoped local bootstrap is not a production clone or migration ledger",
+    "No operator traffic pause, drain or coordinated app deployment exercised",
+    "Old unstamped writers are incompatible after migration; no safe old-app rollback demonstrated",
+    "Migration reapplication is idempotency evidence, not migration rollback",
+    "No hosted database, spending, production data, global role changes or database deletion"
+  ]
+}

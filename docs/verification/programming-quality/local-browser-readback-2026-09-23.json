@@ -1,0 +1,13 @@
+{
+  "verifiedAt": "2026-09-23T14:05:57.633Z",
+  "app": "http://127.0.0.1:3011",
+  "checks": [
+    "owner-b: real Auth identity",
+    "owner-a: real Auth identity",
+    "Browser accepted the adjacent week",
+    "Accepted browser proposal no longer pending",
+    "Historical accepted intent unchanged after browser recovery and acceptance"
+  ],
+  "currentPlanId": "7aad228b-967c-4162-ba56-88eda206ce1c",
+  "priorIntentHash": "8c0117f78bee51fb42386afe3de82f2c0abae0323e9c155ca07f9f45991d3468"
+}

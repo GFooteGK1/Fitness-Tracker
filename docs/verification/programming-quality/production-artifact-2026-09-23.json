@@ -1,0 +1,423 @@
+{
+  "kind": "retained_production_configured_artifact",
+  "recordedAt": "2026-09-23T23:38:59.264Z",
+  "sourceCommit": "93539b00bef9109f4221d10c9554cd99a3f5d5fe",
+  "compatibilityFloor": "923473a04583684d3f9b150c35ffa7e0173a8e25",
+  "sameApplicationAsCompatibilityFloor": true,
+  "appTree": "018101162f8347afdd6cd648a13e10c88e8aea65",
+  "publicTree": "0e0a2e3fdd4e5de97ca56b6f69f56e87a1891b28",
+  "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+  "orgId": "team_zjdKVgrSBNAYC9gql0Raiocm",
+  "projectRef": "auolnfwetmfcwhtvakzy",
+  "currentProduction": {
+    "id": "dpl_5kZSaXHLmqPPzsCy6odLJyy99utW",
+    "url": "fitness-tracker-807ju161o-gregs-projects-98860c8b.vercel.app",
+    "sha": "f123aa8aa848716e894ea7bec340d693995e4b36",
+    "state": "READY"
+  },
+  "publicInputs": {
+    "NEXT_PUBLIC_SUPABASE_URL": {
+      "sha256": "ffb8ebbf3ee759ed12e03e7731a196c943b0b2a05346605d91f4e339fe826d2c",
+      "value": "https://auolnfwetmfcwhtvakzy.supabase.co"
+    },
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": {
+      "sha256": "9d6d57d6f4207906bad1564f7f286364c05640feb71000592f4721efea019a24",
+      "role": "anon",
+      "projectRef": "auolnfwetmfcwhtvakzy"
+    }
+  },
+  "productionEnvironmentMetadata": [
+    {
+      "key": "ANTHROPIC_API_KEY",
+      "id": "kmcchkh2nsvF1jYH",
+      "type": "encrypted",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "updatedAt": 1766102447703,
+      "gitBranch": null
+    },
+    {
+      "key": "COACH_EXERCISE_PREFERENCES_ENABLED",
+      "id": "xeSEZ9Ot2bJgV8kV",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1789567817990,
+      "gitBranch": null
+    },
+    {
+      "key": "CRON_SECRET",
+      "id": "i6SwuwWRBX6eduPS",
+      "type": "encrypted",
+      "target": [
+        "development",
+        "preview",
+        "production"
+      ],
+      "updatedAt": 1769390140813,
+      "gitBranch": null
+    },
+    {
+      "key": "GOOGLE_SHEETS_API_KEY",
+      "id": "kv2C6tauTEprjhvK",
+      "type": "encrypted",
+      "target": [
+        "development",
+        "preview",
+        "production"
+      ],
+      "updatedAt": 1771265453545,
+      "gitBranch": null
+    },
+    {
+      "key": "LLM_FAST_PROVIDER",
+      "id": "jDug2t8FIBw6B785",
+      "type": "encrypted",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "updatedAt": 1784588107833,
+      "gitBranch": null
+    },
+    {
+      "key": "LLM_NUTRITION_PROVIDER",
+      "id": "bZMAvVANoNAZdt5b",
+      "type": "sensitive",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "updatedAt": 1784668406926,
+      "gitBranch": null
+    },
+    {
+      "key": "LLM_VISION_PROVIDER",
+      "id": "eHnqhIjtlYoJxWwo",
+      "type": "encrypted",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "updatedAt": 1784588141559,
+      "gitBranch": null
+    },
+    {
+      "key": "LLM_WORKOUT_PROVIDER",
+      "id": "yCe4ADDu2Jt4KGdA",
+      "type": "encrypted",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "updatedAt": 1784588123387,
+      "gitBranch": null
+    },
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "id": "oTmQ35ji3nPshnvx",
+      "type": "encrypted",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "updatedAt": 1765413529971,
+      "gitBranch": null
+    },
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "id": "FGqtTpcGxLjSAnbb",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097674,
+      "gitBranch": null
+    },
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_URL",
+      "id": "fTZHK75PeChnvUt9",
+      "type": "encrypted",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "updatedAt": 1765413529971,
+      "gitBranch": null
+    },
+    {
+      "key": "OPENAI_API_KEY",
+      "id": "Z0fTGbk8kPVhGGWD",
+      "type": "sensitive",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "updatedAt": 1785097021162,
+      "gitBranch": null
+    },
+    {
+      "key": "POSTGRES_DATABASE",
+      "id": "b26yH0B1LDtZS5mX",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097673,
+      "gitBranch": null
+    },
+    {
+      "key": "POSTGRES_HOST",
+      "id": "BQaCIMkmBD9QStPS",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097673,
+      "gitBranch": null
+    },
+    {
+      "key": "POSTGRES_PASSWORD",
+      "id": "BxY52wGLkEYTrOl6",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097673,
+      "gitBranch": null
+    },
+    {
+      "key": "POSTGRES_PRISMA_URL",
+      "id": "SmlIr2BiYlYBCZNA",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097673,
+      "gitBranch": null
+    },
+    {
+      "key": "POSTGRES_URL",
+      "id": "eJANo0cYRnL6c1qe",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097673,
+      "gitBranch": null
+    },
+    {
+      "key": "POSTGRES_URL_NON_POOLING",
+      "id": "7gwMsZGJJPHnf6AM",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097673,
+      "gitBranch": null
+    },
+    {
+      "key": "POSTGRES_USER",
+      "id": "TVGFvrfNS2KcIKPf",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097673,
+      "gitBranch": null
+    },
+    {
+      "key": "SUPABASE_ANON_KEY",
+      "id": "wGOqrtjEO0MFfUQh",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097673,
+      "gitBranch": null
+    },
+    {
+      "key": "SUPABASE_JWT_SECRET",
+      "id": "T7PBe2GC82QFZhjp",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097673,
+      "gitBranch": null
+    },
+    {
+      "key": "SUPABASE_PUBLISHABLE_KEY",
+      "id": "YXG5FXCsoMW87G7K",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097674,
+      "gitBranch": null
+    },
+    {
+      "key": "SUPABASE_SECRET_KEY",
+      "id": "Se7ihmOaeLJSMAKM",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097674,
+      "gitBranch": null
+    },
+    {
+      "key": "SUPABASE_SERVICE_ROLE_KEY",
+      "id": "TH8i2zP5OwqaGMpT",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097673,
+      "gitBranch": null
+    },
+    {
+      "key": "SUPABASE_URL",
+      "id": "NqOOPCJRWEUZzLlT",
+      "type": "encrypted",
+      "target": [
+        "production"
+      ],
+      "updatedAt": 1784583097673,
+      "gitBranch": null
+    },
+    {
+      "key": "TYPESAFE_API_KEY",
+      "id": "83ViB5TmO6YHl3uY",
+      "type": "sensitive",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "updatedAt": 1789649351289,
+      "gitBranch": null
+    },
+    {
+      "key": "TYPESAFE_MODEL",
+      "id": "mpQ0z6mTKEN7B1bd",
+      "type": "encrypted",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "updatedAt": 1789649387350,
+      "gitBranch": null
+    },
+    {
+      "key": "WHOOP_API_HOSTNAME",
+      "id": "qbQDaPnYXOgctFB7",
+      "type": "encrypted",
+      "target": [
+        "development",
+        "preview",
+        "production"
+      ],
+      "updatedAt": 1769359611371,
+      "gitBranch": null
+    },
+    {
+      "key": "WHOOP_CLIENT_ID",
+      "id": "oz53V6wK3eM76lts",
+      "type": "encrypted",
+      "target": [
+        "development",
+        "preview",
+        "production"
+      ],
+      "updatedAt": 1769359611371,
+      "gitBranch": null
+    },
+    {
+      "key": "WHOOP_CLIENT_SECRET",
+      "id": "2J5Y3vm6TSpEzson",
+      "type": "encrypted",
+      "target": [
+        "development",
+        "preview",
+        "production"
+      ],
+      "updatedAt": 1769359611371,
+      "gitBranch": null
+    },
+    {
+      "key": "WHOOP_ENCRYPTION_KEY",
+      "id": "LBRj3D7F1MPR1djx",
+      "type": "encrypted",
+      "target": [
+        "development",
+        "preview",
+        "production"
+      ],
+      "updatedAt": 1769362470846,
+      "gitBranch": null
+    }
+  ],
+  "flags": {
+    "newRuntimeFlagsAbsent": true,
+    "initialDosePolicy": false,
+    "existingExercisePreferenceValue": "not readable from metadata; preserve sensitive production binding"
+  },
+  "build": {
+    "builtAt": "2026-09-23T23:34:22.018Z",
+    "name": "socius-production-artifact-93539b0",
+    "image": "ad4384301ba9ec6a314f41e451e5c440874b06e52147a1a7f875c0df5c7b101b",
+    "toolchain": {
+      "node": "v24.13.1",
+      "platform": "linux",
+      "arch": "x64",
+      "glibc": "2.31",
+      "vercel": "56.4.1",
+      "builder": "4.20.4",
+      "next": "15.5.25"
+    },
+    "network": "disconnected",
+    "secrets": false,
+    "productionWrites": false
+  },
+  "artifact": {
+    "path": "output/app-quality-release/production-artifact-93539b0/vercel-artifact.tar",
+    "sha256": "461e0bf9e21561e0323c6c2edf53e825d48f8a8a8fc7c9f2a739798c8ea44814",
+    "bytes": 24125440,
+    "buildId": "u93phgwCcXfUdAb5YKaBh",
+    "fileManifestSha256": "e65f8325231f524b076130ec648039bd8069ae85babb7d343c6b96b694989342",
+    "files": 939,
+    "functionEntries": 186,
+    "symlinks": 183,
+    "nativeFiles": 0,
+    "serviceWorkerSha256": "9b5fe399111981160b68b0b264b0a3f73111acff1922fc8c9324d67bd0b4a187",
+    "buildOutputVersion": 3,
+    "target": "production"
+  },
+  "checks": {
+    "offlineBuildPassed": true,
+    "standaloneOutputVerified": true,
+    "allSymlinksRetained": true,
+    "publicClientInputsVerified": true,
+    "privateSecretDecryptionRequested": false,
+    "credentialsMounted": false,
+    "sourceArchiveReproducedIndependently": true
+  },
+  "limitations": [
+    "Offline structural inspection only; functions and browser code were not executed.",
+    "Source commit is bound to the supplied input receipt; this verifier does not independently compare source.tar to the build directory.",
+    "GLIBC version strings are observed binary markers, not parsed dynamic requirements or a deployment-runtime compatibility proof.",
+    "Windows scan checks Users/Dev/Windows/Program Files drive prefixes; local endpoint scan checks port55321 on localhost/127.0.0.1/host.docker.internal/IPv6loopback. No claim about arbitrary encoded strings.",
+    "Hosted runtime secrets, flags, services, routing behavior and production application rollback have not been validated.",
+    "Retained on this Windows host only; no hosted deployment or off-device artifact recovery established.",
+    "Same application source as the candidate; recovery for deployment/artifact failures, not an independently different behavior fallback.",
+    "Existing WHOOP cron is included. A staged production deployment must be treated as production-connected and may run cron before traffic promotion.",
+    "Production migration, traffic promotion, runtime smoke test and rollback command remain unexecuted."
+  ]
+}

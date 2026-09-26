@@ -1,0 +1,31 @@
+{
+  "kind": "production_locale_metadata",
+  "project": "auolnfwetmfcwhtvakzy",
+  "runId": "locale-20260923222939-51fb271f",
+  "checkedAt": "2026-09-23T22:29:45.372Z",
+  "readOnly": true,
+  "sslMode": "verify-full",
+  "encryptedEvidence": true,
+  "sourceConnections": 1,
+  "tableRowsRead": false,
+  "archiveCreated": false,
+  "productionRestorePerformed": false,
+  "locale": {
+    "role": "postgres",
+    "ctype": "en_US.UTF-8",
+    "login": "cli_login_postgres",
+    "locale": "en-US",
+    "collate": "en_US.UTF-8",
+    "database": "postgres",
+    "encoding": "UTF8",
+    "provider": "i",
+    "readOnly": "on",
+    "isolation": "repeatable read",
+    "versionNum": "170006",
+    "rowSecurity": "off",
+    "actualVersion": "153.120",
+    "lockTimeoutMs": 5000,
+    "recordedVersion": "153.120",
+    "statementTimeoutMs": 120000
+  }
+}

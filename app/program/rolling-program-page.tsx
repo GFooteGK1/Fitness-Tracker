@@ -8,6 +8,7 @@ import { CaptureRecovery } from '@/app/components/capture/CaptureRecovery'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import { savedSetupIsConfirmed, type CompleteCoachPlanningInput } from '@/app/lib/coach/complete-intake'
+import { decodeDirectionReconciliation } from '@/app/lib/coach/direction-reconciliation'
 import type { AtomicSessionCompletionInput } from '@/app/lib/coach/session-completion'
 import type {
   CoachRuntimeContext,
@@ -27,6 +28,9 @@ import { TrainingIntentPanel } from './training-intent-editor'
 import { CoachTrustCenter } from './coach-trust-center'
 import {
   WeeklyProgramView,
+  historyReview,
+  reviewDirectionReconciliation,
+  pendingProposal as proposalFromState,
   type WeeklyCoachState,
   type WeeklyProposalView
 } from './weekly-program-view'
@@ -110,19 +114,23 @@ export default function RollingProgramPage() {
         const targetDate = nextWeeklyState.program?.goal_target_date
         if (targetDate) setGoalTargetDate(targetDate)
         setProposal(proposalFromState(nextWeeklyState))
-        const currentReview = Array.isArray(nextWeeklyState.history)
-          ? null
-          : nextWeeklyState.history.reviews.find(item => (
-              item.base_plan_version_id === nextWeeklyState.currentWeek?.id
-            )) ?? null
-        if (currentReview?.sourceInvalidated) {
+        const currentReview = historyReview(nextWeeklyState)
+        // A refreshed saved record replaces any earlier live response.
+        setReview(null)
+        const savedDecisionBlocked = currentReview?.sourceInvalidated
+          || (nextWeeklyState.coachingDecision !== undefined && !currentReview)
+        if (savedDecisionBlocked) {
           reviewKey.current = null
           proposalKey.current = null
           setReview(null)
           setProposal(null)
         }
-        setProposalReviewId(currentReview?.sourceInvalidated ? null : currentReview?.id ?? null)
-        setProposalReviewAction(currentReview?.sourceInvalidated ? null : currentReview?.action ?? null)
+        if (!nextWeeklyState.pendingProposal) {
+          intakeKey.current = null
+          proposalKey.current = null
+        }
+        setProposalReviewId(savedDecisionBlocked ? null : currentReview?.id ?? null)
+        setProposalReviewAction(savedDecisionBlocked ? null : currentReview?.action ?? null)
       } else {
         setWeeklyState(null)
         setProposalReviewId(null)
@@ -150,14 +158,19 @@ export default function RollingProgramPage() {
     setError(null)
     intakeKey.current = null
     proposalKey.current = null
+    reviewKey.current = null
   }
 
-  const prepareReplacementForm = (mode: 'weekly_shift' | 'legacy_conversion') => {
+  const prepareReplacementForm = (mode: 'weekly_shift' | 'legacy_conversion', freshReconciliation?: unknown) => {
     const startDate = mode === 'weekly_shift' && weeklyState?.currentWeek
       ? addLocalDays(weeklyState.currentWeek.window_end, 1)
       : nextMonday()
-    setPlanningInput(current => ({ ...current, startDate }))
-    setGoalTargetDate(current => current >= startDate ? current : addLocalDays(startDate, 90))
+    const reconciliation = mode === 'weekly_shift'
+      ? decodeDirectionReconciliation(freshReconciliation) ?? reviewDirectionReconciliation(review ?? (weeklyState ? historyReview(weeklyState) : null))
+      : null
+    setPlanningInput(current => ({ ...current, ...reconciliation?.replacementPlanningInput, startDate, setupConfirmed: false }))
+    setGoalTargetDate(current => reconciliation?.goalTargetDate !== undefined
+      ? reconciliation.goalTargetDate ?? '' : (current >= startDate ? current : addLocalDays(startDate, 90)))
     setReplacementHypothesis(current => current || (
       mode === 'weekly_shift'
         ? 'A new weekly emphasis will better support the current athlete goal.'
@@ -167,6 +180,8 @@ export default function RollingProgramPage() {
     setStatus(null)
     setError(null)
     if (mode === 'weekly_shift') {
+      intakeKey.current = null
+      reviewKey.current = null
       setShowDirectionForm(true)
       setShowLegacyConversion(false)
     } else {
@@ -206,7 +221,10 @@ export default function RollingProgramPage() {
         })
       })
       const body = await response.json()
-      if (!response.ok) throw new Error(errorMessage(body, 'Unable to create the first week'))
+      if (!response.ok) {
+        if (response.status === 409) await loadState()
+        throw new Error(errorMessage(body, 'Unable to create the first week'))
+      }
       setProposal(body as WeeklyProposalView)
       setStatus('Your first week is ready to review. It is not active yet.')
     } catch (caught) {
@@ -235,10 +253,14 @@ export default function RollingProgramPage() {
         })
       })
       const body = await response.json()
-      if (!response.ok) throw new Error(errorMessage(body, 'Unable to review this week'))
+      if (!response.ok) {
+        if (response.status === 409) await loadState()
+        throw new Error(errorMessage(body, 'Unable to review this week'))
+      }
       setReview(body.review as ReviewWithId)
       setProposalReviewId(body.review?.id ?? null)
       setProposalReviewAction(body.review?.action ?? null)
+      setProposal(null)
       if (body.proposalId && body.proposal) {
         setProposal({
           proposalId: body.proposalId,
@@ -249,11 +271,13 @@ export default function RollingProgramPage() {
       } else if (body.review?.status === 'not_ready') {
         setStatus('The week is still open. Keep logging scheduled work or request an early review in Coach.')
       } else if (body.nextAction?.type === 'confirm_replacement_direction') {
-        prepareReplacementForm('weekly_shift')
+        prepareReplacementForm('weekly_shift', body.review?.directionReconciliation)
         setStatus('The evidence supports an emphasis change. Confirm the replacement direction.')
       } else {
         setStatus('Coach review saved. No next-week proposal is available yet.')
       }
+      reviewKey.current = null
+      proposalKey.current = null
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to review this week')
     } finally {
@@ -272,24 +296,46 @@ export default function RollingProgramPage() {
     setStatus(null)
     proposalKey.current ??= createIdempotencyKey('weekly-proposal')
     try {
-      if (storedReviewAction === 'shift_emphasis' && planningInput.exercisePreferences !== undefined) {
+      const replacingDirection = storedReviewAction === 'shift_emphasis' || showDirectionForm
+      if (replacingDirection) {
         await savePlanningInput()
+        reviewKey.current ??= createIdempotencyKey('weekly-direction-review')
       }
-      const response = await fetch(`/api/coach/weekly/reviews/${storedReviewId}/proposal`, {
+      // Confirming setup writes new source versions. Evaluate those versions in a
+      // new review instead of attaching them to the earlier saved decision.
+      const response = await fetch(replacingDirection ? '/api/coach/weekly/review' : `/api/coach/weekly/reviews/${storedReviewId}/proposal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(storedReviewAction === 'shift_emphasis'
+        body: JSON.stringify(replacingDirection
           ? {
-              idempotencyKey: proposalKey.current,
+              asOf: new Date().toISOString(),
+              windowDays: 84,
+              athleteRequestedReview: true,
+              reviewIdempotencyKey: reviewKey.current,
+              proposalIdempotencyKey: proposalKey.current,
               replacementPlanningInput: planningInput,
               tzOffset: getTimezoneOffset(),
-              replacementGoalTargetDate: goalTargetDate,
+              replacementGoalTargetDate: goalTargetDate || null,
               replacementHypothesis
             }
           : { idempotencyKey: proposalKey.current })
       })
       const body = await response.json()
-      if (!response.ok) throw new Error(errorMessage(body, 'Unable to build the replacement week'))
+      if (!response.ok) {
+        if (response.status === 409) await loadState()
+        throw new Error(errorMessage(body, 'Unable to build the replacement week'))
+      }
+      if (replacingDirection && body.review) {
+        setReview(body.review as ReviewWithId)
+        setProposalReviewId(body.review.id ?? null)
+        setProposalReviewAction(body.review.action ?? null)
+      }
+      if (!body.proposalId || !body.proposal) {
+        setProposal(null)
+        setShowDirectionForm(false)
+        setStatus('Review saved. Resolve the listed requirements before creating a replacement week.')
+        return
+      }
       setProposal(body as WeeklyProposalView)
       setShowDirectionForm(false)
       setStatus('Replacement week ready. Review and accept it to change emphasis.')
@@ -319,7 +365,10 @@ export default function RollingProgramPage() {
         })
       })
       const body = await response.json()
-      if (!response.ok) throw new Error(errorMessage(body, 'Unable to build the weekly replacement'))
+      if (!response.ok) {
+        if (response.status === 409) await loadState()
+        throw new Error(errorMessage(body, 'Unable to build the weekly replacement'))
+      }
       setProposal(body as WeeklyProposalView)
       setShowLegacyConversion(false)
       setStatus('Weekly replacement ready. Your accepted legacy plan is still active.')
@@ -449,7 +498,7 @@ export default function RollingProgramPage() {
         <CaptureRecovery />
         {status && <p role="status" className="app-notice app-notice-success text-sm font-medium">{status}</p>}
         {error && <p role="alert" className="app-notice app-notice-error text-sm">{error}</p>}
-        {!loading && context?.storageAvailable && <TrainingIntentPanel profileGoals={profile?.fitnessGoals} goal={planningInput.goal} />}
+        {!loading && context?.storageAvailable && <div id="confirmed-training-direction"><TrainingIntentPanel profileGoals={profile?.fitnessGoals} goal={planningInput.goal} /></div>}
 
         {loading ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
@@ -665,17 +714,6 @@ function ReplacementFields({
       </label>
     </div>
   )
-}
-
-function proposalFromState(state: WeeklyCoachState): WeeklyProposalView | null {
-  if (!state.pendingProposal || Array.isArray(state.history)) return null
-  const plan = state.history.plans.find(item => item.id === state.pendingProposal?.proposed_plan_version_id)
-  const proposal = plan?.intent.weekly_plan
-  return proposal ? {
-    proposalId: state.pendingProposal.id,
-    idempotencyKey: state.pendingProposal.idempotency_key,
-    proposal
-  } : null
 }
 
 function hydratePlanningInput(

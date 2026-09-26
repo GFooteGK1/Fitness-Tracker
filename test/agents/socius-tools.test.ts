@@ -75,6 +75,8 @@ describe('Socius retrieval tools', () => {
     expect(SOCIUS_TOOLS.map(tool => tool.name)).toEqual([
       'get_programming_readiness',
       'get_coach_state',
+      'get_coach_evidence',
+      'get_coach_performed_work',
       'get_coach_reference',
       'record_strength_assessment',
       'confirm_coach_memory'

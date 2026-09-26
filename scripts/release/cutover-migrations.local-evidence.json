@@ -1,0 +1,91 @@
+{
+  "rehearsal": {
+    "kind": "isolated_local_atomic_cutover_ledger_verification",
+    "startedAt": "2026-09-24T00:52:28.839Z",
+    "completedAt": "2026-09-24T00:52:49.387Z",
+    "completed": true,
+    "database": "socius_ledger_d04a92a43308",
+    "sourceDatabase": "postgres",
+    "sourceUse": "read-only version check and schema-only Auth/extensions export; no source writes",
+    "createdDatabaseRetained": true,
+    "platformRolesAltered": false,
+    "syntheticLedger": true,
+    "noProductionCalls": true,
+    "migrations": {
+      "pause": {
+        "version": "20260923010000",
+        "name": "coaching_write_pause",
+        "sha256": "6c336015b78142da07a091d9f999d7019c13d9ec819064cfd4b82ee16d48a041"
+      },
+      "revision": {
+        "version": "20260921010000",
+        "name": "coach_proposal_context_revision",
+        "sha256": "0a2983e79dfbfc7dada724d3af80916b74b61f50e4e0ee32056e5b7dd694f58f"
+      }
+    },
+    "expectedCatalogSha256": "5ba7cabf336cd203de76102299cf800fe2072ffab3e8af7045b1e0babd51102c",
+    "helperSha256": "3ea5501381cdbe9011d0f72ad4ef6181b172a17daf3ccd59f3bf1438ffe75434",
+    "checks": [
+      "fixed synthetic local container and PostgreSQL17.6 verified",
+      "new isolated Auth-schema-only database with verified pre-revision bootstrap and synthetic ledger",
+      "revision before pause rejected with no ledger entry",
+      "pause schema and ledger roll back together on injected ledger failure",
+      "pause commit, fresh independent state read and exact expected catalog pass",
+      "duplicate install and open-gate revision rejected without state change",
+      "stale CAS and wrong revision generation rejected; committed pause independently read",
+      "revision schema/function changes and ledger roll back atomically; pause preserved",
+      "revision committed while paused; independent exact14function/16trigger catalog verification passes",
+      "resume and re-pause commits independently verified; stale resume fails closed"
+    ],
+    "preparationFailures": [
+      {
+        "check": "initial pure-renderer unit assertion",
+        "count": 1,
+        "cause": "ON CONFLICT assertion incorrectly scanned preserved migration bodies instead of only ledger INSERT; corrected before any DB attempt"
+      }
+    ]
+  },
+  "supplementalReadOnlyVerification": {
+    "kind": "local_read_only_editor_literal_and_ledger_roundtrip",
+    "database": "socius_ledger_d04a92a43308",
+    "priorReceipt": "output/app-quality-release/cutover-ledger-d04a92a43308/receipt.json",
+    "priorHelperSha256": "3ea5501381cdbe9011d0f72ad4ef6181b172a17daf3ccd59f3bf1438ffe75434",
+    "currentHelperSha256": "e0f706ee8d2481d19e8f5bc635c1eb2d6e53d4b25a8ac1af3aae07acd30bc4b3",
+    "changesAfterRehearsal": [
+      "JSDoc options type annotation",
+      "Explicit CR/LF/tab escaping inside E-string literals; no migration-source changes"
+    ],
+    "productionCalls": 0,
+    "databaseWrites": 0,
+    "simulatedEditorNormalization": "CRLF to LF in full submitted read-only SQL",
+    "checks": [
+      {
+        "phase": "pause",
+        "storedNameExact": true,
+        "storedLedgerExact": true,
+        "editorLiteralExact": true
+      },
+      {
+        "phase": "revision",
+        "storedNameExact": true,
+        "storedLedgerExact": true,
+        "editorLiteralExact": true
+      }
+    ],
+    "catalogComparison": {
+      "matched": true,
+      "counts": {
+        "functions": true,
+        "relations": true,
+        "triggers": true
+      },
+      "differingSections": []
+    }
+  },
+  "preparationTypecheck": {
+    "initialFailure": "JavaScript options inference omitted expectedGeneration from the callable test contract",
+    "correction": "JSDoc options annotation only",
+    "subsequentFullTypecheck": "passed"
+  },
+  "scope": "Synthetic local PostgreSQL17.6 only. No hosted SQL Editor write or production operation. Current literal encoding checked through PostgreSQL after simulated editor line-ending normalization; full migration rehearsal precedes that literal-only change."
+}

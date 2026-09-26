@@ -1,0 +1,53 @@
+{
+  "kind": "local_compatible_app_rollback",
+  "checkedAt": "2026-09-23T20:39:52.084Z",
+  "app": "http://127.0.0.1:3012",
+  "databaseApi": "http://127.0.0.1:55321",
+  "candidateBuildId": "q5HS3By6DXeXjIPr42yVx",
+  "retainedBuildId": "N1fNUQnlscYENMsnBEVzj",
+  "retainedSourceCommit": "923473a04583684d3f9b150c35ffa7e0173a8e25",
+  "retainedManifestSha256": "7243e00834e49c5f204547a55ec1905328a4ff4453529fbdb67d70ee44a0adb3",
+  "schemaKeptInstalled": true,
+  "checks": [
+    "Revision schema remains installed before switch",
+    "candidate started and anonymous owned read denied",
+    "candidate serves its exact build manifest on the shared port",
+    "Candidate creates accepted base and pending stamped next week",
+    "retained started and anonymous owned read denied",
+    "retained serves its exact build manifest on the shared port",
+    "Retained app reads candidate accepted plan unchanged",
+    "Retained app isolates other owner reads",
+    "Retained app rejects foreign owner acceptance",
+    "Retained app source correction advances installed revision fence",
+    "Stale acceptance returns the specific training-context conflict",
+    "Retained app removes stale proposal and preserves accepted intent",
+    "Accepted replay remains immutable after rollback and source correction",
+    "Retained app fresh stamped review recovers a new proposal",
+    "Retained app accepts newly stamped proposal"
+  ],
+  "servedBuilds": [
+    {
+      "phase": "candidate",
+      "origin": "http://127.0.0.1:3012",
+      "buildId": "q5HS3By6DXeXjIPr42yVx",
+      "path": "/_next/static/q5HS3By6DXeXjIPr42yVx/_buildManifest.js",
+      "sha256": "5a275d6712088c4f18eda6353455b7eda1eae1667686d7b9ea6f9f82f51bc0cf"
+    },
+    {
+      "phase": "retained",
+      "origin": "http://127.0.0.1:3012",
+      "buildId": "N1fNUQnlscYENMsnBEVzj",
+      "path": "/_next/static/N1fNUQnlscYENMsnBEVzj/_buildManifest.js",
+      "sha256": "5a275d6712088c4f18eda6353455b7eda1eae1667686d7b9ea6f9f82f51bc0cf"
+    }
+  ],
+  "acceptedIntentHash": "8c0117f78bee51fb42386afe3de82f2c0abae0323e9c155ca07f9f45991d3468",
+  "retainedArtifactUnchanged": true,
+  "limitations": [
+    "Local HTTP/Auth/RLS and synthetic records only; not production promotion",
+    "Candidate is a second build of the same compatible application source; this proves artifact-switch mechanics, not a different-code rollback",
+    "Retained build is baked for loopback55321 and reuses lock-matched dependencies; production-target artifact remains unbuilt",
+    "No old-main rollback, database downgrade, production data or paid/external calls",
+    "Switch uses a test-owned process on3012, not a hosted deployment or operator traffic pause"
+  ]
+}

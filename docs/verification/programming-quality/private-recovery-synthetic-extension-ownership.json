@@ -1,0 +1,40 @@
+{
+  "kind": "synthetic_owner_specific_extension_precreation",
+  "source": "syn_preext_4cb4ffb0",
+  "restored": "syn_preext_4cb4ffb0_restored",
+  "matched": true,
+  "functionCount": 49,
+  "extensionVersions": [
+    {
+      "name": "pg_stat_statements",
+      "owner": "syn_preext_4cb4ffb0_owner",
+      "version": "1.11"
+    },
+    {
+      "name": "pgcrypto",
+      "owner": "syn_preext_4cb4ffb0_owner",
+      "version": "1.3"
+    },
+    {
+      "name": "plpgsql",
+      "owner": "restore_operator",
+      "version": "1.0"
+    },
+    {
+      "name": "uuid-ossp",
+      "owner": "syn_preext_4cb4ffb0_owner",
+      "version": "1.1"
+    }
+  ],
+  "roleFlags": {
+    "super": false,
+    "login": false,
+    "createDb": true,
+    "bypassRls": true
+  },
+  "schemaEntriesReplayed": 1,
+  "remainingArchiveEntriesReplayed": 57,
+  "publicExecuteRevocationPreserved": true,
+  "explicitFunctionAndRelationGrantsPreserved": true,
+  "productionAccess": false
+}

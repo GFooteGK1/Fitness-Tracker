@@ -1,0 +1,483 @@
+{
+  "schemaVersion": 1,
+  "status": "approved_cutover_completed",
+  "project": "auolnfwetmfcwhtvakzy",
+  "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7",
+  "applicationSource": "93539b00bef9109f4221d10c9554cd99a3f5d5fe",
+  "buildId": "u93phgwCcXfUdAb5YKaBh",
+  "preparationCheckpoint": "e16c2f2d658f2d1f57a27229d0a311431ac76ac4",
+  "finalGate": {
+    "at": "2026-09-25T12:56:06.358Z",
+    "project": "auolnfwetmfcwhtvakzy",
+    "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7",
+    "oneFinalResumeSubmitted": true,
+    "role": "postgres",
+    "paused": false,
+    "database": "postgres",
+    "generation": 8,
+    "readbackAt": "2026-09-25T12:56:06.356958+00:00",
+    "committedAt": "2026-09-25T12:55:48.978981+00:00"
+  },
+  "scope": {
+    "sessionRenewals": 1,
+    "attendedOpenings": 1,
+    "createRequests": 1,
+    "firstAcceptanceRequests": 1,
+    "pausedReplayRequests": 1,
+    "finalResumes": 1,
+    "automaticRetries": 0,
+    "newAccounts": 0,
+    "newMigrations": 0,
+    "newDeployments": 0,
+    "paidResources": 0,
+    "prMerged": false,
+    "numericalInitialDosePolicyEnabled": false
+  },
+  "smoke": {
+    "httpStatuses": [
+      201,
+      200,
+      200
+    ],
+    "sessionDates": [
+      "2026-09-28",
+      "2026-09-30",
+      "2026-10-02"
+    ],
+    "windowStart": "2026-09-28",
+    "windowEnd": "2026-10-04",
+    "contextRevision": 0,
+    "inputFingerprint": "78029d250d42d4a520d59a19cb26e78afb1f3f5698df8f7fbd30e513b2d3a2ab",
+    "counts": {
+      "training_programs": 1,
+      "training_plan_versions": 1,
+      "prescribed_sessions": 3,
+      "adaptation_proposals": 1,
+      "coach_weekly_reviews": 0,
+      "coach_weekly_review_observations": 0,
+      "coach_context_revisions": 1
+    },
+    "sevenFullRowDigestPairsUnchanged": true,
+    "originalFixedPlanCount": 2,
+    "originalFixedPlanHashesUnchanged": true
+  },
+  "limitations": [
+    "Broader evidence-conditioned programming QPlan remains partially implemented.",
+    "Numerical initialDosePolicy remains disabled.",
+    "Synthetic release correctness is not athlete-outcome validation.",
+    "Earlier failed attempts and their timing limitations remain preserved.",
+    "Private recovery contains encrypted account, session and raw SQL evidence; none is included here.",
+    "Project board reporting is not connected: no Fitness-Tracker mapping exists."
+  ],
+  "evidence": {
+    "renewal-authenticated-proof.json": {
+      "sha256": "0383cfa37eb311ea2992fadd44a9c4da7368762eb16e28840b2f959342df76e2",
+      "result": {
+        "checkedAt": "2026-09-25T12:41:46.344Z",
+        "passed": true,
+        "networkCalls": 0,
+        "credentialOutput": false,
+        "checks": {
+          "authenticatedSuccess": true,
+          "sameOwner": true,
+          "response200": true,
+          "exactValidatedResponseSession": true,
+          "expiryMatches": true,
+          "sufficientLifetime": true,
+          "originalSessionPreserved": true,
+          "renewalAttemptBound": true,
+          "renewalFailureAbsent": true,
+          "attendedMarkersAndResponsesAbsent": true,
+          "attendedSignalAndOutcomeAbsent": true
+        },
+        "expiresAt": "2026-09-26T12:39:56.000Z"
+      }
+    },
+    "attended-interval-result.json": {
+      "sha256": "dc5f9e6f5f60f83953c9f82f138f6e4ef85d21b976b31544a2750e746121de2d",
+      "result": {
+        "controlFlowCompleted": true,
+        "intervalClosed": true,
+        "acceptanceVerified": false,
+        "invocationStartedAt": 1790340526501,
+        "openSubmissions": 1,
+        "repauseSubmissions": 1,
+        "helperOutcome": "repause_required",
+        "openOutcome": "succeeded",
+        "containment": "paused7_verified",
+        "startedAt": 1790340526501,
+        "containmentStartedAt": 1790340533191,
+        "closedObservedAt": 1790340536963,
+        "reason": null,
+        "containmentBeganWithin60s": true,
+        "closedObservedWithin90s": true
+      }
+    },
+    "attended-acceptance-authenticated-proof.json": {
+      "sha256": "8058bba64f782084f33a7789662144029df20837dfe61af71c4037bdae95994c",
+      "result": {
+        "checkedAt": "2026-09-25T12:50:48.822Z",
+        "passed": true,
+        "networkCalls": 0,
+        "credentialOutput": false,
+        "independentDatabaseOwnerAndDigestVerification": "pending separate SQL evidence",
+        "checks": {
+          "frozenInputHash": true,
+          "reviewedReceiverHash": true,
+          "authenticatedSessionOwner": true,
+          "preparationBound": true,
+          "authenticatedSuccess": true,
+          "actualHttp201And200": true,
+          "savedCreatedMatchesResponse": true,
+          "savedAcceptedMatchesResponse": true,
+          "createdIdentityAndFrozenKey": true,
+          "reviewBeforeActivation": true,
+          "exactThreeSessionDates": true,
+          "acceptedIdentityMatchesCreated": true,
+          "attendedFailureAbsent": true
+        },
+        "completedAt": "2026-09-25T12:48:53.883Z",
+        "httpStatuses": [
+          201,
+          200
+        ],
+        "sessionCount": 3
+      }
+    },
+    "renewed-owner-after-authenticated-proof.json": {
+      "sha256": "f9b31fa259c01308a9a810f458f5fe4cec2f1e979ec544dd1ff05ba3cc0f7ba6",
+      "result": {
+        "checkedAt": "2026-09-25T12:52:42.153Z",
+        "passed": true,
+        "networkCalls": 0,
+        "identifierOutput": false,
+        "checks": {
+          "oneOwnedStateRow": true,
+          "createdAndAcceptedProgramJoin": true,
+          "planIdentityJoin": true,
+          "proposalIdentityJoin": true,
+          "exactStates": true,
+          "exactKey": true,
+          "exactFingerprint": true,
+          "exactWindow": true,
+          "revisionZero": true,
+          "exactSessions": true,
+          "sevenDigestScopesAndCounts": true,
+          "originalFixedPlansUnchanged": true,
+          "pausedGeneration7": true
+        },
+        "ownerBinding": "SQL queried by operator-bound synthetic owner; exact response IDs joined locally"
+      }
+    },
+    "renewed-replay-final-authenticated-proof.json": {
+      "sha256": "09478c8fe197ce127da73870927c25afa0348c38dadce91a0d9136c6a82c06eb",
+      "result": {
+        "checkedAt": "2026-09-25T12:55:09.140Z",
+        "passed": true,
+        "networkCalls": 0,
+        "identifierOutput": false,
+        "checks": {
+          "replaySuccess": true,
+          "replayAttempt": true,
+          "authenticatedHttp200": true,
+          "exactAcceptedReplay": true,
+          "sevenValidScopes": true,
+          "sevenFullDigestPairsUnchanged": true,
+          "entireOwnerStateUnchanged": true,
+          "acceptedIdentityStillActive": true,
+          "exactSessionDates": true,
+          "originalFixedPlansUnchanged": true,
+          "beforeAndAfterPaused7": true,
+          "replayFailureAbsent": true
+        },
+        "completedAt": "2026-09-25T12:53:15.996Z",
+        "finalSqlReadbackAt": "2026-09-25T12:53:26.407021+00:00"
+      }
+    },
+    "renewed-originals-preopen-comparison.json": {
+      "sha256": "1f184cef0e63c38d080d8c7b793f5b17976ad144f63b08420046698667c44ab7",
+      "result": {
+        "at": "2026-09-25T12:43:01.151Z",
+        "matched": true,
+        "count": 2
+      }
+    },
+    "renewed-originals-after-comparison.json": {
+      "sha256": "ae7a4f6ede7a02977f53c170c19b69d9867d77d908900413215a4cd299298c6f",
+      "result": {
+        "at": "2026-09-25T12:50:48.388Z",
+        "matched": true,
+        "count": 2
+      }
+    },
+    "renewed-originals-final-comparison.json": {
+      "sha256": "43d2b99e111034d656cffcc792cc9b593bf75aa90213e906d28f216ec6109bce",
+      "result": {
+        "at": "2026-09-25T12:53:58.129Z",
+        "matched": true,
+        "count": 2
+      }
+    },
+    "renewed-schema-preflight.json": {
+      "sha256": "a69ba9a0a5b7d6a5a6fa6d110fabea24f313720c538f299092eaf468d3d70c1e",
+      "result": {
+        "at": "2026-09-25T12:41:25.504Z",
+        "matched": true,
+        "functions": 14,
+        "triggers": 16,
+        "relations": 2
+      }
+    },
+    "final-resume-schema-refresh.json": {
+      "sha256": "5d7fae7b7d99699de17ea467fb5516ae6f33f5b155aea98c3ce9278d293d682b",
+      "result": {
+        "at": "2026-09-25T12:55:03.030Z",
+        "matchesExpectedCatalog": true,
+        "functionCount": 14,
+        "triggerCount": 16,
+        "relationCount": 2
+      }
+    },
+    "final-resume-platform-refresh.json": {
+      "sha256": "34789ee9508d45ce84ad9a1288312cd05162a053f2e235d43be9216ba1f8e6f2",
+      "result": {
+        "at": "2026-09-25T12:52:39.345Z",
+        "passed": true,
+        "methods": [
+          "GET"
+        ],
+        "calls": 7,
+        "environmentDecryptionRequested": false,
+        "deploymentOrKeyActions": 0,
+        "platform": {
+          "passed": true,
+          "checks": {
+            "exactProjectOwner": true,
+            "promotedTarget": true,
+            "noRollingRelease": true,
+            "exactDeployment": true,
+            "bindingsUnchanged": true,
+            "completeDomains": true,
+            "exactAliases": true
+          },
+          "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+          "owner": "team_zjdKVgrSBNAYC9gql0Raiocm",
+          "currentProduction": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7",
+          "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7",
+          "environmentCount": 31,
+          "domains": [
+            {
+              "name": "sociusai.vercel.app",
+              "redirect": "www.sociusfit.com",
+              "redirectStatusCode": 307
+            },
+            {
+              "name": "sociusfit.com",
+              "redirect": "www.sociusfit.com",
+              "redirectStatusCode": null
+            },
+            {
+              "name": "www.sociusfit.com",
+              "redirect": null,
+              "redirectStatusCode": null
+            }
+          ],
+          "aliases": [
+            {
+              "alias": "www.sociusfit.com",
+              "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+              "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7"
+            },
+            {
+              "alias": "sociusfit.com",
+              "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+              "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7"
+            },
+            {
+              "alias": "sociusai.vercel.app",
+              "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+              "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7"
+            }
+          ]
+        },
+        "completedAt": "2026-09-25T12:52:51.744Z"
+      }
+    },
+    "final-resume-app-refresh.json": {
+      "sha256": "0d860cab9daef877c2e7c99979b717accb573b93948f7c5b6405f6f3749e2b43",
+      "result": {
+        "at": "2026-09-25T12:53:32.398Z",
+        "passed": true,
+        "methods": [
+          "GET"
+        ],
+        "productionMutations": 0,
+        "authenticatedAthleteRequests": 0,
+        "signIn": {
+          "status": 200,
+          "sha256": "d96a2fe9afc205c55a8ca5c47b4eabe29f9445a4958651e7f454e744cc8e5543",
+          "bytes": 10613,
+          "passed": true,
+          "checks": {
+            "exactBuildId": true,
+            "sameOriginScripts": true,
+            "exactScriptPaths": true
+          },
+          "serverRenderedBuildId": "u93phgwCcXfUdAb5YKaBh",
+          "scriptCount": 10,
+          "signInFormFieldsObserved": false,
+          "limitation": "Server-rendered HTML readback only; no JavaScript execution, browser visual review or authenticated athlete operation.",
+          "exactPinnedHtml": true
+        },
+        "assetsAndRedirects": {
+          "at": "2026-09-25T12:53:32.866Z",
+          "passed": true,
+          "reconciliation": {
+            "archiveSha256": "461e0bf9e21561e0323c6c2edf53e825d48f8a8a8fc7c9f2a739798c8ea44814",
+            "preservedFailureSha256": "45f537d01302076daccfc7a125c31ba6d30b71a157ab0589b439d1862a3fcb0e",
+            "preservedFailureAt": "2026-09-24T11:27:33.039Z",
+            "platformEvidenceSource": "Preserved successful platform section of original postcheck; no repeat platform operation.",
+            "observation": {
+              "passed": true,
+              "checks": {
+                "originalFailureShape": true,
+                "recordedHtmlExactlyMatchesPinnedArtifact": true,
+                "exactPinnedBuildAndSameOrigin": true,
+                "nineObservationPathsAreExactSubsetOfTenArtifactPaths": true
+              },
+              "htmlSha256": "d96a2fe9afc205c55a8ca5c47b4eabe29f9445a4958651e7f454e744cc8e5543",
+              "htmlBytes": 10613,
+              "serverRenderedBuildId": "u93phgwCcXfUdAb5YKaBh",
+              "artifactScriptPaths": [
+                "/_next/static/chunks/2619-3c9e02e22d10480a.js",
+                "/_next/static/chunks/2804-1bf22e595b5bd4cb.js",
+                "/_next/static/chunks/4bd1b696-f785427dddbba9fb.js",
+                "/_next/static/chunks/8371-bfb8477b625796bc.js",
+                "/_next/static/chunks/8760-75fbdc0ed9c27408.js",
+                "/_next/static/chunks/app/auth/signin/page-65cdd04faaa2a9b2.js",
+                "/_next/static/chunks/app/layout-41d0ea2a395e4d64.js",
+                "/_next/static/chunks/main-app-f2b3590dff0c4e5f.js",
+                "/_next/static/chunks/polyfills-42372ed130431b0a.js",
+                "/_next/static/chunks/webpack-35eec86cd4df139d.js"
+              ],
+              "earlierBrowserScriptCount": 9,
+              "interpretation": "Exact server HTML bytes equal the pinned deployed artifact. The earlier nine-script browser observation was not an exact server-HTML script manifest. The reason the browser observation omitted the chunk was not measured."
+            }
+          },
+          "assets": [
+            {
+              "path": "/_next/static/css/28181877abc77b83.css",
+              "status": 200,
+              "bytes": 58505,
+              "sha256": "b17811d44cfc968287fb01c62161296f1ed91b750d26cb26bed299f183260179",
+              "matched": true
+            },
+            {
+              "path": "/icon-192.png",
+              "status": 200,
+              "bytes": 96,
+              "sha256": "abbd4841ba31f4d7195c0bae44b30cbebbb9c7cc91f3dad94f68614c6ce4bee8",
+              "matched": true
+            },
+            {
+              "path": "/_next/static/chunks/8760-75fbdc0ed9c27408.js",
+              "status": 200,
+              "bytes": 205925,
+              "sha256": "91be7562b8abd901eccc00b49324337acb190c50bf5bcb0e0cb53f2b6afa9c2e",
+              "matched": true
+            }
+          ],
+          "redirects": [
+            {
+              "alias": "sociusfit.com",
+              "status": 307,
+              "location": "https://www.sociusfit.com/auth/signin",
+              "matched": true
+            },
+            {
+              "alias": "sociusai.vercel.app",
+              "status": 307,
+              "location": "https://www.sociusfit.com/auth/signin",
+              "matched": true
+            }
+          ],
+          "methods": [
+            "GET"
+          ],
+          "platformCalls": 0,
+          "productionMutations": 0,
+          "athleteRequests": 0,
+          "limitation": "Artifact identity plus anonymous static-asset and redirect checks; not hydrated visual QA or authenticated coaching behavior. Original failed check remains retained."
+        },
+        "completedAt": "2026-09-25T12:53:33.519Z"
+      }
+    },
+    "final-resume-independent-gates.json": {
+      "sha256": "19b16bb6f7f655811146b75d625454b51f7db6792b178acf8a5375267f19e396",
+      "result": {
+        "kind": "independent_read_only_final_release_gates",
+        "checkedDateUtc": "2026-09-25",
+        "platformReceipt": "final-resume-platform-refresh.json",
+        "publicAppReceipt": "final-resume-app-refresh.json",
+        "platformPassed": true,
+        "publicAppPassed": true,
+        "checkpointCI": {
+          "headSha": "e16c2f2d658f2d1f57a27229d0a311431ac76ac4",
+          "runId": 36134389423,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        "applicationCI": {
+          "headSha": "93539b00bef9109f4221d10c9554cd99a3f5d5fe",
+          "runId": 35930249161,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        "recovery": {
+          "source": "Direct read of retained private restore receipt and cleanup, plus original exporter cleanup and gate receipts",
+          "project": "auolnfwetmfcwhtvakzy",
+          "backupRunId": "backup-20260924111117-678fe2da",
+          "restoreId": "restore-e7e23977-df8",
+          "archiveAuthenticated": true,
+          "restored": true,
+          "selectedCatalogMatched": true,
+          "tableScopesMatched": 94,
+          "containerStopped": true,
+          "cleanupVerified": true,
+          "cleanupStoppedDirect": true,
+          "cleanupVerifiedDirect": true,
+          "backupExporterCleanupVerified": true,
+          "localeExporterCleanupVerified": true,
+          "captureBeforeAfterSamePausedGeneration": 1,
+          "productionRestorePerformed": false,
+          "newBackupOrRestorePerformed": false
+        },
+        "readOnlyVerification": true,
+        "productionMutations": 0,
+        "authenticatedAthleteRequests": 0,
+        "credentialsRetrieved": false,
+        "remainingGates": "Root-owned paused replay, exact accepted identity/full-row digest invariants, original fixed plan baseline and final CAS7-to-8 with independent readback",
+        "limitations": [
+          "Public application checks are server HTML and static byte checks, not hydrated visual QA.",
+          "Recovery verification reads retained completion and cleanup receipts; no new restore or production recovery was performed.",
+          "This receipt does not prove paused replay or authorize an action beyond the existing approved packet."
+        ]
+      }
+    },
+    "attended-final-resume-readback.json": {
+      "sha256": "3154fdce7825f1b13027d7250b8b06a7f2a1240434d3b27dabcbe12cff774f0e",
+      "result": {
+        "at": "2026-09-25T12:56:06.358Z",
+        "project": "auolnfwetmfcwhtvakzy",
+        "deploymentId": "dpl_2tZqnshTDrFR5EDQpgi78dcBNns7",
+        "oneFinalResumeSubmitted": true,
+        "role": "postgres",
+        "paused": false,
+        "database": "postgres",
+        "generation": 8,
+        "readbackAt": "2026-09-25T12:56:06.356958+00:00",
+        "committedAt": "2026-09-25T12:55:48.978981+00:00"
+      }
+    }
+  }
+}

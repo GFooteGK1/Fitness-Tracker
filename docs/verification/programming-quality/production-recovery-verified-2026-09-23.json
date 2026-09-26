@@ -1,0 +1,51 @@
+{
+  "kind": "private_logical_restore_verified",
+  "project": "auolnfwetmfcwhtvakzy",
+  "backupRunId": "backup-20260923220856-d35a0ccf",
+  "restoreId": "restore-f5034710-553",
+  "checkedAt": "2026-09-23T22:41:19.258Z",
+  "archiveAuthenticated": true,
+  "restored": true,
+  "selectedCatalogMatched": true,
+  "rawCatalogMatched": false,
+  "localeComparison": {
+    "matched": true,
+    "provider": "i",
+    "locale": "en-US",
+    "actualVersion": "153.120",
+    "recordedVersion": "153.120",
+    "storedVersionException": false
+  },
+  "tableScopesMatched": 93,
+  "releaseDataCoverage": {
+    "acceptedPlans": true,
+    "prescribedSessions": true,
+    "proposals": true,
+    "migrationLedger": true,
+    "authIdentities": true
+  },
+  "container": "socius-private-restore-f5034710-553",
+  "restoreImage": "74bcceb8123bdc6d9b129eac9446cc0c0fa6fd2e5ee1b5da185c02529b420080",
+  "sourceCiphertextSha256": "6b3d551769515845083a9e93f8415e3f28bdd617921f0ea603938dae94f3795d",
+  "productionRestorePerformed": false,
+  "limitations": [
+    "Logical database archive only; platform service state, storage object bytes and Vault root keys are not captured",
+    "Extension-owned data follows registered extconfig predicates; exclusions are explicit in tableScope",
+    "Sequences and shared role catalogs are not guaranteed to be at one MVCC instant under concurrent activity",
+    "Large-object payloads, sequence values and catalog object kinds not listed in catalog are not independently digest-compared, even when pg_dump includes them",
+    "pg_dump uses its own read-only snapshot transaction and lock-wait timeout; external10minute lifetime bounds the process rather than the psql statement timeout",
+    "No restore has been performed by capture",
+    "Runtime buffers rely on host trust; container zero swap does not prove Windows VM/process paging exclusion",
+    "Comparison covers captured catalog sections and included physical table scopes; large-object contents and unlisted object kinds are not digest-compared",
+    "Source runtime observed after capture, not retroactive proof of archive-time runtime"
+  ],
+  "substitutions": [
+    "database name",
+    "NOLOGIN roles except local bootstrap socket operator",
+    "surviving column logical order; all other column properties exact",
+    "table NULL ACL equals exact PostgreSQL 17 owner defaults only",
+    "allowlisted CHECK associative AND grouping; ordered operands, casts and operators preserved"
+  ],
+  "containerStopped": true,
+  "cleanupVerified": true
+}

@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { buildSociusPrompt } from '@/app/lib/agents/prompts/socius'
 import { getEightWeekIntent } from '@/app/lib/coach/policy'
+import { reasoningEvidencePacket } from '../fixtures/coach-reasoning-evidence'
+import { workSnapshot } from '../fixtures/coach-performed-work'
+import { buildPerformedWorkContext } from '@/app/lib/coach/performed-work-context'
+import { projectCoachingDecisionContext } from '@/app/lib/coach/coaching-decision-context'
+import { coachingDecisionRows } from '../fixtures/coaching-decision-record'
 import type { SociusContext, ThirtyDaySummary, DataAvailability, RecentInsight, ChatMessage } from '@/app/lib/agents/types'
 
 // ─── Test Helpers ────────────────────────────────────────────────────
@@ -54,6 +59,50 @@ function makeBaseContext(overrides?: Partial<SociusContext>): SociusContext {
     ...overrides,
   }
 }
+
+describe('performed work in Socius reasoning', () => {
+  it('explains the same saved decision and distinguishes it from new evidence and acceptance', () => {
+    const rows = coachingDecisionRows('test-user-123')
+    const decision = projectCoachingDecisionContext(rows)
+    const prompt = buildSociusPrompt(makeBaseContext({ coach_context: {
+      generatedAt: '2026-09-21T01:00:00Z', storageAvailable: true, doctrineVersion: 'test', policyVersion: 'test',
+      assessments: [], memories: [], activeProgram: null, coachingDecision: decision,
+    } }))
+    expect(decision.status).toBe('current')
+    expect(prompt).toContain(JSON.stringify(decision))
+    expect(prompt).toContain('A saved review is not an accepted replacement week')
+    expect(prompt).toContain('do not rewrite the saved decision')
+    expect(prompt).toContain('Never treat acceptedOrigin as a current recommendation')
+  })
+
+  it('rejects a saved decision attached to another account', () => {
+    expect(() => buildSociusPrompt(makeBaseContext({ coach_context: {
+      generatedAt: '2026-09-21T01:00:00Z', storageAvailable: true, doctrineVersion: 'test', policyVersion: 'test',
+      assessments: [], memories: [], activeProgram: null,
+      coachingDecision: projectCoachingDecisionContext(coachingDecisionRows('other-user')),
+    } }))).toThrow('Coaching decision ownership mismatch')
+  })
+
+  it('renders recorded work with uncertainty and retrieval guidance', () => {
+    const snapshot = workSnapshot()
+    const prompt = buildSociusPrompt(makeBaseContext({ user_id: snapshot.userId,
+      coach_performed_work_context: buildPerformedWorkContext(snapshot) }))
+    expect(prompt).toContain('175 lb')
+    expect(prompt).toContain('hardest_set')
+    expect(prompt).toContain('"kind":"bounded","min":2,"max":3')
+    expect(prompt).toContain('"numericPolicyEligible":false')
+    expect(prompt).toContain('get_coach_evidence')
+    expect(prompt).toContain('get_coach_performed_work')
+    expect(prompt).toContain('Session effort describes the workout as a whole')
+    expect(prompt).toContain('incomplete retrieval is not absence of athlete history')
+  })
+
+  it('rejects a performed-work packet belonging to another athlete', () => {
+    expect(() => buildSociusPrompt(makeBaseContext({
+      coach_performed_work_context: buildPerformedWorkContext(workSnapshot()),
+    }))).toThrow('Performed-work ownership mismatch')
+  })
+})
 
 function makeInsight(overrides?: Partial<RecentInsight>): RecentInsight {
   return {
@@ -470,42 +519,41 @@ describe('buildSociusPrompt - adaptive coach contract', () => {
 
   it('labels bounded comparable evidence with selection provenance', () => {
     const prompt = buildSociusPrompt(makeBaseContext({
-      coach_evidence_context: {
-        purpose: 'general_coaching',
-        asOf: '2026-09-01T18:00:00.000Z',
-        algorithmVersion: 'coach-context-selection-0.1.0',
-        storageAvailable: true,
-        selectionComplete: true,
-        sampleCount: 2,
-        missing: [],
-        memories: [{
-          id: 'memory-selected',
-          memoryKey: 'primary_goal',
-          kind: 'goal',
-          version: 2,
-          confidence: 1,
-          content: { goal: 'Build repeatable strength' }
-        }],
-        strengthBaselines: [],
-        evidenceSeries: [{
-          metricId: 'strength.repetitions',
-          semanticRole: 'training_signal',
-          sampleCount: 2,
-          protocol: {
-            id: 'strength-repetition-capacity-standard',
-            version: '1.0.0'
-          },
-          confidence: 1,
-          observationIds: ['observation-1', 'observation-2'],
-          comparabilityKey: 'comparison-v1|metric=strength.repetitions'
-        }]
-      } as any
+      coach_evidence_context: reasoningEvidencePacket(),
     }))
 
-    expect(prompt).toContain('algorithm=coach-context-selection-0.1.0')
-    expect(prompt).toContain('evidence_id=memory-selected')
-    expect(prompt).toContain('evidence_ids=observation-1,observation-2')
+    expect(prompt).toContain('algorithm=coach-context-selection-0.4.0')
+    expect(prompt).toContain('"id":"memory-goal"')
+    expect(prompt).toContain('"observationIds":["measurement-1"]')
+    expect(prompt).toContain('"value":0.57')
+    expect(prompt).toContain('"value":0.52')
+    expect(prompt).toContain('"target":"2027-04"')
+    expect(prompt).toContain('"ordinal":2')
+    expect(prompt).toContain('"verificationStatus":"athlete_confirmed"')
     expect(prompt).toContain('never combine different comparability keys or protocols')
+  })
+
+  it('does not fall back to unselected legacy facts when evidence selection omitted them', () => {
+    const packet = reasoningEvidencePacket()
+    packet.memories = []
+    packet.strengthBaselines = []
+    packet.selectionComplete = false
+    packet.missing = ['source_truncated']
+    const prompt = buildSociusPrompt(makeBaseContext({
+      coach_evidence_context: packet,
+      coach_context: { storageAvailable: true, assessments: [], memories: [{
+        id: 'stale-memory', content: { goal: 'unselected stale goal' },
+      }] } as any,
+    }))
+    expect(prompt).not.toContain('unselected stale goal')
+    expect(prompt).toContain('"complete":false')
+    expect(prompt).toContain('source_truncated')
+  })
+
+  it('fails closed when a different athlete evidence packet reaches the prompt boundary', () => {
+    expect(() => buildSociusPrompt(makeBaseContext({
+      coach_evidence_context: reasoningEvidencePacket('another-athlete'),
+    }))).toThrow('ownership mismatch')
   })
 })
 

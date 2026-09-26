@@ -1,0 +1,22 @@
+{
+  "retainedEvidenceOnly": true,
+  "matched": false,
+  "rawDifferingSections": [
+    "roles",
+    "columns",
+    "schemas",
+    "database",
+    "relations",
+    "constraints"
+  ],
+  "differingSections": [
+    "roles",
+    "schemas",
+    "database"
+  ],
+  "equivalenceCounts": {
+    "logical-surviving-order": 1,
+    "table-owner-default-acl": 2,
+    "ordered-associative-and": 3
+  }
+}

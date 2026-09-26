@@ -14,10 +14,13 @@ import { invalidatePassiveCache, normalizeBlockFromDB } from '../context-builder
 import { fetchProgrammingReadinessContext } from '../programming-context'
 import type { WorkoutBlock } from '../types'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
+import { fetchCoachEvidenceContext, validateCoachEvidenceContextRequest } from '@/app/lib/coach/evidence-context'
+import { projectEvidenceReasoningContext } from '@/app/lib/coach/evidence-reasoning-context'
+import { fetchPerformedWorkContextForCoaching, renderPerformedWorkContext } from '@/app/lib/coach/performed-work-context'
 import { getCoachReference } from '@/app/lib/coach/reference'
 import { deriveStrengthAssessment } from '@/app/lib/coach/policy'
 import type { LoadUnit, SupportedRepMax } from '@/app/lib/coach/types'
-import { localDateTimeToUTC } from '@/app/lib/timezone-utils'
+import { isValidTimezoneOffset, localDateTimeToUTC } from '@/app/lib/timezone-utils'
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -70,6 +73,10 @@ export async function executeToolCall(
         return await executeGetProgrammingReadiness(toolInput, userId, supabase)
       case 'get_coach_state':
         return await executeGetCoachState(userId, supabase)
+      case 'get_coach_evidence':
+        return await executeGetCoachEvidence(toolInput, userId, supabase)
+      case 'get_coach_performed_work':
+        return await executeGetPerformedWork(toolInput, userId, supabase, context?.tzOffset ?? 0)
       case 'get_coach_reference':
         return executeGetCoachReference(toolInput)
       case 'record_strength_assessment':
@@ -139,6 +146,71 @@ function executeGetCoachReference(input: Record<string, unknown>): ToolResult {
   return {
     success: true,
     data: { reference: getCoachReference(domains) }
+  }
+}
+
+async function executeGetCoachEvidence(
+  input: Record<string, unknown>,
+  userId: string,
+  supabase: SupabaseClient
+): Promise<ToolResult> {
+  // Ownership and the retrieval clock come only from the authenticated server.
+  // Reject unknown keys instead of silently accepting apparent owner/date overrides.
+  const allowed = ['purpose', 'window_days', 'goal_id', 'metric_id', 'protocol', 'comparability_key']
+  const purposes = ['general_coaching', 'new_planning', 'metric_history', 'adaptation_review', 'weekly_review']
+  if (!userId || !isPlainRecord(input)
+    || Object.keys(input).some(key => !allowed.includes(key))
+    || !purposes.includes(input.purpose as string)
+    || (input.protocol !== undefined && (!isPlainRecord(input.protocol)
+      || Object.keys(input.protocol).some(key => !['id', 'version'].includes(key))))) {
+    return { success: false, error: 'A supported evidence purpose and only documented evidence selectors are required' }
+  }
+  const validation = validateCoachEvidenceContextRequest({
+    purpose: input.purpose,
+    asOf: new Date().toISOString(),
+    windowDays: input.window_days,
+    goalId: input.goal_id,
+    metricId: input.metric_id,
+    protocol: input.protocol,
+    comparabilityKey: input.comparability_key,
+  })
+  if (!validation.ok) return { success: false, error: validation.errors.join('; ') }
+
+  try {
+    const packet = await fetchCoachEvidenceContext(supabase, userId, validation.value)
+    const context = projectEvidenceReasoningContext(packet, userId)
+    return {
+      success: packet.storageAvailable,
+      data: { context },
+      ...(packet.storageAvailable ? {} : { error: 'Coach evidence storage is not available; inspect coverage for missing sources' }),
+    }
+  } catch {
+    // Read failures must not expose provider errors or mark a capture correction failed.
+    return { success: false, error: 'Coach evidence could not be retrieved; no evidence-based change is authorized' }
+  }
+}
+
+async function executeGetPerformedWork(
+  input: Record<string, unknown>, userId: string, supabase: SupabaseClient, agentTzOffset: number
+): Promise<ToolResult> {
+  if (!userId || !isPlainRecord(input) || Object.keys(input).some(key => key !== 'window_days')
+    || !isValidTimezoneOffset(agentTzOffset)
+    || (input.window_days !== undefined && (typeof input.window_days !== 'number'
+      || !Number.isInteger(input.window_days) || input.window_days < 1 || input.window_days > 180))) {
+    return { success: false, error: 'Only a whole-number history window from 1 to 180 days is supported' }
+  }
+  try {
+    const context = await fetchPerformedWorkContextForCoaching(supabase, userId, {
+      includeCoachContext: true, agentTzOffset, asOf: new Date().toISOString(),
+      windowDays: input.window_days as number | undefined,
+    })
+    if (!context) return { success: false, error: 'Performed-work history is not enabled; do not infer an empty training history' }
+    // Bind the returned projection to this request before releasing any records.
+    renderPerformedWorkContext(context, userId)
+    return { success: context.status !== 'unavailable', data: { context },
+      ...(context.status === 'unavailable' ? { error: 'Performed-work history is unavailable; inspect coverage for missing sources' } : {}) }
+  } catch {
+    return { success: false, error: 'Performed-work history could not be retrieved; no training change is authorized' }
   }
 }
 

@@ -1,4 +1,6 @@
 import { exercisePreferencesEnabled } from './exercise-preferences-server'
+import { confirmedOutcomeSampleMatches, resolveConfirmedOutcomeScope } from './confirmed-outcome-scope'
+import type { PlanningOutcome } from './planning-intent'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   ADAPTIVE_EVIDENCE_POLICY_VERSION,
@@ -10,7 +12,7 @@ import {
 } from './adaptive-programming-contracts'
 
 export const COACH_EVIDENCE_CONTEXT_SCHEMA_VERSION = 1 as const
-export const COACH_EVIDENCE_CONTEXT_ALGORITHM_VERSION = 'coach-context-selection-0.3.0' as const
+export const COACH_EVIDENCE_CONTEXT_ALGORITHM_VERSION = 'coach-context-selection-0.4.0' as const
 
 export const COACH_EVIDENCE_CONTEXT_PURPOSES = [
   'today_session',
@@ -265,6 +267,8 @@ export interface CoachEvidenceStrengthBaseline {
 }
 
 export interface CoachEvidenceSample {
+  /** Per-value provenance is independent of the observation group's verification. */
+  valueProvenance?: Record<string, unknown>
   observationId: string
   observationValueId: string
   metricId: PerformanceMetricId
@@ -306,6 +310,8 @@ export interface CoachEvidenceSeries {
 }
 
 export interface CoachEvidenceContextPacket {
+  /** Only queried, owned records. Query-cap omissions have no safely known IDs. */
+  selectionExclusions?: CoachEvidenceSelectionExclusions
   executionExclusions?: Array<{ observationId: string; workoutId: string; reason: 'execution_amended_or_deleted' }>
   schemaVersion: typeof COACH_EVIDENCE_CONTEXT_SCHEMA_VERSION
   purpose: CoachEvidenceContextPurpose
@@ -368,6 +374,15 @@ export interface CoachEvidenceContextPacket {
     assessmentIds: string[]
     observationIds: string[]
   }
+}
+
+export interface CoachEvidenceSelectionExclusions {
+  scope?: 'queried_owned_records_only'
+  maxRecords?: 128
+  records: Array<{ kind: 'memory' | 'strength_baseline' | 'observation_group' | 'observation_value'; id: string; reason: string }>
+  countsByReason: Record<string, number>
+  omittedCount: number
+  complete: boolean
 }
 
 export function validateCoachEvidenceContextRequest(
@@ -625,6 +640,14 @@ export function assembleCoachEvidenceContext(
   const startsAt = subtractDays(normalized.asOf, normalized.windowDays)
   const startsAtMs = Date.parse(startsAt)
   const missing = [...(source.errors ?? [])]
+  const selectionExclusions: CoachEvidenceSelectionExclusions = { scope: 'queried_owned_records_only', maxRecords: 128, records: [], countsByReason: {}, omittedCount: 0, complete: true }
+  let malformedRecordOmitted = false
+  const exclude = (kind: CoachEvidenceSelectionExclusions['records'][number]['kind'], id: string, reason: string, malformed = false) => {
+    selectionExclusions.countsByReason[reason] = (selectionExclusions.countsByReason[reason] ?? 0) + 1
+    if (selectionExclusions.records.length < 128) selectionExclusions.records.push({ kind, id, reason })
+    else { selectionExclusions.omittedCount += 1; selectionExclusions.complete = false }
+    if (malformed) malformedRecordOmitted = true
+  }
 
   const userPrograms = source.programs.filter(row => row.user_id === userId && row.status === 'active')
   const activeProgram = selectActiveProgram(userPrograms, userId)
@@ -656,29 +679,61 @@ export function assembleCoachEvidenceContext(
 
   const adaptiveScope = extractAdaptiveScope(activePlan?.intent, normalized.goalId)
   if (normalized.goalId && !adaptiveScope.goalFound) missing.push('goal_not_in_active_plan')
+  if (adaptiveScope.confirmedOutcome && !adaptiveScope.confirmedOutcome.measurement) missing.push('confirmed_outcome_measurement_unavailable')
 
   const snapshot = exercisePreferencesEnabled() ? [source.exercisePreferenceSnapshot, ...source.memories]
     .filter((row): row is CoachEvidenceMemoryRow => Boolean(row && row.user_id === userId
       && row.memory_key === 'exercise_preferences' && Date.parse(row.confirmed_at) <= asOfMs))
     .sort((a, b) => Number(b.version) - Number(a.version))[0] : undefined
-  const sourceMemories = source.memories.filter(row => row.memory_key !== 'exercise_preferences')
+  const sourceMemories = source.memories.filter(row => {
+    if (row.memory_key !== 'exercise_preferences') return true
+    if (row.user_id === userId && row.id !== snapshot?.id) exclude('memory', row.id,
+      snapshot ? 'preference_snapshot_superseded' : 'preference_snapshot_not_selected')
+    return false
+  })
   if (snapshot) sourceMemories.push(snapshot)
   const memoryCandidates = sourceMemories
     .filter(row => row.user_id === userId)
-    .filter(row => isActiveMemory(row, config.memoryKinds, asOfMs))
+    .filter(row => {
+      if (isActiveMemory(row, config.memoryKinds, asOfMs)) return true
+      exclude('memory', row.id, 'memory_lifecycle_or_purpose_ineligible'); return false
+    })
     .sort((a, b) => compareDateDesc(a.confirmed_at, b.confirmed_at)
       || (finiteNumber(b.version) ?? 0) - (finiteNumber(a.version) ?? 0))
-  const memories = memoryCandidates
-    .flatMap(row => normalizeMemory(row, missing))
-    .slice(0, config.maxMemories)
+  const normalizedMemories = memoryCandidates.flatMap(row => {
+    if (!boundedRecord(row.provenance, 4_000)) {
+      exclude('memory', row.id, 'memory_provenance_invalid_or_oversized', true); return []
+    }
+    const normalized = normalizeMemory(row, missing)
+    if (!normalized.length) exclude('memory', row.id, 'memory_invalid_or_oversized', true)
+    return normalized
+  })
+  const memorySelectionTruncated = normalizedMemories.length > config.maxMemories
+  for (const memory of normalizedMemories.slice(config.maxMemories)) exclude('memory', memory.id, 'memory_selection_limit')
+  const memories = normalizedMemories.slice(0, config.maxMemories)
 
   const assessmentCandidates = source.strengthAssessments
-    .filter(row => row.user_id === userId && dateAtOrBefore(row.assessed_on, normalized.asOf.slice(0, 10)))
-    .filter(() => includeStrengthBaselines(normalized, adaptiveScope.metricIds))
+    .filter(row => row.user_id === userId)
+    .filter(row => {
+      if (normalized.goalId && !adaptiveScope.goalFound) {
+        exclude('strength_baseline', row.id, 'goal_not_in_active_plan'); return false
+      }
+      // Legacy assessments have no reliable catalog protocol/comparison binding.
+      // A movement label cannot establish an exact confirmed-outcome match.
+      if (adaptiveScope.confirmedOutcome) {
+        exclude('strength_baseline', row.id, 'baseline_outcome_binding_unverified'); return false
+      }
+      if (dateAtOrBefore(row.assessed_on, normalized.asOf.slice(0, 10)) && includeStrengthBaselines(normalized, adaptiveScope.metricIds)) return true
+      exclude('strength_baseline', row.id, 'baseline_date_or_purpose_ineligible'); return false
+    })
     .sort((a, b) => b.assessed_on.localeCompare(a.assessed_on) || a.id.localeCompare(b.id))
-  const strengthBaselines = assessmentCandidates
-    .flatMap(normalizeStrengthBaseline)
-    .slice(0, config.maxAssessments)
+  const normalizedBaselines = assessmentCandidates.flatMap(row => {
+    const result = normalizeStrengthBaseline(row)
+    if (!result.length) exclude('strength_baseline', row.id, 'baseline_invalid', true)
+    return result
+  })
+  for (const baseline of normalizedBaselines.slice(config.maxAssessments)) exclude('strength_baseline', baseline.id, 'baseline_selection_limit')
+  const strengthBaselines = normalizedBaselines.slice(0, config.maxAssessments)
 
   const activeSessionIds = new Set(activeSessions.map(session => session.id))
   const confirmedImportIds = new Set(source.imports
@@ -688,20 +743,24 @@ export function assembleCoachEvidenceContext(
       && row.verification_status === 'athlete_confirmed'
     ))
     .map(row => row.id))
-  const valuesByGroup = groupBy(source.observationValues.filter(row => (
-    row.user_id === userId && row.status === 'complete'
-  )), row => row.group_id)
+  const ownedGroupIds = new Set(source.observationGroups.filter(group => group.user_id === userId).map(group => group.id))
+  const valuesByGroup = groupBy(source.observationValues.filter(row => {
+    if (row.user_id !== userId) return false
+    if (ownedGroupIds.has(row.group_id)) return true
+    exclude('observation_value', row.id, 'owned_group_unavailable'); return false
+  }), row => row.group_id)
 
   const executionExclusions = source.workoutRevisions === undefined ? [] : source.observationGroups.flatMap(group => {
-    if (!group.workout_id) return []
+    if (group.user_id !== userId || !group.workout_id) return []
     const current = source.workoutRevisions!.find(row => row.id === group.workout_id && row.user_id === userId)
     return current && current.capture_revision === 1 && current.execution_revision === 0 ? []
       : [{ observationId: group.id, workoutId: group.workout_id, reason: 'execution_amended_or_deleted' as const }]
   })
   const excludedExecutions = new Set(executionExclusions.map(item => item.observationId))
   const samples = source.observationGroups
-    .filter(group => !excludedExecutions.has(group.id))
-    .filter(group => isEligibleGroup({
+    .filter(group => group.user_id === userId)
+    .flatMap(group => {
+      const groupReason = excludedExecutions.has(group.id) ? 'execution_amended_or_deleted' : groupExclusionReason({
       group,
       userId,
       normalized,
@@ -711,14 +770,37 @@ export function assembleCoachEvidenceContext(
       activeSessionIds,
       confirmedImportIds,
       adaptiveScope
-    }))
-    .flatMap(group => (valuesByGroup.get(group.id) ?? []).flatMap(value => (
-      hasVerifiedCompletionFeedback(group, value, source.sessionCheckins ?? [])
-        ? normalizeEvidenceSample(group, value, normalized, adaptiveScope) : []
-    )))
+      })
+      if (groupReason) { exclude('observation_group', group.id, groupReason); return [] }
+      if (!boundedRecord(group.comparison_modifiers, 5_000)) {
+        exclude('observation_group', group.id, 'comparison_invalid_or_oversized', true); return []
+      }
+      const values = valuesByGroup.get(group.id) ?? []
+      if (!values.length) exclude('observation_group', group.id, 'no_queried_values_for_selector')
+      return values.flatMap(value => {
+        if (value.status !== 'complete') { exclude('observation_value', value.id, 'value_not_complete'); return [] }
+        if (!hasVerifiedCompletionFeedback(group, value, source.sessionCheckins ?? [])) {
+          exclude('observation_value', value.id, 'completion_feedback_not_verified'); return []
+        }
+        if (!boundedRecord(value.provenance, 4_000)) {
+          exclude('observation_value', value.id, 'value_provenance_invalid_or_oversized', true); return []
+        }
+        if ((normalized.metricId && value.metric_id !== normalized.metricId)
+          || (adaptiveScope.metricIds.size && !adaptiveScope.metricIds.has(value.metric_id as PerformanceMetricId))) {
+          exclude('observation_value', value.id, 'metric_selector_mismatch'); return []
+        }
+        const result = normalizeEvidenceSample(group, value, normalized, adaptiveScope)
+        if (!result.length) exclude('observation_value', value.id, 'measurement_invalid_or_unsupported', true)
+        return result.filter(sample => {
+          if (!adaptiveScope.confirmedOutcome || confirmedOutcomeSampleMatches(sample, adaptiveScope.confirmedOutcome)) return true
+          exclude('observation_value', value.id, 'outcome_binding_mismatch'); return false
+        })
+      })
+    })
     .sort(compareSamples)
 
-  const selectionTruncated = samples.length > config.maxObservationSamples
+  const selectionTruncated = memorySelectionTruncated || normalizedBaselines.length > config.maxAssessments || samples.length > config.maxObservationSamples
+  for (const sample of samples.slice(config.maxObservationSamples)) exclude('observation_value', sample.observationValueId, 'sample_selection_limit')
   const selectedSamples = samples.slice(0, config.maxObservationSamples)
   const evidenceSeries = buildSeries(selectedSamples)
   const evidenceIds = unique(selectedSamples.map(sample => sample.observationId)).sort()
@@ -726,7 +808,10 @@ export function assembleCoachEvidenceContext(
   if (memories.length === 0 && config.maxMemories > 0) missing.push('authoritative_memories_missing')
   if (selectedSamples.length === 0) missing.push('compatible_evidence_missing')
   if (source.sourceTruncated) missing.push('source_query_truncated')
+  if (memorySelectionTruncated) missing.push('memory_selection_truncated')
   if (selectionTruncated) missing.push('context_selection_truncated')
+  if (malformedRecordOmitted) missing.push('invalid_or_oversized_evidence_omitted')
+  if (!selectionExclusions.complete) missing.push('exclusion_ledger_truncated')
 
   const activePlanPacket = activeProgram && activePlan
     ? {
@@ -756,9 +841,10 @@ export function assembleCoachEvidenceContext(
     window: { startsAt, endsAt: normalized.asOf, days: normalized.windowDays },
     algorithmVersion: COACH_EVIDENCE_CONTEXT_ALGORITHM_VERSION,
     executionExclusions,
+    selectionExclusions,
     evidencePolicyVersion: ADAPTIVE_EVIDENCE_POLICY_VERSION,
     storageAvailable: (source.errors ?? []).length === 0,
-    selectionComplete: !sourceTruncated && !selectionTruncated && (source.errors ?? []).length === 0,
+    selectionComplete: !sourceTruncated && !selectionTruncated && !malformedRecordOmitted && selectionExclusions.complete && (source.errors ?? []).length === 0,
     scope: {
       userId,
       activeProgramId: activeProgram?.id ?? null,
@@ -795,7 +881,7 @@ export function assembleCoachEvidenceContext(
   }
 }
 
-function isEligibleGroup(input: {
+function groupExclusionReason(input: {
   group: CoachEvidenceObservationGroupRow
   userId: string
   normalized: CoachEvidenceContextRequest & { windowDays: number }
@@ -805,7 +891,7 @@ function isEligibleGroup(input: {
   activeSessionIds: Set<string>
   confirmedImportIds: Set<string>
   adaptiveScope: AdaptiveScope
-}): boolean {
+}): string | null {
   const {
     group,
     userId,
@@ -819,6 +905,7 @@ function isEligibleGroup(input: {
   } = input
   const observedAt = Date.parse(group.observed_at)
   const capturedAt = Date.parse(group.captured_at)
+  if (normalized.goalId && !adaptiveScope.goalFound) return 'goal_not_in_active_plan'
   if (
     group.user_id !== userId
     || group.status !== 'complete'
@@ -830,33 +917,33 @@ function isEligibleGroup(input: {
     || capturedAt > asOfMs
     || !group.comparability_key
     || !['athlete_confirmed', 'system_verified'].includes(group.verification_status)
-  ) return false
+  ) return 'group_status_date_or_verification_ineligible'
 
   if (group.source_kind === 'import' && (
     !group.source_import_id || !confirmedImportIds.has(group.source_import_id)
-  )) return false
+  )) return 'import_not_confirmed'
 
   const protocol = protocolFor(group)
   if (normalized.protocol && (
     protocol.id !== normalized.protocol.id || protocol.version !== normalized.protocol.version
-  )) return false
+  )) return 'protocol_selector_mismatch'
   if (normalized.comparabilityKey && group.comparability_key !== normalized.comparabilityKey) {
-    return false
+    return 'comparability_selector_mismatch'
   }
   if (
     adaptiveScope.assessmentDefinitionIds.size > 0
     && !adaptiveScope.assessmentDefinitionIds.has(group.assessment_definition_id)
-  ) return false
+  ) return 'assessment_selector_mismatch'
 
   if (normalized.purpose === 'today_session') {
-    if (!requestedSession) return false
+    if (!requestedSession) return 'requested_session_unavailable'
     return group.prescribed_session_id === requestedSession.id
-      || group.observation_kind === 'readiness_check'
+      || group.observation_kind === 'readiness_check' ? null : 'outside_requested_session'
   }
   if (normalized.purpose === 'weekly_review') {
-    return Boolean(group.prescribed_session_id && activeSessionIds.has(group.prescribed_session_id))
+    return group.prescribed_session_id && activeSessionIds.has(group.prescribed_session_id) ? null : 'outside_active_plan_sessions'
   }
-  return true
+  return null
 }
 
 /** Legacy completion rows were stamped confirmed even when the form supplied a default. */
@@ -899,7 +986,7 @@ function normalizeEvidenceSample(
     || !isMetricUnit(value.unit)
   ) return []
   const numericValue = finiteNumber(value.value_numeric)
-  if (numericValue === null) return []
+  if (value.value_numeric === null || numericValue === null) return []
   const metricId = value.metric_id as PerformanceMetricId
   const ordinal = finiteNumber(value.ordinal)
   if (ordinal === null || !Number.isInteger(ordinal) || ordinal < 0) return []
@@ -921,6 +1008,7 @@ function normalizeEvidenceSample(
     value: normalizedMetric.value,
     unit: normalizedMetric.unit,
     originalMeasurement: { value: numericValue, unit: value.unit },
+    valueProvenance: structuredClone(value.provenance as Record<string, unknown>),
     ordinal,
     observedAt: new Date(group.observed_at).toISOString(),
     capturedAt: new Date(group.captured_at).toISOString(),
@@ -941,7 +1029,7 @@ function normalizeEvidenceSample(
       verificationStatus: group.verification_status as 'athlete_confirmed' | 'system_verified'
     },
     confidence: group.verification_status === 'athlete_confirmed' ? 1 : 0.9,
-    comparison: boundedObject(group.comparison_modifiers, 5_000)
+    comparison: structuredClone(group.comparison_modifiers as Record<string, unknown>)
   }]
 }
 
@@ -974,6 +1062,7 @@ function buildSeries(samples: CoachEvidenceSample[]): CoachEvidenceSeries[] {
 }
 
 interface AdaptiveScope {
+  confirmedOutcome?: PlanningOutcome
   goalFound: boolean
   allGoalIds: string[]
   metricIds: Set<PerformanceMetricId>
@@ -981,15 +1070,16 @@ interface AdaptiveScope {
 }
 
 function extractAdaptiveScope(intent: unknown, goalId: string | undefined): AdaptiveScope {
+  const confirmed = resolveConfirmedOutcomeScope(intent, goalId)
   const adaptive = isRecord(intent) && isRecord(intent.adaptive_programming)
     ? intent.adaptive_programming
     : null
-  if (!adaptive) {
-    return { goalFound: !goalId, allGoalIds: [], metricIds: new Set(), assessmentDefinitionIds: new Set() }
-  }
-
-  const goals = Array.isArray(adaptive.goals) ? adaptive.goals.filter(isRecord) : []
-  const allGoalIds = goals.flatMap(goal => typeof goal.goalId === 'string' ? [goal.goalId] : [])
+  const goals = adaptive && Array.isArray(adaptive.goals) ? adaptive.goals.filter(isRecord) : []
+  const allGoalIds = unique([...confirmed.allGoalIds, ...goals.flatMap(goal => typeof goal.goalId === 'string' ? [goal.goalId] : [])])
+  if (confirmed.outcome) return { goalFound: true, allGoalIds, confirmedOutcome: confirmed.outcome,
+    metricIds: new Set(confirmed.outcome.measurement ? [confirmed.outcome.measurement.metricId] : []),
+    assessmentDefinitionIds: new Set(confirmed.outcome.measurement ? [confirmed.outcome.measurement.assessmentDefinition.id] : []) }
+  if (!adaptive) return { goalFound: !goalId, allGoalIds, metricIds: new Set(), assessmentDefinitionIds: new Set() }
   if (!goalId) {
     return { goalFound: true, allGoalIds, metricIds: new Set(), assessmentDefinitionIds: new Set() }
   }
@@ -1091,7 +1181,7 @@ function normalizeMemory(row: CoachEvidenceMemoryRow, missing: string[]): CoachE
     kind: row.kind as CoachMemoryKind,
     version,
     content: row.content,
-    provenance: boundedObject(row.provenance, 4_000),
+    provenance: structuredClone(row.provenance as Record<string, unknown>),
     confidence,
     confirmedAt: new Date(row.confirmed_at).toISOString(),
     effectiveFrom: new Date(row.effective_from ?? row.confirmed_at).toISOString(),
@@ -1258,6 +1348,10 @@ function finiteNumber(value: unknown): number | null {
 
 function boundedObject(value: unknown, maxBytes: number): Record<string, unknown> {
   return isRecord(value) && jsonSize(value) <= maxBytes ? value : {}
+}
+
+function boundedRecord(value: unknown, maxCharacters: number): value is Record<string, unknown> {
+  return isRecord(value) && jsonSize(value) <= maxCharacters
 }
 
 function jsonSize(value: unknown): number {
