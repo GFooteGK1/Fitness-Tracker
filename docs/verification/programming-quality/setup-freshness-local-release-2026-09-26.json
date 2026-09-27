@@ -1,0 +1,97 @@
+{
+  "scope": "Local synthetic release rehearsal only; no production or mobile-browser claim",
+  "postgres": {
+    "verifiedAt": "2026-09-27T02:23:30.506Z",
+    "resumedBeforeInstall": true,
+    "target": "sociusfit-setup-freshness-local",
+    "postgres": "170006",
+    "migrationSha256": "3db1bfa44acfe078af7a0278c8b65b78f92489368b9d19a7a31bc7e8e32c6527",
+    "bootstrapSha256": "5768070f24d5b883e2b30dccc62e708308cf877765d539356e3d71d1515a33c2",
+    "checks": [
+      "Real PG17 baseline includes revision, pause and newer workout recovery migration",
+      "Independent writer transaction prevents committed pause; drain then denies new writes and retains accepted replay",
+      "Exact production renderer installs atomically on PG17; bad generation/catalog and repeat installation refused",
+      "Old application writer refused; compatible bound writer accepted after resume",
+      "Clock-only setup expiry denies first acceptance with unchanged revision through real PG17 and Auth capture"
+    ],
+    "acceptedDigest": [
+      {
+        "id": "b3d19192-341e-496d-8838-a23838a91034",
+        "hash": "7795bdec2c092814a85e6100886d90c8",
+        "sessions": "c258b2faa7a16e46f9f951f84f103fce"
+      }
+    ],
+    "limitations": [
+      "Synthetic local schema and ledger; not hosted state",
+      "HTTP route lifecycle and mobile browser gates are separate"
+    ],
+    "control": {
+      "singleton": true,
+      "paused": false,
+      "generation": 6,
+      "reason": "Isolated setup rehearsal",
+      "changed_at": "2026-09-27T02:23:30.390068+00:00",
+      "changed_by": "postgres"
+    }
+  },
+  "predecessors": {
+    "sourceManifestHash": "a39b571ade61729cac76c2bb93bdafffe5608076ce7272a5ca0e50bb06ba6bdb",
+    "workoutHash": "24e90df68d59eb265060198f7e7377d4190bb1188ee6b255230f0ad9d88cc20f",
+    "predecessors": [
+      {
+        "signature": "public.expire_stale_coach_context_proposals(uuid,uuid,uuid)",
+        "md5": "d368b71723f6def9d0656cfca8eb6fc2"
+      },
+      {
+        "signature": "public.guard_coach_proposal_context()",
+        "md5": "5efec487c4f11d8c17c69fdcf3ae7d9c"
+      },
+      {
+        "signature": "public.record_coach_weekly_review(uuid,uuid,date,text,text,text,text,numeric,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,text,text,text,text)",
+        "md5": "59e0f1567a3644faf035de553f8f2cb7"
+      }
+    ]
+  },
+  "httpBaseline": {
+    "verifiedAt": "2026-09-27T02:23:41.036Z",
+    "app": "http://127.0.0.1:3011",
+    "databaseApi": "http://127.0.0.1:55421",
+    "checks": [
+      "owner-a: real Auth identity",
+      "owner-b: real Auth identity",
+      "Anonymous weekly read denied",
+      "Initial proposal requires acceptance",
+      "Foreign owner acceptance denied",
+      "Owner accepted initial compiled week",
+      "Real weekly review creates pending next week",
+      "Real logged source advances revision",
+      "Stale acceptance returns the specific freshness conflict",
+      "Stale pending controls removed on readback",
+      "Source mutation preserves accepted intent",
+      "Accepted retry remains immutable after source mutation",
+      "Fresh review recovers with a new proposal",
+      "Other authenticated owner cannot read this program"
+    ],
+    "resumedSavedReview": false,
+    "scope": "Real local HTTP, Auth and database; synthetic records. Browser and production behavior are separate.",
+    "acceptedIntentHash": "8c0117f78bee51fb42386afe3de82f2c0abae0323e9c155ca07f9f45991d3468",
+    "pendingProposalId": "b2264a8e-9ca5-4794-936f-add26831e567"
+  },
+  "httpExpiry": {
+    "verifiedAt": "2026-09-27T02:28:26.574Z",
+    "passed": true,
+    "buildId": "p6Du7gOXHEbpTVTIt28CT",
+    "app": "http://127.0.0.1:3011",
+    "api": "http://127.0.0.1:55421",
+    "checks": [
+      "Initial HTTP acceptance rejects clock-expired setup at unchanged revision; confirmed setup recovers with a fresh accepted week",
+      "Saved real review reconstructs its pending week through the stored-review HTTP route",
+      "Expired stored review cannot gain fresh authority; current review recovers while accepted history and accepted replay remain intact",
+      "Legacy conversion rejects clock-expired setup and accepts a fresh replacement without rewriting legacy history"
+    ],
+    "limitations": [
+      "Synthetic local data and schema; no hosted verification",
+      "Direct HTTP lifecycle coverage; mobile browser rendering is separate"
+    ]
+  }
+}

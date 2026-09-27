@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { RECOVERY_TRANSACTION_SQL } from './private-recovery-preflight.mjs';
 import { RELEASE_TARGET_METADATA_SQL, RELEASE_TARGET_QUERY_SHA256, releaseMigrationManifest } from './release-target-metadata.mjs';
+import { SETUP_PREFLIGHT_SQL, SETUP_PREFLIGHT_QUERY_SHA256 } from './setup-freshness-preflight.mjs';
 
 const source = readFileSync(new URL('./private-production-recovery.mjs', import.meta.url), 'utf8');
 const begin = source.indexOf("  if (mode === 'release') {");
@@ -18,23 +19,36 @@ assert(finalizerStart > end && receiptStart > finalizerStart);
 const finalizer = source.slice(finalizerStart + '} finally {'.length, receiptStart).trim().replace(/\}$/, '');
 const publication = source.slice(receiptStart);
 
-async function exercise({ malformed = false, rejected = false, queryFails = false, stopFails = false, stillRunning = false, foreign = false } = {}) {
+test('setup connection path invokes only the explicit helper, never CLI discovery', async () => {
+  const start=source.indexOf('  let connection;'),end=source.indexOf('  if (Object.keys(connection)',start);
+  assert(start>0&&end>start);let calls=0;
+  const value=await new Script(`(async()=>{${source.slice(start,end)} return connection;})()`).runInNewContext({
+    mode:'setup-preflight',process:{argv:['node','tool','setup-preflight','--issue-temporary-login'],stdin:'secure-input'},
+    cli:'must-not-run',project:'auolnfwetmfcwhtvakzy',sealed(){},
+    command(){throw Error('Unexpected CLI connection discovery');},
+    async createSetupPreflightConnection(options){calls++;assert.equal(options.input,'secure-input');
+      assert.deepEqual(Array.from(options.argv),['setup-preflight','--issue-temporary-login']);return {fixed:true};}
+  });
+  assert.equal(calls,1);assert.equal(value.fixed,true);
+});
+
+async function exercise({ mode = 'release', malformed = false, rejected = false, queryFails = false, stopFails = false, stillRunning = false, foreign = false } = {}) {
   const events = [], writes = [], errors = [];
   const raw = malformed ? '{secret malformed metadata' : JSON.stringify({ ledger: [{ recorded: true }], functions: [['private-definition']], functionAccess: [{}], relations: [[]], groups: [[]], newerLedger: [] });
   const process = {};
   let queries = 0;
   const sandbox = {
-    mode: 'release', project: 'approved-project', runId: 'synthetic-release', image: 'pinned-image', client: 'fixed-exporter', clientStarted: true,
+    mode, project: 'approved-project', runId: 'synthetic-release', image: 'pinned-image', client: 'fixed-exporter', clientStarted: true,
     workers: new Set(), key: { fill(value) { assert.equal(value, 0); events.push('key-zeroed'); } },
-    process, RECOVERY_TRANSACTION_SQL, RELEASE_TARGET_METADATA_SQL,
+    process, RECOVERY_TRANSACTION_SQL, RELEASE_TARGET_METADATA_SQL, SETUP_PREFLIGHT_SQL,
     pg(args, sql) {
       queries++; events.push('query');
       assert.deepEqual(Array.from(args), ['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1']);
-      assert.equal(sql, `${RECOVERY_TRANSACTION_SQL}\n${RELEASE_TARGET_METADATA_SQL}\nROLLBACK;`);
+      assert.equal(sql, mode === 'setup-preflight' ? SETUP_PREFLIGHT_SQL : `${RECOVERY_TRANSACTION_SQL}\n${RELEASE_TARGET_METADATA_SQL}\nROLLBACK;`);
       if (queryFails) throw Error('synthetic transport failure');
       return raw;
     },
-    sealed(name, value) { assert.equal(name, 'source-release-metadata'); assert.equal(value, raw); events.push('sealed'); },
+    sealed(name, value) { assert.equal(name, mode === 'setup-preflight' ? 'source-setup-preflight' : 'source-release-metadata'); assert.equal(value, raw); events.push('sealed'); },
     JSON: { ...JSON, stringify: JSON.stringify, parse(value) {
       if (value === raw) { assert(events.includes('sealed')); events.push('parsed'); }
       return JSON.parse(value);
@@ -45,6 +59,12 @@ async function exercise({ malformed = false, rejected = false, queryFails = fals
       return { passed: !rejected, state: rejected ? 'stop_and_review' : 'reviewed_pre_install_baseline', checks: { safe: !rejected }, failedChecks: rejected ? ['safe'] : [], querySha256: RELEASE_TARGET_QUERY_SHA256, limitations: ['synthetic transport fixture'] };
     },
     releaseMigrationManifest,
+    classifySetupPreflight(metadata, transport) {
+      assert.deepEqual({ ...transport }, { projectRef: 'approved-project', verifiedTarget: true });
+      assert(events.includes('parsed')); events.push('classified');
+      return { passed: !rejected, checks: { safe: !rejected }, failedChecks: rejected ? ['safe'] : [], querySha256: SETUP_PREFLIGHT_QUERY_SHA256,
+        candidateMigrationSha256: 'candidate-hash', predecessors: ['private-definition'], observedGeneration: '8', limitations: ['synthetic transport fixture'] };
+    },
     pod(args) {
       if (args[0] === 'stop') { events.push('stop'); if (stopFails) throw Error('synthetic stop failure'); return ''; }
       assert.equal(args[0], 'inspect'); events.push('stopped-readback');
@@ -98,3 +118,27 @@ for (const variant of ['malformed', 'queryFails']) test(`${variant} cleans up wi
   assert.equal(result.process.exitCode, 1);
   assert(result.events.includes('stopped-readback'));
 });
+
+test('setup preflight runs exact SQL once and publishes only sanitized evidence after verified cleanup', async () => {
+  const result = await exercise({ mode: 'setup-preflight' });
+  assert.equal(result.queries, 1);
+  assert.deepEqual(result.events, ['query', 'sealed', 'parsed', 'classified', 'stopped-readback', 'stop', 'stopped-readback', 'key-zeroed', 'receipt']);
+  const [receipt] = result.writes;
+  assert.equal(receipt.passed, true);
+  assert.equal(receipt.kind, 'production_setup_freshness_preflight');
+  assert.equal(receipt.querySha256, SETUP_PREFLIGHT_QUERY_SHA256);
+  assert.equal(receipt.archiveCreated, false);
+  assert.equal(receipt.applicationRpcsInvoked, false);
+  assert.equal(JSON.stringify(receipt).includes('private-definition'), false);
+});
+
+for (const variant of ['rejected', 'stopFails', 'stillRunning', 'foreign', 'malformed', 'queryFails']) {
+  test(`setup preflight ${variant} fails closed without a query retry`, async () => {
+    const result = await exercise({ mode: 'setup-preflight', [variant]: true });
+    assert.equal(result.queries, 1);
+    assert.equal(result.process.exitCode, 1);
+    assert.equal(result.writes.some(receipt => receipt.passed), false);
+    if (variant === 'foreign') assert.equal(result.events.includes('stop'), false);
+    if (['malformed', 'queryFails'].includes(variant)) assert.equal(result.writes.length, 0);
+  });
+}

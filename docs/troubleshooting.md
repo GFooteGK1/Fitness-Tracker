@@ -101,3 +101,35 @@ Do not create a replacement account, retry the admin insert or weaken the trigge
 Apply this method only to an explicitly authorized account and target. The
 [cutover investigation](../handoffs/investigations/programming-quality-cutover-execution.md)
 records the exact local trigger test and independently verified live result.
+
+## Isolated Supabase startup and PostgreSQL NULL fixtures
+
+Verified locally on2026-09-26 with Supabase CLI2.117.0 and PostgreSQL17.6.
+Windows PowerShell5.1 can treat ordinary native stderr progress as a terminating
+NativeCommandError. Capture it to the private log with Continue only around the
+native call, then enforce its exit code. This CLI also needs the empty
+`supabase/snippets` Studio bind-mount directory to exist before starting a new
+project. Inspect process/container state before retry; never reset another stack.
+
+For psql JSON assertions, `to_json(NULL)` is SQL NULL and produces an empty line.
+Use a JSON object containing the nullable value when the assertion expects JSON
+null. Preserve a failed ordered migration fixture and verify its exact state
+before a bounded resume. See the
+[setup freshness investigation](../handoffs/investigations/Fitness-Tracker-i40.15.md).
+
+## Setup-expiry rehearsal accepted before database expiry
+
+Verified locally on2026-09-27. A host-clock wait plus200ms accepted a synthetic
+proposal47ms before its PostgreSQL `review_after`. Do not infer DB expiry from a
+different machine's clock. The shared lifecycle now reads the database clock and
+requires an observation strictly beyond the expiry millisecond, preserving the
+microsecond ordering conservatively. Store API responses before checking status
+so failed assertions retain diagnostic evidence. The corrected44-step lifecycle
+and independent worker/coordinator failure drills passed. See the
+[guardian investigation](../handoffs/investigations/i40-15-1-local-guardian.md).
+
+For cross-process readiness, an exclusively opened file is visible before its
+content is complete. Flush an encrypted staging file and atomically publish it
+without overwriting an existing signal. Failure to remove a staging link after
+publication must not invalidate successful readiness. Keep ordinary uncertain
+mutation intents reserved; do not generalize signal cleanup into mutation retry.

@@ -1,3 +1,4 @@
+import { captureSetupMemoryBindings, setupMemoryBindingsCurrent } from '@/app/lib/coach/setup-memory-bindings'
 import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
 import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
 import { fetchCoachContextRevision, parseCoachContextRevision, CoachContextRevisionUnavailableError, CoachContextRevisionConflictError, coachContextConflictMessage, isCoachContextConflict } from '@/app/lib/coach/proposal-context-revision'
@@ -99,7 +100,10 @@ export async function GET() {
       return { reviewId, ...result }
     }))
     if (checks.some(result => result.error)) return apiError('Unable to verify current review sources', 503)
+    const setupReadCache = new Map()
+    const setupChecks = await Promise.all(reviews.map(async review => ({ id: review.id, current: await setupMemoryBindingsCurrent(supabase, user.id, review.rationale?.setupMemoryBindings, setupReadCache) })))
     const invalidated = new Set(checks.filter(result => result.data?.length).map(result => result.reviewId))
+    for (const check of setupChecks) if (!check.current) invalidated.add(check.id)
     const plans = plansResult.data ?? []
     let pendingCurrent: typeof pending | null = pending
     if (pending) {
@@ -107,8 +111,10 @@ export async function GET() {
         .eq('user_id', user.id).limit(1)
       if (revisionResult.error) return apiError('Unable to verify current proposal sources', 503)
       const currentRevision = parseCoachContextRevision(revisionResult.data?.[0]?.revision ?? 0)
-      const draftRevision = parseCoachContextRevision(plans.find(plan => plan.id === pending.proposed_plan_version_id)?.input_snapshot?.contextRevision)
-      if (draftRevision === null || currentRevision === null || draftRevision !== currentRevision) pendingCurrent = null
+      const draft = plans.find(plan => plan.id === pending.proposed_plan_version_id)
+      const draftRevision = parseCoachContextRevision(draft?.input_snapshot?.contextRevision)
+      if (draftRevision === null || currentRevision === null || draftRevision !== currentRevision
+        || !await setupMemoryBindingsCurrent(supabase, user.id, draft?.input_snapshot?.setupMemoryBindings, setupReadCache)) pendingCurrent = null
     }
     const rollingProgram = program.program_mode === 'rolling_weekly' ? program : null
     const activePlan = rollingProgram
@@ -133,6 +139,7 @@ export async function GET() {
     })
   } catch (error) {
     console.error('Weekly coach GET error:', error)
+    if (error instanceof CoachContextRevisionUnavailableError) return apiError(error.message, 503)
     return apiError('Unable to read weekly coach state', 500)
   }
 }
@@ -177,6 +184,7 @@ export async function POST(request: Request) {
     const hypothesis = typeof body.hypothesis === 'string' && body.hypothesis.trim().length >= 5
       ? body.hypothesis.trim().slice(0, 500)
       : `Repeatable weekly ${profile.primaryGoal.domain.replaceAll('_', ' ')} doses will support the athlete goal.`
+    const setupMemoryBindings = await captureSetupMemoryBindings(supabase, user.id, profile)
     const direction = buildRollingTrainingDirection(profile, { hypothesis, goalTargetDate })
     const result = buildRollingWeeklyPlan({
       source: 'initial',
@@ -189,6 +197,7 @@ export async function POST(request: Request) {
     const adaptivePlan = buildAdaptivePlanContract(profile, [result])
     const intent = buildStoredRollingWeeklyIntent(result, adaptivePlan)
     const sourceSnapshot = {
+      setupMemoryBindings,
       contextRevision,
       reason: 'initial_rolling_weekly_proposal',
       planningInput: validated.value,

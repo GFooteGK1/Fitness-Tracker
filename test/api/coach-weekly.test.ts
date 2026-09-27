@@ -1,3 +1,8 @@
+vi.mock('@/app/lib/coach/setup-memory-bindings', async importOriginal => ({
+  ...await importOriginal<typeof import('@/app/lib/coach/setup-memory-bindings')>(),
+  setupMemoryBindingsCurrent: vi.fn().mockResolvedValue(true),
+  captureSetupMemoryBindings: vi.fn().mockResolvedValue({ schemaVersion: 1, memories: { primary_goal: null, training_schedule: null, available_equipment: null, training_constraints: null } }),
+}))
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BUSY_COACH_CONTEXT_MESSAGE, CoachContextRevisionConflictError, CoachContextRevisionUnavailableError, fetchCoachContextRevision } from '@/app/lib/coach/proposal-context-revision'
 

@@ -1,5 +1,7 @@
 # Architecture decisions
 
+- [ADR-0030: Explicit setup source bindings and clock freshness](ADR-0030-coach-setup-memory-freshness.md) — source-bound rolling proposals and transactional expiry checks; coordinated app/database release.
+
 | ADR | Title | Status |
 | --- | --- | --- |
 | [ADR-0001](ADR-0001-ai-surface-taxonomy.md) | AI-Surface Taxonomy and the Compute-vs-Compose Boundary | Accepted |
@@ -29,3 +31,5 @@
 - [ADR-0027: Signal facts before prescription changes](ADR-0027-signal-facts-before-prescription-changes.md) — improved outcomes retain accepted work; source-linked sensor coverage and working evidence support review without numerical authority.
 
 - [ADR-0029: Fractional workout effort and failed-save recovery](ADR-0029-fractional-workout-effort-and-failed-save-recovery.md) — exact session effort, transactional migration and owner-locked no-write proof without reopening failed identities.
+
+- [ADR-0031: Attended setup lifecycle verification](ADR-0031-attended-setup-lifecycle-verification.md) — separate worker/operator/guardian processes, immutable encrypted receipts, bounded fixture writes and post-pause history proof; hosted execution remains approval-gated.

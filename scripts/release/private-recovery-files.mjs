@@ -36,6 +36,35 @@ export function verifyPrivateRecoveryDirectory() {
   verifyAcl(RECOVERY_DIRECTORY, true);
 }
 
+// Only live-check run directories; no arbitrary path or backup mutation.
+export function privateLiveSetupDirectory(runId, create = false) {
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(runId)) throw Error('Invalid live setup run ID');
+  verifyPrivateRecoveryDirectory();
+  const directory=path.join(RECOVERY_DIRECTORY,`setup-live-${runId}`);
+  if(create)fs.mkdirSync(directory);
+  const stat=fs.lstatSync(directory);
+  if(!stat.isDirectory()||stat.isSymbolicLink())throw Error('Live setup directory is redirected');
+  verifyAcl(directory);
+  return directory;
+}
+
+export function initializePrivateLiveSetupKey(runId) {
+  const directory=privateLiveSetupDirectory(runId,true),key=randomBytes(32);
+  try {
+    const script=`$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.Security.Cryptography.ProtectedData;
+$data=[Convert]::FromBase64String([Console]::In.ReadToEnd().Trim());
+$entropy=[Text.Encoding]::UTF8.GetBytes('SociusFit private recovery v1');
+$result=[Security.Cryptography.ProtectedData]::Protect($data,$entropy,[Security.Cryptography.DataProtectionScope]::CurrentUser);
+[Console]::Out.Write([Convert]::ToBase64String($result));`;
+    const result=spawnSync(pwsh,['-NoProfile','-NonInteractive','-Command',script],{env:privateEnvironment(),input:key.toString('base64'),encoding:'utf8',windowsHide:true,timeout:30000});
+    if(result.status!==0||!result.stdout.trim())throw Error('Live journal key protection failed');
+    fs.writeFileSync(path.join(directory,'archive-key.dpapi'),Buffer.from(result.stdout.trim(),'base64'),{flag:'wx',flush:true});
+    const verified=unwrapRecoveryKey(directory);
+    try{if(!verified.equals(key))throw Error('Live journal key recovery mismatch');}finally{verified.fill(0);}
+    return directory;
+  } finally {key.fill(0);}
+}
+
 export function privateRunDirectory(runId) {
   if (!/^backup-\d{14}-[a-f0-9]{8}$/.test(runId)) throw Error('Expected a completed private backup run ID');
   const directory = path.join(RECOVERY_DIRECTORY, runId);
@@ -95,13 +124,14 @@ export function unsealPrivateMetadata(directory, name, key) {
   } catch { throw Error('Private metadata authentication failed'); }
 }
 
-export function sealPrivateMetadata(directory, name, data, key) {
+export function sealPrivateMetadata(directory, name, data, key, keyReference = '../archive-key.dpapi') {
+  if(!['../archive-key.dpapi','archive-key.dpapi'].includes(keyReference))throw Error('Invalid key reference');
   if (!/^[a-zA-Z0-9.-]+$/.test(name)) throw Error('Invalid private artifact name');
   if (!Buffer.isBuffer(key) || key.length !== 32) throw Error('Invalid metadata key');
   verifyAcl(directory);
   const bytes = Buffer.isBuffer(data) ? data : Buffer.from(data);
   const iv = randomBytes(12), cipher = createCipheriv('aes-256-gcm', key, iv);
   const ciphertext = Buffer.concat([cipher.update(bytes), cipher.final()]);
-  fs.writeFileSync(path.join(directory, `${name}.aes`), ciphertext, { flag: 'wx' });
-  fs.writeFileSync(path.join(directory, `${name}.encryption.json`), JSON.stringify({ algorithm: 'aes-256-gcm', key: '../archive-key.dpapi', iv: iv.toString('base64'), tag: cipher.getAuthTag().toString('base64'), plaintextSha256: digest(bytes), ciphertextSha256: digest(ciphertext), bytes: bytes.length }), { flag: 'wx' });
+  fs.writeFileSync(path.join(directory, `${name}.aes`), ciphertext, { flag: 'wx', flush: true });
+  fs.writeFileSync(path.join(directory, `${name}.encryption.json`), JSON.stringify({ algorithm: 'aes-256-gcm', key: keyReference, iv: iv.toString('base64'), tag: cipher.getAuthTag().toString('base64'), plaintextSha256: digest(bytes), ciphertextSha256: digest(ciphertext), bytes: bytes.length }), { flag: 'wx', flush: true });
 }

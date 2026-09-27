@@ -4,7 +4,14 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
-const output = 'output/app-quality-release'
+const options = process.argv.slice(2)
+if (options.some(option => !['--revision-only', '--setup-rehearsal'].includes(option))) throw new Error('Only --revision-only and --setup-rehearsal are supported')
+const includeSetupBindings = !options.includes('--revision-only')
+const setupRehearsal = options.includes('--setup-rehearsal')
+const projectId = setupRehearsal ? 'sociusfit-setup-freshness-local' : 'sociusfit-programming-local'
+const apiPort = setupRehearsal ? 55421 : 55321
+const databasePort = setupRehearsal ? 55422 : 55322
+const output = setupRehearsal ? 'output/setup-freshness-release' : 'output/app-quality-release'
 const sqlPath = `${output}/local-coaching-bootstrap.sql`
 const manifestPath = `${output}/local-coaching-bootstrap-manifest.json`
 const sha = value => crypto.createHash('sha256').update(value).digest('hex')
@@ -33,12 +40,12 @@ function whole(file) { add(`migration ${file}`, source(file), { source: file, tr
 
 add('local execution guard', `
 -- LOCAL SYNTHETIC ONLY. NOT A PRODUCTION MIGRATION OR FULL PRODUCTION CLONE.
--- Operator must verify the dedicated sociusfit-programming-local Supabase container,
--- API 127.0.0.1:55321, DB 127.0.0.1:55322, PostgreSQL 17 before execution.
+-- Operator must verify the dedicated ${projectId} Supabase container,
+-- API 127.0.0.1:${apiPort}, DB 127.0.0.1:${databasePort}, PostgreSQL 17 before execution.
 -- Container-internal PostgreSQL port may differ from the host port.
 -- Run only on its empty public application schema, with no Auth accounts yet.
 -- This guard is an accident barrier, not cryptographic endpoint attestation.
--- In the SAME psql session first SET socius.local_fixture = 'sociusfit-programming-local';
+-- In the SAME psql session first SET socius.local_fixture = '${projectId}';
 -- Use psql -X -v ON_ERROR_STOP=1. Never run with --single-transaction: source
 -- migrations contain BEGIN/COMMIT. Failure can leave a partial LOCAL schema.
 -- Do not retry blindly, drop schemas, or point cleanup/reset at another target.
@@ -49,7 +56,7 @@ add('local execution guard', `
 \\set ON_ERROR_STOP on
 DO $local_guard$
 BEGIN
- IF current_setting('socius.local_fixture',true) IS DISTINCT FROM 'sociusfit-programming-local'
+ IF current_setting('socius.local_fixture',true) IS DISTINCT FROM '${projectId}'
  THEN RAISE EXCEPTION 'LOCAL SYNTHETIC ONLY: explicit local fixture marker is required'; END IF;
  IF current_database() <> 'postgres' OR current_setting('server_version_num')::int / 10000 <> 17
  THEN RAISE EXCEPTION 'Expected dedicated local Supabase PostgreSQL 17 database postgres'; END IF;
@@ -139,6 +146,8 @@ END $whoop_acl$;
 `, { transformation: 'Local-only read grants; no WHOOP OAuth/token/sync writes or fixtures' })
 whole('supabase/migrations/20260918050000_recommendations.sql')
 whole('supabase/migrations/20260921010000_coach_proposal_context_revision.sql')
+// The historical multi-session cutover rehearsal requires its original revision-only boundary.
+if (includeSetupBindings) whole('supabase/migrations/20260926010000_coach_setup_memory_bindings.sql')
 add('local PostgREST schema reload', `NOTIFY pgrst, 'reload schema';`, { transformation: 'Refresh only the local PostgREST schema cache after bootstrap' })
 
 let sql = ''
@@ -154,8 +163,9 @@ for (const section of sections) {
 fs.mkdirSync(path.join(repoRoot, output), { recursive: true })
 fs.writeFileSync(path.join(repoRoot, sqlPath), sql)
 const manifest = {
+  schemaScope: includeSetupBindings ? 'setup-bindings' : 'revision-only',
   purpose: 'LOCAL SYNTHETIC ONLY: scoped coaching release rehearsal, never production',
-  expectedTarget: { projectId: 'sociusfit-programming-local', api: 'http://127.0.0.1:55321', databaseHostPort: 55322, postgresMajor: 17 },
+  expectedTarget: { projectId, api: `http://127.0.0.1:${apiPort}`, databaseHostPort: databasePort, postgresMajor: 17 },
   output: { path: sqlPath, sha256: sha(sql), bytes: Buffer.byteLength(sql), lines: sql.split('\n').length },
   sourceManifest: [...sources.values()], sections: sectionManifest,
   prerequisites: ['Real local Supabase Auth/roles and uuid-ossp extension installed', 'Empty Auth users and empty public application tables', 'Explicit session local fixture marker after operator verifies endpoint', 'psql ON_ERROR_STOP; source files manage transactions; no outer transaction'],

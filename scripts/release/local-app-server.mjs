@@ -7,15 +7,18 @@ import { createHash } from 'node:crypto';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const mode = process.argv[2] ?? 'dev';
-if (!['dev', 'build', 'start'].includes(mode) || process.argv.length > 3) throw new Error('Use dev, build or start');
+const setupRehearsal = process.argv[3] === '--setup-rehearsal';
+if (!['dev', 'build', 'start'].includes(mode) || process.argv.length > (setupRehearsal ? 4 : 3)) throw new Error('Use dev, build or start, optionally --setup-rehearsal');
+const localOutput = setupRehearsal ? 'output/setup-freshness-release' : 'output/app-quality-release';
+const apiPort = setupRehearsal ? '55421' : '55321', dbPort = setupRehearsal ? '55422' : '55322';
 for (const name of ['.env', '.env.local', '.env.development', '.env.development.local', '.env.production', '.env.production.local']) {
   if (fs.existsSync(path.join(root, name))) throw new Error(`Refusing automatic environment file: ${name}`);
 }
-const status = JSON.parse(fs.readFileSync(path.join(root, 'output/app-quality-release/local-supabase-status.private.json'), 'utf8'));
-if (status.API_URL !== 'http://127.0.0.1:55321') throw new Error('Unexpected local API destination');
+const status = JSON.parse(fs.readFileSync(path.join(root, localOutput, 'local-supabase-status.private.json'), 'utf8'));
+if (status.API_URL !== `http://127.0.0.1:${apiPort}`) throw new Error('Unexpected local API destination');
 const db = new URL(status.DB_URL);
-if (db.hostname !== '127.0.0.1' || db.port !== '55322') throw new Error('Unexpected local database');
-const buildReceipt = path.join(root, 'output/app-quality-release/local-app-build.json');
+if (db.hostname !== '127.0.0.1' || db.port !== dbPort) throw new Error('Unexpected local database');
+const buildReceipt = path.join(root, localOutput, 'local-app-build.json');
 const keyHash = createHash('sha256').update(status.ANON_KEY).digest('hex');
 if (mode === 'start') {
   const receipt = JSON.parse(fs.readFileSync(buildReceipt, 'utf8'));
