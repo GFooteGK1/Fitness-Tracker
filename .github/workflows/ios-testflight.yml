@@ -3,6 +3,13 @@ name: iOS TestFlight Probe
 on:
   workflow_dispatch:
     inputs:
+      source:
+        description: Probe source to distribute to the existing internal app.
+        type: choice
+        default: native
+        options:
+          - native
+          - apple-support
       confirmation:
         description: Type UPLOAD TESTFLIGHT PROBE to continue.
         required: true
@@ -34,9 +41,18 @@ jobs:
 
     steps:
       - name: Initialize ephemeral paths
+        env:
+          PROBE_VARIANT: ${{ inputs.source }}
         run: |
           set -euo pipefail
+          case "${PROBE_VARIANT:-native}" in
+            native) project_dir="$GITHUB_WORKSPACE/ios" ;;
+            apple-support) project_dir="$RUNNER_TEMP/photokit-startup-testflight" ;;
+            *) echo "::error::Unknown probe source."; exit 1 ;;
+          esac
           {
+            echo "PROBE_VARIANT=${PROBE_VARIANT:-native}"
+            echo "PROBE_PROJECT_DIR=$project_dir"
             echo "SIGNING_DIR=$RUNNER_TEMP/sociusfit-signing"
             echo "KEYCHAIN_PATH=$RUNNER_TEMP/sociusfit-signing.keychain-db"
             echo "ARCHIVE_PATH=$RUNNER_TEMP/SociusFitAutoMeals.xcarchive"
@@ -80,8 +96,12 @@ jobs:
           set -euo pipefail
           npm run test:ios-probe
           npm run test:ios-signing
+          python3 -B -m unittest discover -s scripts/ios-support -p 'test_*.py'
           swift test --package-path ios
-          "$RUNNER_TEMP/xcodegen/xcodegen/bin/xcodegen" generate --spec ios/project.yml --project ios
+          if [[ "$PROBE_VARIANT" == "apple-support" ]]; then
+            python3 scripts/ios-support/prepare-testflight-sample.py "$PROBE_PROJECT_DIR"
+          fi
+          "$RUNNER_TEMP/xcodegen/xcodegen/bin/xcodegen" generate --spec "$PROBE_PROJECT_DIR/project.yml" --project "$PROBE_PROJECT_DIR"
 
       - name: Validate signing configuration
         env:
@@ -242,7 +262,7 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild \
-            -project ios/SociusFitAutoMeals.xcodeproj \
+            -project "$PROBE_PROJECT_DIR/SociusFitAutoMeals.xcodeproj" \
             -scheme SociusFitAutoMeals \
             -configuration Release \
             -destination 'generic/platform=iOS' \
@@ -252,6 +272,7 @@ jobs:
             EXTENSION_PROVISIONING_PROFILE_SPECIFIER="$EXTENSION_PROFILE_NAME" \
             BACKGROUND_UPLOAD_URL_BASE="$PROBE_UPLOAD_BASE_URL" \
             CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            PROBE_SOURCE_SHA="$GITHUB_SHA" \
             OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH" \
             archive
 
@@ -259,6 +280,14 @@ jobs:
           test -d "$app_path"
           codesign --verify --deep --strict "$app_path"
           test -f "$app_path/PrivacyInfo.xcprivacy"
+          if [[ "$PROBE_VARIANT" == "apple-support" ]]; then
+            sample_variant="$(/usr/libexec/PlistBuddy -c 'Print :SociusFitProbeVariant' "$app_path/Info.plist")"
+            sample_source="$(/usr/libexec/PlistBuddy -c 'Print :SociusFitProbeSourceSHA' "$app_path/Info.plist")"
+            if [[ "$sample_variant" != "apple-support-startup" || "$sample_source" != "$GITHUB_SHA" ]]; then
+              echo "::error::Signed archive does not match the reviewed startup sample."
+              exit 1
+            fi
+          fi
 
           extension_info_list="$SIGNING_DIR/extension-info-plists.txt"
           find "$app_path" -path '*.appex/Info.plist' -type f > "$extension_info_list"
@@ -392,6 +421,7 @@ jobs:
             "$RUNNER_TEMP/private_keys"
             "$RUNNER_TEMP/xcodegen"
             "$RUNNER_TEMP/xcodegen.zip"
+            "$RUNNER_TEMP/photokit-startup-testflight"
           )
           for path in "${cleanup_paths[@]}"; do
             case "$path" in
