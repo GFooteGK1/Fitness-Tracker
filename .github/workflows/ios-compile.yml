@@ -9,16 +9,25 @@ on:
       - "scripts/ios-signing/**"
       - "package.json"
   workflow_dispatch:
+    inputs:
+      target:
+        description: Source to compile (no signing or device installation)
+        type: choice
+        default: native
+        options:
+          - native
+          - apple-support
 
 permissions:
   contents: read
 
 concurrency:
-  group: ios-compile-${{ github.workflow }}-${{ github.ref }}
+  group: ios-compile-${{ github.workflow }}-${{ github.ref }}-${{ inputs.target || 'native' }}
   cancel-in-progress: true
 
 jobs:
   compile:
+    if: inputs.target != 'apple-support'
     runs-on: macos-26
     timeout-minutes: 20
 
@@ -56,3 +65,60 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+  apple-support:
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'apple-support'
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - name: Check out sample source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode 26.5
+        run: sudo xcode-select --switch /Applications/Xcode_26.5.app/Contents/Developer
+
+      - name: Install pinned XcodeGen
+        env:
+          XCODEGEN_URL: https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+        run: |
+          curl --fail --location --silent --show-error "$XCODEGEN_URL" --output "$RUNNER_TEMP/xcodegen.zip"
+          echo "$XCODEGEN_SHA256  $RUNNER_TEMP/xcodegen.zip" | shasum --algorithm 256 --check
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen"
+
+      - name: Generate the standalone sample project
+        run: |
+          "$RUNNER_TEMP/xcodegen/xcodegen/bin/xcodegen" generate \
+            --spec samples/photokit-startup-probe/project.yml \
+            --project samples/photokit-startup-probe
+
+      - name: Compile unsigned sample app and extension for simulator and device
+        shell: bash
+        run: |
+          set -euo pipefail
+          for platform in 'iOS Simulator' 'iOS'; do
+            xcodebuild \
+              -project samples/photokit-startup-probe/PhotoUploadProbe.xcodeproj \
+              -scheme PhotoUploadProbe \
+              -configuration Debug \
+              -destination "generic/platform=$platform" \
+              -derivedDataPath "$RUNNER_TEMP/photokit-derived" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              build
+          done
+
+      - name: Package the compiled source and generated project
+        run: python3 scripts/ios-support/package-sample.py samples/photokit-startup-probe "$RUNNER_TEMP/apple-support"
+
+      - name: Retain the verified source package
+        uses: actions/upload-artifact@v7
+        with:
+          name: photokit-startup-probe-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/apple-support/photokit-startup-probe-source.zip
+            ${{ runner.temp }}/apple-support/photokit-startup-probe-source.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
