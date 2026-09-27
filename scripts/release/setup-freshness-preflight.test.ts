@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import fs from 'node:fs'
-import { classifySetupPreflight, SETUP_PREFLIGHT_SQL } from './setup-freshness-preflight.mjs'
+import { classifySetupPreflight, SETUP_PREFLIGHT_SQL, WORKOUT_RECOVERY_LEDGER } from './setup-freshness-preflight.mjs'
 import { CUTOVER_MIGRATIONS } from './cutover-migrations.mjs'
 
 const expected=JSON.parse(fs.readFileSync(new URL('./cutover-migrations.expected.json',import.meta.url),'utf8')).snapshots.revision
@@ -10,7 +10,7 @@ const transport={projectRef:'auolnfwetmfcwhtvakzy',verifiedTarget:true,now}
 function fixture(): any {
   return {format:'setup-freshness-preflight-1',observedAt:new Date(now).toISOString(),database:'postgres',role:'postgres',version:'170006',
     readOnly:'on',isolation:'repeatable read',rowSecurity:'off',setupHelpersAbsent:true,control:{paused:false,generation:'8'},workoutRpeType:'numeric',newerLedger:[],
-    ledger:[CUTOVER_MIGRATIONS.revision,CUTOVER_MIGRATIONS.pause,{version:'20260926120000',name:'workout_save_recovery',sha256:reference.predecessors.workoutHash}].map(r=>({...r,statements:1})),
+    ledger:[CUTOVER_MIGRATIONS.revision,CUTOVER_MIGRATIONS.pause,WORKOUT_RECOVERY_LEDGER].map(r=>({...r,statements:1})),
     functions:reference.predecessors.predecessors.map((p:any)=>{
       const f=expected.functions.find((f:any)=>p.signature.startsWith(`public.${f.proname}(`))
       return {signature:p.signature,present:true,owner:f.owner,prosecdef:f.prosecdef,proconfig:[...f.proconfig],execute:structuredClone(f.execute),lf_md5:p.md5,raw_md5:'a'.repeat(32)}
@@ -21,6 +21,17 @@ describe('setup freshness read-only release preflight',()=>{
     const value=fixture(), result=classifySetupPreflight(value,transport)
     expect(result.passed).toBe(true)
     expect(result.predecessors?.every((p:any)=>p.md5==='a'.repeat(32))).toBe(true)
+  })
+  it('requires the exact historical workout ledger, rejecting the local rehearsal source and unknown records',()=>{
+    for(const hash of [reference.predecessors.workoutHash,'0'.repeat(64),
+      'cee30f2d144bb4355732edab5ee0eef25b9c50e922ef5e2d64d859234253faf8']) {
+      const value=fixture()
+      value.ledger.find((r:any)=>r.version==='20260926120000').sha256=hash
+      const result=classifySetupPreflight(value,transport)
+      expect(result.passed).toBe(false)
+      expect(result.failedChecks).toContain('ledger')
+      expect(result.predecessors).toBeUndefined()
+    }
   })
   it.each([
     ['target', (v:any)=>v, {...transport,projectRef:'wrong'}],

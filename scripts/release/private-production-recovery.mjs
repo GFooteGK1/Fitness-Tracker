@@ -13,20 +13,26 @@ import { StringDecoder } from 'node:string_decoder';
 import { Readable } from 'node:stream';
 import { RECOVERY_LOCALE_SQL, validateSourceLocale } from './private-recovery-locale.mjs';
 import { RELEASE_TARGET_METADATA_SQL, classifyReleaseTargetMetadata, releaseMigrationManifest } from './release-target-metadata.mjs';
+import { SETUP_PREFLIGHT_SQL, classifySetupPreflight } from './setup-freshness-preflight.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const destination = 'C:/Users/foote/AppData/Local/SociusFit/Recovery';
 const project = 'auolnfwetmfcwhtvakzy';
 const image = '66089200353d90686fe9b252a47d17d078364bf47c50190852c33dc850a0191f';
-const cli = path.join(root, 'output/app-quality-release/tools/supabase-2.117.0/supabase.exe');
-const podman = path.join(root, 'output/app-quality-release/tools/podman-5.8.3/podman-5.8.3/usr/bin/podman.exe');
 const pwsh = 'C:/Users/foote/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe';
 const mode = process.argv[2];
-if (!['inspect', 'backup', 'locale', 'release'].includes(mode) || process.argv.length !== 3) throw Error('Use inspect, backup, locale or release; source and destination are fixed');
+if (!['inspect', 'backup', 'locale', 'release', 'setup-preflight'].includes(mode) || process.argv.length !== 3) throw Error('Use inspect, backup, locale, release or setup-preflight; source and destination are fixed');
+// Reuse the established pinned platform tools; the isolated release checkout
+// holds the query and classifier. No credential-file discovery or new login.
+const platform = mode === 'setup-preflight'
+  ? path.resolve(root, '../programming-quality/output/app-quality-release')
+  : path.join(root, 'output/app-quality-release');
+const cli = path.join(platform, 'tools/supabase-2.117.0/supabase.exe');
+const podman = path.join(platform, 'tools/podman-5.8.3/podman-5.8.3/usr/bin/podman.exe');
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|USERPROFILE|APPDATA|LOCALAPPDATA|HOMEDRIVE|HOMEPATH)$/i.test(key)));
 const options = { cwd: destination, env, windowsHide: true, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 120000 };
 const hash = value => createHash('sha256').update(value).digest('hex');
-const ca = fs.readFileSync(path.join(root, 'output/app-quality-release/supabase-prod-ca-2021.crt'));
+const ca = fs.readFileSync(path.join(platform, 'supabase-prod-ca-2021.crt'));
 if (hash(ca) !== '700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7') throw Error('Official production CA digest mismatch');
 
 // Fail closed on redirection or ACL broadening before any credential or data read.
@@ -130,6 +136,24 @@ try {
       counts: { ledgerEntries: count(metadata?.ledger), recordedMigrations: Array.isArray(metadata?.ledger) ? metadata.ledger.filter(row => row?.recorded === true).length : 0,
         newerLedgerEntries: count(metadata?.newerLedger), functions: count(metadata?.functions), functionAccessEntries: count(metadata?.functionAccess), relations: count(metadata?.relations), metadataGroups: count(metadata?.groups) },
       passed: validation.passed, state: validation.state, checks: validation.checks, failedChecks: validation.failedChecks, metadataComparison: validation.metadataComparison, limitations: validation.limitations,
+    };
+    if (!validation.passed) process.exitCode = 1;
+  } else if (mode === 'setup-preflight') {
+    // Exactly the reviewed transaction, no RPC, inventory or backup fallthrough.
+    const raw = pg(['psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1'], SETUP_PREFLIGHT_SQL);
+    sealed('source-setup-preflight', raw);
+    let metadata;
+    try { metadata = JSON.parse(raw); } catch { throw Error('Setup preflight parse failed; encrypted evidence retained'); }
+    const validation = classifySetupPreflight(metadata, { projectRef: project, verifiedTarget: true });
+    releaseReceipt = {
+      kind: 'production_setup_freshness_preflight', project, runId, checkedAt: new Date().toISOString(),
+      readOnly: true, sslMode: 'verify-full', encryptedEvidence: true, keyProtection: 'Windows DPAPI CurrentUser',
+      sourceConnections: 1, athleteContentReturned: false, applicationRpcsInvoked: false,
+      archiveCreated: false, productionRestorePerformed: false,
+      passed: validation.passed, state: validation.passed ? 'reviewed_pre_install_baseline' : 'stop_and_review',
+      checks: validation.checks, failedChecks: validation.failedChecks,
+      querySha256: validation.querySha256, candidateMigrationSha256: validation.candidateMigrationSha256,
+      limitations: validation.limitations,
     };
     if (!validation.passed) process.exitCode = 1;
   } else if (mode === 'locale') {
@@ -269,7 +293,7 @@ try {
   if (clientStarted) {
     try {
       pod(['stop', '--time', '5', client]);
-      if (mode === 'release') {
+      if (mode === 'release' || mode === 'setup-preflight') {
         const stopped = JSON.parse(pod(['inspect', client]))[0];
         if (stopped?.Name !== client || stopped?.Image?.replace(/^sha256:/, '') !== image || stopped?.Config?.Labels?.['io.socius.recovery'] !== project || stopped?.State?.Running !== false || stopped?.State?.Status !== 'exited') throw Error('Exporter stopped-state readback failed');
         releaseCleanupVerified = true;

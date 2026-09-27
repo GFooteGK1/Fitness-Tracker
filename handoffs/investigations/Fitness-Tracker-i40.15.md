@@ -1,5 +1,30 @@
 # Setup freshness release preparation
 
+## Current checkpoint — September 27, revised database transport
+
+PR86 exact-head CI36321466070 and approved Vercel CLI preflight passed in the
+prior continuation. No hosted database query has run. Browser availability has
+three cumulative inventory timeouts: two for release and one during board
+onboarding; zero SQL submissions. Do not retry browser inventory unchanged.
+
+Prepared `private-production-recovery.mjs setup-preflight` as an alternate:
+existing official CLI login, fixed project/endpoint, temporary connection details
+kept in memory/private container, TLS verify-full, exact read-only SQL, encrypted
+metadata, one query and verified stop. Existing transport avoids browser access.
+Local14 transport and15 classifier tests passed; independent review found no
+blocking findings and reran14 tests. This is local preparation, not hosted proof.
+The source candidate remains80bef158; operator changes are uncommitted.
+
+CLI help initially failed under filesystem sandbox with EPERM writing
+`.supabase/telemetry.json.tmp`; elevated help then passed and verified CLI2.117.0
+and dry-run flags. No login, credential request or database query was attempted.
+
+Status: blocked on revised-method approval under GUARDRAILS section8.
+Proposed budget: one authenticated CLI/preflight attempt; stop on any failure and
+retain evidence. Execution packet:
+`docs/verification/programming-quality/setup-preflight-transport-2026-09-27.md`.
+Approval covers read-only preflight only, not production rollout or activation.
+
 Workspace: `.worktrees/setup-freshness-release`. Owner: programming-quality thread.
 Status: investigating fresh-checkout verification; no hosted actions authorized.
 
@@ -77,3 +102,20 @@ Inspection confirmed disk, index and HEAD share raw hash
 `RELEASE_TARGET_QUERY_SHA256` instead hashes the query assembled from that file's
 CTEs. Correct the check to verify the two distinct identities; no SQL or retained
 proof is changed. This is a verification-script mistake, not renewed CRLF drift.
+
+## September27 15:14UTC — transport resolved and ledger correction verified
+
+Greg approved the revised attempt with "Revaluate and try again". One read-only
+CLI query ran: setup-preflight-20260927151037-c2d49ce6. Transport and cleanup passed;
+only the workout ledger comparison failed. Original PR85 release artifacts prove
+replacement-string expansion collapsed four dollar delimiters in the ledger copy.
+The classifier expected local rehearsal bytes instead of the historical record.
+Independent review reproduced the original apply artifact exactly and cleared the
+local correction pinning the proven historical hash. Preserve the ledger and the
+original failed receipt; never replay malformed ledger text as SQL.
+
+16 classifier and14 transport tests pass. Retrospective classification of the
+saved snapshot passes all12 checks at its original timestamp; no second hosted
+query. See docs/verification/programming-quality/workout-ledger-provenance-2026-09-27.md.
+Changes remain uncommitted. Next: checkpoint/CI, fresh release preflight and separate
+coordinated rollout approval. No migration, merge, deployment or activation.

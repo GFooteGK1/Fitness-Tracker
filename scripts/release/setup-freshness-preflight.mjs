@@ -7,6 +7,12 @@ import { CUTOVER_MIGRATIONS, cutoverCatalogSql } from './cutover-migrations.mjs'
 
 const reference=JSON.parse(fs.readFileSync(new URL('../../docs/verification/programming-quality/setup-freshness-local-release-2026-09-26.json',import.meta.url),'utf8'));
 const catalog=JSON.parse(fs.readFileSync(new URL('./cutover-migrations.expected.json',import.meta.url),'utf8')).snapshots.revision;
+// The approved workout release stored a transformed copy of its source in the
+// ledger: JS replacement-string expansion collapsed four $$ delimiters to $.
+// Pin the independently reproduced historical record, never the rehearsal copy.
+// See docs/verification/programming-quality/workout-ledger-provenance-2026-09-27.md.
+export const WORKOUT_RECOVERY_LEDGER=Object.freeze({version:'20260926120000',name:'workout_save_recovery',
+  sha256:'c7319057d6d0d56d9135940d0b603442c43374468bb7218b357593a200ae92c6'});
 const literal=value=>`'${value.replaceAll("'","''")}'`;
 export const SETUP_PREFLIGHT_SQL=`-- Target must be verified independently: Supabase auolnfwetmfcwhtvakzy.
 -- Metadata, row counts and digests only. No athlete content or application RPCs.
@@ -62,8 +68,7 @@ export function classifySetupPreflight(value, {projectRef,verifiedTarget,now=Dat
   checks.boundary=isDeepStrictEqual(value?.boundary,catalog);
   checks.control=value?.control?.paused===false&&typeof value.control.generation==='string'&&/^(0|[1-9]\d*)$/.test(value.control.generation);
   checks.workoutRpe=value?.workoutRpeType==='numeric';
-  const wanted=[{...CUTOVER_MIGRATIONS.revision},{...CUTOVER_MIGRATIONS.pause},
-    {version:'20260926120000',name:'workout_save_recovery',sha256:reference.predecessors.workoutHash}];
+  const wanted=[CUTOVER_MIGRATIONS.revision,CUTOVER_MIGRATIONS.pause,WORKOUT_RECOVERY_LEDGER];
   checks.ledger=Array.isArray(value?.ledger)&&value.ledger.length===3&&wanted.every(w=>value.ledger.filter(r=>r.version===w.version&&r.name===w.name&&r.statements===1&&r.sha256===w.sha256).length===1);
   checks.noNewerMigration=Array.isArray(value?.newerLedger)&&value.newerLedger.length===0;
   const rows=Array.isArray(value?.functions)?value.functions:[];
