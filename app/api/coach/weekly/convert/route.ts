@@ -1,3 +1,4 @@
+import { captureSetupMemoryBindings } from '@/app/lib/coach/setup-memory-bindings'
 import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
 import { fetchCoachContextRevision, CoachContextRevisionUnavailableError, CoachContextRevisionConflictError, coachContextConflictMessage, isCoachContextConflict } from '@/app/lib/coach/proposal-context-revision'
 import { refreshConfirmedPlanningContext } from '@/app/lib/coach/planning-intent-server'
@@ -98,6 +99,7 @@ export async function POST(request: Request) {
       validated.value.startDate,
       goalTargetDate
     )
+    const setupMemoryBindings = await captureSetupMemoryBindings(supabase, user.id, profile)
     const direction = buildRollingTrainingDirection(profile, { hypothesis, goalTargetDate })
     const result = buildRollingWeeklyPlan({
       source: 'legacy_conversion',
@@ -110,6 +112,7 @@ export async function POST(request: Request) {
     const adaptivePlan = buildAdaptivePlanContract(profile, [result])
     const intent = buildStoredRollingWeeklyIntent(result, adaptivePlan)
     const sourceSnapshot = {
+      setupMemoryBindings,
       contextRevision,
       reason: 'legacy_to_rolling_weekly_proposal',
       basePlanVersionId: basePlan.id,

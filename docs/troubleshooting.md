@@ -101,3 +101,18 @@ Do not create a replacement account, retry the admin insert or weaken the trigge
 Apply this method only to an explicitly authorized account and target. The
 [cutover investigation](../handoffs/investigations/programming-quality-cutover-execution.md)
 records the exact local trigger test and independently verified live result.
+
+## Isolated Supabase startup and PostgreSQL NULL fixtures
+
+Verified locally on2026-09-26 with Supabase CLI2.117.0 and PostgreSQL17.6.
+Windows PowerShell5.1 can treat ordinary native stderr progress as a terminating
+NativeCommandError. Capture it to the private log with Continue only around the
+native call, then enforce its exit code. This CLI also needs the empty
+`supabase/snippets` Studio bind-mount directory to exist before starting a new
+project. Inspect process/container state before retry; never reset another stack.
+
+For psql JSON assertions, `to_json(NULL)` is SQL NULL and produces an empty line.
+Use a JSON object containing the nullable value when the assertion expects JSON
+null. Preserve a failed ordered migration fixture and verify its exact state
+before a bounded resume. See the
+[setup freshness investigation](../handoffs/investigations/Fitness-Tracker-i40.15.md).

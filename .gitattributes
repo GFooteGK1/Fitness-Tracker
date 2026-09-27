@@ -5,3 +5,6 @@ supabase/migrations/20260921010000_coach_proposal_context_revision.sql -text whi
 # Frozen operator inputs and verification artifacts must hash identically on checkout.
 scripts/release/cutover-* text eol=lf
 docs/verification/programming-quality/production-cutover-* text eol=lf
+# The retained release proof binds the exact canonical query bytes on every host.
+docs/verification/programming-quality/release-catalog-fingerprints.sql text eol=lf
+supabase/migrations/20260926010000_coach_setup_memory_bindings.sql text eol=lf

@@ -65,8 +65,11 @@ scripts/eval/manifest.*.json
 /audit-current.json
 /output/playwright/app-quality-results/
 /output/playwright/app-quality-report/
+/output/playwright/capture-receipts/
+/output/playwright/personalized-coaching/
 
 /output/app-quality-release/
+/output/setup-freshness-release/
 /supabase/.temp/
 
 # Local UI audit logs and working evidence

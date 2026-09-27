@@ -1,5 +1,7 @@
 # Architecture decisions
 
+- [ADR-0030: Explicit setup source bindings and clock freshness](ADR-0030-coach-setup-memory-freshness.md) — source-bound rolling proposals and transactional expiry checks; coordinated app/database release.
+
 | ADR | Title | Status |
 | --- | --- | --- |
 | [ADR-0001](ADR-0001-ai-surface-taxonomy.md) | AI-Surface Taxonomy and the Compute-vs-Compose Boundary | Accepted |

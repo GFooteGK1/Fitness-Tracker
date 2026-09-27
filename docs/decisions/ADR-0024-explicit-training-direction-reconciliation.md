@@ -21,7 +21,7 @@ Saving replacement setup changes the source revision. The UI therefore performs 
 - Canonical intent defines outcomes and priorities. Matching goal-memory allocation choices are preserved; unrelated convenience fields cannot replace confirmed outcomes.
 - Removal of an event clears the nullable direction target and confirmed event. The internal goal outcome retains its required independent planning horizon; this does not restore an event deadline.
 - Typed constraints use existing compiler support. New free-text constraints are not represented as enforced scheduling rules and remain blocked for clarification.
-- All proposal writes retain ADR-0023's transactional revision fence. Setup-memory lifecycle expiry is checked at read time; this step does not add a general transactional clock-expiry guard.
+- All proposal writes retain ADR-0023's transactional revision fence. This original step checked setup-memory lifecycle expiry at read time. [ADR-0030](ADR-0030-coach-setup-memory-freshness.md) subsequently adds explicit setup bindings and transactional lifecycle checks for new rolling proposals.
 - Numerical adaptation policies remain disabled. This is supported direction reconciliation, not the P3 multi-outcome strategy engine or proof of coaching quality.
 
 ## Alternatives considered
