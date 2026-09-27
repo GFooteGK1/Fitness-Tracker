@@ -49,6 +49,31 @@ export function sql(query, expectedFailure = false) {
 }
 export function jsonSql(query) { return JSON.parse(sql(query).text); }
 
+// Separately initialized fixed-local transport for the guardian process. Unlike
+// sql(), calls remain interruptible while PostgreSQL waits for a writer lock.
+export function createLocalAsyncSql() {
+  verifyTarget();
+  return (query,{signal}={})=>new Promise((resolve,reject)=>{
+    if(signal?.aborted){reject(Error('local_sql_aborted'));return;}
+    const child=spawn(binary,['--connection','sociusfit-local','exec','-i',container,'psql','-X','-qAt','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate'],{env,windowsHide:true});
+    let text='',error='',settled=false;
+    const finish=(failure,value)=>{if(settled)return;settled=true;clearTimeout(timer);signal?.removeEventListener('abort',abort);failure?reject(failure):resolve(value);};
+    const abort=()=>{child.kill();finish(Error('local_sql_aborted'));};
+    const timer=setTimeout(abort,7500);
+    signal?.addEventListener('abort',abort,{once:true});
+    child.on('error',()=>finish(Error('local_sql_transport')));
+    child.stdin.on('error',()=>finish(Error('local_sql_stdin')));
+    child.stdout.on('data',b=>{text+=b;if(text.length>1024*1024)abort();});
+    child.stderr.on('data',b=>{error+=b;if(error.length>1024*1024)abort();});
+    child.on('exit',code=>{
+      if(error)fs.appendFileSync(path.join(output,'database.private.log'),error);
+      if(code!==0){finish(Object.assign(Error('local_sql_failed'),{sqlstate:/ERROR:\s+([0-9A-Z]{5})/.exec(error)?.[1]}));return;}
+      try{finish(null,JSON.parse(text.trim()));}catch{finish(Error('local_sql_json'));}
+    });
+    child.stdin.end(`SET statement_timeout='6s'; SET lock_timeout='5s';\n${query}\n`);
+  });
+}
+
 /** A real concurrent transaction, released through stdin after its lock is observed. */
 export function holdTransaction(query) {
   verifyTarget();
