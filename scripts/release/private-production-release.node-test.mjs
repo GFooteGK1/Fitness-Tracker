@@ -19,6 +19,19 @@ assert(finalizerStart > end && receiptStart > finalizerStart);
 const finalizer = source.slice(finalizerStart + '} finally {'.length, receiptStart).trim().replace(/\}$/, '');
 const publication = source.slice(receiptStart);
 
+test('setup connection path invokes only the explicit helper, never CLI discovery', async () => {
+  const start=source.indexOf('  let connection;'),end=source.indexOf('  if (Object.keys(connection)',start);
+  assert(start>0&&end>start);let calls=0;
+  const value=await new Script(`(async()=>{${source.slice(start,end)} return connection;})()`).runInNewContext({
+    mode:'setup-preflight',process:{argv:['node','tool','setup-preflight','--issue-temporary-login'],stdin:'secure-input'},
+    cli:'must-not-run',project:'auolnfwetmfcwhtvakzy',sealed(){},
+    command(){throw Error('Unexpected CLI connection discovery');},
+    async createSetupPreflightConnection(options){calls++;assert.equal(options.input,'secure-input');
+      assert.deepEqual(Array.from(options.argv),['setup-preflight','--issue-temporary-login']);return {fixed:true};}
+  });
+  assert.equal(calls,1);assert.equal(value.fixed,true);
+});
+
 async function exercise({ mode = 'release', malformed = false, rejected = false, queryFails = false, stopFails = false, stillRunning = false, foreign = false } = {}) {
   const events = [], writes = [], errors = [];
   const raw = malformed ? '{secret malformed metadata' : JSON.stringify({ ledger: [{ recorded: true }], functions: [['private-definition']], functionAccess: [{}], relations: [[]], groups: [[]], newerLedger: [] });
@@ -109,7 +122,7 @@ for (const variant of ['malformed', 'queryFails']) test(`${variant} cleans up wi
 test('setup preflight runs exact SQL once and publishes only sanitized evidence after verified cleanup', async () => {
   const result = await exercise({ mode: 'setup-preflight' });
   assert.equal(result.queries, 1);
-  assert.deepEqual(result.events, ['query', 'sealed', 'parsed', 'classified', 'stop', 'stopped-readback', 'key-zeroed', 'receipt']);
+  assert.deepEqual(result.events, ['query', 'sealed', 'parsed', 'classified', 'stopped-readback', 'stop', 'stopped-readback', 'key-zeroed', 'receipt']);
   const [receipt] = result.writes;
   assert.equal(receipt.passed, true);
   assert.equal(receipt.kind, 'production_setup_freshness_preflight');
@@ -125,6 +138,7 @@ for (const variant of ['rejected', 'stopFails', 'stillRunning', 'foreign', 'malf
     assert.equal(result.queries, 1);
     assert.equal(result.process.exitCode, 1);
     assert.equal(result.writes.some(receipt => receipt.passed), false);
+    if (variant === 'foreign') assert.equal(result.events.includes('stop'), false);
     if (['malformed', 'queryFails'].includes(variant)) assert.equal(result.writes.length, 0);
   });
 }

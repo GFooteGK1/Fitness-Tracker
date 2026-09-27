@@ -1,5 +1,12 @@
 # Setup-freshness hosted preflight transport
 
+**Historical method; do not execute the command below.** CLI dry-run connection
+setup can issue temporary credentials and attempt network unbans. The executable
+now refuses that old setup-preflight invocation. Use the separate
+[explicit-login packet](setup-preflight-explicit-login-2026-09-27.md) only after
+its credential-issuance approval. Earlier receipts remain dated observations;
+their authority does not silently expand to this new method.
+
 Task: `Fitness-Tracker-i40.15`. Production project: `auolnfwetmfcwhtvakzy`.
 Status: revised method approved by Greg's "Revaluate and try again" and executed
 once at15:10UTC. Transport and cleanup passed. The ledger mismatch was diagnosed

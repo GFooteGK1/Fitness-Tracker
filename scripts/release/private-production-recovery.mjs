@@ -14,6 +14,7 @@ import { Readable } from 'node:stream';
 import { RECOVERY_LOCALE_SQL, validateSourceLocale } from './private-recovery-locale.mjs';
 import { RELEASE_TARGET_METADATA_SQL, classifyReleaseTargetMetadata, releaseMigrationManifest } from './release-target-metadata.mjs';
 import { SETUP_PREFLIGHT_SQL, classifySetupPreflight } from './setup-freshness-preflight.mjs';
+import { createSetupPreflightConnection } from './setup-freshness-preflight-login.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const destination = 'C:/Users/foote/AppData/Local/SociusFit/Recovery';
@@ -21,9 +22,12 @@ const project = 'auolnfwetmfcwhtvakzy';
 const image = '66089200353d90686fe9b252a47d17d078364bf47c50190852c33dc850a0191f';
 const pwsh = 'C:/Users/foote/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe';
 const mode = process.argv[2];
-if (!['inspect', 'backup', 'locale', 'release', 'setup-preflight'].includes(mode) || process.argv.length !== 3) throw Error('Use inspect, backup, locale, release or setup-preflight; source and destination are fixed');
+if (!['inspect', 'backup', 'locale', 'release', 'setup-preflight'].includes(mode)
+  || (mode === 'setup-preflight' ? process.argv.length !== 4 || process.argv[3] !== '--issue-temporary-login' : process.argv.length !== 3))
+  throw Error('Setup preflight requires explicit --issue-temporary-login authority; other modes accept no extra arguments');
 // Reuse the established pinned platform tools; the isolated release checkout
-// holds the query and classifier. No credential-file discovery or new login.
+// holds the query and classifier. Setup preflight uses explicit token stdin and
+// one temporary-login issuance; it never calls CLI connection discovery.
 const platform = mode === 'setup-preflight'
   ? path.resolve(root, '../programming-quality/output/app-quality-release')
   : path.join(root, 'output/app-quality-release');
@@ -90,9 +94,14 @@ let releaseReceipt;
 let releaseCleanupVerified = false;
 const workers = new Set();
 try {
+  let connection;
+  if (mode === 'setup-preflight') {
+    connection = await createSetupPreflightConnection({argv:process.argv.slice(2),input:process.stdin,
+      record:(name,value)=>sealed(name,JSON.stringify(value))});
+  } else {
   // No token-store scraping: the official CLI uses the already approved login.
   const script = command(cli, ['db', 'dump', '--dry-run', '--project-ref', project]);
-  const connection = {};
+  connection = {};
   for (const line of script.split(/\r?\n/)) {
     const match = /^export (PGHOST|PGPORT|PGUSER|PGPASSWORD|PGDATABASE)="([^"\\\r\n]*)"$/.exec(line);
     if (match) {
@@ -100,10 +109,15 @@ try {
       connection[match[1]] = match[2];
     }
   }
+  }
   if (Object.keys(connection).length !== 5 || !connection.PGPASSWORD) throw Error('Unrecognized CLI connection format; never evaluate its script');
   const direct = connection.PGHOST === `db.${project}.supabase.co` && connection.PGUSER === 'cli_login_postgres';
   const pooled = connection.PGHOST === 'aws-1-us-east-1.pooler.supabase.com' && connection.PGUSER === `cli_login_postgres.${project}`;
   if (!(direct || pooled) || connection.PGPORT !== '5432' || connection.PGDATABASE !== 'postgres') throw Error('CLI connection does not match the approved project/session endpoint');
+  if (mode === 'setup-preflight') {
+    sealed('setup-preflight-client-create-intent',JSON.stringify({client,project,image}));
+    clientStarted = true; // Include uncertain container creation in cleanup/readback.
+  }
   pod(['run', '-d', '--name', client, '--label', `io.socius.recovery=${project}`, '--network', 'podman', '--read-only', '--image-volume', 'ignore', '--log-driver', 'none', '--user', '100:101', '--cap-drop', 'all', '--security-opt', 'no-new-privileges', '--ulimit', 'core=0:0', '--memory', '128m', '--memory-swap', '128m', '--tmpfs', '/tmp:rw,nosuid,nodev,noexec,size=16m,mode=1777', '--entrypoint', '/bin/sleep', image, 'infinity']);
   clientStarted = true;
   const inspected = JSON.parse(pod(['inspect', client]))[0];
@@ -292,6 +306,13 @@ try {
   await Promise.all(outstanding.map(worker => worker.done));
   if (clientStarted) {
     try {
+      if (mode === 'setup-preflight') {
+        // Creation may have failed on a name collision. Establish ownership
+        // before stopping anything; an uncertain lookup is not permission.
+        const before = JSON.parse(pod(['inspect', client]))[0];
+        if (before?.Name !== client || before?.Image?.replace(/^sha256:/, '') !== image || before?.Config?.Labels?.['io.socius.recovery'] !== project)
+          throw Error('Preflight client identity not verified before stop');
+      }
       pod(['stop', '--time', '5', client]);
       if (mode === 'release' || mode === 'setup-preflight') {
         const stopped = JSON.parse(pod(['inspect', client]))[0];

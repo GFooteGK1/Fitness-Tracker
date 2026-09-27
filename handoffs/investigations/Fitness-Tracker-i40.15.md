@@ -1,5 +1,18 @@
 # Setup freshness release preparation
 
+## September 27 explicit-login preparation
+
+Task i40.15.2 removes CLI connection discovery from setup preflight because the
+pinned CLI may change credentials and network bans. The prepared replacement
+requires an explicit issuance flag and secure stdin token, issues one fixed API
+request, then retains the exact read-only SQL and private evidence/cleanup.
+No production attempt has occurred. 30 Vitest and 15 Node checks, typecheck and
+lint pass. Independent review found a pre-stop identity gap after uncertain
+container creation; corrected with a regression proving foreign containers are
+not stopped. Independent re-review accepted preparation and reran all 15 transport
+tests successfully. This is local preparation, not authority
+to issue a credential, rerun a hosted query or deploy.
+
 ## Current checkpoint — September 27, revised database transport
 
 PR86 exact-head CI36321466070 and approved Vercel CLI preflight passed in the

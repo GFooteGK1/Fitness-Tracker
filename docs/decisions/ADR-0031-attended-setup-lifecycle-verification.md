@@ -51,6 +51,11 @@ and [temporary login API](https://supabase.com/docs/reference/api/v1-create-logi
 
 ## Alternatives and consequences
 
+Setup's pre-install readback shares the fixed login-request function. Its command
+requires an explicit issuance flag and secure token stdin, with no CLI fallback.
+It permits only the existing read-only preflight SQL and remains separate from
+the lifecycle manifest. Credential issuance still requires explicit approval.
+
 An in-process watchdog cannot survive coordinator loss. Preview shares production
 data, so it is not an isolation boundary. A synthetic-only pause exception would
 change production authorization; this preparation does not add one. The existing
