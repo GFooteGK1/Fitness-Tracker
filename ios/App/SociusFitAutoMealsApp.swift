@@ -4,7 +4,12 @@ import SwiftUI
 struct SociusFitAutoMealsApp: App {
     var body: some Scene {
         WindowGroup {
-            AutoMealPhotoSetupView()
+            TabView {
+                CameraCloseProbeView()
+                    .tabItem { Label("Camera Shortcut", systemImage: "camera") }
+                AutoMealPhotoSetupView()
+                    .tabItem { Label("PhotoKit Probe", systemImage: "wrench.and.screwdriver") }
+            }
         }
     }
 }

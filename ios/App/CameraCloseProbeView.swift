@@ -1,0 +1,63 @@
+import SwiftUI
+import Photos
+
+struct CameraCloseProbeView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var read: CameraCloseProbeRead = .missing
+    @State private var authorized = false
+    @State private var requesting = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Camera-close test") {
+                    Text("This checks whether a Shortcut can run this app's action and read a local photo while the phone is locked.")
+                    LabeledContent("Full Photos access", value: authorized ? "Yes" : "Required")
+                    if !authorized {
+                        Button("Allow Photos for Shortcut Test") {
+                            requesting = true
+                            Task {
+                                _ = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+                                requesting = false
+                                refresh()
+                            }
+                        }
+                        .frame(minHeight: 44)
+                        .disabled(requesting)
+                    }
+                }
+                Section("Latest action observation") {
+                    switch read {
+                    case .valid(let record):
+                        LabeledContent("Result", value: record.phase.description)
+                        LabeledContent("Run", value: record.runID.uuidString)
+                        LabeledContent("Build", value: "\(record.version) (\(record.build))")
+                        LabeledContent("Entered", value: record.enteredAt.formatted())
+                        LabeledContent("Thumbnail read", value: record.photoReadAt?.formatted() ?? "Not recorded")
+                        LabeledContent("Completed", value: record.completedAt?.formatted() ?? "Not recorded")
+                    case .missing: Text("No action evidence recorded.")
+                    case .invalid: Text("Saved evidence is invalid. It has been preserved.")
+                    case .unavailable: Text("Saved evidence is unavailable. This does not prove the action never ran.")
+                    }
+                    Button("Refresh Shortcut Diagnostics", action: refresh).frame(minHeight: 44)
+                }
+                Section("Set up the test") {
+                    Text("In Shortcuts, use Camera → Is Closed → Run Immediately. Add Check Camera Photo Access from SociusFit Auto Meals. Its text result can feed Show Notification during the test.")
+                    Text("Use one disposable still photo. Compare the run and timestamps after leaving Camera unlocked, then after taking a photo from Lock Screen without unlocking.")
+                }
+                Section("Scope") {
+                    Text("This action reads a small thumbnail of the most recent still photo. It does not prove which photo you just took, track new photos, classify food, upload images, or create meals. The same photo can be read again. A thumbnail read does not prove full-resolution access.")
+                    Text("The Shortcut test does not enable the PhotoKit background extension. Its separate diagnostic tab can retain an enabled extension; disable that through its existing control before a local-only test.")
+                }
+            }
+            .navigationTitle("Camera Shortcut Probe")
+            .onAppear(perform: refresh)
+            .onChange(of: scenePhase) { _, phase in if phase == .active { refresh() } }
+        }
+    }
+
+    private func refresh() {
+        authorized = PHPhotoLibrary.authorizationStatus(for: .readWrite) == .authorized
+        read = CameraCloseProbeRuntime.store.read()
+    }
+}

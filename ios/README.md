@@ -1,5 +1,17 @@
 # SociusFit Auto Meal Photos — native harness
 
+## Camera-close implementation, October 1
+
+The host now includes `Check Camera Photo Access`, a local-only App Intent,
+and a separate Camera Shortcut diagnostics tab. Slice 1 reads a small thumbnail
+and records entry/read/completion evidence. It does not track new photos,
+classify food or log nutrition. Swift compilation and physical-device proof
+are still pending. See [qualification instructions](../docs/verification/camera-close-slice-1.md)
+and [ADR-0006](../docs/decisions/ADR-0006-camera-close-shortcut-pilot.md).
+
+The PhotoKit harness described below is retained separately; its historical
+build statements do not establish compilation of the new Shortcut action.
+
 This directory contains the minimal native boundary approved in ADR-0005. The
 current slice is a local, uncompiled September 21 diagnostic candidate on top of
 Build 6. It preserves the fail-closed physical-device protocol probe. With
