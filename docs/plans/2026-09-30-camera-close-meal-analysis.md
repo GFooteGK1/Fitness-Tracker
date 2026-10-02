@@ -1,12 +1,12 @@
 # Camera-close automatic meal analysis: proposed implementation plan
 
-Date: 2026-09-30. Updated October 1: Greg authorized implementation. Slice 1 is implemented locally; compilation and physical-device qualification are pending. Deployment remains a separate authorization boundary.
+Date: 2026-09-30. Updated October 1: Greg authorized implementation. Slice 1 compiled and shipped as TestFlight build 9; Greg reports one unlocked and one locked native thumbnail check. Broader device qualification remains open. Slice 2 is a local discovery candidate with ten unexecuted Swift tests; compilation and device checks are pending. See `docs/verification/camera-close-slice-2.md`. Deployment remains a separate authorization boundary.
 
 ## Outcome and current evidence
 
 Take a meal photo with Apple Camera, leave Camera, and later find an estimated macro draft in SociusFit without opening SociusFit to start analysis. The athlete reviews, corrects, accepts, or dismisses the draft. Only acceptance contributes to nutrition totals. Capture and Camera close are different events; this version starts on Camera close, not at shutter press.
 
-Greg's device tests in this conversation proved Camera Is Closed / Run Immediately notifications, including Lock Screen use, and Get Latest Photos producing the new image while locked. They did not prove a custom App Intent, batch discovery, a local classifier, upload, durable retries, or analysis. Opening Camera without taking a photo currently reuses the latest image; multiple shots currently return only the latest.
+Greg's device tests in this conversation proved Camera Is Closed / Run Immediately notifications, including Lock Screen use, and Get Latest Photos producing the new image while locked. Build 9 subsequently completed a custom native thumbnail check once unlocked and once locked. Batch discovery, a local classifier, upload, durable retries and analysis remain unproved on device. The thumbnail check can reuse the latest image; the next discovery candidate addresses zero and multiple captures.
 
 Existing source evidence:
 

@@ -5,9 +5,17 @@
 The host now includes `Check Camera Photo Access`, a local-only App Intent,
 and a separate Camera Shortcut diagnostics tab. Slice 1 reads a small thumbnail
 and records entry/read/completion evidence. It does not track new photos,
-classify food or log nutrition. Swift compilation and physical-device proof
-are still pending. See [qualification instructions](../docs/verification/camera-close-slice-1.md)
+classify food or log nutrition. Build 9 compiled and uploaded successfully;
+Greg reports one unlocked and one locked native thumbnail check. Broader
+qualification remains pending. See [qualification instructions](../docs/verification/camera-close-slice-1.md)
 and [ADR-0006](../docs/decisions/ADR-0006-camera-close-shortcut-pilot.md).
+
+The next local candidate adds `Discover New Photos` and explicit enrollment.
+It saves new asset identities and the Photos history checkpoint together,
+reports new still-photo counts, retries unresolved metadata and prevents
+re-counting previously resolved photos. It does not read image resources or
+send data. This candidate is not in build 9 and needs macOS compilation and
+device checks. See [slice 2 tests](../docs/verification/camera-close-slice-2.md).
 
 The PhotoKit harness described below is retained separately; its historical
 build statements do not establish compilation of the new Shortcut action.
