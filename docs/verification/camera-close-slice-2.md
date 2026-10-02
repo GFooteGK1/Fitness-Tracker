@@ -24,4 +24,3 @@ Added ten Swift core tests cover empty enrollment and reset rejection, multiple 
 Pending native checks include Photos history API compilation, overlap/restart execution on device, permissions, explicit deletion, delayed/iCloud library metadata, protection before first unlock and history-expiry recovery. Food screening is the following slice. Build/release authorization and a successful compile are required before distributing this candidate.
 
 Independent review: corrected source has no remaining blocking finding. The history bound also includes updates/deletions of pre-enrollment assets; large unrelated library changes can stop this pilot visibly before its retained-candidate limit. Swift execution and locked-device discovery remain unverified.
-

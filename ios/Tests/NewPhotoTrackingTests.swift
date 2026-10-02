@@ -15,7 +15,7 @@ func trackingEnrollment() async throws {
     #expect(try store.load() == nil)
     let session = NewPhotoTrackingSession(store: store)
     try await session.enroll(token: Data([1]))
-    let baseline = try #require(store.load())
+    let baseline = try #require(try store.load())
     #expect(baseline.assets.isEmpty)
     do {
         try await session.enroll(token: Data([2]))
@@ -90,7 +90,7 @@ func trackingFailedCompletionSave() async throws {
         _ = try await session.discover(changes: { _ in
             NewPhotoDiscoveryBatch(token: Data([2]), inserted: ["photo"])
         }, resolve: { ids in
-            let checkpoint = try #require(store.load())
+            let checkpoint = try #require(try store.load())
             #expect(checkpoint.token == Data([2]))
             #expect(checkpoint.unresolvedIdentifiers == ["photo"])
             try invalid.write(to: url)
@@ -121,7 +121,7 @@ func trackingConcurrentScans() async throws {
         for try await count in group { total += count }
         #expect(total == 10)
     }
-    let retained = try #require(store.load())
+    let retained = try #require(try store.load())
     #expect(retained.token == Data([11]))
     #expect(retained.stillPhotoCount == 10)
 }
@@ -138,7 +138,7 @@ func trackingInterruptedResolution() async throws {
         }, resolve: { _ in throw TrackingFixtureError.interrupted })
         Issue.record("Interrupted resolution must fail visibly")
     } catch TrackingFixtureError.interrupted {}
-    let interrupted = try #require(store.load())
+    let interrupted = try #require(try store.load())
     #expect(interrupted.token == Data([2]))
     #expect(interrupted.unresolvedIdentifiers == ["late-photo"])
     // A fresh session represents restart after the saved discovery checkpoint.
@@ -175,7 +175,7 @@ func trackingDiscoveryFailures() async throws {
     defer { try? FileManager.default.removeItem(at: directory) }
     let session = NewPhotoTrackingSession(store: store)
     try await session.enroll(token: Data([1]))
-    let prior = try #require(store.load())
+    let prior = try #require(try store.load())
     do {
         _ = try await session.discover(changes: { _ in throw TrackingFixtureError.interrupted }, resolve: { _ in [] })
         Issue.record("History failure must throw")
