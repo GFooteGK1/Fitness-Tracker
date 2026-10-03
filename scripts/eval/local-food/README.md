@@ -68,6 +68,13 @@ battery/memory behavior. Cancellation is cooperative and can exceed ten seconds.
 
 ## Use the results
 
+The first actual macOS baseline at `eb22651` completed all 21 cases. It passed
+8/19 food images and 5/11 clear meals, excluded both cats, and passed 3/5 scenes
+flagged for people/body parts. Nine cases were uncertain; none errored. The v1
+policy remains observation-only. See [the receipt](../../../docs/verification/local-food-evaluation-2026-10-03.md)
+and immutable public JSON observations under `results/eb22651-macos-26-6-2/`.
+Unlike ignored local caches, these public baseline reports are checked in.
+
 1. Run the unchanged candidate and inspect failures/reasons before tuning thresholds.
 2. Expand representative negatives and packaged food; independently adjudicate a
    separate grouped holdout. Do not tune against the holdout.

@@ -1,6 +1,6 @@
 # 0008 - Automated local food-screening evaluation
 
-- **Status:** Accepted for local implementation; macOS execution and quality qualification pending
+- **Status:** Accepted observation harness; macOS baseline compiled and ran, v1 routing quality not qualified
 - **Date:** 2026-10-03
 - **Deciders:** Greg authorized automated evaluations; Codex selected a shared native runner
 

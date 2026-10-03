@@ -1,0 +1,516 @@
+{
+  "cases" : [
+    {
+      "id" : "public-01",
+      "result" : {
+        "durationMilliseconds" : 680,
+        "foodConfidence" : 0.9727607,
+        "labels" : [
+          {
+            "confidence" : 0.9727607,
+            "identifier" : "food"
+          },
+          {
+            "confidence" : 0.9727607,
+            "identifier" : "pizza"
+          },
+          {
+            "confidence" : 0.74208647,
+            "identifier" : "structure"
+          }
+        ],
+        "outcome" : "foodCandidate",
+        "reason" : "food_score"
+      },
+      "sha256" : "cd3e68735ea088ddbc4423c04ba90b2acda242b19c78a4ff453918c6a9bdfbc5"
+    },
+    {
+      "id" : "public-02",
+      "result" : {
+        "durationMilliseconds" : 45,
+        "foodConfidence" : 0.9425704,
+        "labels" : [
+          {
+            "confidence" : 0.9425704,
+            "identifier" : "food"
+          },
+          {
+            "confidence" : 0.942532,
+            "identifier" : "pizza"
+          },
+          {
+            "confidence" : 0.43530983,
+            "identifier" : "utensil"
+          }
+        ],
+        "outcome" : "foodCandidate",
+        "reason" : "food_score"
+      },
+      "sha256" : "8094463203824b4844ec6f8912e722155e1586f0ba309aa1be5947bbe1248fe6"
+    },
+    {
+      "id" : "public-03",
+      "result" : {
+        "durationMilliseconds" : 69,
+        "foodConfidence" : 0.23922253,
+        "labels" : [
+          {
+            "confidence" : 0.9830704,
+            "identifier" : "structure"
+          },
+          {
+            "confidence" : 0.9830703,
+            "identifier" : "wood_processed"
+          },
+          {
+            "confidence" : 0.49332917,
+            "identifier" : "utensil"
+          }
+        ],
+        "outcome" : "uncertain",
+        "reason" : "ambiguous_scores"
+      },
+      "sha256" : "0e536d690ae78ebd5fc1a2d29c7e4a5a080338e0f84a7ded618adad02cef79b2"
+    },
+    {
+      "id" : "public-04",
+      "result" : {
+        "durationMilliseconds" : 43,
+        "foodConfidence" : 0.38618305,
+        "labels" : [
+          {
+            "confidence" : 0.999466,
+            "identifier" : "tableware"
+          },
+          {
+            "confidence" : 0.999466,
+            "identifier" : "utensil"
+          },
+          {
+            "confidence" : 0.9927759,
+            "identifier" : "plate"
+          }
+        ],
+        "outcome" : "uncertain",
+        "reason" : "ambiguous_scores"
+      },
+      "sha256" : "7a1d8b81c53327288b00ef256f0cbbdc1b977d4e48057377a80046856e3a6cd3"
+    },
+    {
+      "id" : "public-05",
+      "result" : {
+        "durationMilliseconds" : 44,
+        "foodConfidence" : 0.9826901,
+        "labels" : [
+          {
+            "confidence" : 0.9826901,
+            "identifier" : "food"
+          },
+          {
+            "confidence" : 0.98268783,
+            "identifier" : "rice"
+          },
+          {
+            "confidence" : 0.303952,
+            "identifier" : "tableware"
+          }
+        ],
+        "outcome" : "foodCandidate",
+        "reason" : "food_score"
+      },
+      "sha256" : "82e92041095a81f4d4551897f154dcc7f344960274b0bac38cf9f196916ec6fc"
+    },
+    {
+      "id" : "public-06",
+      "result" : {
+        "durationMilliseconds" : 42,
+        "foodConfidence" : 0.7445147,
+        "labels" : [
+          {
+            "confidence" : 0.7445147,
+            "identifier" : "food"
+          },
+          {
+            "confidence" : 0.7381227,
+            "identifier" : "rice"
+          },
+          {
+            "confidence" : 0.3460598,
+            "identifier" : "vegetable"
+          }
+        ],
+        "outcome" : "foodCandidate",
+        "reason" : "food_score"
+      },
+      "sha256" : "57574634a4e9dcd4dc9c81be001dcab8b47f6dde6b9ddf34d1de45e6b4e51337"
+    },
+    {
+      "id" : "public-07",
+      "result" : {
+        "durationMilliseconds" : 91,
+        "foodConfidence" : 0,
+        "labels" : [
+          {
+            "confidence" : 0.9880851,
+            "identifier" : "interior_room"
+          },
+          {
+            "confidence" : 0.9880851,
+            "identifier" : "interior_shop"
+          },
+          {
+            "confidence" : 0.85172796,
+            "identifier" : "container"
+          }
+        ],
+        "outcome" : "nonFood",
+        "reason" : "low_food_score"
+      },
+      "sha256" : "766e82aaef490481d8228eed735c7edac32c063b5c7fe0bfb91a780c402c1da9"
+    },
+    {
+      "id" : "public-08",
+      "result" : {
+        "durationMilliseconds" : 77,
+        "foodConfidence" : 0.38390744,
+        "labels" : [
+          {
+            "confidence" : 0.8760682,
+            "identifier" : "utensil"
+          },
+          {
+            "confidence" : 0.87602973,
+            "identifier" : "cookware"
+          },
+          {
+            "confidence" : 0.8760288,
+            "identifier" : "pan"
+          }
+        ],
+        "outcome" : "uncertain",
+        "reason" : "ambiguous_scores"
+      },
+      "sha256" : "79a81e3b29bad3f0db38da572c7b431d62ad15ee51ea7e3fad96ac070505e1b3"
+    },
+    {
+      "id" : "public-09",
+      "result" : {
+        "durationMilliseconds" : 56,
+        "foodConfidence" : 0.15055995,
+        "labels" : [
+          {
+            "confidence" : 0.97674775,
+            "identifier" : "tableware"
+          },
+          {
+            "confidence" : 0.97674775,
+            "identifier" : "utensil"
+          },
+          {
+            "confidence" : 0.9667606,
+            "identifier" : "plate"
+          }
+        ],
+        "outcome" : "uncertain",
+        "reason" : "ambiguous_scores"
+      },
+      "sha256" : "c0bf84ebc9caf53dcb014e677d9562f34007adb5cdbb96d95aea9189a7b2edf3"
+    },
+    {
+      "id" : "public-10",
+      "result" : {
+        "durationMilliseconds" : 64,
+        "foodConfidence" : 0.24351084,
+        "labels" : [
+          {
+            "confidence" : 0.9991656,
+            "identifier" : "utensil"
+          },
+          {
+            "confidence" : 0.9991592,
+            "identifier" : "tableware"
+          },
+          {
+            "confidence" : 0.99230325,
+            "identifier" : "spoon"
+          }
+        ],
+        "outcome" : "uncertain",
+        "reason" : "ambiguous_scores"
+      },
+      "sha256" : "3c16623da2723c7c8d86bc0047029b86f6dabef74d4f0c35eade520a034b9e77"
+    },
+    {
+      "id" : "public-11",
+      "result" : {
+        "durationMilliseconds" : 55,
+        "foodConfidence" : 0.5525389,
+        "labels" : [
+          {
+            "confidence" : 0.9360639,
+            "identifier" : "structure"
+          },
+          {
+            "confidence" : 0.9360568,
+            "identifier" : "wood_processed"
+          },
+          {
+            "confidence" : 0.62928236,
+            "identifier" : "utensil"
+          }
+        ],
+        "outcome" : "uncertain",
+        "reason" : "ambiguous_scores"
+      },
+      "sha256" : "9282e244344761c4d09008a8bcb5dd9f62cecf0f87dc609c91543dfe425b63a0"
+    },
+    {
+      "id" : "public-12",
+      "result" : {
+        "durationMilliseconds" : 63,
+        "foodConfidence" : 0.81629044,
+        "labels" : [
+          {
+            "confidence" : 0.9884864,
+            "identifier" : "tableware"
+          },
+          {
+            "confidence" : 0.9884864,
+            "identifier" : "utensil"
+          },
+          {
+            "confidence" : 0.9797396,
+            "identifier" : "plate"
+          }
+        ],
+        "outcome" : "foodCandidate",
+        "reason" : "food_score"
+      },
+      "sha256" : "be8126f1a827961ab6d7ee3dab8f3f671543d5a428b72a173c2bcc726e67c1d4"
+    },
+    {
+      "id" : "public-13",
+      "result" : {
+        "durationMilliseconds" : 53,
+        "foodConfidence" : 0.9999078,
+        "labels" : [
+          {
+            "confidence" : 0.9999078,
+            "identifier" : "banana"
+          },
+          {
+            "confidence" : 0.9999078,
+            "identifier" : "food"
+          },
+          {
+            "confidence" : 0.9999078,
+            "identifier" : "fruit"
+          }
+        ],
+        "outcome" : "foodCandidate",
+        "reason" : "food_score"
+      },
+      "sha256" : "86994580fbc39c474c32c92990a6e48460efc2c6227c9acb4635782aaf736e69"
+    },
+    {
+      "id" : "public-14",
+      "result" : {
+        "durationMilliseconds" : 54,
+        "foodConfidence" : 0.15128814,
+        "labels" : [
+          {
+            "confidence" : 0.975643,
+            "identifier" : "outdoor"
+          },
+          {
+            "confidence" : 0.97563916,
+            "identifier" : "sky"
+          },
+          {
+            "confidence" : 0.97563785,
+            "identifier" : "blue_sky"
+          }
+        ],
+        "outcome" : "uncertain",
+        "reason" : "ambiguous_scores"
+      },
+      "sha256" : "86165ead72696d2a474de253f94423338244a8a6e401f85d698ae9e620b0b922"
+    },
+    {
+      "id" : "public-15",
+      "result" : {
+        "durationMilliseconds" : 64,
+        "foodConfidence" : 0.059970126,
+        "labels" : [
+          {
+            "confidence" : 0.95339507,
+            "identifier" : "structure"
+          },
+          {
+            "confidence" : 0.95339507,
+            "identifier" : "wood_processed"
+          },
+          {
+            "confidence" : 0.88136494,
+            "identifier" : "tableware"
+          }
+        ],
+        "outcome" : "nonFood",
+        "reason" : "low_food_score"
+      },
+      "sha256" : "48539393758b882b109a72670f7068fbf85504ea10ad54c8ee1839543d914512"
+    },
+    {
+      "id" : "public-16",
+      "result" : {
+        "durationMilliseconds" : 57,
+        "foodConfidence" : 0.97192025,
+        "labels" : [
+          {
+            "confidence" : 0.97192025,
+            "identifier" : "food"
+          },
+          {
+            "confidence" : 0.9713579,
+            "identifier" : "cereal"
+          },
+          {
+            "confidence" : 0.3581786,
+            "identifier" : "grain"
+          }
+        ],
+        "outcome" : "foodCandidate",
+        "reason" : "food_score"
+      },
+      "sha256" : "174b51583f5e261fc393467ac0da80c40f2ca642c3ac865f498c641146868e1f"
+    },
+    {
+      "id" : "public-17",
+      "result" : {
+        "durationMilliseconds" : 53,
+        "foodConfidence" : 0.47517112,
+        "labels" : [
+          {
+            "confidence" : 0.71883357,
+            "identifier" : "tableware"
+          },
+          {
+            "confidence" : 0.71883357,
+            "identifier" : "utensil"
+          },
+          {
+            "confidence" : 0.68467206,
+            "identifier" : "bowl"
+          }
+        ],
+        "outcome" : "uncertain",
+        "reason" : "ambiguous_scores"
+      },
+      "sha256" : "95d73c4bbf08c17a597a3b9c299b9bcf8fa60e6ab21b98056ccab1b40ce908ba"
+    },
+    {
+      "id" : "public-18",
+      "result" : {
+        "durationMilliseconds" : 60,
+        "foodConfidence" : 0.05048666,
+        "labels" : [
+          {
+            "confidence" : 0.60975754,
+            "identifier" : "utensil"
+          },
+          {
+            "confidence" : 0.6097575,
+            "identifier" : "tableware"
+          },
+          {
+            "confidence" : 0.6096857,
+            "identifier" : "bowl"
+          }
+        ],
+        "outcome" : "uncertain",
+        "reason" : "ambiguous_scores"
+      },
+      "sha256" : "23f995e657f508c7a0d794635467b301e1217149f701deb1642e8f670e6683af"
+    },
+    {
+      "id" : "public-19",
+      "result" : {
+        "durationMilliseconds" : 74,
+        "foodConfidence" : 0.994976,
+        "labels" : [
+          {
+            "confidence" : 0.994976,
+            "identifier" : "cereal"
+          },
+          {
+            "confidence" : 0.994976,
+            "identifier" : "food"
+          },
+          {
+            "confidence" : 0.2576157,
+            "identifier" : "tableware"
+          }
+        ],
+        "outcome" : "foodCandidate",
+        "reason" : "food_score"
+      },
+      "sha256" : "675c879db0427550de9e1b121df5aa84e40fc758795ed6313bdb32cb1f050e2c"
+    },
+    {
+      "id" : "public-20",
+      "result" : {
+        "durationMilliseconds" : 51,
+        "foodConfidence" : 0,
+        "labels" : [
+          {
+            "confidence" : 0.9730502,
+            "identifier" : "material"
+          },
+          {
+            "confidence" : 0.9730502,
+            "identifier" : "textile"
+          },
+          {
+            "confidence" : 0.6472977,
+            "identifier" : "animal"
+          }
+        ],
+        "outcome" : "nonFood",
+        "reason" : "low_food_score"
+      },
+      "sha256" : "269c18eb3e4f9e31e989c9764f06944b5ece7c61825518d27d44dafd40e60dd6"
+    },
+    {
+      "id" : "public-21",
+      "result" : {
+        "durationMilliseconds" : 47,
+        "foodConfidence" : 0,
+        "labels" : [
+          {
+            "confidence" : 0.99866354,
+            "identifier" : "grass"
+          },
+          {
+            "confidence" : 0.99866354,
+            "identifier" : "land"
+          },
+          {
+            "confidence" : 0.99866354,
+            "identifier" : "outdoor"
+          }
+        ],
+        "outcome" : "nonFood",
+        "reason" : "low_food_score"
+      },
+      "sha256" : "79324705e38f9b679d299d64ea10a211334be0e332103438033a6bc04e09838d"
+    }
+  ],
+  "completed" : true,
+  "generatedAt" : "2026-10-03T17:39:04Z",
+  "manifestSHA256" : "48d96c942ef01ddf066a792c78aa3b7a6541497bbd81870726eff148e6963511",
+  "operatingSystem" : "Version 26.6.2 (Build 25G83)",
+  "policyVersion" : "vision-r1-food-v1",
+  "preprocessing" : "ImageIO oriented thumbnail, maximum 512 pixels",
+  "requestRevision" : 1,
+  "schemaVersion" : 1
+}
