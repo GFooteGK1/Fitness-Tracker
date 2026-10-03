@@ -68,12 +68,17 @@ struct CameraCloseProbeView: View {
                     }
                     Button("Refresh Shortcut Diagnostics", action: refresh).frame(minHeight: 44)
                 }
+                Section("Food screening pilot") {
+                    NavigationLink("Set Up and Review Local Food Screening") { FoodScreeningProbeView() }
+                        .frame(minHeight: 44)
+                    Text("Optional local classification test. Enable it separately and change the Shortcut action. No uploads or macro estimates.")
+                }
                 Section("Thumbnail test setup") {
                     Text("In Shortcuts, use Camera → Is Closed → Run Immediately. Add Check Camera Photo Access from SociusFit Auto Meals. Its text result can feed Show Notification during the test.")
                     Text("Use one disposable still photo. Compare the run and timestamps after leaving Camera unlocked, then after taking a photo from Lock Screen without unlocking.")
                 }
                 Section("Scope") {
-                    Text("Check Camera Photo Access reads a small thumbnail of the most recent still photo. It does not prove which photo you just took. Discover New Photos tracks additions after enrollment and reads asset metadata only. Neither action classifies food, uploads images, or creates meals. A thumbnail read does not prove full-resolution access.")
+                    Text("Check Camera Photo Access reads a small thumbnail of the most recent still photo. Discover New Photos reads asset metadata only. Discover and Screen New Photos optionally classifies resized local images. These actions do not upload images or create meals. A thumbnail read does not prove full-resolution access.")
                     Text("The Shortcut test does not enable the PhotoKit background extension. Its separate diagnostic tab can retain an enabled extension; disable that through its existing control before a local-only test.")
                 }
             }

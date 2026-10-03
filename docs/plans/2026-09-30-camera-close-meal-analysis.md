@@ -1,12 +1,12 @@
 # Camera-close automatic meal analysis: proposed implementation plan
 
-Date: 2026-09-30. Updated October 1: Greg authorized implementation. Slice 1 compiled and shipped as TestFlight build 9; Greg reports one unlocked and one locked native thumbnail check. Broader device qualification remains open. Slice 2 is a local discovery candidate with ten unexecuted Swift tests; compilation and device checks are pending. See `docs/verification/camera-close-slice-2.md`. Deployment remains a separate authorization boundary.
+Date: 2026-09-30. Updated October 3: slice 1 shipped as build 9 with user-reported unlocked/locked thumbnails. Slice 2 shipped as build 10 after 42 Swift tests and native compilation; Greg reports zero/one/five shots, repeats and locked discovery passed. Slice 3 is a local food-screening candidate, not compiled or installed. See `docs/verification/camera-close-testflight-build-10.md` and `docs/verification/camera-close-slice-3.md`. Broader qualification and next release authority remain open.
 
 ## Outcome and current evidence
 
 Take a meal photo with Apple Camera, leave Camera, and later find an estimated macro draft in SociusFit without opening SociusFit to start analysis. The athlete reviews, corrects, accepts, or dismisses the draft. Only acceptance contributes to nutrition totals. Capture and Camera close are different events; this version starts on Camera close, not at shutter press.
 
-Greg's device tests in this conversation proved Camera Is Closed / Run Immediately notifications, including Lock Screen use, and Get Latest Photos producing the new image while locked. Build 9 subsequently completed a custom native thumbnail check once unlocked and once locked. Batch discovery, a local classifier, upload, durable retries and analysis remain unproved on device. The thumbnail check can reuse the latest image; the next discovery candidate addresses zero and multiple captures.
+Greg proved Camera-close notifications and latest-photo access while locked; build 9 completed native thumbnail checks unlocked and locked. Greg now reports build 10 batch discovery passed. Local classification, upload, transport retries and analysis remain unproved on device. Thumbnail checks can reuse the latest image; discovery handles zero and multiple captures separately.
 
 Existing source evidence:
 

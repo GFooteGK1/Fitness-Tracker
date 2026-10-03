@@ -23,6 +23,20 @@
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## Native Camera-close photo pilot
+
+The separate `ios/` companion owns opt-in Photos discovery and local screening.
+`NewPhotoTrackingRuntime` / `NewPhotoTrackingSession` persist history and asset
+identities. `ScreenNewPhotosIntent` reuses that discovery checkpoint, then
+`LocalFoodScreeningSession` serializes durable screening attempts/results.
+`LocalFoodScreeningRuntime` reads resized local pixels with Photos downloads
+disabled and runs Apple Vision. `FoodScreeningProbeView` owns local review and
+human evaluation labels. Images are transient; identities and diagnostics remain
+app-private. There is no connection from this experiment to web uploads, provider
+calls, macro analysis or canonical meals. The retained PhotoKit diagnostic
+extension remains separately controlled. See ADR-0006 and ADR-0007; slice 3
+source is uncompiled and locked classification remains unverified.
+
 ## 🔐 **Authentication System**
 
 ### **Core Components:**

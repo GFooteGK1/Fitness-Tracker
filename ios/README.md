@@ -1,6 +1,6 @@
 # SociusFit Auto Meal Photos — native harness
 
-## Camera-close implementation, October 1
+## Camera-close implementation, October 3
 
 The host now includes `Check Camera Photo Access`, a local-only App Intent,
 and a separate Camera Shortcut diagnostics tab. Slice 1 reads a small thumbnail
@@ -10,12 +10,20 @@ Greg reports one unlocked and one locked native thumbnail check. Broader
 qualification remains pending. See [qualification instructions](../docs/verification/camera-close-slice-1.md)
 and [ADR-0006](../docs/decisions/ADR-0006-camera-close-shortcut-pilot.md).
 
-The next local candidate adds `Discover New Photos` and explicit enrollment.
+Build 10 adds `Discover New Photos` and explicit enrollment.
 It saves new asset identities and the Photos history checkpoint together,
 reports new still-photo counts, retries unresolved metadata and prevents
 re-counting previously resolved photos. It does not read image resources or
-send data. This candidate is not in build 9 and needs macOS compilation and
-device checks. See [slice 2 tests](../docs/verification/camera-close-slice-2.md).
+send data. It passed 42 Swift tests and native compilation; Greg reports
+zero/one/five, repeat and locked discovery tests passed on his iPhone.
+See [build 10 receipt](../docs/verification/camera-close-testflight-build-10.md).
+
+The next local candidate adds opt-in `Discover and Screen New Photos`, using
+Apple Vision on resized local images. Camera Shortcut links to local results,
+previews and human evaluation labels. It does not upload or estimate macros.
+New Swift tests and native UI/build remain unexecuted on Windows. See
+[slice 3 qualification](../docs/verification/camera-close-slice-3.md) and
+[ADR-0007](../docs/decisions/ADR-0007-local-food-screening-observation-pilot.md).
 
 The PhotoKit harness described below is retained separately; its historical
 build statements do not establish compilation of the new Shortcut action.
