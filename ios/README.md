@@ -1,5 +1,12 @@
 # SociusFit Auto Meal Photos — native harness
 
+## Automated screening evaluation
+
+`LocalFoodVisionClassifier` shares the phone's Vision operation with the macOS
+`LocalFoodEval` executable. Frozen public references and deterministic scoring are
+documented in [`scripts/eval/local-food/README.md`](../scripts/eval/local-food/README.md).
+Manual phone labels are optional. macOS results do not qualify locked iPhone execution.
+
 ## Camera-close implementation, October 3
 
 The host now includes `Check Camera Photo Access`, a local-only App Intent,

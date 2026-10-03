@@ -30,12 +30,15 @@ The separate `ios/` companion owns opt-in Photos discovery and local screening.
 identities. `ScreenNewPhotosIntent` reuses that discovery checkpoint, then
 `LocalFoodScreeningSession` serializes durable screening attempts/results.
 `LocalFoodScreeningRuntime` reads resized local pixels with Photos downloads
-disabled and runs Apple Vision. `FoodScreeningProbeView` owns local review and
-human evaluation labels. Images are transient; identities and diagnostics remain
+disabled and calls the shared `LocalFoodVisionClassifier`. `FoodScreeningProbeView`
+owns local review and optional human evaluation labels. Images are transient; identities and diagnostics remain
 app-private. There is no connection from this experiment to web uploads, provider
 calls, macro analysis or canonical meals. The retained PhotoKit diagnostic
-extension remains separately controlled. See ADR-0006 and ADR-0007; slice 3
-source is uncompiled and locked classification remains unverified.
+extension remains separately controlled. Slice 3 compiled and uploaded as build 11;
+food accuracy and locked classification remain unqualified. A separate macOS
+`LocalFoodEval` executable shares Vision/policy and grades frozen public references
+through `scripts/eval/local-food/`; it has no access to the phone's library and
+does not establish device execution. See ADR-0006, ADR-0007 and ADR-0008.
 
 ## 🔐 **Authentication System**
 

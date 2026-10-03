@@ -3,6 +3,11 @@
 Ranks vision models for the food-photo nutrition task through the app's LLM seam.
 See `docs/decisions/ADR-0002-food-photo-eval-golden-set.md` for the design.
 
+For the separate native **food versus non-food routing** evaluation, see
+[`local-food/README.md`](local-food/README.md). It uses shared Apple Vision code
+and public development references. Macro accuracy and food-presence recall are
+different evaluations; do not pool their results.
+
 ## Layout
 
 - `types.ts` — golden-set + result types

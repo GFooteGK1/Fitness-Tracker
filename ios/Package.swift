@@ -7,12 +7,14 @@ let package = Package(
     platforms: [.macOS(.v13)],
     products: [
         .library(name: "SociusFitAutoMealsCore", targets: ["SociusFitAutoMealsCore"]),
+        .executable(name: "LocalFoodEval", targets: ["LocalFoodEval"]),
     ],
     targets: [
         .target(
             name: "SociusFitAutoMealsCore",
             path: "Shared"
         ),
+        .executableTarget(name: "LocalFoodEval", dependencies: ["SociusFitAutoMealsCore"], path: "Evaluation"),
         .testTarget(
             name: "SociusFitAutoMealsCoreTests",
             dependencies: ["SociusFitAutoMealsCore"],
