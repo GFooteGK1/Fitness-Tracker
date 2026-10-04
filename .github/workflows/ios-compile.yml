@@ -20,6 +20,7 @@ on:
           - apple-support
           - apple-support-release
           - screening-feasibility
+          - scene-diagnostics
       screening_precision:
         description: Precision for screening-feasibility model conversion
         type: choice
@@ -157,6 +158,10 @@ jobs:
     uses: ./.github/workflows/ios-screening-feasibility.yml
     with:
       precision: ${{ inputs.screening_precision || 'FLOAT16' }}
+
+  scene-diagnostics:
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'scene-diagnostics'
+    uses: ./.github/workflows/ios-scene-diagnostics.yml
 
   apple-support-release:
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'apple-support-release'

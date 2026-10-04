@@ -197,18 +197,63 @@ compilation and the reusable Mac conversion/geometry job. Run 37216877996 passed
 unsigned compilation and all 32 Mac export comparisons, but FP16 Core ML exceeded
 the numerical tolerance on the first input. Its incomplete receipt is preserved
 under `results/native-macos-37216877996/`. Scene execution was skipped. The prepared
-follow-up selects `screening_precision=FLOAT32` explicitly and runs scene checks
-after successful export even if conversion fails. No follow-up dispatch has run.
+follow-up selected `screening_precision=FLOAT32` and run 37218964987 passed all 32
+Core ML comparisons and scene batches. Its exact public receipts are under
+`results/native-macos-37218964987/`; see the FP32 verification receipt.
 The workflow retains selected JSON receipts for 30 days, excluding images, tensors,
 vectors and model binaries. Export/conversion checkpoints belong to exclusive new
 directories; unlike the Swift CLI's atomic checkpoints, their writes are not atomic
 and interruption can leave an unreadable checkpoint. Final reports remain exclusive.
 
-Swift compilation passed; Core ML parity failed. Real scene results and physical
-iPhone execution remain unverified. No app runtime reads this encoder or v2 policy. An untouched
+Swift compilation and FP32 Core ML parity passed. Frozen-label v2 sensitive false
+passes were 3/5, so routing quality remains unqualified. Physical iPhone execution
+remains unverified. No app runtime reads this encoder or v2 policy. An untouched
 grouped holdout, Swift pixel preprocessing parity and locked-device measurements
 remain necessary before routing photos. This is evaluation tooling only.
 See [the Mac run and follow-up proposal](../../../docs/verification/native-screening-macos-2026-10-04.md).
+
+## Raw scene diagnostics and human backup
+
+The independent pixel audit confirmed `public-12`'s torso/arms regression. Two other
+frozen human labels are unsupported (`public-02`, red utensil) or ambiguous
+(`public-13`, fabric). Preserve all frozen labels and results. The separate audit
+does not create a revised privacy acceptance denominator.
+
+`human_backup.py` restores the original people/hand/face semantic contrast as an
+additional abstention on v2 candidates. Frozen v3 replay uses archived observations,
+performs no model/detector calls and creates exclusive new receipts. It restored
+`public-12` abstention and preserved 11/11 clear meals; frozen sensitive false passes
+were 2/5. This is exposed development evidence. Durations inherited from the source
+report are mixed component measurements, not v3 execution or end-to-end latency.
+
+```sh
+mkdir NEW_V3_DIRECTORY
+python -B scripts/eval/local-food/human_backup.py scripts/eval/local-food/results/native-macos-37218964987/v2-manifest.json scripts/eval/local-food/results/native-macos-37218964987/v2-results.json scripts/eval/local-food/results/siglip2-windows-20261004/results.json NEW_V3_DIRECTORY/manifest.json NEW_V3_DIRECTORY/results.json
+python -B scripts/eval/local-food/score.py NEW_V3_DIRECTORY/manifest.json NEW_V3_DIRECTORY/results.json NEW_V3_DIRECTORY/summary.json
+```
+
+The separate `scene-diagnostics` CLI records actual dimensions/orientation, raw
+confidences/rectangles/pose points, result availability and accepted counts. Fixed
+profiles are full-body 512px, full-body 1024px and upper-body 512px. Confidence 0.2,
+two pose points and maximum four hands remain unchanged. At most 64 observations
+per stage and 32 points per observation are retained, with full counts and explicit
+truncation flags. Its diagnostic version cannot satisfy v2 routing composition.
+No detection does not establish that the scene contains no person.
+
+```sh
+swift run --package-path ios LocalFoodEval scripts/eval/local-food/fixtures.siglip2-development-v1.json IMAGE_DIRECTORY NEW_RAW_REPORT scene-diagnostics
+python -B scripts/eval/local-food/diagnose_scene.py scripts/eval/local-food/fixtures.siglip2-development-v1.json NEW_RAW_REPORT NEW_DIAGNOSTIC_SUMMARY
+```
+
+The prepared manual `ios-compile.yml` target `scene-diagnostics` includes unsigned
+app compilation and the reusable diagnostic job. The job uses isolated Python 3.11
+and `requirements-diagnostics.txt` for owned control pixels, downloads frozen public
+fixtures only, and retains JSON/partial failure receipts for 30 days. No encoder,
+image artifacts, paid calls, signing or TestFlight upload are included. Failure
+stops after preserving the first partial receipt. Cancellation after 20 seconds per
+profile is cooperative; the job has an outer 20-minute timeout. Native compilation
+and raw diagnostic execution are pending. See
+[the diagnostic audit](../../../docs/verification/scene-diagnostic-audit-2026-10-04.md).
 
 ## Data acquisition
 

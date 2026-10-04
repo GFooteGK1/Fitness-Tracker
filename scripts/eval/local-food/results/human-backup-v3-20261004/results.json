@@ -1,0 +1,1045 @@
+{
+  "schemaVersion": 1,
+  "completed": true,
+  "manifestSHA256": "328140e3fdd05fcacf42cea20aac197f761949bac0837c91bffc125d7fb764b4",
+  "policyVersion": "siglip2-human-backup-v3",
+  "requestRevision": 0,
+  "modelArtifact": {
+    "repository": "google/siglip2-base-patch16-224",
+    "revision": "75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2",
+    "weightSHA256": "612923381c76ec5a9bed335d1c48827e3f2e506ac31b044b63b2031fadee6a0b",
+    "configurationSHA256": "31a14ad5495f8d01422ab883bc8e426a37fe2085f76ba307781866adf0b0761c",
+    "supportingFiles": {
+      "config.json": {
+        "algorithm": "gitBlobSHA1",
+        "hash": "c8cd2a20e58a738f44f267ae19f9568ff1095698"
+      },
+      "preprocessor_config.json": {
+        "algorithm": "gitBlobSHA1",
+        "hash": "2e52d8e8492b5c496ae04c37bfa09760469fb18b"
+      },
+      "special_tokens_map.json": {
+        "algorithm": "gitBlobSHA1",
+        "hash": "8d6368f7e735fbe4781bf6e956b7c6ad0586df80"
+      },
+      "tokenizer.json": {
+        "algorithm": "sha256",
+        "hash": "cb9140fae3ac5122c972d37adf83e1248471a38147ad76f8215c8872c6fd8322"
+      },
+      "tokenizer.model": {
+        "algorithm": "sha256",
+        "hash": "61a7b147390c64585d6c3543dd6fc636906c9af3865a5548f27f31aee1d4c8e2"
+      },
+      "tokenizer_config.json": {
+        "algorithm": "gitBlobSHA1",
+        "hash": "d97c5412159422c3b56fbc99076b1dcc25dd7856"
+      }
+    }
+  },
+  "decisionArtifact": {
+    "configurationSHA256": "c7cfecf3a497e6ca0cbed335f71d6f18d56f93bc25947c3ddd26d9bf1ac58d15"
+  },
+  "operatingSystem": "semantic: Windows-11-10.0.26200-SP0; scene: Version 26.6.2 (Build 25G83)",
+  "preprocessing": "Semantic 224px pinned processor; geometric ImageIO oriented thumbnail, maximum 512 pixels; archived human-semantic abstention replay",
+  "generatedAt": "2026-10-04T17:05:49Z",
+  "sourceSemanticSHA256": "953cdbba25e4665b7db3dcbf4fcb58b6a2e87ea83009214145cde652fc89db9f",
+  "sourceSceneSHA256": "924174364faa750d0338abb17d71e4e86ba7036351edd330672ac4d9f3d1559f",
+  "physicalDeviceQualified": false,
+  "cases": [
+    {
+      "id": "public-01",
+      "sha256": "cd3e68735ea088ddbc4423c04ba90b2acda242b19c78a4ff453918c6a9bdfbc5",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9928818409406036,
+        "labels": [],
+        "durationMilliseconds": 876
+      },
+      "diagnostics": {
+        "foodMargin": 4.937962532043457,
+        "contextMargin": -2.6677474975585938,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 666,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -1.4322710037231445
+      }
+    },
+    {
+      "id": "public-02",
+      "sha256": "8094463203824b4844ec6f8912e722155e1586f0ba309aa1be5947bbe1248fe6",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.993085083332235,
+        "labels": [],
+        "durationMilliseconds": 235
+      },
+      "diagnostics": {
+        "foodMargin": 4.967135429382324,
+        "contextMargin": -1.876791000366211,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 107,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -1.8393974304199219
+      }
+    },
+    {
+      "id": "public-03",
+      "sha256": "0e536d690ae78ebd5fc1a2d29c7e4a5a080338e0f84a7ded618adad02cef79b2",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9943206294239854,
+        "labels": [],
+        "durationMilliseconds": 252
+      },
+      "diagnostics": {
+        "foodMargin": 5.165219306945801,
+        "contextMargin": -3.428049087524414,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 121,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -2.0825939178466797
+      }
+    },
+    {
+      "id": "public-04",
+      "sha256": "7a1d8b81c53327288b00ef256f0cbbdc1b977d4e48057377a80046856e3a6cd3",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9998941164462197,
+        "labels": [],
+        "durationMilliseconds": 245
+      },
+      "diagnostics": {
+        "foodMargin": 9.153064727783203,
+        "contextMargin": -3.8070383071899414,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 111,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -2.140218734741211
+      }
+    },
+    {
+      "id": "public-05",
+      "sha256": "82e92041095a81f4d4551897f154dcc7f344960274b0bac38cf9f196916ec6fc",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9997373726015402,
+        "labels": [],
+        "durationMilliseconds": 218
+      },
+      "diagnostics": {
+        "foodMargin": 8.244511604309082,
+        "contextMargin": -4.0886383056640625,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 95,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -0.5068149566650391
+      }
+    },
+    {
+      "id": "public-06",
+      "sha256": "57574634a4e9dcd4dc9c81be001dcab8b47f6dde6b9ddf34d1de45e6b4e51337",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9994804505526357,
+        "labels": [],
+        "durationMilliseconds": 221
+      },
+      "diagnostics": {
+        "foodMargin": 7.562028884887695,
+        "contextMargin": -3.689723014831543,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 94,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -0.0005064010620117188
+      }
+    },
+    {
+      "id": "public-07",
+      "sha256": "766e82aaef490481d8228eed735c7edac32c063b5c7fe0bfb91a780c402c1da9",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9917727389191663,
+        "labels": [],
+        "durationMilliseconds": 257
+      },
+      "diagnostics": {
+        "foodMargin": 4.792040824890137,
+        "contextMargin": -1.9426469802856445,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 128,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -3.266798973083496
+      }
+    },
+    {
+      "id": "public-08",
+      "sha256": "79a81e3b29bad3f0db38da572c7b431d62ad15ee51ea7e3fad96ac070505e1b3",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9989473913486616,
+        "labels": [],
+        "durationMilliseconds": 235
+      },
+      "diagnostics": {
+        "foodMargin": 6.855430603027344,
+        "contextMargin": -2.50466251373291,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 102,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -2.812352180480957
+      }
+    },
+    {
+      "id": "public-09",
+      "sha256": "c0bf84ebc9caf53dcb014e677d9562f34007adb5cdbb96d95aea9189a7b2edf3",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9987027810475974,
+        "labels": [],
+        "durationMilliseconds": 224
+      },
+      "diagnostics": {
+        "foodMargin": 6.646234512329102,
+        "contextMargin": -1.8594026565551758,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 96,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -0.27985191345214844
+      }
+    },
+    {
+      "id": "public-10",
+      "sha256": "3c16623da2723c7c8d86bc0047029b86f6dabef74d4f0c35eade520a034b9e77",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9853218009996721,
+        "labels": [],
+        "durationMilliseconds": 233
+      },
+      "diagnostics": {
+        "foodMargin": 4.206604957580566,
+        "contextMargin": -2.2112226486206055,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 95,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -1.285421371459961
+      }
+    },
+    {
+      "id": "public-11",
+      "sha256": "9282e244344761c4d09008a8bcb5dd9f62cecf0f87dc609c91543dfe425b63a0",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "human_geometry",
+        "foodConfidence": 0.991347081314906,
+        "labels": [],
+        "durationMilliseconds": 260
+      },
+      "diagnostics": {
+        "foodMargin": 4.741168022155762,
+        "contextMargin": -1.2586250305175781,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 126,
+          "faceCount": 0,
+          "handPoseCount": 1,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": 0.32906341552734375
+      }
+    },
+    {
+      "id": "public-12",
+      "sha256": "be8126f1a827961ab6d7ee3dab8f3f671543d5a428b72a173c2bcc726e67c1d4",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "human_semantic_context",
+        "foodConfidence": 0.9971381967040598,
+        "labels": [],
+        "durationMilliseconds": 226
+      },
+      "diagnostics": {
+        "foodMargin": 5.853437423706055,
+        "contextMargin": -0.8468503952026367,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 94,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": 1.9107818603515625
+      }
+    },
+    {
+      "id": "public-13",
+      "sha256": "86994580fbc39c474c32c92990a6e48460efc2c6227c9acb4635782aaf736e69",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9948575013124105,
+        "labels": [],
+        "durationMilliseconds": 219
+      },
+      "diagnostics": {
+        "foodMargin": 5.2650604248046875,
+        "contextMargin": -3.242229461669922,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 94,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -4.535336494445801
+      }
+    },
+    {
+      "id": "public-14",
+      "sha256": "86165ead72696d2a474de253f94423338244a8a6e401f85d698ae9e620b0b922",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.995582542406209,
+        "labels": [],
+        "durationMilliseconds": 243
+      },
+      "diagnostics": {
+        "foodMargin": 5.417763710021973,
+        "contextMargin": -5.857433319091797,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 97,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -4.734157562255859
+      }
+    },
+    {
+      "id": "public-15",
+      "sha256": "48539393758b882b109a72670f7068fbf85504ea10ad54c8ee1839543d914512",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9998954657915995,
+        "labels": [],
+        "durationMilliseconds": 241
+      },
+      "diagnostics": {
+        "foodMargin": 9.165891647338867,
+        "contextMargin": -6.970306396484375,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 112,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -4.889577865600586
+      }
+    },
+    {
+      "id": "public-16",
+      "sha256": "174b51583f5e261fc393467ac0da80c40f2ca642c3ac865f498c641146868e1f",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9986519844784566,
+        "labels": [],
+        "durationMilliseconds": 225
+      },
+      "diagnostics": {
+        "foodMargin": 6.6077728271484375,
+        "contextMargin": -4.694275856018066,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 97,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -3.1456079483032227
+      }
+    },
+    {
+      "id": "public-17",
+      "sha256": "95d73c4bbf08c17a597a3b9c299b9bcf8fa60e6ab21b98056ccab1b40ce908ba",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9995896024010545,
+        "labels": [],
+        "durationMilliseconds": 239
+      },
+      "diagnostics": {
+        "foodMargin": 7.7979736328125,
+        "contextMargin": -5.518987655639648,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 95,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -2.353178024291992
+      }
+    },
+    {
+      "id": "public-18",
+      "sha256": "23f995e657f508c7a0d794635467b301e1217149f701deb1642e8f670e6683af",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "context_similarity",
+        "foodConfidence": 0.9607909296714182,
+        "labels": [],
+        "durationMilliseconds": 239
+      },
+      "diagnostics": {
+        "foodMargin": 3.1988487243652344,
+        "contextMargin": 0.28320884704589844,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 110,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -1.358963966369629
+      }
+    },
+    {
+      "id": "public-19",
+      "sha256": "675c879db0427550de9e1b121df5aa84e40fc758795ed6313bdb32cb1f050e2c",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.904621986369008,
+        "labels": [],
+        "durationMilliseconds": 285
+      },
+      "diagnostics": {
+        "foodMargin": 2.249669075012207,
+        "contextMargin": -0.07515907287597656,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 161,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -3.0313405990600586
+      }
+    },
+    {
+      "id": "public-20",
+      "sha256": "269c18eb3e4f9e31e989c9764f06944b5ece7c61825518d27d44dafd40e60dd6",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "context_similarity",
+        "foodConfidence": 0.00019925550376761358,
+        "labels": [],
+        "durationMilliseconds": 381
+      },
+      "diagnostics": {
+        "foodMargin": -8.520723342895508,
+        "contextMargin": 1.6244258880615234,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 116,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": 0.5572710037231445
+      }
+    },
+    {
+      "id": "public-21",
+      "sha256": "79324705e38f9b679d299d64ea10a211334be0e332103438033a6bc04e09838d",
+      "result": {
+        "outcome": "nonFood",
+        "reason": "non_food_similarity_margin",
+        "foodConfidence": 0.00014323842195461522,
+        "labels": [],
+        "durationMilliseconds": 264
+      },
+      "diagnostics": {
+        "foodMargin": -8.85085678100586,
+        "contextMargin": -0.27900123596191406,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 116,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": 0.17777633666992188
+      }
+    },
+    {
+      "id": "public-22",
+      "sha256": "b7287f03caa66fce40c91cd29bd3288b7ade9c855e45a17b2cdbb4b3f50c7ccb",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "human_geometry",
+        "foodConfidence": 7.435139573756463e-05,
+        "labels": [],
+        "durationMilliseconds": 229
+      },
+      "diagnostics": {
+        "foodMargin": -9.506633758544922,
+        "contextMargin": -0.29422760009765625,
+        "scene": {
+          "bodyPoseCount": 1,
+          "completed": true,
+          "durationMilliseconds": 106,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": 0.8426895141601562
+      }
+    },
+    {
+      "id": "public-23",
+      "sha256": "9ed4adf72393cba198f4cb4fa6845cb8bdcdbd487e93fb2ad4c29ea6f724e62e",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "context_similarity",
+        "foodConfidence": 0.0002718488636146485,
+        "labels": [],
+        "durationMilliseconds": 234
+      },
+      "diagnostics": {
+        "foodMargin": -8.209992408752441,
+        "contextMargin": 0.8494129180908203,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 109,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -0.2392139434814453
+      }
+    },
+    {
+      "id": "public-24",
+      "sha256": "04cbd08fc2e56d57b67bc84d13720ef4d65c14913ab6f09461cc56532dfff8c9",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "context_similarity",
+        "foodConfidence": 1.760144997133763e-05,
+        "labels": [],
+        "durationMilliseconds": 219
+      },
+      "diagnostics": {
+        "foodMargin": -10.947511672973633,
+        "contextMargin": 0.26981544494628906,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 93,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -0.5501632690429688
+      }
+    },
+    {
+      "id": "public-25",
+      "sha256": "124a6700f7efb9f40f37617671cfcab9039c8690b3326b1bbd646841652a2ea3",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "context_similarity",
+        "foodConfidence": 7.261712239491937e-06,
+        "labels": [],
+        "durationMilliseconds": 242
+      },
+      "diagnostics": {
+        "foodMargin": -11.832887649536133,
+        "contextMargin": 1.698495864868164,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 115,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": 0.4859962463378906
+      }
+    },
+    {
+      "id": "public-26",
+      "sha256": "2f1501c546a67631dc28cd78b1a9fdc085619f41ca0ca7f4e07c2c0b9767de22",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "context_similarity",
+        "foodConfidence": 0.00035259571693188716,
+        "labels": [],
+        "durationMilliseconds": 215
+      },
+      "diagnostics": {
+        "foodMargin": -7.949835777282715,
+        "contextMargin": 0.662449836730957,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 92,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": 1.4502935409545898
+      }
+    },
+    {
+      "id": "synthetic-01",
+      "sha256": "8abbf682b14add4475fa8c7fbb32b5774d882d676b74e3b926b292fb587397b4",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "context_similarity",
+        "foodConfidence": 7.373615146673835e-07,
+        "labels": [],
+        "durationMilliseconds": 212
+      },
+      "diagnostics": {
+        "foodMargin": -14.120186805725098,
+        "contextMargin": 10.445566177368164,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 97,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": 1.1410417556762695
+      }
+    },
+    {
+      "id": "synthetic-02",
+      "sha256": "12fdae27efa96fa411584ee511ea5a2fd656cc66321d8c4df52c56fab2b92160",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "context_similarity",
+        "foodConfidence": 0.9660421152262807,
+        "labels": [],
+        "durationMilliseconds": 209
+      },
+      "diagnostics": {
+        "foodMargin": 3.348086357116699,
+        "contextMargin": 3.180178642272949,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 93,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -1.765009880065918
+      }
+    },
+    {
+      "id": "synthetic-03",
+      "sha256": "6a6c5841b043cc882f1644a775893b121e507981b3739c2caf801790885f5331",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "screenshot",
+        "foodConfidence": 0.009177072850821779,
+        "labels": [],
+        "durationMilliseconds": 212
+      },
+      "diagnostics": {
+        "foodMargin": -4.681827545166016,
+        "contextMargin": 9.068954467773438,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 94,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -3.399224281311035
+      }
+    },
+    {
+      "id": "synthetic-04",
+      "sha256": "1f66a32c4220acbd055f8b50507ce4532789749241b3b5f88f540399e779be9d",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "context_similarity",
+        "foodConfidence": 0.3655212590497064,
+        "labels": [],
+        "durationMilliseconds": 217
+      },
+      "diagnostics": {
+        "foodMargin": -0.5514793395996094,
+        "contextMargin": 10.092486381530762,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 93,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -1.059861183166504
+      }
+    },
+    {
+      "id": "synthetic-05",
+      "sha256": "590a9a30dd88a5f8260b0e3d01c45558d1cf37caa2ec76d40e5eaa38f8973a85",
+      "result": {
+        "outcome": "nonFood",
+        "reason": "non_food_similarity_margin",
+        "foodConfidence": 0.060492252462205784,
+        "labels": [],
+        "durationMilliseconds": 224
+      },
+      "diagnostics": {
+        "foodMargin": -2.7428407669067383,
+        "contextMargin": -1.4039201736450195,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 104,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": 0.1677265167236328
+      }
+    },
+    {
+      "id": "synthetic-06",
+      "sha256": "d7751117b5d85d31010bdaa9658c7c33c7469ba60f6c42a452f15cdf8227d5f3",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "context_similarity",
+        "foodConfidence": 0.0005784475178197714,
+        "labels": [],
+        "durationMilliseconds": 222
+      },
+      "diagnostics": {
+        "foodMargin": -7.454584121704102,
+        "contextMargin": 0.5614194869995117,
+        "scene": {
+          "bodyPoseCount": 0,
+          "completed": true,
+          "durationMilliseconds": 95,
+          "faceCount": 0,
+          "handPoseCount": 0,
+          "humanRectangleCount": 0,
+          "reason": "geometry_completed",
+          "stages": [
+            "face",
+            "humanRectangle",
+            "bodyPose",
+            "handPose"
+          ]
+        },
+        "humanMargin": -0.3809986114501953
+      }
+    }
+  ],
+  "sourceV2SHA256": "82c9dcd4fd5e6604a24505342bd66b5605700ed91a7bf4386e44c0c19dcb897d",
+  "replayGeneratedAt": "2026-10-04T17:37:46.925151+00:00",
+  "execution": "archived observations only; no model or detector execution"
+}

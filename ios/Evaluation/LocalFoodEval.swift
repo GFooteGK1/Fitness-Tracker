@@ -18,6 +18,7 @@ private struct CaseResult: Encodable {
     let sha256: String
     let result: FoodScreeningResult
     var scene: LocalSceneEvidence? = nil
+    var sceneDiagnostics: [SceneProfileDiagnostic]? = nil
 }
 private struct Report: Encodable {
     let schemaVersion = 1
@@ -27,13 +28,17 @@ private struct Report: Encodable {
     let requestRevision: Int
     let operatingSystem: String
     let generatedAt: String
-    let preprocessing = "ImageIO oriented thumbnail, maximum 512 pixels"
+    var preprocessing = "ImageIO oriented thumbnail, maximum 512 pixels"
     let cases: [CaseResult]
     var sceneGuardVersion: String? = nil
     var sceneRevisions: [String: Int]? = nil
     var sceneMinimumConfidence: Float? = nil
     var sceneMinimumPosePoints: Int? = nil
     var sceneMaximumHandCount: Int? = nil
+    var diagnosticVersion: String? = nil
+    var diagnosticMaximumObservations: Int? = nil
+    var diagnosticMaximumPoints: Int? = nil
+    var diagnosticSourceRevision: String? = nil
 }
 private enum EvalError: Error { case invalidArguments, invalidManifest, invalidImage, unavailableOS }
 private func digest(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
@@ -43,11 +48,11 @@ private enum LocalFoodEval {
     static func main() async {
         do {
             guard CommandLine.arguments.count == 4 ||
-                  (CommandLine.arguments.count == 5 && CommandLine.arguments[4] == "scene") else { throw EvalError.invalidArguments }
+                  (CommandLine.arguments.count == 5 && ["scene", "scene-diagnostics"].contains(CommandLine.arguments[4])) else { throw EvalError.invalidArguments }
             if #available(macOS 14.0, *) { try await run() }
             else { throw EvalError.unavailableOS }
         } catch {
-            FileHandle.standardError.write(Data("LocalFoodEval failed: \(error). Usage: LocalFoodEval MANIFEST IMAGE_DIRECTORY NEW_REPORT [scene]\n".utf8))
+            FileHandle.standardError.write(Data("LocalFoodEval failed: \(error). Usage: LocalFoodEval MANIFEST IMAGE_DIRECTORY NEW_REPORT [scene|scene-diagnostics]\n".utf8))
             exit(1)
         }
     }
@@ -55,7 +60,8 @@ private enum LocalFoodEval {
     @available(macOS 14.0, *)
     private static func run() async throws {
         let args = CommandLine.arguments
-        let sceneMode = args.count == 5
+        let sceneMode = args.count == 5 && args[4] == "scene"
+        let diagnosticMode = args.count == 5 && args[4] == "scene-diagnostics"
         let manifestURL = URL(fileURLWithPath: args[1])
         let root = URL(fileURLWithPath: args[2]).resolvingSymlinksInPath().standardizedFileURL
         let output = URL(fileURLWithPath: args[3])
@@ -71,15 +77,22 @@ private enum LocalFoodEval {
         var results: [CaseResult] = []
         func encodedReport(completed: Bool) throws -> Data {
             var report = Report(completed: completed, manifestSHA256: digest(manifestData),
-                policyVersion: sceneMode ? LocalScenePolicy.guardVersion : LocalFoodScreeningPolicy.version,
-                requestRevision: sceneMode ? 0 : Int(LocalFoodVisionClassifier.requestRevision),
+                policyVersion: diagnosticMode ? LocalSceneDiagnostics.version : (sceneMode ? LocalScenePolicy.guardVersion : LocalFoodScreeningPolicy.version),
+                requestRevision: sceneMode || diagnosticMode ? 0 : Int(LocalFoodVisionClassifier.requestRevision),
                 operatingSystem: ProcessInfo.processInfo.operatingSystemVersionString,
                 generatedAt: ISO8601DateFormatter().string(from: Date()), cases: results)
-            if sceneMode {
+            if sceneMode || diagnosticMode {
                 report.sceneGuardVersion = LocalScenePolicy.guardVersion; report.sceneRevisions = LocalSceneGuard.revisions
                 report.sceneMinimumConfidence = LocalScenePolicy.minimumConfidence
                 report.sceneMinimumPosePoints = LocalScenePolicy.minimumPosePoints
                 report.sceneMaximumHandCount = LocalScenePolicy.maximumHandCount
+            }
+            if diagnosticMode {
+                report.preprocessing = "ImageIO oriented thumbnails; diagnostic profiles at 512 and 1024 pixels"
+                report.diagnosticVersion = LocalSceneDiagnostics.version
+                report.diagnosticMaximumObservations = LocalSceneDiagnostics.maximumObservations
+                report.diagnosticMaximumPoints = LocalSceneDiagnostics.maximumPoints
+                report.diagnosticSourceRevision = ProcessInfo.processInfo.environment["GITHUB_SHA"]
             }
             let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             return try encoder.encode(report)
@@ -90,10 +103,16 @@ private enum LocalFoodEval {
             let data = try imageData(item, root: root)
             let result: FoodScreeningResult
             var scene: LocalSceneEvidence? = nil
+            var diagnostics: [SceneProfileDiagnostic]? = nil
             let options: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
                 kCGImageSourceThumbnailMaxPixelSize: 512, kCGImageSourceCreateThumbnailWithTransform: true,
                 kCGImageSourceShouldCache: false]
-            if let source = CGImageSourceCreateWithData(data as CFData, nil),
+            if diagnosticMode {
+                diagnostics = await LocalSceneDiagnostics.inspect(data)
+                let completed = diagnostics?.count == LocalSceneDiagnostics.profiles.count && diagnostics?.allSatisfy(\.completed) == true
+                result = FoodScreeningResult(outcome: completed ? .uncertain : .error,
+                    reason: completed ? "diagnostics_only" : "diagnostic_failed_or_cancelled")
+            } else if let source = CGImageSourceCreateWithData(data as CFData, nil),
                let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) {
                 if sceneMode {
                     scene = await LocalSceneGuard.inspect(LocalScreeningImage(cgImage: image, orientation: .up))
@@ -106,10 +125,10 @@ private enum LocalFoodEval {
             } else {
                 result = FoodScreeningResult(outcome: .error, reason: "fixture_decode_failed")
             }
-            results.append(CaseResult(id: item.id, sha256: item.sha256, result: result, scene: scene))
+            results.append(CaseResult(id: item.id, sha256: item.sha256, result: result, scene: scene, sceneDiagnostics: diagnostics))
             try encodedReport(completed: false).write(to: partial, options: .atomic)
             print("\(item.id): \(result.outcome.rawValue) (\(result.reason))")
-            if sceneMode && scene?.completed != true { throw EvalError.invalidImage }
+            if (sceneMode && scene?.completed != true) || (diagnosticMode && result.outcome == .error) { throw EvalError.invalidImage }
         }
         // Exclusive creation preserves previous evidence even if another runner chooses the same path.
         try encodedReport(completed: true).write(to: output, options: .withoutOverwriting)

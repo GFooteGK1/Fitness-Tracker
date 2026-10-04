@@ -1,0 +1,9 @@
+{
+  "policyVersion": "siglip2-human-backup-v3",
+  "sourcePolicyVersion": "siglip2-geometry-v2",
+  "sourceDecisionConfigurationSHA256": "305c6321c9d233931e144e7788a767d1f5b693a07f0c9342922468ab462f1df5",
+  "humanRiskPromptIds": ["risk_people", "risk_hands", "risk_face"],
+  "humanSafePromptIds": ["safe_meal", "safe_food", "safe_package", "safe_drink"],
+  "humanMargin": 0.0,
+  "candidateRule": "v2 candidate AND human margin below zero"
+}

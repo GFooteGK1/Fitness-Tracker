@@ -1,0 +1,2 @@
+# Isolated public-fixture construction only; no model dependencies.
+pillow==11.3.0

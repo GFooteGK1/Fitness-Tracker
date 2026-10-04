@@ -1,0 +1,886 @@
+{
+  "cases" : [
+    {
+      "id" : "public-01",
+      "result" : {
+        "durationMilliseconds" : 666,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 666,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "cd3e68735ea088ddbc4423c04ba90b2acda242b19c78a4ff453918c6a9bdfbc5"
+    },
+    {
+      "id" : "public-02",
+      "result" : {
+        "durationMilliseconds" : 107,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 107,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "8094463203824b4844ec6f8912e722155e1586f0ba309aa1be5947bbe1248fe6"
+    },
+    {
+      "id" : "public-03",
+      "result" : {
+        "durationMilliseconds" : 121,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 121,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "0e536d690ae78ebd5fc1a2d29c7e4a5a080338e0f84a7ded618adad02cef79b2"
+    },
+    {
+      "id" : "public-04",
+      "result" : {
+        "durationMilliseconds" : 111,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 111,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "7a1d8b81c53327288b00ef256f0cbbdc1b977d4e48057377a80046856e3a6cd3"
+    },
+    {
+      "id" : "public-05",
+      "result" : {
+        "durationMilliseconds" : 95,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 95,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "82e92041095a81f4d4551897f154dcc7f344960274b0bac38cf9f196916ec6fc"
+    },
+    {
+      "id" : "public-06",
+      "result" : {
+        "durationMilliseconds" : 94,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 94,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "57574634a4e9dcd4dc9c81be001dcab8b47f6dde6b9ddf34d1de45e6b4e51337"
+    },
+    {
+      "id" : "public-07",
+      "result" : {
+        "durationMilliseconds" : 128,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 128,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "766e82aaef490481d8228eed735c7edac32c063b5c7fe0bfb91a780c402c1da9"
+    },
+    {
+      "id" : "public-08",
+      "result" : {
+        "durationMilliseconds" : 102,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 102,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "79a81e3b29bad3f0db38da572c7b431d62ad15ee51ea7e3fad96ac070505e1b3"
+    },
+    {
+      "id" : "public-09",
+      "result" : {
+        "durationMilliseconds" : 96,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 96,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "c0bf84ebc9caf53dcb014e677d9562f34007adb5cdbb96d95aea9189a7b2edf3"
+    },
+    {
+      "id" : "public-10",
+      "result" : {
+        "durationMilliseconds" : 95,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 95,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "3c16623da2723c7c8d86bc0047029b86f6dabef74d4f0c35eade520a034b9e77"
+    },
+    {
+      "id" : "public-11",
+      "result" : {
+        "durationMilliseconds" : 126,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 126,
+        "faceCount" : 0,
+        "handPoseCount" : 1,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "9282e244344761c4d09008a8bcb5dd9f62cecf0f87dc609c91543dfe425b63a0"
+    },
+    {
+      "id" : "public-12",
+      "result" : {
+        "durationMilliseconds" : 94,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 94,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "be8126f1a827961ab6d7ee3dab8f3f671543d5a428b72a173c2bcc726e67c1d4"
+    },
+    {
+      "id" : "public-13",
+      "result" : {
+        "durationMilliseconds" : 94,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 94,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "86994580fbc39c474c32c92990a6e48460efc2c6227c9acb4635782aaf736e69"
+    },
+    {
+      "id" : "public-14",
+      "result" : {
+        "durationMilliseconds" : 97,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 97,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "86165ead72696d2a474de253f94423338244a8a6e401f85d698ae9e620b0b922"
+    },
+    {
+      "id" : "public-15",
+      "result" : {
+        "durationMilliseconds" : 112,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 112,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "48539393758b882b109a72670f7068fbf85504ea10ad54c8ee1839543d914512"
+    },
+    {
+      "id" : "public-16",
+      "result" : {
+        "durationMilliseconds" : 97,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 97,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "174b51583f5e261fc393467ac0da80c40f2ca642c3ac865f498c641146868e1f"
+    },
+    {
+      "id" : "public-17",
+      "result" : {
+        "durationMilliseconds" : 95,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 95,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "95d73c4bbf08c17a597a3b9c299b9bcf8fa60e6ab21b98056ccab1b40ce908ba"
+    },
+    {
+      "id" : "public-18",
+      "result" : {
+        "durationMilliseconds" : 110,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 110,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "23f995e657f508c7a0d794635467b301e1217149f701deb1642e8f670e6683af"
+    },
+    {
+      "id" : "public-19",
+      "result" : {
+        "durationMilliseconds" : 161,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 161,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "675c879db0427550de9e1b121df5aa84e40fc758795ed6313bdb32cb1f050e2c"
+    },
+    {
+      "id" : "public-20",
+      "result" : {
+        "durationMilliseconds" : 116,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 116,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "269c18eb3e4f9e31e989c9764f06944b5ece7c61825518d27d44dafd40e60dd6"
+    },
+    {
+      "id" : "public-21",
+      "result" : {
+        "durationMilliseconds" : 116,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 116,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "79324705e38f9b679d299d64ea10a211334be0e332103438033a6bc04e09838d"
+    },
+    {
+      "id" : "public-22",
+      "result" : {
+        "durationMilliseconds" : 106,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 1,
+        "completed" : true,
+        "durationMilliseconds" : 106,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "b7287f03caa66fce40c91cd29bd3288b7ade9c855e45a17b2cdbb4b3f50c7ccb"
+    },
+    {
+      "id" : "public-23",
+      "result" : {
+        "durationMilliseconds" : 109,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 109,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "9ed4adf72393cba198f4cb4fa6845cb8bdcdbd487e93fb2ad4c29ea6f724e62e"
+    },
+    {
+      "id" : "public-24",
+      "result" : {
+        "durationMilliseconds" : 93,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 93,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "04cbd08fc2e56d57b67bc84d13720ef4d65c14913ab6f09461cc56532dfff8c9"
+    },
+    {
+      "id" : "public-25",
+      "result" : {
+        "durationMilliseconds" : 115,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 115,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "124a6700f7efb9f40f37617671cfcab9039c8690b3326b1bbd646841652a2ea3"
+    },
+    {
+      "id" : "public-26",
+      "result" : {
+        "durationMilliseconds" : 92,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 92,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "2f1501c546a67631dc28cd78b1a9fdc085619f41ca0ca7f4e07c2c0b9767de22"
+    },
+    {
+      "id" : "synthetic-01",
+      "result" : {
+        "durationMilliseconds" : 97,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 97,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "8abbf682b14add4475fa8c7fbb32b5774d882d676b74e3b926b292fb587397b4"
+    },
+    {
+      "id" : "synthetic-02",
+      "result" : {
+        "durationMilliseconds" : 93,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 93,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "12fdae27efa96fa411584ee511ea5a2fd656cc66321d8c4df52c56fab2b92160"
+    },
+    {
+      "id" : "synthetic-03",
+      "result" : {
+        "durationMilliseconds" : 94,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 94,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "6a6c5841b043cc882f1644a775893b121e507981b3739c2caf801790885f5331"
+    },
+    {
+      "id" : "synthetic-04",
+      "result" : {
+        "durationMilliseconds" : 93,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 93,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "1f66a32c4220acbd055f8b50507ce4532789749241b3b5f88f540399e779be9d"
+    },
+    {
+      "id" : "synthetic-05",
+      "result" : {
+        "durationMilliseconds" : 104,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 104,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "590a9a30dd88a5f8260b0e3d01c45558d1cf37caa2ec76d40e5eaa38f8973a85"
+    },
+    {
+      "id" : "synthetic-06",
+      "result" : {
+        "durationMilliseconds" : 95,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "geometry_completed"
+      },
+      "scene" : {
+        "bodyPoseCount" : 0,
+        "completed" : true,
+        "durationMilliseconds" : 95,
+        "faceCount" : 0,
+        "handPoseCount" : 0,
+        "humanRectangleCount" : 0,
+        "reason" : "geometry_completed",
+        "stages" : [
+          "face",
+          "humanRectangle",
+          "bodyPose",
+          "handPose"
+        ]
+      },
+      "sha256" : "d7751117b5d85d31010bdaa9658c7c33c7469ba60f6c42a452f15cdf8227d5f3"
+    }
+  ],
+  "completed" : true,
+  "generatedAt" : "2026-10-04T17:05:49Z",
+  "manifestSHA256" : "cd89bff783f09f4df984af7d4a23b1ffa5d691d5b7c29e1bd445b80125f265b9",
+  "operatingSystem" : "Version 26.6.2 (Build 25G83)",
+  "policyVersion" : "vision-human-geometry-v1",
+  "preprocessing" : "ImageIO oriented thumbnail, maximum 512 pixels",
+  "requestRevision" : 0,
+  "sceneGuardVersion" : "vision-human-geometry-v1",
+  "sceneMaximumHandCount" : 4,
+  "sceneMinimumConfidence" : 0.2,
+  "sceneMinimumPosePoints" : 2,
+  "sceneRevisions" : {
+    "bodyPose" : 1,
+    "face" : 3,
+    "handPose" : 1,
+    "humanRectangle" : 2
+  },
+  "schemaVersion" : 1
+}

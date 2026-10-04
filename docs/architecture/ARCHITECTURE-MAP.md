@@ -48,6 +48,13 @@ proposal. Missing scene evidence abstains. The phone runtime and v1 store do not
 this proposal. These development checks cannot establish physical iPhone behavior
 or qualify automatic uploads.
 
+The executable-only `scene-diagnostics` mode records bounded raw observations at
+fixed full-body 512/1024px and upper-body 512px profiles. Its distinct report version
+cannot satisfy routing composition. `human_backup.py` replays archived human semantic
+scores as additional abstention in a separate v3 proposal; it never promotes a v2
+abstention. Frozen label disagreements are recorded separately. Neither tool changes
+the phone runtime. See `docs/verification/scene-diagnostic-audit-2026-10-04.md`.
+
 ## 🔐 **Authentication System**
 
 ### **Core Components:**

@@ -1,0 +1,57 @@
+name: Native Scene Diagnostics
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - name: Check out diagnostic source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode 26.5
+        run: sudo xcode-select --switch /Applications/Xcode_26.5.app/Contents/Developer
+
+      - name: Select Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install isolated fixture tooling
+        run: |
+          python3 -m venv "$RUNNER_TEMP/scene-venv"
+          "$RUNNER_TEMP/scene-venv/bin/python" -m pip install --requirement scripts/eval/local-food/requirements-diagnostics.txt
+
+      - name: Verify diagnostic contracts and native core
+        run: |
+          "$RUNNER_TEMP/scene-venv/bin/python" -B -m unittest discover -s scripts/eval/local-food -p 'test_*.py'
+          swift test --package-path ios
+
+      - name: Inspect frozen public fixtures
+        run: |
+          SCENE_ROOT="$RUNNER_TEMP/scene-diagnostics"
+          mkdir "$SCENE_ROOT"
+          "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/make_controls.py "$SCENE_ROOT/images"
+          "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/fetch.py scripts/eval/local-food/fixtures.siglip2-development-v1.json "$SCENE_ROOT/images"
+          swift run --package-path ios LocalFoodEval scripts/eval/local-food/fixtures.siglip2-development-v1.json "$SCENE_ROOT/images" "$SCENE_ROOT/raw.json" scene-diagnostics
+          "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/diagnose_scene.py scripts/eval/local-food/fixtures.siglip2-development-v1.json "$SCENE_ROOT/raw.json" "$SCENE_ROOT/summary.json"
+
+      - name: Retain diagnostic observations
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: scene-diagnostics-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/scene-diagnostics/raw.json
+            ${{ runner.temp }}/scene-diagnostics/raw.json.partial.json
+            ${{ runner.temp }}/scene-diagnostics/summary.json
+          if-no-files-found: warn
+          retention-days: 30

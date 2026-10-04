@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "auditVersion": "human-presence-label-audit-v1",
+  "date": "2026-10-04",
+  "reviewerRole": "independent evaluation reviewer",
+  "reviewerIdentity": "camera_probe_review",
+  "reviewerVersion": "camera-probe-review-label-audit-v1",
+  "method": "Independent direct inspection of full source pixels through view_image; source bytes verified against the frozen manifest. No inference rerun.",
+  "manifestSHA256": "cd89bff783f09f4df984af7d4a23b1ffa5d691d5b7c29e1bd445b80125f265b9",
+  "scope": "Local development annotation audit only. Frozen labels, metrics and policy remain unchanged.",
+  "interpretation": "confirmed means a human region is clearly visible; uncertain means the pixels do not establish human presence; unsupported means this inspection found no clear human region supporting the existing label. Unsupported is not a guarantee that no human is present.",
+  "cases": [
+    {
+      "id": "public-02",
+      "sha256": "8094463203824b4844ec6f8912e722155e1586f0ba309aa1be5947bbe1248fe6",
+      "humanPresence": "unsupported",
+      "visibleEvidence": "Pizza and a red utensil handle attached to a metal spatula are visible. No clear hand, face, torso or other human region is visible. The existing mixed_people label is unsupported by this inspection.",
+      "frozenCategory": "mixed_people",
+      "frozenSensitive": true,
+      "file": "public/public-02.jpg"
+    },
+    {
+      "id": "public-11",
+      "sha256": "9282e244344761c4d09008a8bcb5dd9f62cecf0f87dc609c91543dfe425b63a0",
+      "humanPresence": "confirmed",
+      "visibleEvidence": "A cropped hand with fingers and a blue sleeve/partial torso are clearly visible behind the cup at the upper edge.",
+      "frozenCategory": "mixed_people",
+      "frozenSensitive": true,
+      "file": "public/public-11.jpg"
+    },
+    {
+      "id": "public-12",
+      "sha256": "be8126f1a827961ab6d7ee3dab8f3f671543d5a428b72a173c2bcc726e67c1d4",
+      "humanPresence": "confirmed",
+      "visibleEvidence": "A clothed torso and arms are clearly visible behind the food. The head and lower body are outside the frame.",
+      "frozenCategory": "mixed_people",
+      "frozenSensitive": true,
+      "file": "public/public-12.jpg"
+    },
+    {
+      "id": "public-13",
+      "sha256": "86994580fbc39c474c32c92990a6e48460efc2c6227c9acb4635782aaf736e69",
+      "humanPresence": "uncertain",
+      "visibleEvidence": "Bananas dominate the image, with hanging fabric or bags and ambiguous dark material at the lower-right edge. No clear face, hand or torso can be established from these pixels.",
+      "frozenCategory": "mixed_people",
+      "frozenSensitive": true,
+      "file": "public/public-13.jpg"
+    }
+  ],
+  "sourceAuditSHA256": "f9724587eff3f7951dcd61b01662aa9023336013d5a411dbf2a640cb7ca5a130",
+  "portabilityChange": "Source audit path replaced with frozen manifest-relative file; findings unchanged."
+}
