@@ -20,6 +20,13 @@ on:
           - apple-support
           - apple-support-release
           - screening-feasibility
+      screening_precision:
+        description: Precision for screening-feasibility model conversion
+        type: choice
+        default: FLOAT16
+        options:
+          - FLOAT16
+          - FLOAT32
 
 permissions:
   contents: read
@@ -148,6 +155,8 @@ jobs:
   screening-feasibility:
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'screening-feasibility'
     uses: ./.github/workflows/ios-screening-feasibility.yml
+    with:
+      precision: ${{ inputs.screening_precision || 'FLOAT16' }}
 
   apple-support-release:
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'apple-support-release'

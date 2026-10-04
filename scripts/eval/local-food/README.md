@@ -179,7 +179,7 @@ against the archived Windows observations; do not assume cross-version parity.
 Core ML prediction requires macOS, and this converter requires it explicitly:
 
 ```sh
-python -B scripts/eval/local-food/coreml_feasibility.py EXPORT_DIRECTORY COREML_DIRECTORY
+python -B scripts/eval/local-food/coreml_feasibility.py EXPORT_DIRECTORY COREML_DIRECTORY --precision FLOAT16
 swift run --package-path ios LocalFoodEval scripts/eval/local-food/fixtures.siglip2-development-v1.json IMAGE_DIRECTORY SCENE_REPORT scene
 python -B scripts/eval/local-food/compose_scene.py scripts/eval/local-food/fixtures.siglip2-development-v1.json scripts/eval/local-food/results/siglip2-windows-20261004/results.json SCENE_REPORT V2_MANIFEST V2_REPORT
 python -B scripts/eval/local-food/score.py V2_MANIFEST V2_REPORT V2_SUMMARY
@@ -193,16 +193,22 @@ Partial composition timings cover only available components. Synthetic contract
 tests use explicitly marked fake geometry and do not establish detector quality.
 
 The prepared `ios-compile.yml` target `screening-feasibility` runs unsigned native
-compilation and the reusable Mac conversion/geometry job. No dispatch has run for
-this slice. It retains selected JSON receipts for 30 days, excluding images, tensors,
+compilation and the reusable Mac conversion/geometry job. Run 37216877996 passed
+unsigned compilation and all 32 Mac export comparisons, but FP16 Core ML exceeded
+the numerical tolerance on the first input. Its incomplete receipt is preserved
+under `results/native-macos-37216877996/`. Scene execution was skipped. The prepared
+follow-up selects `screening_precision=FLOAT32` explicitly and runs scene checks
+after successful export even if conversion fails. No follow-up dispatch has run.
+The workflow retains selected JSON receipts for 30 days, excluding images, tensors,
 vectors and model binaries. Export/conversion checkpoints belong to exclusive new
 directories; unlike the Swift CLI's atomic checkpoints, their writes are not atomic
 and interruption can leave an unreadable checkpoint. Final reports remain exclusive.
 
-Swift compilation, Core ML parity, real scene results and physical iPhone execution
-remain unverified. No app runtime reads this encoder or v2 policy. An untouched
+Swift compilation passed; Core ML parity failed. Real scene results and physical
+iPhone execution remain unverified. No app runtime reads this encoder or v2 policy. An untouched
 grouped holdout, Swift pixel preprocessing parity and locked-device measurements
 remain necessary before routing photos. This is evaluation tooling only.
+See [the Mac run and follow-up proposal](../../../docs/verification/native-screening-macos-2026-10-04.md).
 
 ## Data acquisition
 

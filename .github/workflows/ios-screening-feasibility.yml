@@ -2,7 +2,19 @@ name: Local Screening Native Feasibility
 
 on:
   workflow_dispatch:
+    inputs:
+      precision:
+        description: Core ML conversion precision
+        type: choice
+        default: FLOAT16
+        options:
+          - FLOAT16
+          - FLOAT32
   workflow_call:
+    inputs:
+      precision:
+        type: string
+        default: FLOAT16
 
 permissions:
   contents: read
@@ -41,7 +53,8 @@ jobs:
           python -B -m unittest discover -s scripts/eval/local-food -p 'test_*.py'
           swift test --package-path ios
 
-      - name: Export, convert and compare CPU predictions
+      - name: Export and compare CPU predictions
+        id: encoder
         env:
           SCREENING_ROOT: ${{ runner.temp }}/screening
         shell: bash
@@ -54,9 +67,18 @@ jobs:
           "$python_bin" -B scripts/eval/local-food/siglip_probe.py download scripts/eval/local-food/siglip-probe.json "$SCREENING_ROOT/models"
           model="$SCREENING_ROOT/models/models--google--siglip2-base-patch16-224/snapshots/75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2"
           "$python_bin" -B scripts/eval/local-food/encoder_export.py scripts/eval/local-food/siglip-probe.json scripts/eval/local-food/fixtures.siglip2-development-v1.json "$SCREENING_ROOT/images" "$model" scripts/eval/local-food/results/siglip2-windows-20261004/results.json "$SCREENING_ROOT/export"
-          "$python_bin" -B scripts/eval/local-food/coreml_feasibility.py "$SCREENING_ROOT/export" "$SCREENING_ROOT/coreml"
+
+      - name: Convert and compare Core ML CPU predictions
+        env:
+          SCREENING_ROOT: ${{ runner.temp }}/screening
+          SCREENING_PRECISION: ${{ inputs.precision }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/screening-venv/bin/python" -B scripts/eval/local-food/coreml_feasibility.py "$SCREENING_ROOT/export" "$SCREENING_ROOT/coreml" --precision "$SCREENING_PRECISION"
 
       - name: Evaluate independent CPU scene geometry and compose proposal
+        if: ${{ !cancelled() && steps.encoder.outcome == 'success' }}
         env:
           SCREENING_ROOT: ${{ runner.temp }}/screening
         shell: bash

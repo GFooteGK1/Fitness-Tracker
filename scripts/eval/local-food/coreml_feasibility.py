@@ -27,7 +27,8 @@ def check_export(root):
     return report
 
 
-def convert(root, output):
+def convert(root, output, precision="FLOAT16"):
+    if precision not in {"FLOAT16", "FLOAT32"}: raise ValueError("Unsupported Core ML precision")
     if sys.platform != "darwin": raise RuntimeError("macOS is required for Core ML CPU prediction parity")
     import coremltools as ct
     import numpy as np
@@ -40,14 +41,14 @@ def convert(root, output):
     output = Path(output); output.mkdir(parents=True, exist_ok=False)
     report = dict(schemaVersion=1, completed=False, sourceExportSHA256=file_digest(root / "parity.json"),
         operatingSystem=platform.platform(), coremltools=ct.__version__, torch=torch.__version__,
-        computeUnits="CPU_ONLY", precision="FLOAT16", maximumLogitError=0.0, outcomeMatches=0, cases=[])
+        computeUnits="CPU_ONLY", precision=precision, maximumLogitError=0.0, outcomeMatches=0, cases=[])
     write_new(output / "started.json", report)
     traced = torch.jit.load(str(root / "image-encoder.pt"), map_location="cpu").eval()
     started = time.perf_counter()
     model = ct.convert(traced, convert_to="mlprogram", minimum_deployment_target=ct.target.iOS17,
         inputs=[ct.TensorType(name="pixel_values", shape=(1, 3, 224, 224), dtype=np.float32)],
         outputs=[ct.TensorType(name="normalized_embedding", dtype=np.float32)],
-        compute_precision=ct.precision.FLOAT16, compute_units=ct.ComputeUnit.CPU_ONLY)
+        compute_precision=getattr(ct.precision, precision), compute_units=ct.ComputeUnit.CPU_ONLY)
     report["conversionMilliseconds"] = round((time.perf_counter() - started) * 1000)
     model.save(str(output / "image-encoder.mlpackage"))
     report["packageFiles"] = {p.relative_to(output).as_posix(): dict(bytes=p.stat().st_size, sha256=file_digest(p))
@@ -70,7 +71,7 @@ def convert(root, output):
         predicted = np.asarray(model.predict({"pixel_values": inputs})["normalized_embedding"], dtype=np.float32)
         duration = round((time.perf_counter() - started) * 1000)
         if predicted.shape != (1, text["vectorDimension"]) or not np.isfinite(predicted).all(): raise ValueError("Invalid Core ML output")
-        # Match eager normalized features, including normalization after FP16 execution.
+        # Match eager normalized features, including normalization after converted execution.
         norm = float(np.linalg.norm(predicted))
         if not math.isfinite(norm) or norm <= 0: raise ValueError("Invalid Core ML norm")
         predicted /= norm
@@ -91,4 +92,5 @@ def convert(root, output):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__); parser.add_argument("export"); parser.add_argument("output")
-    args = parser.parse_args(); convert(args.export, args.output)
+    parser.add_argument("--precision", choices=["FLOAT16", "FLOAT32"], default="FLOAT16")
+    args = parser.parse_args(); convert(args.export, args.output, args.precision)

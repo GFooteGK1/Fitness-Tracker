@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "completed": false,
+  "sourceExportSHA256": "07ff5624e683238018c6bde6fb30d2eaa41554473661fc18591f6636247f7287",
+  "operatingSystem": "macOS-26.6.2-arm64-arm-64bit",
+  "coremltools": "9.0",
+  "torch": "2.7.0",
+  "computeUnits": "CPU_ONLY",
+  "precision": "FLOAT16",
+  "maximumLogitError": 1.5491466522216797,
+  "outcomeMatches": 1,
+  "cases": [
+    {
+      "id": "public-01",
+      "sha256": "cd3e68735ea088ddbc4423c04ba90b2acda242b19c78a4ff453918c6a9bdfbc5",
+      "logitError": 1.5491466522216797,
+      "outcomeMatches": true,
+      "durationMilliseconds": 143
+    }
+  ],
+  "conversionMilliseconds": 5504,
+  "packageFiles": {
+    "image-encoder.mlpackage/Manifest.json": {
+      "bytes": 617,
+      "sha256": "fed3cd223a1a852009cd34e7ac2cfb278106ffe7484d218a4cbffde3b3aaa717"
+    },
+    "image-encoder.mlpackage/Data/com.apple.CoreML/model.mlmodel": {
+      "bytes": 139424,
+      "sha256": "9f97c872e669bf4a5cb6c8bcc0c8468ccae1a9e504d8db7a417f88d8ee0804fc"
+    },
+    "image-encoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin": {
+      "bytes": 184600640,
+      "sha256": "3bec6f05f9ee51d1285ed0b97aa0fde6e912bdf4eb308f17ba3bb00f1824a0ac"
+    }
+  },
+  "packageBytes": 184740681,
+  "loadMilliseconds": 1367
+}

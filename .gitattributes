@@ -5,3 +5,4 @@ scripts/eval/local-food/siglip-model-files.json -text
 scripts/eval/local-food/results/siglip2-windows-20261004/*.json -text
 scripts/eval/local-food/scene-policy-v2.json -text
 scripts/eval/local-food/results/native-export-windows-20261004/*.json -text
+scripts/eval/local-food/results/native-macos-37216877996/*.json -text

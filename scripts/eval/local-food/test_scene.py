@@ -93,5 +93,10 @@ class SceneContracts(unittest.TestCase):
             self.assertFalse((root / "m.json").exists())
             self.assertFalse((root / "r.json").exists())
 
+    def test_conversion_rejects_unknown_precision_before_artifact_access(self):
+        from coreml_feasibility import convert
+        with self.assertRaisesRegex(ValueError, "Unsupported Core ML precision"):
+            convert("unused-export", "unused-output", "FLOAT64")
+
 
 if __name__ == "__main__": unittest.main()

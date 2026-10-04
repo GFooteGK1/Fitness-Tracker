@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "completed": false,
+  "sourceExportSHA256": "07ff5624e683238018c6bde6fb30d2eaa41554473661fc18591f6636247f7287",
+  "operatingSystem": "macOS-26.6.2-arm64-arm-64bit",
+  "coremltools": "9.0",
+  "torch": "2.7.0",
+  "computeUnits": "CPU_ONLY",
+  "precision": "FLOAT16",
+  "maximumLogitError": 0.0,
+  "outcomeMatches": 0,
+  "cases": []
+}
