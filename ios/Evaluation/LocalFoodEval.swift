@@ -17,6 +17,7 @@ private struct CaseResult: Encodable {
     let id: String
     let sha256: String
     let result: FoodScreeningResult
+    var scene: LocalSceneEvidence? = nil
 }
 private struct Report: Encodable {
     let schemaVersion = 1
@@ -28,6 +29,11 @@ private struct Report: Encodable {
     let generatedAt: String
     let preprocessing = "ImageIO oriented thumbnail, maximum 512 pixels"
     let cases: [CaseResult]
+    var sceneGuardVersion: String? = nil
+    var sceneRevisions: [String: Int]? = nil
+    var sceneMinimumConfidence: Float? = nil
+    var sceneMinimumPosePoints: Int? = nil
+    var sceneMaximumHandCount: Int? = nil
 }
 private enum EvalError: Error { case invalidArguments, invalidManifest, invalidImage, unavailableOS }
 private func digest(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
@@ -36,11 +42,12 @@ private func digest(_ data: Data) -> String { SHA256.hash(data: data).map { Stri
 private enum LocalFoodEval {
     static func main() async {
         do {
-            guard CommandLine.arguments.count == 4 else { throw EvalError.invalidArguments }
+            guard CommandLine.arguments.count == 4 ||
+                  (CommandLine.arguments.count == 5 && CommandLine.arguments[4] == "scene") else { throw EvalError.invalidArguments }
             if #available(macOS 14.0, *) { try await run() }
             else { throw EvalError.unavailableOS }
         } catch {
-            FileHandle.standardError.write(Data("LocalFoodEval failed: \(error). Usage: LocalFoodEval MANIFEST IMAGE_DIRECTORY NEW_REPORT\n".utf8))
+            FileHandle.standardError.write(Data("LocalFoodEval failed: \(error). Usage: LocalFoodEval MANIFEST IMAGE_DIRECTORY NEW_REPORT [scene]\n".utf8))
             exit(1)
         }
     }
@@ -48,6 +55,7 @@ private enum LocalFoodEval {
     @available(macOS 14.0, *)
     private static func run() async throws {
         let args = CommandLine.arguments
+        let sceneMode = args.count == 5
         let manifestURL = URL(fileURLWithPath: args[1])
         let root = URL(fileURLWithPath: args[2]).resolvingSymlinksInPath().standardizedFileURL
         let output = URL(fileURLWithPath: args[3])
@@ -62,11 +70,17 @@ private enum LocalFoodEval {
         for item in manifest.cases { _ = try imageData(item, root: root) }
         var results: [CaseResult] = []
         func encodedReport(completed: Bool) throws -> Data {
-            let report = Report(completed: completed, manifestSHA256: digest(manifestData),
-                policyVersion: LocalFoodScreeningPolicy.version,
-                requestRevision: Int(LocalFoodVisionClassifier.requestRevision),
+            var report = Report(completed: completed, manifestSHA256: digest(manifestData),
+                policyVersion: sceneMode ? LocalScenePolicy.guardVersion : LocalFoodScreeningPolicy.version,
+                requestRevision: sceneMode ? 0 : Int(LocalFoodVisionClassifier.requestRevision),
                 operatingSystem: ProcessInfo.processInfo.operatingSystemVersionString,
                 generatedAt: ISO8601DateFormatter().string(from: Date()), cases: results)
+            if sceneMode {
+                report.sceneGuardVersion = LocalScenePolicy.guardVersion; report.sceneRevisions = LocalSceneGuard.revisions
+                report.sceneMinimumConfidence = LocalScenePolicy.minimumConfidence
+                report.sceneMinimumPosePoints = LocalScenePolicy.minimumPosePoints
+                report.sceneMaximumHandCount = LocalScenePolicy.maximumHandCount
+            }
             let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             return try encoder.encode(report)
         }
@@ -75,19 +89,27 @@ private enum LocalFoodEval {
         for item in manifest.cases {
             let data = try imageData(item, root: root)
             let result: FoodScreeningResult
+            var scene: LocalSceneEvidence? = nil
             let options: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
                 kCGImageSourceThumbnailMaxPixelSize: 512, kCGImageSourceCreateThumbnailWithTransform: true,
                 kCGImageSourceShouldCache: false]
             if let source = CGImageSourceCreateWithData(data as CFData, nil),
                let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) {
-                result = await LocalFoodVisionClassifier.classify(
-                    LocalScreeningImage(cgImage: image, orientation: .up), isScreenshot: item.isScreenshot)
+                if sceneMode {
+                    scene = await LocalSceneGuard.inspect(LocalScreeningImage(cgImage: image, orientation: .up))
+                    result = FoodScreeningResult(outcome: scene?.completed == true ? .uncertain : .error,
+                        reason: scene?.reason ?? "scene_evidence_unavailable", durationMilliseconds: scene?.durationMilliseconds ?? 0)
+                } else {
+                    result = await LocalFoodVisionClassifier.classify(
+                        LocalScreeningImage(cgImage: image, orientation: .up), isScreenshot: item.isScreenshot)
+                }
             } else {
                 result = FoodScreeningResult(outcome: .error, reason: "fixture_decode_failed")
             }
-            results.append(CaseResult(id: item.id, sha256: item.sha256, result: result))
+            results.append(CaseResult(id: item.id, sha256: item.sha256, result: result, scene: scene))
             try encodedReport(completed: false).write(to: partial, options: .atomic)
             print("\(item.id): \(result.outcome.rawValue) (\(result.reason))")
+            if sceneMode && scene?.completed != true { throw EvalError.invalidImage }
         }
         // Exclusive creation preserves previous evidence even if another runner chooses the same path.
         try encodedReport(completed: true).write(to: output, options: .withoutOverwriting)

@@ -1,0 +1,13 @@
+{
+  "policyVersion": "siglip2-geometry-v2",
+  "guardVersion": "vision-human-geometry-v1",
+  "sceneRevisions": {"face": 3, "humanRectangle": 2, "bodyPose": 1, "handPose": 1},
+  "minimumConfidence": 0.2,
+  "minimumPosePoints": 2,
+  "maximumHandCount": 4,
+  "candidateMargin": 1.0,
+  "nonFoodMargin": -1.0,
+  "contextMargin": 0.0,
+  "contextPromptIds": ["risk_document", "risk_screen", "risk_medical"],
+  "sourcePolicyVersion": "siglip2-food-probe-v1"
+}

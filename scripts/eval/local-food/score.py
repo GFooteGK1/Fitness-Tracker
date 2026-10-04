@@ -78,6 +78,10 @@ def grade(manifest, manifest_digest, report):
             or not report.get("operatingSystem") or not report.get("preprocessing")
             or not report.get("generatedAt") or type(report.get("completed")) is not bool):
         raise ValueError("Report provenance does not match frozen evaluation")
+    if manifest.get("modelArtifact") != report.get("modelArtifact"):
+        raise ValueError("Model or prompt artifact differs from frozen evaluation")
+    if manifest.get("decisionArtifact") != report.get("decisionArtifact"):
+        raise ValueError("Decision policy differs from frozen evaluation")
     expected = {c["id"]: c for c in manifest["cases"]}
     actual = {}
     for case in report.get("cases", []):
@@ -116,6 +120,8 @@ def grade(manifest, manifest_digest, report):
         "generatedAt": report["generatedAt"],
         "completed": report["completed"] and len(actual) == len(expected),
         "requestRevision": report["requestRevision"], "preprocessing": report["preprocessing"],
+        **({"modelArtifact": report["modelArtifact"]} if "modelArtifact" in report else {}),
+        **({"decisionArtifact": report["decisionArtifact"]} if "decisionArtifact" in report else {}),
         "suites": {name: {**metrics(rows), "categories": {category: metrics([c for c in rows if c["category"] == category])
             for category in sorted({c["category"] for c in rows})}} for name, rows in suites.items()},
         "failures": [{"id": c["id"], "outcome": c["outcome"], "reason": c["reason"], "tags": c["failureTags"]}

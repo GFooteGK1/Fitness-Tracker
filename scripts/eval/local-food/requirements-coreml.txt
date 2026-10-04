@@ -1,0 +1,9 @@
+# Isolated macOS conversion/evaluation, within Core ML Tools 9's tested torch range.
+torch==2.7.0
+torchvision==0.22.0
+transformers==4.57.1
+sentencepiece==0.2.1
+safetensors==0.6.2
+pillow==11.3.0
+numpy==2.3.3
+coremltools==9.0

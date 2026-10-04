@@ -1,0 +1,8 @@
+# Desktop evaluation only. Install in an ignored, isolated environment.
+torch==2.8.0
+torchvision==0.23.0
+transformers==4.57.1
+sentencepiece==0.2.1
+safetensors==0.6.2
+pillow==11.3.0
+numpy==2.3.3

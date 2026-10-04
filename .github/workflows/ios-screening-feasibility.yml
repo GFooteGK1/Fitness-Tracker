@@ -1,0 +1,88 @@
+name: Local Screening Native Feasibility
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: screening-feasibility-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  feasibility:
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: "1"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      HF_HUB_DISABLE_XET: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode 26.5
+        run: sudo xcode-select --switch /Applications/Xcode_26.5.app/Contents/Developer
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install isolated evaluation tooling
+        run: |
+          python -m venv "$RUNNER_TEMP/screening-venv"
+          "$RUNNER_TEMP/screening-venv/bin/python" -m pip install -r scripts/eval/local-food/requirements-coreml.txt
+
+      - name: Run contracts and native compile tests
+        run: |
+          python -B -m unittest discover -s scripts/eval/local-food -p 'test_*.py'
+          swift test --package-path ios
+
+      - name: Export, convert and compare CPU predictions
+        env:
+          SCREENING_ROOT: ${{ runner.temp }}/screening
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir "$SCREENING_ROOT"
+          python_bin="$RUNNER_TEMP/screening-venv/bin/python"
+          "$python_bin" -B scripts/eval/local-food/make_controls.py "$SCREENING_ROOT/images"
+          "$python_bin" -B scripts/eval/local-food/fetch.py scripts/eval/local-food/fixtures.siglip2-development-v1.json "$SCREENING_ROOT/images"
+          "$python_bin" -B scripts/eval/local-food/siglip_probe.py download scripts/eval/local-food/siglip-probe.json "$SCREENING_ROOT/models"
+          model="$SCREENING_ROOT/models/models--google--siglip2-base-patch16-224/snapshots/75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2"
+          "$python_bin" -B scripts/eval/local-food/encoder_export.py scripts/eval/local-food/siglip-probe.json scripts/eval/local-food/fixtures.siglip2-development-v1.json "$SCREENING_ROOT/images" "$model" scripts/eval/local-food/results/siglip2-windows-20261004/results.json "$SCREENING_ROOT/export"
+          "$python_bin" -B scripts/eval/local-food/coreml_feasibility.py "$SCREENING_ROOT/export" "$SCREENING_ROOT/coreml"
+
+      - name: Evaluate independent CPU scene geometry and compose proposal
+        env:
+          SCREENING_ROOT: ${{ runner.temp }}/screening
+        shell: bash
+        run: |
+          set -euo pipefail
+          python_bin="$RUNNER_TEMP/screening-venv/bin/python"
+          swift run --package-path ios LocalFoodEval scripts/eval/local-food/fixtures.siglip2-development-v1.json "$SCREENING_ROOT/images" "$SCREENING_ROOT/scene.json" scene
+          "$python_bin" -B scripts/eval/local-food/compose_scene.py scripts/eval/local-food/fixtures.siglip2-development-v1.json scripts/eval/local-food/results/siglip2-windows-20261004/results.json "$SCREENING_ROOT/scene.json" "$SCREENING_ROOT/v2-manifest.json" "$SCREENING_ROOT/v2-results.json"
+          "$python_bin" -B scripts/eval/local-food/score.py "$SCREENING_ROOT/v2-manifest.json" "$SCREENING_ROOT/v2-results.json" "$SCREENING_ROOT/v2-summary.json"
+
+      - name: Preserve observations without images, tensors or model binaries
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-screening-observations-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/screening/export/started.json
+            ${{ runner.temp }}/screening/export/parity.json
+            ${{ runner.temp }}/screening/export/parity.partial.json
+            ${{ runner.temp }}/screening/coreml/started.json
+            ${{ runner.temp }}/screening/coreml/parity.json
+            ${{ runner.temp }}/screening/coreml/parity.partial.json
+            ${{ runner.temp }}/screening/scene.json
+            ${{ runner.temp }}/screening/scene.json.partial.json
+            ${{ runner.temp }}/screening/v2-manifest.json
+            ${{ runner.temp }}/screening/v2-results.json
+            ${{ runner.temp }}/screening/v2-summary.json
+          if-no-files-found: warn
+          retention-days: 30

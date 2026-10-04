@@ -40,6 +40,14 @@ food accuracy and locked classification remain unqualified. A separate macOS
 through `scripts/eval/local-food/`; it has no access to the phone's library and
 does not establish device execution. See ADR-0006, ADR-0007 and ADR-0008.
 
+The separate native-feasibility evaluator (ADR-0009) exports SigLIP2's image encoder
+with precomputed text vectors and checks Core ML CPU prediction parity. `LocalFoodEval`
+has an optional `scene` mode using `LocalSceneGuard` face/body/hand evidence;
+`compose_scene.py` joins hash-matched observations into a separate unqualified v2
+proposal. Missing scene evidence abstains. The phone runtime and v1 store do not call
+this proposal. These development checks cannot establish physical iPhone behavior
+or qualify automatic uploads.
+
 ## 🔐 **Authentication System**
 
 ### **Core Components:**

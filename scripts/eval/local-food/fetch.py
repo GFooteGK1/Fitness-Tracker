@@ -39,6 +39,11 @@ def verify(data, expected):
 def fetch(manifest_path, root):
     manifest, _ = read_manifest(manifest_path)
     for case in manifest["cases"]:
+        if case["layer"] == "synthetic":
+            target = image_path(root, case["file"])
+            with target.open("rb") as handle: verify(handle.read(MAX_BYTES + 1), case["sha256"])
+            print(case["id"] + ": generated local control hash verified")
+            continue
         if case["layer"] != "publicReference" or case.get("license") not in {"CC0", "Public domain"}:
             raise ValueError("Fetcher accepts only reviewed public-domain references")
         validate_url(case["download"])

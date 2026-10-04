@@ -19,6 +19,7 @@ on:
           - native
           - apple-support
           - apple-support-release
+          - screening-feasibility
 
 permissions:
   contents: read
@@ -143,6 +144,10 @@ jobs:
             ${{ runner.temp }}/apple-support/photokit-startup-probe-source.zip.sha256
           if-no-files-found: error
           retention-days: 30
+
+  screening-feasibility:
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'screening-feasibility'
+    uses: ./.github/workflows/ios-screening-feasibility.yml
 
   apple-support-release:
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'apple-support-release'

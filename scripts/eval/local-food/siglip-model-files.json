@@ -1,0 +1,30 @@
+{
+  "repository": "google/siglip2-base-patch16-224",
+  "revision": "75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2",
+  "files": {
+    "config.json": {
+      "algorithm": "gitBlobSHA1",
+      "hash": "c8cd2a20e58a738f44f267ae19f9568ff1095698"
+    },
+    "preprocessor_config.json": {
+      "algorithm": "gitBlobSHA1",
+      "hash": "2e52d8e8492b5c496ae04c37bfa09760469fb18b"
+    },
+    "special_tokens_map.json": {
+      "algorithm": "gitBlobSHA1",
+      "hash": "8d6368f7e735fbe4781bf6e956b7c6ad0586df80"
+    },
+    "tokenizer.json": {
+      "algorithm": "sha256",
+      "hash": "cb9140fae3ac5122c972d37adf83e1248471a38147ad76f8215c8872c6fd8322"
+    },
+    "tokenizer.model": {
+      "algorithm": "sha256",
+      "hash": "61a7b147390c64585d6c3543dd6fc636906c9af3865a5548f27f31aee1d4c8e2"
+    },
+    "tokenizer_config.json": {
+      "algorithm": "gitBlobSHA1",
+      "hash": "d97c5412159422c3b56fbc99076b1dcc25dd7856"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+# These new frozen evaluation inputs bind their exact bytes across Windows/macOS.
+scripts/eval/local-food/siglip-probe.json -text
+scripts/eval/local-food/fixtures.siglip2-development-v1.json -text
+scripts/eval/local-food/siglip-model-files.json -text
+scripts/eval/local-food/results/siglip2-windows-20261004/*.json -text
+scripts/eval/local-food/scene-policy-v2.json -text
+scripts/eval/local-food/results/native-export-windows-20261004/*.json -text

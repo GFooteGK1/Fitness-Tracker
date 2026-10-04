@@ -1,0 +1,535 @@
+{
+  "schemaVersion": 1,
+  "dataset": "local-food-siglip2-development-v1",
+  "manifestSHA256": "cd89bff783f09f4df984af7d4a23b1ffa5d691d5b7c29e1bd445b80125f265b9",
+  "policyVersion": "siglip2-food-probe-v1",
+  "operatingSystem": "Windows-11-10.0.26200-SP0",
+  "generatedAt": "2026-10-04T15:34:30.122510+00:00",
+  "completed": true,
+  "requestRevision": 0,
+  "preprocessing": "PIL EXIF transpose, RGB, pinned SigLIP2 processor 224px",
+  "modelArtifact": {
+    "repository": "google/siglip2-base-patch16-224",
+    "revision": "75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2",
+    "weightSHA256": "612923381c76ec5a9bed335d1c48827e3f2e506ac31b044b63b2031fadee6a0b",
+    "configurationSHA256": "31a14ad5495f8d01422ab883bc8e426a37fe2085f76ba307781866adf0b0761c",
+    "supportingFiles": {
+      "config.json": {
+        "algorithm": "gitBlobSHA1",
+        "hash": "c8cd2a20e58a738f44f267ae19f9568ff1095698"
+      },
+      "preprocessor_config.json": {
+        "algorithm": "gitBlobSHA1",
+        "hash": "2e52d8e8492b5c496ae04c37bfa09760469fb18b"
+      },
+      "special_tokens_map.json": {
+        "algorithm": "gitBlobSHA1",
+        "hash": "8d6368f7e735fbe4781bf6e956b7c6ad0586df80"
+      },
+      "tokenizer.json": {
+        "algorithm": "sha256",
+        "hash": "cb9140fae3ac5122c972d37adf83e1248471a38147ad76f8215c8872c6fd8322"
+      },
+      "tokenizer.model": {
+        "algorithm": "sha256",
+        "hash": "61a7b147390c64585d6c3543dd6fc636906c9af3865a5548f27f31aee1d4c8e2"
+      },
+      "tokenizer_config.json": {
+        "algorithm": "gitBlobSHA1",
+        "hash": "d97c5412159422c3b56fbc99076b1dcc25dd7856"
+      }
+    }
+  },
+  "suites": {
+    "publicReference/development": {
+      "count": 26,
+      "foodRecall": {
+        "passed": 16,
+        "total": 19,
+        "rate": 0.8421052631578947
+      },
+      "clearMealRecall": {
+        "passed": 11,
+        "total": 11,
+        "rate": 1.0
+      },
+      "nonFoodFalsePasses": {
+        "passed": 0,
+        "total": 7,
+        "rate": 0.0
+      },
+      "sensitiveFalsePasses": {
+        "passed": 2,
+        "total": 5
+      },
+      "uncertain": 8,
+      "errorsIncludingMissing": 0,
+      "timing": {
+        "count": 26,
+        "p50Milliseconds": 129,
+        "p95Milliseconds": 210
+      },
+      "categories": {
+        "animal": {
+          "count": 4,
+          "foodRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "clearMealRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 4,
+            "rate": 0.0
+          },
+          "sensitiveFalsePasses": {
+            "passed": 0,
+            "total": 1
+          },
+          "uncertain": 3,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 4,
+            "p50Milliseconds": 125,
+            "p95Milliseconds": 265
+          }
+        },
+        "clear_meal": {
+          "count": 11,
+          "foodRecall": {
+            "passed": 11,
+            "total": 11,
+            "rate": 1.0
+          },
+          "clearMealRecall": {
+            "passed": 11,
+            "total": 11,
+            "rate": 1.0
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "sensitiveFalsePasses": {
+            "passed": 0,
+            "total": 0
+          },
+          "uncertain": 0,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 11,
+            "p50Milliseconds": 131,
+            "p95Milliseconds": 210
+          }
+        },
+        "device": {
+          "count": 2,
+          "foodRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "clearMealRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 2,
+            "rate": 0.0
+          },
+          "sensitiveFalsePasses": {
+            "passed": 0,
+            "total": 0
+          },
+          "uncertain": 1,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 2,
+            "p50Milliseconds": 126,
+            "p95Milliseconds": 127
+          }
+        },
+        "drink": {
+          "count": 1,
+          "foodRecall": {
+            "passed": 1,
+            "total": 1,
+            "rate": 1.0
+          },
+          "clearMealRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "sensitiveFalsePasses": {
+            "passed": 0,
+            "total": 0
+          },
+          "uncertain": 0,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 1,
+            "p50Milliseconds": 129,
+            "p95Milliseconds": 129
+          }
+        },
+        "fruit_on_tree": {
+          "count": 1,
+          "foodRecall": {
+            "passed": 1,
+            "total": 1,
+            "rate": 1.0
+          },
+          "clearMealRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "sensitiveFalsePasses": {
+            "passed": 0,
+            "total": 0
+          },
+          "uncertain": 0,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 1,
+            "p50Milliseconds": 146,
+            "p95Milliseconds": 146
+          }
+        },
+        "landscape": {
+          "count": 1,
+          "foodRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "clearMealRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 1,
+            "rate": 0.0
+          },
+          "sensitiveFalsePasses": {
+            "passed": 0,
+            "total": 0
+          },
+          "uncertain": 1,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 1,
+            "p50Milliseconds": 123,
+            "p95Milliseconds": 123
+          }
+        },
+        "mixed_people": {
+          "count": 4,
+          "foodRecall": {
+            "passed": 2,
+            "total": 4,
+            "rate": 0.5
+          },
+          "clearMealRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "sensitiveFalsePasses": {
+            "passed": 2,
+            "total": 4
+          },
+          "uncertain": 2,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 4,
+            "p50Milliseconds": 128,
+            "p95Milliseconds": 134
+          }
+        },
+        "packaged_food": {
+          "count": 1,
+          "foodRecall": {
+            "passed": 0,
+            "total": 1,
+            "rate": 0.0
+          },
+          "clearMealRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "sensitiveFalsePasses": {
+            "passed": 0,
+            "total": 0
+          },
+          "uncertain": 1,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 1,
+            "p50Milliseconds": 129,
+            "p95Milliseconds": 129
+          }
+        },
+        "stored_food": {
+          "count": 1,
+          "foodRecall": {
+            "passed": 1,
+            "total": 1,
+            "rate": 1.0
+          },
+          "clearMealRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "sensitiveFalsePasses": {
+            "passed": 0,
+            "total": 0
+          },
+          "uncertain": 0,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 1,
+            "p50Milliseconds": 129,
+            "p95Milliseconds": 129
+          }
+        }
+      }
+    },
+    "synthetic/development": {
+      "count": 6,
+      "foodRecall": {
+        "passed": 0,
+        "total": 0,
+        "rate": null
+      },
+      "clearMealRecall": {
+        "passed": 0,
+        "total": 0,
+        "rate": null
+      },
+      "nonFoodFalsePasses": {
+        "passed": 0,
+        "total": 6,
+        "rate": 0.0
+      },
+      "sensitiveFalsePasses": {
+        "passed": 0,
+        "total": 4
+      },
+      "uncertain": 6,
+      "errorsIncludingMissing": 0,
+      "timing": {
+        "count": 6,
+        "p50Milliseconds": 118,
+        "p95Milliseconds": 127
+      },
+      "categories": {
+        "abstract": {
+          "count": 2,
+          "foodRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "clearMealRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 2,
+            "rate": 0.0
+          },
+          "sensitiveFalsePasses": {
+            "passed": 0,
+            "total": 0
+          },
+          "uncertain": 2,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 2,
+            "p50Milliseconds": 120,
+            "p95Milliseconds": 127
+          }
+        },
+        "document": {
+          "count": 1,
+          "foodRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "clearMealRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 1,
+            "rate": 0.0
+          },
+          "sensitiveFalsePasses": {
+            "passed": 0,
+            "total": 1
+          },
+          "uncertain": 1,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 1,
+            "p50Milliseconds": 115,
+            "p95Milliseconds": 115
+          }
+        },
+        "nutrition_document": {
+          "count": 1,
+          "foodRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "clearMealRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 1,
+            "rate": 0.0
+          },
+          "sensitiveFalsePasses": {
+            "passed": 0,
+            "total": 1
+          },
+          "uncertain": 1,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 1,
+            "p50Milliseconds": 116,
+            "p95Milliseconds": 116
+          }
+        },
+        "screen": {
+          "count": 2,
+          "foodRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "clearMealRecall": {
+            "passed": 0,
+            "total": 0,
+            "rate": null
+          },
+          "nonFoodFalsePasses": {
+            "passed": 0,
+            "total": 2,
+            "rate": 0.0
+          },
+          "sensitiveFalsePasses": {
+            "passed": 0,
+            "total": 2
+          },
+          "uncertain": 2,
+          "errorsIncludingMissing": 0,
+          "timing": {
+            "count": 2,
+            "p50Milliseconds": 118,
+            "p95Milliseconds": 124
+          }
+        }
+      }
+    }
+  },
+  "failures": [
+    {
+      "id": "public-02",
+      "outcome": "foodCandidate",
+      "reason": "food_similarity_margin",
+      "tags": [
+        "sensitive_false_pass"
+      ]
+    },
+    {
+      "id": "public-07",
+      "outcome": "uncertain",
+      "reason": "risk_context",
+      "tags": [
+        "food_miss"
+      ]
+    },
+    {
+      "id": "public-11",
+      "outcome": "uncertain",
+      "reason": "risk_context",
+      "tags": [
+        "food_miss"
+      ]
+    },
+    {
+      "id": "public-12",
+      "outcome": "uncertain",
+      "reason": "risk_context",
+      "tags": [
+        "food_miss"
+      ]
+    },
+    {
+      "id": "public-13",
+      "outcome": "foodCandidate",
+      "reason": "food_similarity_margin",
+      "tags": [
+        "sensitive_false_pass"
+      ]
+    }
+  ],
+  "coverageGaps": [
+    "No untouched held-out set",
+    "Only seven real non-food references: cats, dogs, keyboards and landscape",
+    "Document and screen controls are synthetic; no photographed real screen, document or medical privacy proof",
+    "No standalone packaged-food close-up comparable to Greg's granola bag",
+    "No physical iPhone Photos preprocessing, locked execution, Core ML portability or timing proof"
+  ],
+  "automaticUploadQualified": false,
+  "qualificationReason": "Observation harness only. Representative held-out and physical-device privacy/reliability qualification require separate review."
+}
