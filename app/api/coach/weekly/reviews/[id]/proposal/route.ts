@@ -1,3 +1,4 @@
+import { parseSetupMemoryBindings, setupMemoryBindingsCurrent } from '@/app/lib/coach/setup-memory-bindings'
 import { decodeDirectionReconciliation, replacementSetupMatches } from '@/app/lib/coach/direction-reconciliation'
 import { fetchDirectionReconciliation } from '@/app/lib/coach/direction-reconciliation-server'
 import { parseCoachContextRevision, STALE_COACH_CONTEXT_MESSAGE, coachContextConflictMessage, isCoachContextConflict } from '@/app/lib/coach/proposal-context-revision'
@@ -125,6 +126,8 @@ export async function POST(
     // A stored review keeps its original revision. Fresh reads cannot revalidate an old decision.
     const contextRevision = isRecord(review.rationale) ? parseCoachContextRevision(review.rationale.contextRevision) : null
     if (contextRevision === null) return apiError(STALE_COACH_CONTEXT_MESSAGE, 409)
+    const setupMemoryBindings = isRecord(review.rationale) ? parseSetupMemoryBindings(review.rationale.setupMemoryBindings) : null
+    if (!setupMemoryBindings || !await setupMemoryBindingsCurrent(supabase, user.id, setupMemoryBindings)) return apiError('Review the current training setup again before creating a proposal', 409)
 
     const storedIntent = parseStoredRollingWeeklyIntent(planRow.intent)
     if (!storedIntent
@@ -215,6 +218,7 @@ export async function POST(
     }
 
     const sourceSnapshot = {
+      setupMemoryBindings,
       contextRevision,
       reason: 'stored_rolling_weekly_review',
       basePlanVersionId: planRow.id,

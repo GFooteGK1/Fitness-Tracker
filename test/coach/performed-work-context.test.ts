@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { captureProvenance } from '@/app/lib/capture/contracts'
-import { buildPerformedWorkContext, fetchPerformedWorkContextForCoaching, renderPerformedWorkContext } from '@/app/lib/coach/performed-work-context'
+import { buildPerformedWorkContext, buildPerformedWorkEvidence, fetchPerformedWorkContextForCoaching, renderPerformedWorkContext, type PerformedWorkContext } from '@/app/lib/coach/performed-work-context'
 import { workSnapshot } from '../fixtures/coach-performed-work'
 import { fetchPlanningHistorySnapshot } from '@/app/lib/coach/planning-context'
 
@@ -17,6 +17,87 @@ function clientFixture(rows: unknown[], error: unknown = null) {
 afterEach(() => vi.unstubAllEnvs())
 
 describe('factual performed work for coaching', () => {
+  it('keeps complete internal set evidence separate from the bounded coaching prompt', () => {
+    const input = workSnapshot()
+    const movements = Array.from({ length: 90 }, (_, index) => ({ name: 'Barbell floor press', sets: 1, reps: 3,
+      load: index % 2 ? null : 20, unit: index % 2 ? null : 'kg', effort: { value: 6.5, scale: 'effort_0_10' },
+      setReportId: `set-${index}`, setReportRevision: 2, setNumber: index + 1, restAfterSeconds: 97,
+      velocity: { device: 'Qwik', method: 'video', unit: 'm/s', repetitions: [{ rep: 1, meanConcentricVelocity: 0.43 }] } }))
+    input.workouts[0].blocks = [{ movements }]
+    const prompt = buildPerformedWorkContext(input), evidence = buildPerformedWorkEvidence(input)
+    expect(prompt.status).toBe('partial')
+    expect(prompt.coverage.recordBudgetCharacters).toBe(16000)
+    expect(evidence.status).toBe('available')
+    expect(evidence.records).toHaveLength(90)
+    expect(evidence.coverage.omitted).toEqual([])
+    expect(evidence.records[89].setEvidence).toMatchObject({ reportId: 'set-89', revision: 2, restAfterSeconds: 97, velocity: movements[89].velocity })
+    expect(evidence.records[89].quantities.load.kind).toBe('unknown')
+    expect(() => renderPerformedWorkContext(evidence as unknown as PerformedWorkContext, input.userId)).toThrow('Compiler evidence')
+    input.complete = false
+    expect(buildPerformedWorkEvidence(input).status).toBe('partial')
+  })
+  it('keeps the internal evidence ceiling explicit and fails closed above it', () => {
+    const input = workSnapshot()
+    input.workouts[0].blocks = [{ movements: [{ name: 'Barbell floor press', setReportId: 'large-set', note: 'x'.repeat(8_000_001) }] }]
+    const evidence = buildPerformedWorkEvidence(input)
+    expect(evidence.status).toBe('partial')
+    expect(evidence.coverage.complete).toBe(false)
+    expect(evidence.coverage.omitted).toContainEqual(expect.objectContaining({ reason: 'record_budget' }))
+    expect(evidence.numericPolicyEligible).toBe(false)
+  })
+  it('keeps reviewed completion as sparse actuals with set detail and half-point session RPE, then surfaces amendments', () => {
+    const input = workSnapshot(), row = input.workouts[0]
+    const velocity = { unit: 'm/s', device: 'Qwik', method: 'video', repetitions: [{ rep: 1, meanConcentricVelocity: 0.42 }] }
+    row.execution_source = 'program_runner'; row.execution_status = 'completed'; row.execution_revision = 0; row.rpe = null
+    row.blocks = [{ role: 'specific_preparation', movements: [{ name: 'Barbell floor press', completed: true, sets: 1,
+      reps: 5, load: null, unit: null, effort: { value: 7, scale: 'rir_based' }, rir: 2.5, setReportId: 'set-1', setReportRevision: 2,
+      setNumber: 1, performedAt: '2026-09-18T11:45:00Z', restAfterSeconds: 180, velocity, stopped: false,
+      symptoms: null, note: null, durationSeconds: null, distanceMetres: null,
+      protocol: { prescribedProtocolId: 'paused', actualSetup: 'unknown' }, unilateralConvention: { side: 'both', loadConvention: null } }] }]
+    input.completions = [{ id: 'completion-1', user_id: input.userId, prescribed_session_id: 'session-1',
+      occurred_at: '2026-09-18T12:00:00Z', created_at: '2026-09-18T12:00:00Z', responses: {
+        workoutId: row.id, completionContractVersion: 3, resultStatus: 'completed', setReportIds: ['set-1'],
+        performedBlocks: structuredClone(row.blocks), completionRequest: { contractVersion: 3, status: 'completed',
+          sessionId: 'session-1', occurredAt: '2026-09-18T12:00:00Z', workoutDate: row.workout_date,
+          setReportIds: ['set-1'], feedback: { outcome: 'as_planned', sessionRpe: 6.5 } },
+      } }]
+    const before = buildPerformedWorkContext(input)
+    expect(before.status).toBe('available')
+    expect(before.records[0]).toMatchObject({ basis: 'reported_work', role: 'preparation',
+      quantities: { load: { kind: 'unknown' } }, effort: { value: 7, scale: 'rir_based' },
+      sessionEffort: { value: 6.5, scope: 'session', sourcePath: 'completionRequest.feedback.sessionRpe' },
+      setEvidence: { reportId: 'set-1', revision: 2, restAfterSeconds: 180, velocity, rir: 2.5 },
+      protocol: { prescribedProtocolId: 'paused', actualSetup: 'unknown' } })
+    expect(before.records[0].limitations).toContain('Reviewed completion contains reported sets only; unreported prescribed work remains unknown.')
+    for (const [rawId, canonicalId] of [['run', 'reviewed_run'], ['bike', 'bike_erg']]) {
+      const identity = structuredClone(input)
+      identity.workouts[0].blocks = [{ movements: [{ name: rawId, movementId: rawId, sets: 1, durationSeconds: 43, setReportId: 'set-1' }] }]
+      ;(identity.completions![0].responses as Record<string, unknown>).performedBlocks = structuredClone(identity.workouts[0].blocks)
+      expect(buildPerformedWorkContext(identity).records[0]).toMatchObject({ movementId: canonicalId, recordedName: rawId, basis: 'reported_work' })
+      identity.workouts[0].capture_revision = 2
+      // The ordinary name reader still recognizes canonical display name "Run";
+      // only the special reviewed mapping is lost after amendment.
+      expect(buildPerformedWorkContext(identity).records[0]).toMatchObject({ movementId: rawId === 'run' ? 'easy_run' : null, recordedName: rawId, basis: 'reported_work' })
+      expect(buildPerformedWorkContext(identity).status).toBe('partial')
+    }
+    const skewed = structuredClone(input)
+    skewed.completions![0].created_at = '2026-09-18T11:59:00Z'
+    skewed.workouts[0].created_at = '2026-09-18T11:59:00Z'
+    skewed.workouts[0].updated_at = '2026-09-18T11:59:00Z'
+    skewed.asOf = '2026-09-18T11:59:30Z'
+    expect(buildPerformedWorkContext(skewed).status).toBe('partial')
+    expect(buildPerformedWorkContext(skewed).coverage.issues).toContainEqual({ sourceId: row.id, reason: 'completion_does_not_confirm_current_prescription_snapshot' })
+    skewed.asOf = input.asOf
+    expect(buildPerformedWorkContext(skewed).status).toBe('available')
+    skewed.completions![0].created_at = '2026-09-18T11:54:59Z'
+    expect(buildPerformedWorkContext(skewed).status).toBe('partial')
+    row.capture_revision = 2; row.rpe = 8
+    row.blocks = [{ movements: [{ name: 'Barbell floor press', reps: 4 }] }]
+    const amended = buildPerformedWorkContext(input)
+    expect(amended.status).toBe('partial')
+    expect(amended.records[0]).toMatchObject({ quantities: { repetitions: { kind: 'exact', value: 4 } }, sessionEffort: { value: 8 } })
+    expect(amended.coverage.issues).toContainEqual({ sourceId: row.id, reason: 'completion_does_not_confirm_current_prescription_snapshot' })
+  })
   it('retains exact, bounded and unknown quantities with literal weight and effort scope', () => {
     const context = buildPerformedWorkContext(workSnapshot())
     expect(context.records[0]).toMatchObject({ basis: 'reported_work', role: 'working',

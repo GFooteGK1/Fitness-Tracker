@@ -71,3 +71,8 @@ scripts/eval/manifest.*.json
 
 # Local UI audit logs and working evidence
 /output/ui-consistency/
+
+# Sealed evaluation inputs and separate local key custody; never commit.
+/output/programming-quality-holdout/
+/output/programming-quality-holdout-custody/
+/output/programming-quality-review/

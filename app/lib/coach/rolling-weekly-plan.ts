@@ -1,4 +1,7 @@
 import { explainPreferenceUse } from './exercise-preferences'
+import { compileOfflineReviewedWeek, REVIEWED_WEEK_DAYS, type OfflineReviewedWeekContext, type ReviewedWeekRegistration, type ReviewedWeekSchedule } from './offline-reviewed-week'
+import { parseReviewedSession, reviewedSessionSchema, type ReviewedSessionPrescription } from './reviewed-session-contract'
+import { parseReviewedRollingWeek, type ReviewedRollingWeekPlan } from './reviewed-week-plan-contract'
 import { realizeExecutionPriority } from './execution-priority'
 import { MOVEMENT_CATALOG_VERSION } from './movement-catalog'
 import { COMPLETE_PROGRAMMING_POLICY_VERSION } from './programming-policy'
@@ -472,6 +475,53 @@ function profileContinuity(profile: ProgrammingProfile): unknown {
     prescriptionBasis: profile.prescriptionBasis ?? null,
     executionPriority: profile.executionPriority ?? null
   }
+}
+
+/** Explicit trusted build entry; no HTTP route/default registry or acceptance authority. */
+export function buildReviewedRollingWeeklyPlan(input: {
+  context: OfflineReviewedWeekContext
+  windowStart: string
+  sequenceNumber: number
+  direction: RollingTrainingDirection
+}, registry: readonly ReviewedWeekRegistration[]):
+  | { kind: 'reviewed_candidate'; plan: ReviewedRollingWeekPlan; persistable: false; numericRuntimeEligible: false }
+  | { kind: 'review_required'; reasons: string[] } {
+  try {
+    if (input.context.profile.startDate !== input.windowStart || isoWeekday(input.windowStart) !== 1
+      || !Number.isSafeInteger(input.sequenceNumber) || input.sequenceNumber < 1) throw new Error('Reviewed window/sequence does not match profile')
+    const profileCheck = validateProgrammingProfile(input.context.profile)
+    const directionErrors = validateRollingTrainingDirection(input.direction, input.context.profile)
+    if (!profileCheck.ok || directionErrors.length) throw new Error([...profileCheck.errors, ...directionErrors].join('; '))
+    const result = compileOfflineReviewedWeek(input.context, registry)
+    if (result.kind !== 'compiled') return result
+    const week = result.week
+    const scheduledSessions = week.days.flatMap(day => {
+      if (!day.session) return []
+      const prescription: ReviewedSessionPrescription = {
+        format: 'reviewed_programming_v0_1', schemaVersion: reviewedSessionSchema(day.session), policyVersion: week.policyVersion,
+        sessionId: day.session.id, day: day.day, title: day.session.id.replaceAll('-', ' '),
+        intent: day.session.themes.map(theme => theme.replaceAll('_', ' ')).join(', '),
+        scheduledMinutes: day.availableSeconds / 60, estimatedSeconds: day.timing.estimatedSeconds,
+        content: structuredClone(day.session), protocols: week.protocols.filter(protocol => protocol.sessionId === day.session?.id),
+        source: { recipeId: input.context.recipeId, recipeHash: week.basis.recipeHash,
+          review: structuredClone(week.basis.review), sources: structuredClone(week.basis.sources) },
+      }
+      if (!parseReviewedSession(prescription)) throw new Error('Reviewed session does not satisfy the lossless read contract')
+      return [{ scheduledDate: addIsoDays(input.windowStart, WEEKDAY_OFFSET[day.day]), prescription }]
+    })
+    const plan: ReviewedRollingWeekPlan = {
+      kind: 'reviewed_week_plan', format: 'reviewed_rolling_week_v0_1', schemaVersion: 1,
+      title: `${input.context.profile.athleteGoalSummary}: ${input.windowStart}`, sequenceNumber: input.sequenceNumber,
+      windowStart: input.windowStart, windowEnd: addIsoDays(input.windowStart, 6),
+      profileSnapshot: structuredClone(input.context.profile), directionSnapshot: structuredClone(input.direction),
+      basis: { recipeId: input.context.recipeId, recipeHash: week.basis.recipeHash, contextHash: week.basis.contextHash,
+        scheduleId: week.basis.scheduleId, reason: week.basis.reason }, scheduledSessions,
+      baseSchedule: Object.fromEntries(REVIEWED_WEEK_DAYS.map(day => [day, week.exposures.find(exposure => exposure.baseDay === day)?.sessionId ?? null])) as ReviewedWeekSchedule,
+      spacing: structuredClone(week.spacing), instructions: [...week.instructions], limitations: [...week.limitations], adaptiveEvaluation: 'unavailable',
+    }
+    if (!parseReviewedRollingWeek(plan)) throw new Error('Reviewed week does not satisfy the lossless read contract')
+    return { kind: 'reviewed_candidate', plan, persistable: false, numericRuntimeEligible: false }
+  } catch (error) { return { kind: 'review_required', reasons: [error instanceof Error ? error.message : 'Invalid reviewed week'] } }
 }
 
 /** Explicit replacement may correct setup without changing the goal domain.

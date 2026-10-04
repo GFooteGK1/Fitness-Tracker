@@ -2,6 +2,7 @@ import { validateExercisePreferences, type ExercisePreferences } from './exercis
 import { validatePlanningIntentSnapshot } from './planning-intent'
 import { validateFactualPlanningContext } from './planning-context'
 import { validatePrescriptionBasis } from './prescription-basis'
+import { parseReviewedSession } from './reviewed-session-contract'
 import type {
   CoachPlanningContext,
   CoachPlanningInput,
@@ -226,6 +227,20 @@ export type ProgrammingExecutionTarget =
 
 export type ProgrammingLoadAnchor =
   | {
+    /** Offline reviewed lowering only; normal plan validation rejects this source. */
+    source: 'reviewed_option'
+    optionId: string
+    optionHash: string
+    review: { id: string; contentHash: string }
+    sources: Array<{ id: string; revision: number; contentHash: string }>
+    policyVersion: string
+    protocolId: string
+    equipmentId: string
+    loadConvention: 'total_external' | 'per_hand_external'
+    repetitionsPerSide: boolean
+    loadRange: NumericRange & { unit: 'lb' | 'kg' }
+  }
+  | {
     source: 'saved_assessment'
     assessmentId: string
     percentRange: NumericRange
@@ -288,6 +303,7 @@ export interface CompleteProgrammingSessionPrescription {
 export type StoredCoachSessionPrescription =
   | CoachSessionPrescription
   | CompleteProgrammingSessionPrescription
+  | import('./reviewed-session-contract').ReviewedSessionPrescription
 
 export type ProgrammingSchemaValidation = {
   ok: boolean
@@ -498,8 +514,9 @@ export function validateWeeklyCoverageRequirement(
 
 export function detectCoachPrescriptionFormat(
   value: unknown
-): 'legacy_v0_2' | 'complete_v0_3' | 'unknown' {
+): 'legacy_v0_2' | 'complete_v0_3' | 'reviewed_v0_1' | 'unknown' {
   if (!isRecord(value)) return 'unknown'
+  if (value.format === 'reviewed_programming_v0_1') return parseReviewedSession(value) ? 'reviewed_v0_1' : 'unknown'
 
   if (
     value.schemaVersion === PROGRAMMING_SCHEMA_VERSION

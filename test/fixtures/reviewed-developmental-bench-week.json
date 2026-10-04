@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "id": "reviewed-developmental-bench-week-1",
+  "purpose": "Offline source snapshot and reviewed schedule maps; not a runtime prescription contract",
+  "source": {
+    "path": "docs/verification/programming-quality/developmental-bench-week-1.md",
+    "sha256": "205356ebd232c632263a8c42a6fd0e9bfb2513aa9bdaf41b5107959a40f82cad",
+    "reviewer": "Greg Foote",
+    "questionId": "call_2ImmidGH2N54VK6qQbDWZ2xP",
+    "response": "Usable as this test reference",
+    "reviewKind": "qualitative_acceptance",
+    "rubricScores": null,
+    "runtimeAuthority": false
+  },
+  "sharedExecutionMarkdown": "Loads are total pounds. All listed RPE values are **prescribed targets**, not\nperformed observations. Record actual load, reps and RPE for each working set,\nplus changes, symptoms and overall session response. Do not backfill actual RPE.\nPreparation is RPE 3–4. Core is RPE 5–6 with controlled movement. Strength work\nuses controlled lowering and a purposeful, fast concentric without grinding.\nMovement quality takes priority over completing a stated rep count.\n\nFor assistance without a fixed load, select a familiar load or assistance that\nallows the listed reps at the target; log the actual selection. Do not invent a\nhistorical weight. If pain appears or control deteriorates, stop the affected\nwork and reassess. Required recovery is not shortened to meet a time estimate;\nrecord any athlete-chosen time adjustment as a deviation.",
+  "monitoring": {
+    "protocolIds": [
+      "dev-bench-v1",
+      "dev-high-handle-pull-v1"
+    ],
+    "prescriptionMarkdown": "New synthetic series: `dev-bench-v1` and `dev-high-handle-pull-v1`. They have no\nhistorical velocity observations. Do not merge them with taper or real-athlete\nseries just because their loads match.\n\nEach protocol includes the named day's preparation, preceding work, ramp,\n**three-minute pre-set rest**, specified **load × 2 reps**, and **three-minute\npost-set rest**. Bench uses the same flat bench, bar, marked grip and controlled\ntouch-and-go technique without bouncing. Pull uses the same trap bar, measured\nhigh-handle setting, stance and dead-stop resets. Fixture comparisons require\nthe same documented device, placement and mean-concentric-velocity method; those\nmetadata must be instantiated before any actual sensor comparison.\n\nUse a purposeful fast concentric with controlled technique. Proposed monitoring\neffort is submaximal, **RPE no higher than 7**; record actual set RPE and both rep\nreadings. If it is unexpectedly hard, do not change the load and keep the same\nprotocol label: record the exception and reassess the subsequent work. Missing\nsensor data does not erase a performed repetition. No sensor data, velocity\ncutoff or VBT-driven load adjustment is invented for this fixture.\n\nThe schedule swap leaves both protocols and their immediate preceding work\nunchanged. The changed day of interval training is retained as context when\ninterpreting Friday's response. Monitoring is separate from working sets and\nformal event testing.",
+    "sha256": "daccecb3c5f1f0bb74101cc5c079e54b14713864274baffa4e6fb07d47e438b2",
+    "actualVelocityObservations": [],
+    "deviceMetadataStatus": "Must be instantiated before actual sensor comparison"
+  },
+  "sessions": [
+    {
+      "id": "acceleration-squat",
+      "sourceHeading": "Monday — acceleration, jumps and squat",
+      "prescriptionMarkdown": "1. Preparation, 10 minutes: 5-minute easy bike; then A-march 2 × 15 m,\n   A-skip 2 × 15 m, 8 bodyweight squats and 2 × 20 m gradual build-ups.\n   Rest 30 seconds between drill trips/build-ups; use the remaining preparation\n   time for setup/recovery.\n2. Countermovement jump, 3 single attempts, **60 seconds between attempts**.\n   Use crisp familiar jumps, target perceived effort RPE 6–7; stop if quality\n   falls. Rest **2 minutes** before acceleration.\n3. **4 × 10 m controlled accelerations**, approximately 80–85% perceived effort,\n   **2 minutes between efforts**. This percentage is a coaching cue, not a\n   measured speed or RPE conversion. Rest **3 minutes** before squat preparation.\n4. Back-squat ramp: **45 × 8, rest 60 seconds; 135 × 5, rest 90 seconds;\n   185 × 3, rest 90 seconds; 225 × 1, rest 3 minutes**.\n5. Back squat **245 lb, 3 × 3, target RPE 6–7**, **3 minutes between sets**.\n6. Rest **2 minutes**. Side plank **2 rounds of 30 seconds per side**,\n   target RPE 5–6; **15 seconds to switch sides**, **60 seconds between rounds**.\n7. Rest **60 seconds**. Bodyweight calf raise **2 × 12, target RPE 6–7**,\n   **60 seconds between sets**. Finish with a **3-minute easy walk**.",
+      "prescriptionSha256": "2465d851defe55025595c996de93182a5c073b642cfa2ca64788d8db3ee34c12",
+      "estimatedSeconds": 3261,
+      "timingComponents": "Prep 10:00; jumps 2:09; recovery 2:00; accelerations 6:12; recovery 3:00; squat ramp 7:51; squat work 6:27; recovery 2:00; core 3:30; recovery 1:00; calves 2:12; cooldown 3:00; transitions 2:00; logging 3:00"
+    },
+    {
+      "id": "bench-volume",
+      "sourceHeading": "Bench-volume session — Wednesday base, Tuesday variant",
+      "prescriptionMarkdown": "1. Preparation, 5 minutes: 3-minute easy bike, band pull-aparts **1 × 15**,\n   scapular push-ups **1 × 8**, **30 seconds between drills**; remaining time\n   is setup/recovery.\n2. Bench ramp: **45 × 10, rest 60 seconds; 95 × 5, rest 60 seconds;\n   135 × 3, rest 90 seconds; 155 × 1, rest 3 minutes**.\n3. Flat barbell bench **175 lb, 4 × 6, target RPE 7–8**,\n   **3 minutes between sets**. This is volume work, not a monitoring set.\n4. Rest **2 minutes**. Chest-supported dumbbell row: light **1 × 5 rehearsal**,\n   rest **60 seconds**, then **3 × 10, target RPE 7–8**, **90 seconds between sets**.\n5. Rest **2 minutes**. Cable triceps press-down: light **1 × 5 rehearsal**,\n   rest **60 seconds**, then **2 × 15, target RPE 7–8**, **60 seconds between sets**.\n6. **3-minute easy walk**. Log effort for all nine working sets separately.",
+      "prescriptionSha256": "69dd55314c6f05ea5ef8065095abc8852f75f3d2791b8364bb2d442ef32804ba",
+      "estimatedSeconds": 2529,
+      "timingComponents": "Prep 5:00; ramp 7:27; bench work 10:12; recovery 2:00; row rehearsal 1:15; rows 4:30; recovery 2:00; triceps rehearsal 1:15; triceps work 2:30; cooldown 3:00; logging 3:00"
+    },
+    {
+      "id": "running",
+      "sourceHeading": "Running session — Tuesday base, Wednesday variant",
+      "prescriptionMarkdown": "1. **5-minute easy jog**, then a 5-minute preparation block: A-march **2 × 15 m**,\n   A-skip **2 × 15 m**, **10 alternating walking lunges total** and recovery/setup;\n   **30 seconds between drill trips**.\n2. **2 × 20 m controlled strides**, approximately 80% perceived effort,\n   **60 seconds between efforts**. Rest **2 minutes** before intervals.\n3. **5 × 400 m in 100 seconds each**, target **RPE 7–8 per interval**,\n   **2 minutes walking recovery between intervals**. Both pace and effort are\n   proposed fixture targets; a materially harder response calls for reassessment,\n   not forcing the split. No plateau or need for a faster pace is assumed.\n4. **5-minute easy walk/jog**, then **60 seconds** to prepare for core.\n5. Dead bug **2 × 6 per side**, alternating sides, target **RPE 5–6**,\n   **60 seconds between sets**.",
+      "prescriptionSha256": "bf7cfad994e246e471a569a1bb3d89b9468609c8216511394578882c672c4637",
+      "estimatedSeconds": 2562,
+      "timingComponents": "Jog 5:00; drills 5:00; strides 1:10; recovery 2:00; intervals/recovery 16:20; cooldown 5:00; core preparation 1:00; core 2:12; transitions 2:00; logging 3:00"
+    },
+    {
+      "id": "upright-trap-bar",
+      "sourceHeading": "Friday — upright-running exposure and trap bar",
+      "prescriptionMarkdown": "1. Preparation, 10 minutes: 5-minute easy bike; A-march **2 × 15 m**,\n   A-skip **2 × 15 m**, **8 bodyweight hinges**, **2 × 20 m gradual build-ups**;\n   **30 seconds between drill trips/build-ups** and remaining time for recovery.\n2. **3 runs**, each with **20 m gradual entry + 10 m relaxed upright running**,\n   then safe deceleration. Familiar controlled **80–85% perceived effort**,\n   **3 minutes between runs**. This is a graded upright exposure, not a maximal\n   flying-speed test or verified top-speed development result. Stop for symptoms\n   or loss of smooth mechanics. Rest **3 minutes** before trap-bar preparation.\n3. High-handle trap-bar ramp: **135 × 5, rest 60 seconds; 225 × 3,\n   rest 90 seconds; 285 × 2, rest 3 minutes**.\n4. Fixed monitoring set: **335 × 2**, then **3 minutes rest**; see protocol below.\n5. High-handle trap bar **365 lb, 3 × 3, target RPE 7–8**,\n   **3 minutes between sets**.\n6. Rest **2 minutes**. Dead bug **2 × 6 per side**, alternating sides,\n   target **RPE 5–6**, **60 seconds between sets**. **3-minute easy walk**.",
+      "prescriptionSha256": "5307ff5fbbed0def09a149ba1686182e12d6a1578e42662a385f33b24d447c6a",
+      "estimatedSeconds": 2889,
+      "timingComponents": "Prep 10:00; upright runs 6:24; recovery 3:00; pull ramp 6:00; monitoring/recovery 3:06; pull work 6:27; recovery 2:00; core 2:12; cooldown 3:00; transitions 3:00; logging 3:00"
+    },
+    {
+      "id": "bench-force",
+      "sourceHeading": "Saturday — bench monitoring, force work and aerobic support",
+      "prescriptionMarkdown": "1. Preparation, 8 minutes: **5-minute easy bike**, band pull-aparts **1 × 15**,\n   scapular push-ups **1 × 8**, **30 seconds between drills**; remaining time\n   is setup/recovery.\n2. Bench ramp: **45 × 10, rest 60 seconds; 95 × 5, rest 60 seconds;\n   135 × 3, rest 90 seconds; 165 × 1, rest 3 minutes**.\n3. Fixed monitoring set: **185 × 2**, then **3 minutes rest**; see protocol below.\n4. Flat barbell bench **205 lb, 4 × 2, target RPE 7–8**,\n   **3 minutes between sets**. Purposeful fast concentric, crisp reps;\n   this does not establish a measured power output or a new strength maximum.\n5. Rest **3 minutes**. Strict pull-ups **3 × 6–8, target RPE 7–8**,\n   **2 minutes between sets**. Use familiar assistance if needed and record it.\n   Stop earlier if the effort/control boundary arrives first.\n6. Rest **2 minutes**. **25-minute easy bike, target RPE 3–4**.\n   The fixed 25 minutes is within the previously discussed 20–30-minute range;\n   the full session uses the fixture's 75-minute Saturday allowance.",
+      "prescriptionSha256": "ee3acc917b9f8a951d385331822953badcd05ec0df99a8a00086671ca54a6561",
+      "estimatedSeconds": 4029,
+      "timingComponents": "Prep 8:00; ramp 7:27; monitoring/recovery 3:06; bench work 9:24; recovery 3:00; pull-ups 5:12; recovery 2:00; bike 25:00; transitions 1:00; logging 3:00"
+    }
+  ],
+  "availabilityMinutes": {
+    "monday": 60,
+    "tuesday": 60,
+    "wednesday": 60,
+    "thursday": 0,
+    "friday": 60,
+    "saturday": 75,
+    "sunday": 0
+  },
+  "baseSchedule": {
+    "monday": "acceleration-squat",
+    "tuesday": "running",
+    "wednesday": "bench-volume",
+    "thursday": null,
+    "friday": "upright-trap-bar",
+    "saturday": "bench-force",
+    "sunday": null
+  },
+  "reviewedSchedule": {
+    "monday": "acceleration-squat",
+    "tuesday": "bench-volume",
+    "wednesday": "running",
+    "thursday": null,
+    "friday": "upright-trap-bar",
+    "saturday": "bench-force",
+    "sunday": null
+  },
+  "limitations": [
+    "Session text and timing are preserved; no typed compiler lowering or runtime schema support is asserted",
+    "No persisted acceptance, source-correction invalidation or cross-user runtime proof",
+    "Monitoring has no measured velocity series; whole-week fatigue context changes with the schedule",
+    "P0, qsp/u5l.6, P1 implementation and later activation gates remain separate"
+  ]
+}

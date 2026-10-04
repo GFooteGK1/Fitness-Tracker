@@ -9,6 +9,8 @@ import {
 } from './types'
 
 export const MOVEMENT_CATALOG_VERSION = 'complete-movements-0.1.0'
+// Additive identities do not change the active generator's historical catalog.
+export const REVIEWED_MOVEMENT_CATALOG_VERSION = 'reviewed-identities-0.1.0'
 
 export const MOVEMENT_EQUIPMENT_IDS = [
   'barbell',
@@ -27,7 +29,8 @@ export const MOVEMENT_EQUIPMENT_IDS = [
   'rower',
   'treadmill',
   'track',
-  'bodyweight'
+  'bodyweight',
+  'trap_bar_high_handles'
 ] as const
 
 export type MovementEquipmentId = typeof MOVEMENT_EQUIPMENT_IDS[number]
@@ -37,6 +40,8 @@ export type MovementPattern =
   | 'hinge'
   | 'horizontal_push'
   | 'horizontal_pull'
+  | 'vertical_pull'
+  | 'elbow_extension'
   | 'vertical_push'
   | 'jump'
   | 'throw'
@@ -571,7 +576,40 @@ const MOVEMENTS: MovementDefinition[] = [
   )
 ]
 
-export const MOVEMENT_CATALOG: readonly MovementDefinition[] = MOVEMENTS
+// These exact identities support reviewed recipes and evidence only. They have
+// no automatic substitution family and cannot enter default movement selection.
+const REVIEWED_IDENTITIES: MovementDefinition[] = [
+  reviewedIdentity('lat_pulldown', 'Lat pulldown', 'cable_row', { patterns: ['vertical_pull'], overhead: true }),
+  reviewedIdentity('bodyweight_split_squat', 'Bodyweight split squat', 'tempo_split_squat'),
+  reviewedIdentity('high_handle_trap_bar', 'High-handle trap-bar deadlift', 'barbell_deadlift', { equipment: ['trap_bar_high_handles'] }),
+  reviewedIdentity('chest_supported_dumbbell_row', 'Chest-supported dumbbell row', 'one_arm_dumbbell_row', { equipment: ['dumbbell', 'bench'], unilateral: false }),
+  reviewedIdentity('cable_triceps_pressdown', 'Cable triceps pressdown', 'cable_row', { patterns: ['elbow_extension'], regions: ['triceps'], coverage: [tag('muscle_region', 'triceps')] }),
+  reviewedIdentity('pull_up', 'Pull-up', 'band_row', { domains: ['strength', 'hypertrophy'], patterns: ['vertical_pull'], equipment: ['pull_up_bar'],
+    coverage: [tag('muscle_region', 'upper_back')], skillLevel: 'moderate', overhead: true }),
+  reviewedIdentity('band_pull_apart', 'Band pull-apart', 'band_row', { patterns: ['scapular_control'],
+    coverage: [tag('muscle_region', 'upper_back'), tag('resilience_capacity', 'scapular_control')] }),
+  reviewedIdentity('scapular_push_up', 'Scapular push-up', 'prone_y_raise'),
+  reviewedIdentity('bodyweight_squat', 'Bodyweight squat', 'dumbbell_goblet_squat', { equipment: ['bodyweight'] }),
+  reviewedIdentity('bodyweight_hinge', 'Bodyweight hinge rehearsal', 'single_leg_hip_bridge', { unilateral: false,
+    coverage: [tag('movement_pattern', 'hip_hinge'), tag('muscle_region', 'posterior_chain')] }),
+  reviewedIdentity('bodyweight_calf_raise', 'Bilateral bodyweight calf raise', 'single_leg_calf_raise', { unilateral: false }),
+  reviewedIdentity('walking_lunge', 'Walking lunge', 'reverse_lunge'),
+  reviewedIdentity('a_march', 'A-march', 'fast_a_march'),
+  reviewedIdentity('a_skip', 'A-skip', 'fast_a_march', { skillLevel: 'moderate', impactCost: 'moderate', running: true }),
+  // Generic recipe identity spans warm-ups, acceleration, upright work and
+  // intervals. Keep phase-specific coverage in the reviewed activity, not here.
+  reviewedIdentity('reviewed_run', 'Reviewed running', 'easy_run', { domains: ['aerobic', 'speed_agility'], coverage: [] }),
+  reviewedIdentity('walk', 'Easy walk', 'brisk_walk'),
+]
+
+function reviewedIdentity(id: string, name: string, baseId: string, overrides: Partial<MovementDefinition> = {}): MovementDefinition {
+  const base = MOVEMENTS.find(movement => movement.id === baseId)
+  if (!base) throw new Error(`Missing catalog base: ${baseId}`)
+  return { ...structuredClone(base), ...overrides, id, name, intent: `Perform the explicitly reviewed ${name.toLowerCase()} prescription.`,
+    programmingStatus: 'evidence_only', assessmentAliases: [], substitutionGroup: `reviewed:${id}`, progressionFamily: `reviewed:${id}` }
+}
+
+export const MOVEMENT_CATALOG: readonly MovementDefinition[] = [...MOVEMENTS, ...REVIEWED_IDENTITIES]
 
 export function isMovementEligible(
   movementDefinition: MovementDefinition,
@@ -660,7 +698,7 @@ export function validateMovementCatalog(
     if (movementDefinition.domains.length === 0) {
       errors.push(`Movement ${movementDefinition.id} needs at least one domain`)
     }
-    if (movementDefinition.coverage.length === 0) {
+    if (movementDefinition.programmingStatus === 'active' && movementDefinition.coverage.length === 0) {
       errors.push(`Movement ${movementDefinition.id} needs at least one coverage tag`)
     }
     if (movementDefinition.equipment.length === 0) {
@@ -700,7 +738,7 @@ export function validateMovementCatalog(
         movementDefinition.coverage.some(sourceTag => coverageKey(sourceTag) === coverageKey(candidateTag))
       ))
     ))
-    if (!hasCompatibleSubstitution) {
+    if (movementDefinition.programmingStatus === 'active' && !hasCompatibleSubstitution) {
       errors.push(`Movement ${movementDefinition.id} has no compatible substitution`)
     }
   }
