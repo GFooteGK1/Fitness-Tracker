@@ -28,6 +28,13 @@ on:
         options:
           - FLOAT16
           - FLOAT32
+      scene_dataset:
+        description: Frozen scene diagnostic dataset
+        type: choice
+        default: development-v1
+        options:
+          - development-v1
+          - fresh-challenge-v1
 
 permissions:
   contents: read
@@ -162,6 +169,8 @@ jobs:
   scene-diagnostics:
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'scene-diagnostics'
     uses: ./.github/workflows/ios-scene-diagnostics.yml
+    with:
+      dataset: ${{ inputs.scene_dataset || 'development-v1' }}
 
   apple-support-release:
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'apple-support-release'

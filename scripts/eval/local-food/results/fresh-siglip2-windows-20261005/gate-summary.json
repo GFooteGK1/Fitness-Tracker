@@ -1,0 +1,100 @@
+{
+  "available": true,
+  "cases": [
+    {
+      "id": "challenge-01",
+      "group": "challenge-01",
+      "expected": "foodCandidate",
+      "actual": "foodCandidate",
+      "passed": true
+    },
+    {
+      "id": "challenge-02",
+      "group": "challenge-02",
+      "expected": "uncertain",
+      "actual": "uncertain",
+      "passed": true
+    },
+    {
+      "id": "challenge-03",
+      "group": "challenge-03",
+      "expected": "uncertain",
+      "actual": "foodCandidate",
+      "passed": false
+    },
+    {
+      "id": "challenge-04",
+      "group": "challenge-04",
+      "expected": "foodCandidate",
+      "actual": "foodCandidate",
+      "passed": true
+    },
+    {
+      "id": "challenge-05",
+      "group": "challenge-05",
+      "expected": "uncertain",
+      "actual": "foodCandidate",
+      "passed": false
+    },
+    {
+      "id": "challenge-06",
+      "group": "challenge-06",
+      "expected": "nonCandidate",
+      "actual": "uncertain",
+      "passed": true
+    },
+    {
+      "id": "challenge-07",
+      "group": "challenge-07",
+      "expected": "uncertain",
+      "actual": "uncertain",
+      "passed": true
+    },
+    {
+      "id": "challenge-08",
+      "group": "challenge-08",
+      "expected": "foodCandidate",
+      "actual": "foodCandidate",
+      "passed": true
+    },
+    {
+      "id": "challenge-09",
+      "group": "challenge-09",
+      "expected": "uncertain",
+      "actual": "foodCandidate",
+      "passed": false
+    },
+    {
+      "id": "challenge-10",
+      "group": "challenge-10",
+      "expected": "foodCandidate",
+      "actual": "foodCandidate",
+      "passed": true
+    },
+    {
+      "id": "challenge-11",
+      "group": "challenge-11",
+      "expected": "nonCandidate",
+      "actual": "uncertain",
+      "passed": true
+    },
+    {
+      "id": "challenge-12",
+      "group": "challenge-12",
+      "expected": "foodCandidate",
+      "actual": "foodCandidate",
+      "passed": true
+    },
+    {
+      "id": "challenge-13",
+      "group": "challenge-13",
+      "expected": "nonCandidate",
+      "actual": "uncertain",
+      "passed": true
+    }
+  ],
+  "caseCount": 13,
+  "casePasses": 10,
+  "familyCount": 13,
+  "familyPasses": 10
+}

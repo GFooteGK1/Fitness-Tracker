@@ -2,7 +2,20 @@ name: Native Scene Diagnostics
 
 on:
   workflow_dispatch:
+    inputs:
+      dataset:
+        description: Frozen diagnostic dataset
+        type: choice
+        default: development-v1
+        options:
+          - development-v1
+          - fresh-challenge-v1
   workflow_call:
+    inputs:
+      dataset:
+        type: string
+        required: false
+        default: development-v1
 
 permissions:
   contents: read
@@ -36,13 +49,25 @@ jobs:
           swift test --package-path ios
 
       - name: Inspect frozen public fixtures
+        env:
+          SCENE_DATASET: ${{ inputs.dataset || 'development-v1' }}
         run: |
+          set -euo pipefail
           SCENE_ROOT="$RUNNER_TEMP/scene-diagnostics"
           mkdir "$SCENE_ROOT"
-          "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/make_controls.py "$SCENE_ROOT/images"
-          "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/fetch.py scripts/eval/local-food/fixtures.siglip2-development-v1.json "$SCENE_ROOT/images"
-          swift run --package-path ios LocalFoodEval scripts/eval/local-food/fixtures.siglip2-development-v1.json "$SCENE_ROOT/images" "$SCENE_ROOT/raw.json" scene-diagnostics
-          "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/diagnose_scene.py scripts/eval/local-food/fixtures.siglip2-development-v1.json "$SCENE_ROOT/raw.json" "$SCENE_ROOT/summary.json"
+          case "$SCENE_DATASET" in
+            development-v1)
+              SCENE_MANIFEST=scripts/eval/local-food/fixtures.siglip2-development-v1.json
+              "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/make_controls.py "$SCENE_ROOT/images"
+              ;;
+            fresh-challenge-v1)
+              SCENE_MANIFEST=scripts/eval/local-food/fixtures.fresh-challenge-v1.json
+              ;;
+            *) echo "Unsupported frozen dataset" >&2; exit 1 ;;
+          esac
+          "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/fetch.py "$SCENE_MANIFEST" "$SCENE_ROOT/images" --spacing-seconds 10
+          swift run --package-path ios LocalFoodEval "$SCENE_MANIFEST" "$SCENE_ROOT/images" "$SCENE_ROOT/raw.json" scene-diagnostics
+          "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/diagnose_scene.py "$SCENE_MANIFEST" "$SCENE_ROOT/raw.json" "$SCENE_ROOT/summary.json"
 
       - name: Retain diagnostic observations
         if: always()

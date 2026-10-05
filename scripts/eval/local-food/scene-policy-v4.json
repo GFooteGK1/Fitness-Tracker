@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "siglip2-full-upper-human-v4",
+  "sourcePolicyVersion": "siglip2-human-backup-v3",
+  "sourceDecisionConfigurationSHA256": "c7cfecf3a497e6ca0cbed335f71d6f18d56f93bc25947c3ddd26d9bf1ac58d15",
+  "diagnosticVersion": "vision-geometry-diagnostics-v1",
+  "baselineProfile": "full-body-512",
+  "additionalProfile": "upper-body-512",
+  "minimumConfidence": 0.2,
+  "minimumPosePoints": 2,
+  "maximumHandCount": 4,
+  "candidateRule": "v3 candidate AND no accepted observations in upper-body-512",
+  "qualification": "evaluation only; no automatic uploads or physical-device qualification"
+}

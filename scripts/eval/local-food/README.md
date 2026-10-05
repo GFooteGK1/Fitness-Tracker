@@ -255,7 +255,45 @@ profile is cooperative; the job has an outer 20-minute timeout. Native compilati
 and raw diagnostic execution are pending. See
 [the diagnostic audit](../../../docs/verification/scene-diagnostic-audit-2026-10-04.md).
 
-## Data acquisition
+## Fixed upper-body comparison on fresh sources
+
+`fixtures.fresh-challenge-v1.json` freezes thirteen original public-domain/CC0
+photos with independent pixel labels before inference. Five foods contain no
+visible human, five contain identifiable human regions and three are negatives.
+Only three positives are prepared meal/drink servings. The separate label audit
+retains an acquired blurry archival frame with uncertain food presence and the
+unavailable final source. Neither is forced into the binary scored set. Old32
+hashes, source pages and recognizable scenes were excluded. Model pretraining
+independence is unknown; after observation this set becomes exposed evidence.
+
+`scene-policy-v4.json` was fixed before the fresh run. `compose_upper.py` compares
+unchanged v3/full-body-512 checks with v4's additional upper-body-512 abstention.
+1024px observations remain diagnostic only. Complete matching hashes, pinned
+semantic artifacts, exact verified native source revision, every detector result
+and untruncated raw observations are required. Every output is exclusive. Gate
+checks report eligible food recall and confirmed human-food leakage separately;
+family counts are separate from case counts. No result qualifies uploads.
+
+```sh
+python -B scripts/eval/local-food/compose_upper.py FROZEN_MANIFEST SEMANTIC_REPORT NATIVE_DIAGNOSTIC_REPORT VERIFIED_NATIVE_GIT_SHA NEW_OUTPUT_DIRECTORY
+```
+
+Manual `ios-compile.yml` target `scene-diagnostics` now accepts the constrained
+`scene_dataset` choice `development-v1` (default) or `fresh-challenge-v1`.
+The reusable job rejects other inputs, fetches pinned originals at ten-second
+intervals without automatic retries, and retains JSON receipts only. It does not
+execute the semantic model or activate a phone build. Until that fresh native run
+completes, combined v3/v4 quality remains untested on the new sources.
+
+The local semantic observation pass completed all thirteen inputs. It captured
+5/5 no-human foods and 3/3 clear meal/drink positives; none of the three negatives
+became candidates. Three of five confirmed human-food scenes were candidates:
+carrots/hands, plates/hands/torso and corn/hands/torso. Semantic screening alone
+therefore fails the frozen human abstention expectations. Do not call the aggregate
+8/10 food recall an acceptance result. Receipts are under
+`results/fresh-siglip2-windows-20261005/`; native geometry is pending.
+
+## Acquisition receipts
 
 Public source/licence/author links are recorded in `fixtures.json` (CC0/public domain).
 Fetch pinned HTTPS Wikimedia media URLs, bound inputs to 10 MiB, verify hashes before

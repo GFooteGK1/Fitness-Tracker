@@ -1,6 +1,7 @@
 """Fetch only the frozen public fixtures; stop on errors and preserve existing files."""
 import argparse
 import hashlib
+import math
 import time
 import urllib.parse
 import urllib.request
@@ -36,7 +37,9 @@ def verify(data, expected):
         raise ValueError("Fixture bytes changed or exceed limit; preserve and review the source")
 
 
-def fetch(manifest_path, root):
+def fetch(manifest_path, root, spacing_seconds=1.2):
+    if type(spacing_seconds) not in {int, float} or not math.isfinite(spacing_seconds) or not 1.2 <= spacing_seconds <= 30:
+        raise ValueError("Public acquisition spacing must be between 1.2 and 30 seconds")
     manifest, _ = read_manifest(manifest_path)
     for case in manifest["cases"]:
         if case["layer"] == "synthetic":
@@ -63,11 +66,12 @@ def fetch(manifest_path, root):
         with target.open("xb") as handle:
             handle.write(data)
         print(case["id"] + ": downloaded hash verified")
-        time.sleep(1.2)
+        time.sleep(spacing_seconds)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest"); parser.add_argument("image_directory")
+    parser.add_argument("--spacing-seconds", type=float, default=1.2)
     args = parser.parse_args()
-    fetch(args.manifest, args.image_directory)
+    fetch(args.manifest, args.image_directory, args.spacing_seconds)

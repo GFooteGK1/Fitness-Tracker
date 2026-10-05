@@ -68,12 +68,18 @@ def stage_reason(row):
 def summarize(manifest_path, diagnostic_path, output):
     manifest, digest = read_manifest(manifest_path)
     report = json.loads(Path(diagnostic_path).read_bytes())
-    if (report.get("schemaVersion") != 1 or report.get("completed") is not True or report.get("manifestSHA256") != digest
+    if (type(report.get("schemaVersion")) is not int or report.get("schemaVersion") != 1
+        or report.get("completed") is not True or report.get("manifestSHA256") != digest
         or report.get("diagnosticVersion") != "vision-geometry-diagnostics-v1"
-        or report.get("policyVersion") != "vision-geometry-diagnostics-v1" or report.get("requestRevision") != 0
+        or report.get("policyVersion") != "vision-geometry-diagnostics-v1"
+        or type(report.get("requestRevision")) is not int or report.get("requestRevision") != 0
         or report.get("sceneRevisions") != {"face": 3, "humanRectangle": 2, "bodyPose": 1, "handPose": 1}
+        or any(type(v) is not int for v in report.get("sceneRevisions", {}).values())
+        or any(type(report.get(k)) is not int for k in ["diagnosticMaximumObservations", "diagnosticMaximumPoints",
+            "sceneMinimumPosePoints", "sceneMaximumHandCount"])
         or report.get("diagnosticMaximumObservations") != 64 or report.get("diagnosticMaximumPoints") != 32
-        or report.get("sceneMinimumConfidence") != .2 or report.get("sceneMinimumPosePoints") != 2
+        or not finite(report.get("sceneMinimumConfidence")) or report.get("sceneMinimumConfidence") != .2
+        or report.get("sceneMinimumPosePoints") != 2
         or report.get("sceneMaximumHandCount") != 4 or not report.get("operatingSystem") or not report.get("generatedAt")):
         raise ValueError("Incomplete or changed diagnostic provenance")
     if report.get("preprocessing") != "ImageIO oriented thumbnails; diagnostic profiles at 512 and 1024 pixels":

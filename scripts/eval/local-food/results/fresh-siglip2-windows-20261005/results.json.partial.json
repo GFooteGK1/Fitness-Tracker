@@ -1,0 +1,596 @@
+{
+  "schemaVersion": 1,
+  "completed": false,
+  "manifestSHA256": "d1fbfa729b3697346fda30d7e875cb07ff640fdc1d664133519d2a6ebf000ab0",
+  "modelArtifact": {
+    "repository": "google/siglip2-base-patch16-224",
+    "revision": "75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2",
+    "weightSHA256": "612923381c76ec5a9bed335d1c48827e3f2e506ac31b044b63b2031fadee6a0b",
+    "configurationSHA256": "31a14ad5495f8d01422ab883bc8e426a37fe2085f76ba307781866adf0b0761c",
+    "supportingFiles": {
+      "config.json": {
+        "algorithm": "gitBlobSHA1",
+        "hash": "c8cd2a20e58a738f44f267ae19f9568ff1095698"
+      },
+      "preprocessor_config.json": {
+        "algorithm": "gitBlobSHA1",
+        "hash": "2e52d8e8492b5c496ae04c37bfa09760469fb18b"
+      },
+      "special_tokens_map.json": {
+        "algorithm": "gitBlobSHA1",
+        "hash": "8d6368f7e735fbe4781bf6e956b7c6ad0586df80"
+      },
+      "tokenizer.json": {
+        "algorithm": "sha256",
+        "hash": "cb9140fae3ac5122c972d37adf83e1248471a38147ad76f8215c8872c6fd8322"
+      },
+      "tokenizer.model": {
+        "algorithm": "sha256",
+        "hash": "61a7b147390c64585d6c3543dd6fc636906c9af3865a5548f27f31aee1d4c8e2"
+      },
+      "tokenizer_config.json": {
+        "algorithm": "gitBlobSHA1",
+        "hash": "d97c5412159422c3b56fbc99076b1dcc25dd7856"
+      }
+    }
+  },
+  "modelSupportingSHA256": {
+    "config.json": "fe8b5fe6d5734360678fd71c11c21e1ea3364bd8598d34295d9206335973ffd7",
+    "preprocessor_config.json": "9b36b57ebaf20f09bf4c22100ccc21877ea6bfe5aead0c00c59f8af8ccefacfc",
+    "special_tokens_map.json": "baec30ea10906f16adb8c18af7a34023002c1746542612b8b41c9f09e1351351",
+    "tokenizer.json": "cb9140fae3ac5122c972d37adf83e1248471a38147ad76f8215c8872c6fd8322",
+    "tokenizer.model": "61a7b147390c64585d6c3543dd6fc636906c9af3865a5548f27f31aee1d4c8e2",
+    "tokenizer_config.json": "14afe629fe4959b9e0d51e1852b8d9f7ad074f90a1a7125a4fcdd17f06e78fc8"
+  },
+  "policyVersion": "siglip2-food-probe-v1",
+  "requestRevision": 0,
+  "operatingSystem": "Windows-11-10.0.26200-SP0",
+  "preprocessing": "PIL EXIF transpose, RGB, pinned SigLIP2 processor 224px",
+  "runtime": {
+    "torch": "2.8.0+cpu",
+    "transformers": "4.57.1",
+    "pillow": "11.3.0",
+    "python": "3.13.12",
+    "modelClass": "SiglipModel",
+    "processorClass": "SiglipProcessor",
+    "textContextLength": 64,
+    "device": "cpu",
+    "threads": 4
+  },
+  "generatedAt": "2026-10-05T12:16:18.319836+00:00",
+  "cases": [
+    {
+      "id": "challenge-01",
+      "sha256": "9202bac6835f7cc86032cacfbfdbe4d88879120dff13b139bbe33abebc004ab0",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9998364239709037,
+        "labels": [],
+        "durationMilliseconds": 297
+      },
+      "diagnostics": {
+        "foodMargin": 8.718069076538086,
+        "riskMargin": -3.2291431427001953,
+        "promptLogits": {
+          "meal": -6.53504753112793,
+          "ingredients": -1.5224323272705078,
+          "packaged": -6.818047523498535,
+          "drink": -13.351529121398926,
+          "growing_fruit": -8.10884952545166,
+          "animal": -12.95303726196289,
+          "room": -12.675013542175293,
+          "landscape": -12.552680015563965,
+          "device": -12.627530097961426,
+          "document": -14.352523803710938,
+          "screen": -11.339038848876953,
+          "medical": -10.240501403808594,
+          "person": -11.174660682678223,
+          "abstract": -13.13782787322998,
+          "risk_people": -4.387017250061035,
+          "risk_hands": -8.071245193481445,
+          "risk_face": -12.895514488220215,
+          "risk_document": -4.916359901428223,
+          "risk_screen": -7.6314496994018555,
+          "risk_medical": -10.409146308898926,
+          "safe_meal": -7.055386543273926,
+          "safe_food": -1.1578741073608398,
+          "safe_package": -7.233243942260742,
+          "safe_drink": -13.24004077911377
+        }
+      }
+    },
+    {
+      "id": "challenge-02",
+      "sha256": "b869e50a8096c2a31eec09dd001870ff1e7b1a6c1f86aed131ba33b99b1f6f60",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "risk_context",
+        "foodConfidence": 0.09782366722783319,
+        "labels": [],
+        "durationMilliseconds": 207
+      },
+      "diagnostics": {
+        "foodMargin": -2.2216434478759766,
+        "riskMargin": 1.4904098510742188,
+        "promptLogits": {
+          "meal": -10.05816650390625,
+          "ingredients": -14.712409019470215,
+          "packaged": -12.55446720123291,
+          "drink": -13.673864364624023,
+          "growing_fruit": -15.857270240783691,
+          "animal": -14.510746955871582,
+          "room": -16.83919906616211,
+          "landscape": -19.492462158203125,
+          "device": -12.162071228027344,
+          "document": -14.87144660949707,
+          "screen": -11.289055824279785,
+          "medical": -14.397125244140625,
+          "person": -7.836523056030273,
+          "abstract": -18.831584930419922,
+          "risk_people": -6.021956443786621,
+          "risk_hands": -9.506292343139648,
+          "risk_face": -9.371829986572266,
+          "risk_document": -10.12211799621582,
+          "risk_screen": -12.812402725219727,
+          "risk_medical": -10.244495391845703,
+          "safe_meal": -13.721569061279297,
+          "safe_food": -7.51236629486084,
+          "safe_package": -14.774591445922852,
+          "safe_drink": -15.218549728393555
+        }
+      }
+    },
+    {
+      "id": "challenge-03",
+      "sha256": "3bdfcca19c3092cbba315d7294607d6a46e497982b6ca82cb8544964af66e2d0",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9723858725779139,
+        "labels": [],
+        "durationMilliseconds": 204
+      },
+      "diagnostics": {
+        "foodMargin": 3.56142520904541,
+        "riskMargin": -0.4416475296020508,
+        "promptLogits": {
+          "meal": -11.74193286895752,
+          "ingredients": -5.647719383239746,
+          "packaged": -12.101215362548828,
+          "drink": -15.655777931213379,
+          "growing_fruit": -9.13650894165039,
+          "animal": -13.87497615814209,
+          "room": -18.523784637451172,
+          "landscape": -12.727664947509766,
+          "device": -12.647724151611328,
+          "document": -15.978963851928711,
+          "screen": -12.11807632446289,
+          "medical": -14.400166511535645,
+          "person": -9.209144592285156,
+          "abstract": -18.087617874145508,
+          "risk_people": -7.574655532836914,
+          "risk_hands": -5.877861022949219,
+          "risk_face": -10.276235580444336,
+          "risk_document": -9.81074333190918,
+          "risk_screen": -12.963406562805176,
+          "risk_medical": -13.686962127685547,
+          "safe_meal": -14.635133743286133,
+          "safe_food": -5.436213493347168,
+          "safe_package": -14.661916732788086,
+          "safe_drink": -16.974782943725586
+        }
+      }
+    },
+    {
+      "id": "challenge-04",
+      "sha256": "f946131d46ce9ed1aa29f3d23070c4bd5d877f6667c0d38b24cbb5ce55db4d6b",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9693617494532765,
+        "labels": [],
+        "durationMilliseconds": 213
+      },
+      "diagnostics": {
+        "foodMargin": 3.4543886184692383,
+        "riskMargin": -4.638420104980469,
+        "promptLogits": {
+          "meal": -10.565446853637695,
+          "ingredients": -12.091184616088867,
+          "packaged": -8.568724632263184,
+          "drink": -15.591875076293945,
+          "growing_fruit": -14.26395034790039,
+          "animal": -14.25204849243164,
+          "room": -19.289033889770508,
+          "landscape": -16.696550369262695,
+          "device": -14.152325630187988,
+          "document": -15.92225170135498,
+          "screen": -12.023113250732422,
+          "medical": -12.835862159729004,
+          "person": -15.214567184448242,
+          "abstract": -19.508609771728516,
+          "risk_people": -11.230371475219727,
+          "risk_hands": -14.273826599121094,
+          "risk_face": -14.997590065002441,
+          "risk_document": -10.324163436889648,
+          "risk_screen": -8.381608963012695,
+          "risk_medical": -12.693426132202148,
+          "safe_meal": -12.212942123413086,
+          "safe_food": -9.542173385620117,
+          "safe_package": -3.7431888580322266,
+          "safe_drink": -13.957489013671875
+        }
+      }
+    },
+    {
+      "id": "challenge-05",
+      "sha256": "ebebf572dc3d865982e9906caa680a91ca38455fa9a9210f7621bf9aaf5d5a18",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9993536636678381,
+        "labels": [],
+        "durationMilliseconds": 268
+      },
+      "diagnostics": {
+        "foodMargin": 7.343544006347656,
+        "riskMargin": -0.792485237121582,
+        "promptLogits": {
+          "meal": -2.967222213745117,
+          "ingredients": -12.697202682495117,
+          "packaged": -13.101530075073242,
+          "drink": -13.08742904663086,
+          "growing_fruit": -15.529977798461914,
+          "animal": -14.814435958862305,
+          "room": -13.82265853881836,
+          "landscape": -14.446761131286621,
+          "device": -14.091930389404297,
+          "document": -13.901008605957031,
+          "screen": -12.722442626953125,
+          "medical": -14.95179557800293,
+          "person": -10.310766220092773,
+          "abstract": -17.247344970703125,
+          "risk_people": -4.2302656173706055,
+          "risk_hands": -6.2571516036987305,
+          "risk_face": -10.884979248046875,
+          "risk_document": -7.431103706359863,
+          "risk_screen": -9.408716201782227,
+          "risk_medical": -13.170174598693848,
+          "safe_meal": -3.4377803802490234,
+          "safe_food": -5.15286922454834,
+          "safe_package": -11.229873657226562,
+          "safe_drink": -14.398603439331055
+        }
+      }
+    },
+    {
+      "id": "challenge-06",
+      "sha256": "85467cba135e7c760435579cc21ef195d7a2675c164d392c5fa253ad8d8a6a6b",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "risk_context",
+        "foodConfidence": 6.104400664254404e-06,
+        "labels": [],
+        "durationMilliseconds": 270
+      },
+      "diagnostics": {
+        "foodMargin": -12.006494522094727,
+        "riskMargin": 0.17558670043945312,
+        "promptLogits": {
+          "meal": -14.130826950073242,
+          "ingredients": -14.121813774108887,
+          "packaged": -16.352548599243164,
+          "drink": -11.962215423583984,
+          "growing_fruit": -17.441673278808594,
+          "animal": -12.072783470153809,
+          "room": -11.66065788269043,
+          "landscape": -14.243134498596191,
+          "device": 0.04427909851074219,
+          "document": -7.252109527587891,
+          "screen": -5.684176445007324,
+          "medical": -9.145442962646484,
+          "person": -10.36572265625,
+          "abstract": -11.88251781463623,
+          "risk_people": -16.87743377685547,
+          "risk_hands": -14.597074508666992,
+          "risk_face": -12.155601501464844,
+          "risk_document": -9.802441596984863,
+          "risk_screen": -12.537393569946289,
+          "risk_medical": -11.073587417602539,
+          "safe_meal": -13.18956470489502,
+          "safe_food": -10.464550018310547,
+          "safe_package": -14.601524353027344,
+          "safe_drink": -9.978028297424316
+        }
+      }
+    },
+    {
+      "id": "challenge-07",
+      "sha256": "a6e2bf3d32278555e5d2e2a8ee56d185b1212d1ad2569179c81166e312e38aa1",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "ambiguous_similarity_margin",
+        "foodConfidence": 0.2796094497403412,
+        "labels": [],
+        "durationMilliseconds": 191
+      },
+      "diagnostics": {
+        "foodMargin": -0.9463996887207031,
+        "riskMargin": -1.692641258239746,
+        "promptLogits": {
+          "meal": -8.44736385345459,
+          "ingredients": -11.91653060913086,
+          "packaged": -11.745429992675781,
+          "drink": -14.054141998291016,
+          "growing_fruit": -16.673616409301758,
+          "animal": -11.474170684814453,
+          "room": -16.697296142578125,
+          "landscape": -18.094654083251953,
+          "device": -12.373695373535156,
+          "document": -13.329340934753418,
+          "screen": -12.210612297058105,
+          "medical": -13.42890739440918,
+          "person": -7.500964164733887,
+          "abstract": -15.67894172668457,
+          "risk_people": -7.582270622253418,
+          "risk_hands": -9.984665870666504,
+          "risk_face": -11.492977142333984,
+          "risk_document": -7.606107711791992,
+          "risk_screen": -11.127575874328613,
+          "risk_medical": -13.17343521118164,
+          "safe_meal": -8.022558212280273,
+          "safe_food": -5.889629364013672,
+          "safe_package": -9.015859603881836,
+          "safe_drink": -11.024402618408203
+        }
+      }
+    },
+    {
+      "id": "challenge-08",
+      "sha256": "43e8da33690c6483a50dd2e013c1153c644e7d7ee7e09b7998e6b870df21fcaf",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9996876240061533,
+        "labels": [],
+        "durationMilliseconds": 283
+      },
+      "diagnostics": {
+        "foodMargin": 8.070990562438965,
+        "riskMargin": -4.014124870300293,
+        "promptLogits": {
+          "meal": -9.992143630981445,
+          "ingredients": -14.436074256896973,
+          "packaged": -16.36452293395996,
+          "drink": -4.179810523986816,
+          "growing_fruit": -18.50983428955078,
+          "animal": -15.192944526672363,
+          "room": -16.6265811920166,
+          "landscape": -19.14517593383789,
+          "device": -12.544337272644043,
+          "document": -13.842799186706543,
+          "screen": -12.250801086425781,
+          "medical": -16.52458381652832,
+          "person": -12.845897674560547,
+          "abstract": -17.001358032226562,
+          "risk_people": -10.047101974487305,
+          "risk_hands": -14.399837493896484,
+          "risk_face": -12.264535903930664,
+          "risk_document": -10.65505599975586,
+          "risk_screen": -10.59593677520752,
+          "risk_medical": -14.241392135620117,
+          "safe_meal": -12.006103515625,
+          "safe_food": -8.269742965698242,
+          "safe_package": -16.406885147094727,
+          "safe_drink": -6.032977104187012
+        }
+      }
+    },
+    {
+      "id": "challenge-09",
+      "sha256": "77f98f24f4d81ef75ad9acfe1ca5ece2812c2f23cbb83f9c44b957d1d91fdc10",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9539071779024195,
+        "labels": [],
+        "durationMilliseconds": 414
+      },
+      "diagnostics": {
+        "foodMargin": 3.029909133911133,
+        "riskMargin": -1.8586835861206055,
+        "promptLogits": {
+          "meal": -12.468538284301758,
+          "ingredients": -7.108216285705566,
+          "packaged": -13.897293090820312,
+          "drink": -16.757068634033203,
+          "growing_fruit": -10.449421882629395,
+          "animal": -15.109881401062012,
+          "room": -19.734699249267578,
+          "landscape": -14.566730499267578,
+          "device": -13.411158561706543,
+          "document": -16.966903686523438,
+          "screen": -13.096780776977539,
+          "medical": -14.602571487426758,
+          "person": -10.1381254196167,
+          "abstract": -17.98009490966797,
+          "risk_people": -7.855854034423828,
+          "risk_hands": -6.678144454956055,
+          "risk_face": -10.891505241394043,
+          "risk_document": -10.214611053466797,
+          "risk_screen": -12.406386375427246,
+          "risk_medical": -14.81849479675293,
+          "safe_meal": -13.274857521057129,
+          "safe_food": -4.819460868835449,
+          "safe_package": -14.517354011535645,
+          "safe_drink": -15.491293907165527
+        }
+      }
+    },
+    {
+      "id": "challenge-10",
+      "sha256": "d473c64daf04ead76e1594181d370e9a69f9141279fc8dda60b9a940042af380",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9999162926972266,
+        "labels": [],
+        "durationMilliseconds": 244
+      },
+      "diagnostics": {
+        "foodMargin": 9.388100624084473,
+        "riskMargin": -2.6342296600341797,
+        "promptLogits": {
+          "meal": -3.511885643005371,
+          "ingredients": -8.715312004089355,
+          "packaged": -8.744437217712402,
+          "drink": -12.335025787353516,
+          "growing_fruit": -15.534283638000488,
+          "animal": -14.793691635131836,
+          "room": -18.834125518798828,
+          "landscape": -14.802067756652832,
+          "device": -14.591779708862305,
+          "document": -15.402949333190918,
+          "screen": -12.899986267089844,
+          "medical": -13.904650688171387,
+          "person": -14.083230972290039,
+          "abstract": -17.08623504638672,
+          "risk_people": -8.517495155334473,
+          "risk_hands": -12.213367462158203,
+          "risk_face": -14.880814552307129,
+          "risk_document": -8.740129470825195,
+          "risk_screen": -9.434307098388672,
+          "risk_medical": -14.510965347290039,
+          "safe_meal": -6.936244964599609,
+          "safe_food": -5.883265495300293,
+          "safe_package": -6.771728515625,
+          "safe_drink": -10.841018676757812
+        }
+      }
+    },
+    {
+      "id": "challenge-11",
+      "sha256": "5cf614d2863ca8f86b6162c7b477fd2690adbc101816206c9e675bf36d9962d0",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "risk_context",
+        "foodConfidence": 9.687280172270112e-05,
+        "labels": [],
+        "durationMilliseconds": 151
+      },
+      "diagnostics": {
+        "foodMargin": -9.24201488494873,
+        "riskMargin": 0.07197189331054688,
+        "promptLogits": {
+          "meal": -16.47202491760254,
+          "ingredients": -15.323619842529297,
+          "packaged": -16.851356506347656,
+          "drink": -14.199054718017578,
+          "growing_fruit": -18.651079177856445,
+          "animal": -4.957039833068848,
+          "room": -16.55466651916504,
+          "landscape": -15.647403717041016,
+          "device": -11.83071517944336,
+          "document": -16.58846664428711,
+          "screen": -11.099942207336426,
+          "medical": -14.50208854675293,
+          "person": -11.883031845092773,
+          "abstract": -17.510751724243164,
+          "risk_people": -16.195228576660156,
+          "risk_hands": -14.59391975402832,
+          "risk_face": -10.6396484375,
+          "risk_document": -13.790606498718262,
+          "risk_screen": -16.736143112182617,
+          "risk_medical": -13.804309844970703,
+          "safe_meal": -17.659021377563477,
+          "safe_food": -10.711620330810547,
+          "safe_package": -20.006792068481445,
+          "safe_drink": -15.343953132629395
+        }
+      }
+    },
+    {
+      "id": "challenge-12",
+      "sha256": "1b9d3dda8293c89a55d81f91f1a8cd596ea5027edc30f20fe8d3007800b4900f",
+      "result": {
+        "outcome": "foodCandidate",
+        "reason": "food_similarity_margin",
+        "foodConfidence": 0.9875998987041515,
+        "labels": [],
+        "durationMilliseconds": 139
+      },
+      "diagnostics": {
+        "foodMargin": 4.377573013305664,
+        "riskMargin": -2.3924455642700195,
+        "promptLogits": {
+          "meal": -7.216533660888672,
+          "ingredients": -7.539165496826172,
+          "packaged": -12.083044052124023,
+          "drink": -10.035776138305664,
+          "growing_fruit": -12.310111045837402,
+          "animal": -14.189367294311523,
+          "room": -16.669649124145508,
+          "landscape": -14.59028148651123,
+          "device": -13.372657775878906,
+          "document": -16.335464477539062,
+          "screen": -11.594106674194336,
+          "medical": -12.769841194152832,
+          "person": -13.3643159866333,
+          "abstract": -16.914104461669922,
+          "risk_people": -8.078888893127441,
+          "risk_hands": -12.558406829833984,
+          "risk_face": -15.004981994628906,
+          "risk_document": -8.576055526733398,
+          "risk_screen": -9.94883918762207,
+          "risk_medical": -14.038025856018066,
+          "safe_meal": -8.251599311828613,
+          "safe_food": -5.686443328857422,
+          "safe_package": -9.531427383422852,
+          "safe_drink": -9.694894790649414
+        }
+      }
+    },
+    {
+      "id": "challenge-13",
+      "sha256": "a9eb5123c6af19ed7dfb86408f1684982a83414751beb320b80f0ec901b7a00a",
+      "result": {
+        "outcome": "uncertain",
+        "reason": "risk_context",
+        "foodConfidence": 0.00023699471837085155,
+        "labels": [],
+        "durationMilliseconds": 274
+      },
+      "diagnostics": {
+        "foodMargin": -8.347235679626465,
+        "riskMargin": 2.179079055786133,
+        "promptLogits": {
+          "meal": -15.179293632507324,
+          "ingredients": -16.76719093322754,
+          "packaged": -17.67718505859375,
+          "drink": -15.396541595458984,
+          "growing_fruit": -18.589595794677734,
+          "animal": -6.832057952880859,
+          "room": -15.305898666381836,
+          "landscape": -19.2545166015625,
+          "device": -12.685586929321289,
+          "document": -16.364521026611328,
+          "screen": -12.675951957702637,
+          "medical": -16.3768367767334,
+          "person": -11.557485580444336,
+          "abstract": -17.748464584350586,
+          "risk_people": -14.588086128234863,
+          "risk_hands": -18.922395706176758,
+          "risk_face": -10.914848327636719,
+          "risk_document": -15.263604164123535,
+          "risk_screen": -16.36001968383789,
+          "risk_medical": -13.540853500366211,
+          "safe_meal": -19.60726547241211,
+          "safe_food": -13.093927383422852,
+          "safe_package": -22.469606399536133,
+          "safe_drink": -16.99455451965332
+        }
+      }
+    }
+  ]
+}

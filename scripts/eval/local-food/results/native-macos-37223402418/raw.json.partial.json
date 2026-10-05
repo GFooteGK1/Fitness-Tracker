@@ -1,0 +1,6328 @@
+{
+  "cases" : [
+    {
+      "id" : "public-01",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 653,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 384
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 211,
+          "height" : 1024,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 768
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 127,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 384
+        }
+      ],
+      "sha256" : "cd3e68735ea088ddbc4423c04ba90b2acda242b19c78a4ff453918c6a9bdfbc5"
+    },
+    {
+      "id" : "public-02",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 125,
+          "height" : 230,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 127,
+          "height" : 432,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 120,
+          "height" : 230,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "8094463203824b4844ec6f8912e722155e1586f0ba309aa1be5947bbe1248fe6"
+    },
+    {
+      "id" : "public-03",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 154,
+          "height" : 288,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 144,
+          "height" : 540,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 122,
+          "height" : 288,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "0e536d690ae78ebd5fc1a2d29c7e4a5a080338e0f84a7ded618adad02cef79b2"
+    },
+    {
+      "id" : "public-04",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 146,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 384
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 140,
+          "height" : 1024,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 768
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 120,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 384
+        }
+      ],
+      "sha256" : "7a1d8b81c53327288b00ef256f0cbbdc1b977d4e48057377a80046856e3a6cd3"
+    },
+    {
+      "id" : "public-05",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 123,
+          "height" : 384,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 122,
+          "height" : 720,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 125,
+          "height" : 384,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "82e92041095a81f4d4551897f154dcc7f344960274b0bac38cf9f196916ec6fc"
+    },
+    {
+      "id" : "public-06",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 112,
+          "height" : 384,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 112,
+          "height" : 720,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 113,
+          "height" : 384,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "57574634a4e9dcd4dc9c81be001dcab8b47f6dde6b9ddf34d1de45e6b4e51337"
+    },
+    {
+      "id" : "public-07",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 155,
+          "height" : 384,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 130,
+          "height" : 720,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 128,
+          "height" : 384,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "766e82aaef490481d8228eed735c7edac32c063b5c7fe0bfb91a780c402c1da9"
+    },
+    {
+      "id" : "public-08",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 116,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 384
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 128,
+          "height" : 1024,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 768
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 111,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 384
+        }
+      ],
+      "sha256" : "79a81e3b29bad3f0db38da572c7b431d62ad15ee51ea7e3fad96ac070505e1b3"
+    },
+    {
+      "id" : "public-09",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 111,
+          "height" : 386,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 124,
+          "height" : 723,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 118,
+          "height" : 386,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "c0bf84ebc9caf53dcb014e677d9562f34007adb5cdbb96d95aea9189a7b2edf3"
+    },
+    {
+      "id" : "public-10",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 124,
+          "height" : 469,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 129,
+          "height" : 880,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 127,
+          "height" : 469,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "3c16623da2723c7c8d86bc0047029b86f6dabef74d4f0c35eade520a034b9e77"
+    },
+    {
+      "id" : "public-11",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 183,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 1,
+              "observations" : [
+                {
+                  "accepted" : true,
+                  "acceptedPointCount" : 13,
+                  "confidence" : 1,
+                  "pointCount" : 21,
+                  "points" : [
+                    {
+                      "confidence" : 0.39930072,
+                      "x" : 0.5536065101623535,
+                      "y" : 0.9963019490242004
+                    },
+                    {
+                      "confidence" : 0.37071186,
+                      "x" : 0.523190975189209,
+                      "y" : 0.9768556356430054
+                    },
+                    {
+                      "confidence" : 0.3509208,
+                      "x" : 0.5526520013809204,
+                      "y" : 0.9975049495697021
+                    },
+                    {
+                      "confidence" : 0.34714282,
+                      "x" : 0.5878717303276062,
+                      "y" : 0.9916032552719116
+                    },
+                    {
+                      "confidence" : 0.29046762,
+                      "x" : 0.6172760725021362,
+                      "y" : 0.955190122127533
+                    },
+                    {
+                      "confidence" : 0.2875042,
+                      "x" : 0.5819487571716309,
+                      "y" : 0.9974409341812134
+                    },
+                    {
+                      "confidence" : 0.28077388,
+                      "x" : 0.601708173751831,
+                      "y" : 0.9694110751152039
+                    },
+                    {
+                      "confidence" : 0.27310672,
+                      "x" : 0.6099636554718018,
+                      "y" : 0.9667271375656128
+                    },
+                    {
+                      "confidence" : 0.23285323,
+                      "x" : 0.5594295263290405,
+                      "y" : 0.9816992282867432
+                    },
+                    {
+                      "confidence" : 0.21830593,
+                      "x" : 0.6368236541748047,
+                      "y" : 0.9578073024749756
+                    },
+                    {
+                      "confidence" : 0.20910941,
+                      "x" : 0.6141414642333984,
+                      "y" : 0.9536001682281494
+                    },
+                    {
+                      "confidence" : 0.20813112,
+                      "x" : 0.5764596462249756,
+                      "y" : 0.9559541940689087
+                    },
+                    {
+                      "confidence" : 0.2050285,
+                      "x" : 0.5830118060112,
+                      "y" : 0.9943209886550903
+                    },
+                    {
+                      "confidence" : 0.14933231,
+                      "x" : 0.5428896546363831,
+                      "y" : 0.9948709011077881
+                    },
+                    {
+                      "confidence" : 0.13148484,
+                      "x" : 0.6377860307693481,
+                      "y" : 0.9717601537704468
+                    },
+                    {
+                      "confidence" : 0.13027626,
+                      "x" : 0.5716167688369751,
+                      "y" : 0.9937769770622253
+                    },
+                    {
+                      "confidence" : 0.12992722,
+                      "x" : 0.5322414040565491,
+                      "y" : 0.9845407605171204
+                    },
+                    {
+                      "confidence" : 0.12184825,
+                      "x" : 0.5866868495941162,
+                      "y" : 0.9995620250701904
+                    },
+                    {
+                      "confidence" : 0.10835753,
+                      "x" : 0.6310690641403198,
+                      "y" : 0.9871944785118103
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 0
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 0
+                    }
+                  ],
+                  "pointsTruncated" : false
+                }
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 1,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 384
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 164,
+          "height" : 1024,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 1,
+              "observations" : [
+                {
+                  "accepted" : true,
+                  "acceptedPointCount" : 9,
+                  "confidence" : 1,
+                  "pointCount" : 21,
+                  "points" : [
+                    {
+                      "confidence" : 0.52114296,
+                      "x" : 0.5222964882850647,
+                      "y" : 0.9771749377250671
+                    },
+                    {
+                      "confidence" : 0.37159532,
+                      "x" : 0.5548768639564514,
+                      "y" : 0.9959754347801208
+                    },
+                    {
+                      "confidence" : 0.33061478,
+                      "x" : 0.5541034936904907,
+                      "y" : 0.9978452920913696
+                    },
+                    {
+                      "confidence" : 0.3282211,
+                      "x" : 0.5890412330627441,
+                      "y" : 0.9918754696846008
+                    },
+                    {
+                      "confidence" : 0.27618352,
+                      "x" : 0.5805729031562805,
+                      "y" : 0.9542999863624573
+                    },
+                    {
+                      "confidence" : 0.25358954,
+                      "x" : 0.5846494436264038,
+                      "y" : 0.9972060322761536
+                    },
+                    {
+                      "confidence" : 0.23493454,
+                      "x" : 0.5992871522903442,
+                      "y" : 0.9719386696815491
+                    },
+                    {
+                      "confidence" : 0.20766877,
+                      "x" : 0.5314737558364868,
+                      "y" : 0.9858389496803284
+                    },
+                    {
+                      "confidence" : 0.20247522,
+                      "x" : 0.5683202147483826,
+                      "y" : 0.9817906618118286
+                    },
+                    {
+                      "confidence" : 0.19834702,
+                      "x" : 0.6078780293464661,
+                      "y" : 0.9674208760261536
+                    },
+                    {
+                      "confidence" : 0.19017124,
+                      "x" : 0.6143088936805725,
+                      "y" : 0.956490159034729
+                    },
+                    {
+                      "confidence" : 0.18321078,
+                      "x" : 0.5420122742652893,
+                      "y" : 0.9980725646018982
+                    },
+                    {
+                      "confidence" : 0.18025668,
+                      "x" : 0.6360141038894653,
+                      "y" : 0.955669641494751
+                    },
+                    {
+                      "confidence" : 0.16381504,
+                      "x" : 0.6092671751976013,
+                      "y" : 0.956089437007904
+                    },
+                    {
+                      "confidence" : 0.1395071,
+                      "x" : 0.5863771438598633,
+                      "y" : 0.9900897145271301
+                    },
+                    {
+                      "confidence" : 0.10124435,
+                      "x" : 0.575386106967926,
+                      "y" : 0.9880994558334351
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 0
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 0
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 0
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 0
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 0
+                    }
+                  ],
+                  "pointsTruncated" : false
+                }
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 1,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 768
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 140,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 1,
+              "observations" : [
+                {
+                  "accepted" : true,
+                  "acceptedPointCount" : 13,
+                  "confidence" : 1,
+                  "pointCount" : 21,
+                  "points" : [
+                    {
+                      "confidence" : 0.39930072,
+                      "x" : 0.5536065101623535,
+                      "y" : 0.9963019490242004
+                    },
+                    {
+                      "confidence" : 0.37071186,
+                      "x" : 0.523190975189209,
+                      "y" : 0.9768556356430054
+                    },
+                    {
+                      "confidence" : 0.3509208,
+                      "x" : 0.5526520013809204,
+                      "y" : 0.9975049495697021
+                    },
+                    {
+                      "confidence" : 0.34714282,
+                      "x" : 0.5878717303276062,
+                      "y" : 0.9916032552719116
+                    },
+                    {
+                      "confidence" : 0.29046762,
+                      "x" : 0.6172760725021362,
+                      "y" : 0.955190122127533
+                    },
+                    {
+                      "confidence" : 0.2875042,
+                      "x" : 0.5819487571716309,
+                      "y" : 0.9974409341812134
+                    },
+                    {
+                      "confidence" : 0.28077388,
+                      "x" : 0.601708173751831,
+                      "y" : 0.9694110751152039
+                    },
+                    {
+                      "confidence" : 0.27310672,
+                      "x" : 0.6099636554718018,
+                      "y" : 0.9667271375656128
+                    },
+                    {
+                      "confidence" : 0.23285323,
+                      "x" : 0.5594295263290405,
+                      "y" : 0.9816992282867432
+                    },
+                    {
+                      "confidence" : 0.21830593,
+                      "x" : 0.6368236541748047,
+                      "y" : 0.9578073024749756
+                    },
+                    {
+                      "confidence" : 0.20910941,
+                      "x" : 0.6141414642333984,
+                      "y" : 0.9536001682281494
+                    },
+                    {
+                      "confidence" : 0.20813112,
+                      "x" : 0.5764596462249756,
+                      "y" : 0.9559541940689087
+                    },
+                    {
+                      "confidence" : 0.2050285,
+                      "x" : 0.5830118060112,
+                      "y" : 0.9943209886550903
+                    },
+                    {
+                      "confidence" : 0.14933231,
+                      "x" : 0.5428896546363831,
+                      "y" : 0.9948709011077881
+                    },
+                    {
+                      "confidence" : 0.13148484,
+                      "x" : 0.6377860307693481,
+                      "y" : 0.9717601537704468
+                    },
+                    {
+                      "confidence" : 0.13027626,
+                      "x" : 0.5716167688369751,
+                      "y" : 0.9937769770622253
+                    },
+                    {
+                      "confidence" : 0.12992722,
+                      "x" : 0.5322414040565491,
+                      "y" : 0.9845407605171204
+                    },
+                    {
+                      "confidence" : 0.12184825,
+                      "x" : 0.5866868495941162,
+                      "y" : 0.9995620250701904
+                    },
+                    {
+                      "confidence" : 0.10835753,
+                      "x" : 0.6310690641403198,
+                      "y" : 0.9871944785118103
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 0
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 0
+                    }
+                  ],
+                  "pointsTruncated" : false
+                }
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 1,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 384
+        }
+      ],
+      "sha256" : "9282e244344761c4d09008a8bcb5dd9f62cecf0f87dc609c91543dfe425b63a0"
+    },
+    {
+      "id" : "public-12",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 142,
+          "height" : 384,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 146,
+          "height" : 720,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 133,
+          "height" : 384,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 1,
+              "observations" : [
+                {
+                  "accepted" : true,
+                  "acceptedPointCount" : 0,
+                  "confidence" : 0.60628,
+                  "pointCount" : 0,
+                  "points" : [
+
+                  ],
+                  "pointsTruncated" : false,
+                  "rectangle" : [
+                    0.3708510295030859,
+                    0.8042043298482895,
+                    0.2701086989998618,
+                    0.19570258472958812
+                  ]
+                }
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 1,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "be8126f1a827961ab6d7ee3dab8f3f671543d5a428b72a173c2bcc726e67c1d4"
+    },
+    {
+      "id" : "public-13",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 113,
+          "height" : 341,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 98,
+          "height" : 640,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 106,
+          "height" : 341,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "86994580fbc39c474c32c92990a6e48460efc2c6227c9acb4635782aaf736e69"
+    },
+    {
+      "id" : "public-14",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 124,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 231
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 123,
+          "height" : 1024,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 462
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 110,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 231
+        }
+      ],
+      "sha256" : "86165ead72696d2a474de253f94423338244a8a6e401f85d698ae9e620b0b922"
+    },
+    {
+      "id" : "public-15",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 134,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 120,
+          "height" : 960,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 120,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "48539393758b882b109a72670f7068fbf85504ea10ad54c8ee1839543d914512"
+    },
+    {
+      "id" : "public-16",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 119,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 388
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 142,
+          "height" : 1024,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 775
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 111,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 388
+        }
+      ],
+      "sha256" : "174b51583f5e261fc393467ac0da80c40f2ca642c3ac865f498c641146868e1f"
+    },
+    {
+      "id" : "public-17",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 106,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 381
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 118,
+          "height" : 1024,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 761
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 118,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 381
+        }
+      ],
+      "sha256" : "95d73c4bbf08c17a597a3b9c299b9bcf8fa60e6ab21b98056ccab1b40ce908ba"
+    },
+    {
+      "id" : "public-18",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 121,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 125,
+          "height" : 960,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 118,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "23f995e657f508c7a0d794635467b301e1217149f701deb1642e8f670e6683af"
+    },
+    {
+      "id" : "public-19",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 148,
+          "height" : 392,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 125,
+          "height" : 735,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 121,
+          "height" : 392,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "675c879db0427550de9e1b121df5aa84e40fc758795ed6313bdb32cb1f050e2c"
+    },
+    {
+      "id" : "public-20",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 136,
+          "height" : 384,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 157,
+          "height" : 768,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 1024
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 121,
+          "height" : 384,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "269c18eb3e4f9e31e989c9764f06944b5ece7c61825518d27d44dafd40e60dd6"
+    },
+    {
+      "id" : "public-21",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 111,
+          "height" : 384,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 134,
+          "height" : 768,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 1024
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 118,
+          "height" : 384,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "79324705e38f9b679d299d64ea10a211334be0e332103438033a6bc04e09838d"
+    },
+    {
+      "id" : "public-22",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 113,
+          "height" : 331,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 1,
+              "observations" : [
+                {
+                  "accepted" : true,
+                  "acceptedPointCount" : 9,
+                  "confidence" : 1,
+                  "pointCount" : 19,
+                  "points" : [
+                    {
+                      "confidence" : 0.61863816,
+                      "x" : 0.6135784387588501,
+                      "y" : 0.2658314108848572
+                    },
+                    {
+                      "confidence" : 0.5621421,
+                      "x" : 0.5861802697181702,
+                      "y" : 0.3481813073158264
+                    },
+                    {
+                      "confidence" : 0.48806468,
+                      "x" : 0.5543120801448822,
+                      "y" : 0.3315526247024536
+                    },
+                    {
+                      "confidence" : 0.41479406,
+                      "x" : 0.6191564202308655,
+                      "y" : 0.20564675331115723
+                    },
+                    {
+                      "confidence" : 0.41398728,
+                      "x" : 0.5224438905715942,
+                      "y" : 0.3149239420890808
+                    },
+                    {
+                      "confidence" : 0.40674865,
+                      "x" : 0.5109334588050842,
+                      "y" : 0.34684818983078003
+                    },
+                    {
+                      "confidence" : 0.37071294,
+                      "x" : 0.5088194012641907,
+                      "y" : 0.33597415685653687
+                    },
+                    {
+                      "confidence" : 0.3386644,
+                      "x" : 0.5327452421188354,
+                      "y" : 0.35962462425231934
+                    },
+                    {
+                      "confidence" : 0.24469332,
+                      "x" : 0.5170197486877441,
+                      "y" : 0.22711926698684692
+                    },
+                    {
+                      "confidence" : 0.17595777,
+                      "x" : 0.5062362551689148,
+                      "y" : 0.35354888439178467
+                    },
+                    {
+                      "confidence" : 0.16855095,
+                      "x" : 0.5805394053459167,
+                      "y" : 0.18244284391403198
+                    },
+                    {
+                      "confidence" : 0.16542998,
+                      "x" : 0.559159904718399,
+                      "y" : 0.1796002984046936
+                    },
+                    {
+                      "confidence" : 0.16230899,
+                      "x" : 0.5377804040908813,
+                      "y" : 0.17675775289535522
+                    },
+                    {
+                      "confidence" : 0.1349504,
+                      "x" : 0.5074338316917419,
+                      "y" : 0.17912131547927856
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    }
+                  ],
+                  "pointsTruncated" : false
+                }
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 1,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 104,
+          "height" : 621,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 1,
+              "observations" : [
+                {
+                  "accepted" : true,
+                  "acceptedPointCount" : 8,
+                  "confidence" : 1,
+                  "pointCount" : 19,
+                  "points" : [
+                    {
+                      "confidence" : 0.53037083,
+                      "x" : 0.6130799055099487,
+                      "y" : 0.2672075629234314
+                    },
+                    {
+                      "confidence" : 0.51895046,
+                      "x" : 0.5825748443603516,
+                      "y" : 0.3475528359413147
+                    },
+                    {
+                      "confidence" : 0.44406682,
+                      "x" : 0.5527947843074799,
+                      "y" : 0.3300994038581848
+                    },
+                    {
+                      "confidence" : 0.385879,
+                      "x" : 0.5105301737785339,
+                      "y" : 0.3517654538154602
+                    },
+                    {
+                      "confidence" : 0.3691832,
+                      "x" : 0.5230147242546082,
+                      "y" : 0.31264597177505493
+                    },
+                    {
+                      "confidence" : 0.35927668,
+                      "x" : 0.508388876914978,
+                      "y" : 0.33880001306533813
+                    },
+                    {
+                      "confidence" : 0.3517687,
+                      "x" : 0.6166918873786926,
+                      "y" : 0.20907670259475708
+                    },
+                    {
+                      "confidence" : 0.3257939,
+                      "x" : 0.5305160880088806,
+                      "y" : 0.36678755283355713
+                    },
+                    {
+                      "confidence" : 0.19480877,
+                      "x" : 0.5160992741584778,
+                      "y" : 0.22117137908935547
+                    },
+                    {
+                      "confidence" : 0.16699041,
+                      "x" : 0.5820423364639282,
+                      "y" : 0.1828649640083313
+                    },
+                    {
+                      "confidence" : 0.16589312,
+                      "x" : 0.5070638060569763,
+                      "y" : 0.3553173542022705
+                    },
+                    {
+                      "confidence" : 0.15463579,
+                      "x" : 0.5606318712234497,
+                      "y" : 0.17721763253211975
+                    },
+                    {
+                      "confidence" : 0.14228114,
+                      "x" : 0.5392214059829712,
+                      "y" : 0.1715703010559082
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    }
+                  ],
+                  "pointsTruncated" : false
+                }
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 1,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 104,
+          "height" : 331,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 1,
+              "observations" : [
+                {
+                  "accepted" : true,
+                  "acceptedPointCount" : 9,
+                  "confidence" : 1,
+                  "pointCount" : 19,
+                  "points" : [
+                    {
+                      "confidence" : 0.61863816,
+                      "x" : 0.6135784387588501,
+                      "y" : 0.2658314108848572
+                    },
+                    {
+                      "confidence" : 0.5621421,
+                      "x" : 0.5861802697181702,
+                      "y" : 0.3481813073158264
+                    },
+                    {
+                      "confidence" : 0.48806468,
+                      "x" : 0.5543120801448822,
+                      "y" : 0.3315526247024536
+                    },
+                    {
+                      "confidence" : 0.41479406,
+                      "x" : 0.6191564202308655,
+                      "y" : 0.20564675331115723
+                    },
+                    {
+                      "confidence" : 0.41398728,
+                      "x" : 0.5224438905715942,
+                      "y" : 0.3149239420890808
+                    },
+                    {
+                      "confidence" : 0.40674865,
+                      "x" : 0.5109334588050842,
+                      "y" : 0.34684818983078003
+                    },
+                    {
+                      "confidence" : 0.37071294,
+                      "x" : 0.5088194012641907,
+                      "y" : 0.33597415685653687
+                    },
+                    {
+                      "confidence" : 0.3386644,
+                      "x" : 0.5327452421188354,
+                      "y" : 0.35962462425231934
+                    },
+                    {
+                      "confidence" : 0.24469332,
+                      "x" : 0.5170197486877441,
+                      "y" : 0.22711926698684692
+                    },
+                    {
+                      "confidence" : 0.17595777,
+                      "x" : 0.5062362551689148,
+                      "y" : 0.35354888439178467
+                    },
+                    {
+                      "confidence" : 0.16855095,
+                      "x" : 0.5805394053459167,
+                      "y" : 0.18244284391403198
+                    },
+                    {
+                      "confidence" : 0.16542998,
+                      "x" : 0.559159904718399,
+                      "y" : 0.1796002984046936
+                    },
+                    {
+                      "confidence" : 0.16230899,
+                      "x" : 0.5377804040908813,
+                      "y" : 0.17675775289535522
+                    },
+                    {
+                      "confidence" : 0.1349504,
+                      "x" : 0.5074338316917419,
+                      "y" : 0.17912131547927856
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    }
+                  ],
+                  "pointsTruncated" : false
+                }
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 1,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "b7287f03caa66fce40c91cd29bd3288b7ade9c855e45a17b2cdbb4b3f50c7ccb"
+    },
+    {
+      "id" : "public-23",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 118,
+          "height" : 384,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 113,
+          "height" : 720,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 1,
+              "observations" : [
+                {
+                  "accepted" : true,
+                  "acceptedPointCount" : 15,
+                  "confidence" : 1,
+                  "pointCount" : 19,
+                  "points" : [
+                    {
+                      "confidence" : 0.61003935,
+                      "x" : 0.5182034373283386,
+                      "y" : 0.7891494631767273
+                    },
+                    {
+                      "confidence" : 0.5820665,
+                      "x" : 0.4634440839290619,
+                      "y" : 0.4759821891784668
+                    },
+                    {
+                      "confidence" : 0.5703831,
+                      "x" : 0.47644397616386414,
+                      "y" : 0.47765398025512695
+                    },
+                    {
+                      "confidence" : 0.5362736,
+                      "x" : 0.4402332305908203,
+                      "y" : 0.6872274279594421
+                    },
+                    {
+                      "confidence" : 0.52605,
+                      "x" : 0.5074653625488281,
+                      "y" : 0.753822922706604
+                    },
+                    {
+                      "confidence" : 0.5094876,
+                      "x" : 0.45542749762535095,
+                      "y" : 0.6070611476898193
+                    },
+                    {
+                      "confidence" : 0.5083327,
+                      "x" : 0.4655163437128067,
+                      "y" : 0.6109694242477417
+                    },
+                    {
+                      "confidence" : 0.5071778,
+                      "x" : 0.47560518980026245,
+                      "y" : 0.6148777008056641
+                    },
+                    {
+                      "confidence" : 0.48345527,
+                      "x" : 0.46123988926410675,
+                      "y" : 0.6970893442630768
+                    },
+                    {
+                      "confidence" : 0.45618883,
+                      "x" : 0.4756219685077667,
+                      "y" : 0.5476974844932556
+                    },
+                    {
+                      "confidence" : 0.45612797,
+                      "x" : 0.46303558349609375,
+                      "y" : 0.5461140275001526
+                    },
+                    {
+                      "confidence" : 0.43063694,
+                      "x" : 0.4822465479373932,
+                      "y" : 0.7069512605667114
+                    },
+                    {
+                      "confidence" : 0.42728752,
+                      "x" : 0.42773008346557617,
+                      "y" : 0.6295140981674194
+                    },
+                    {
+                      "confidence" : 0.32434154,
+                      "x" : 0.4761858582496643,
+                      "y" : 0.7249290943145752
+                    },
+                    {
+                      "confidence" : 0.28933853,
+                      "x" : 0.46311327815055847,
+                      "y" : 0.7233527898788452
+                    },
+                    {
+                      "confidence" : 0.19717185,
+                      "x" : 0.43343937397003174,
+                      "y" : 0.5862473845481873
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    },
+                    {
+                      "confidence" : 0,
+                      "x" : 0,
+                      "y" : 1
+                    }
+                  ],
+                  "pointsTruncated" : false
+                }
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 1,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 114,
+          "height" : 384,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "9ed4adf72393cba198f4cb4fa6845cb8bdcdbd487e93fb2ad4c29ea6f724e62e"
+    },
+    {
+      "id" : "public-24",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 114,
+          "height" : 384,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 107,
+          "height" : 720,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 103,
+          "height" : 384,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "04cbd08fc2e56d57b67bc84d13720ef4d65c14913ab6f09461cc56532dfff8c9"
+    },
+    {
+      "id" : "public-25",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 128,
+          "height" : 384,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 107,
+          "height" : 720,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 113,
+          "height" : 384,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "124a6700f7efb9f40f37617671cfcab9039c8690b3326b1bbd646841652a2ea3"
+    },
+    {
+      "id" : "public-26",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 119,
+          "height" : 384,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 124,
+          "height" : 720,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 960
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 131,
+          "height" : 384,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "2f1501c546a67631dc28cd78b1a9fdc085619f41ca0ca7f4e07c2c0b9767de22"
+    },
+    {
+      "id" : "synthetic-01",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 119,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 111,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 110,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "8abbf682b14add4475fa8c7fbb32b5774d882d676b74e3b926b292fb587397b4"
+    },
+    {
+      "id" : "synthetic-02",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 113,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 110,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 105,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "12fdae27efa96fa411584ee511ea5a2fd656cc66321d8c4df52c56fab2b92160"
+    },
+    {
+      "id" : "synthetic-03",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 108,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 135,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 125,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "6a6c5841b043cc882f1644a775893b121e507981b3739c2caf801790885f5331"
+    },
+    {
+      "id" : "synthetic-04",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 150,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 117,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 143,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "1f66a32c4220acbd055f8b50507ce4532789749241b3b5f88f540399e779be9d"
+    },
+    {
+      "id" : "synthetic-05",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 127,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 147,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 123,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "590a9a30dd88a5f8260b0e3d01c45558d1cf37caa2ec76d40e5eaa38f8973a85"
+    },
+    {
+      "id" : "synthetic-06",
+      "result" : {
+        "durationMilliseconds" : 0,
+        "labels" : [
+
+        ],
+        "outcome" : "uncertain",
+        "reason" : "diagnostics_only"
+      },
+      "sceneDiagnostics" : [
+        {
+          "completed" : true,
+          "durationMilliseconds" : 123,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 129,
+          "height" : 512,
+          "humanUpperBodyOnly" : false,
+          "maximumPixels" : 1024,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "full-body-1024",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        },
+        {
+          "completed" : true,
+          "durationMilliseconds" : 139,
+          "height" : 512,
+          "humanUpperBodyOnly" : true,
+          "maximumPixels" : 512,
+          "orientation" : "up after ImageIO transform",
+          "profile" : "upper-body-512",
+          "reason" : "diagnostic_completed",
+          "stages" : [
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "face"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "humanRectangle"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "bodyPose"
+            },
+            {
+              "acceptedCount" : 0,
+              "observations" : [
+
+              ],
+              "observationsTruncated" : false,
+              "rawCount" : 0,
+              "resultsAvailable" : true,
+              "stage" : "handPose"
+            }
+          ],
+          "width" : 512
+        }
+      ],
+      "sha256" : "d7751117b5d85d31010bdaa9658c7c33c7469ba60f6c42a452f15cdf8227d5f3"
+    }
+  ],
+  "completed" : false,
+  "diagnosticMaximumObservations" : 64,
+  "diagnosticMaximumPoints" : 32,
+  "diagnosticSourceRevision" : "9d3d28d8e960038e6d5d75b1535e4fffc9dd7630",
+  "diagnosticVersion" : "vision-geometry-diagnostics-v1",
+  "generatedAt" : "2026-10-04T18:13:18Z",
+  "manifestSHA256" : "cd89bff783f09f4df984af7d4a23b1ffa5d691d5b7c29e1bd445b80125f265b9",
+  "operatingSystem" : "Version 26.6.2 (Build 25G83)",
+  "policyVersion" : "vision-geometry-diagnostics-v1",
+  "preprocessing" : "ImageIO oriented thumbnails; diagnostic profiles at 512 and 1024 pixels",
+  "requestRevision" : 0,
+  "sceneGuardVersion" : "vision-human-geometry-v1",
+  "sceneMaximumHandCount" : 4,
+  "sceneMinimumConfidence" : 0.2,
+  "sceneMinimumPosePoints" : 2,
+  "sceneRevisions" : {
+    "bodyPose" : 1,
+    "face" : 3,
+    "handPose" : 1,
+    "humanRectangle" : 2
+  },
+  "schemaVersion" : 1
+}
