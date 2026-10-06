@@ -16,6 +16,10 @@ async function handle(request: Request, context: { params: Promise<{ id: string 
   try {
     let state = await readCaptureRequest(supabase, user.id, id)
     if (!state) return NextResponse.json({ state: 'save_unconfirmed', retryAllowed: false, receipts: [] }, { status: 404, headers })
+    if (id.startsWith('photo-draft:') && state.draftOutcome) return NextResponse.json({
+      state: 'draft', canonicalChanged: false, draft: state.draftOutcome,
+      requestResolved: true, requestStatus: state.request.status, retryAllowed: false, receipts: [],
+    }, { headers })
     if (cancel) {
       const input = await request.json().catch(() => null)
       if (!input || !state.items.some(item => item.id === input.operationId)) return NextResponse.json({ error: 'Select an unresolved item from this request.' }, { status: 422, headers })

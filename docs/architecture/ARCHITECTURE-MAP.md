@@ -25,6 +25,15 @@
 
 ## 🔐 **Authentication System**
 
+### Selected photo review
+
+`/capture/photos` sends an explicitly approved image to
+`/api/meals/photo-drafts`, which reuses the Socius vision analyzer and stages an
+owned `activity_drafts` record. Corrections use the photo-draft revision boundary;
+acceptance or dismissal uses `/api/capture/drafts`. Only atomic acceptance writes
+canonical nutrition. Photo bytes are transient; no storage upload is enabled.
+The existing capture-v2 pause applies. See ADR-0030 for recovery and release scope.
+
 ### **Core Components:**
 - **AuthContext** (`app/lib/auth/AuthContext.tsx`) - Central auth state management
 - **Supabase Clients** (`app/lib/auth/supabase-*.ts`) - Database connections
