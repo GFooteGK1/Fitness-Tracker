@@ -71,3 +71,8 @@ scripts/eval/manifest.*.json
 
 # Local UI audit logs and working evidence
 /output/ui-consistency/
+
+# Local photo-review verification and browser session state
+/.playwright-cli/
+/output/playwright/photo-review/
+/output/photo-review-drafts/

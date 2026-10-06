@@ -11,6 +11,28 @@ const request = (text = 'eggs', timestamp = '2026-09-04T04:59:00Z') => ({
 })
 const ok = () => new Response(JSON.stringify({ mealId: 'saved' }))
 
+it('clears old photo uncertainty after a recovered draft and approval of a different photo', async () => {
+  const { webcrypto } = await import('node:crypto')
+  vi.stubGlobal('crypto', { randomUUID: () => webcrypto.randomUUID(), subtle: webcrypto.subtle })
+  window.history.replaceState({}, '', '/capture/photos?recommendationId=22222222-2222-4222-8222-222222222222')
+  const fetch = vi.fn().mockRejectedValueOnce(new Error('Draft response lost'))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ state: 'draft', requestResolved: true, canonicalChanged: false, receipts: [] })))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ state: 'draft', draft: { id: 'new-draft' }, canonicalChanged: false })))
+  vi.stubGlobal('fetch', fetch)
+  const form = (bytes: string) => { const body = new FormData(); body.set('photo', new File([bytes], 'meal.jpg', { type: 'image/jpeg' })); body.set('timestamp', '2026-10-06T12:00:00Z'); body.set('approved', 'true'); return { method: 'POST', body } }
+  const { sendLoggingRequest } = await import('@/app/lib/client/logging-request')
+  const { hasUnreconciledCapture } = await import('@/app/lib/client/capture-uncertainty')
+  const { refreshAfterCanonicalSave } = await import('@/app/lib/client/recommendations')
+  await expect(sendLoggingRequest('/api/meals/photo-drafts', form('first-photo'), 'athlete-a')).rejects.toThrow('Draft response lost')
+  expect(hasUnreconciledCapture('athlete-a')).toBe(true)
+  await sendLoggingRequest('/api/meals/photo-drafts', form('second-photo'), 'athlete-a')
+  expect(fetch.mock.calls[1][0]).toContain('/api/logging/requests/photo-draft%3A')
+  expect(hasUnreconciledCapture('athlete-a')).toBe(false); expect(sessionStorage.length).toBe(0)
+  const first = fetch.mock.calls[0][1].body as FormData, second = fetch.mock.calls[2][1].body as FormData
+  expect(first.get('requestId')).not.toBe(second.get('requestId')); expect(second.has('recommendationId')).toBe(false)
+  expect(refreshAfterCanonicalSave).not.toHaveBeenCalled()
+})
+
 it('releases the failed workout identity only after proof and preserves the Friday entry on resubmission', async () => {
   const input = { text: 'APEX Training — September 25, 2026. Overall session RPE: 5.5/10.', date: '2026-09-25' }
   const fetch = vi.fn()
