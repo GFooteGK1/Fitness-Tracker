@@ -14,3 +14,4 @@ scripts/eval/local-food/results/native-macos-37223402418/*.json -text
 scripts/eval/local-food/fixtures.fresh-challenge-v1.json -text
 scripts/eval/local-food/fresh-challenge-v1-label-audit.json -text
 scripts/eval/local-food/results/fresh-siglip2-windows-20261005/*.json -text
+scripts/eval/local-food/results/native-macos-37309091907/*.json -text

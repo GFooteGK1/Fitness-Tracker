@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "runId": 37309091907,
+  "sourceRevision": "bbd38819f6744605cb455a365142724805e52a8f",
+  "runConclusion": "failure",
+  "compileConclusion": "success",
+  "diagnosticConclusion": "failure",
+  "dataset": "fresh-challenge-v1",
+  "fixtureManifestSHA256": "d1fbfa729b3697346fda30d7e875cb07ff640fdc1d664133519d2a6ebf000ab0",
+  "nativeExecuted": false,
+  "completedNativeCases": 0,
+  "verifiedDownloads": [
+    "challenge-01",
+    "challenge-02",
+    "challenge-03",
+    "challenge-04",
+    "challenge-05",
+    "challenge-06",
+    "challenge-07",
+    "challenge-08",
+    "challenge-09",
+    "challenge-10"
+  ],
+  "failedDownload": "challenge-11",
+  "httpStatus": 429,
+  "error": "Too many requests; Commons acquisition stopped before native execution",
+  "sourceRunLogSHA256": "1a25436828617fd25b21912e1456710f3188c31834c5a7114214edff416499c3",
+  "automaticRetry": false,
+  "automaticUploadQualified": false
+}

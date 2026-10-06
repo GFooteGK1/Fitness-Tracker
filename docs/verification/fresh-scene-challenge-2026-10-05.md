@@ -46,3 +46,36 @@ Board status: the plan note was delivered and read back at version200. The
 checkpoint note `camera-fresh-challenge-checkpoint-20261005-01a0eaae` remains queued:
 HTTP400 rejected its note payload for missing required text. Preserve its original
 ID/version/payload in the outbox; no blind flush, resubmission or deletion occurred.
+
+## Mac outcome and recovery package
+
+Published package bbd38819f6744605cb455a365142724805e52a8f was read back on the
+existing feature branch. The single approved Mac run37309091907 passed unsigned
+app/extension compilation, 33 Python contracts, 53 Swift tests plus five XCTest
+checks. Fresh fixture acquisition verified cases01-10, then failed HTTP429 on11.
+No native detector execution or fresh geometry receipt occurred. Combined v3/v4
+quality remains unverified. Preserve this failed run; no repeat was dispatched.
+
+This is the third acquisition failure against the unresolved source blocker.
+Guardrails require stopping and approval of a revised method. A deterministic
+local ZIP of the thirteen existing originals plus exact manifest passes local
+readback and independent inspection. Size25,533,518 bytes;
+SHA256 c42772f50d4ef24fc8ea177e772bbe0cee627c7e8c29a52bc722391f69f4825c.
+34 Python contracts pass after local transport preparation. The prepared public
+fixture prerelease transport removes Commons from the fresh path, validates all
+bytes before native execution, and needs new target-specific approval. No ZIP
+upload, new release, transport commit/push or recovery run has occurred.
+See `docs/plans/2026-10-05-fixture-transport-recovery.md`.
+
+The later local-result/publication/Mac-start board note was delivered and read
+back at version202. The earlier malformed checkpoint remains queued unchanged.
+
+## Approved fixture publication, October 6
+
+Greg approved the revised transport package. The public fixture prerelease was
+created once, explicitly prerelease and not latest. Published asset615384843 has
+size25,533,518 and the frozen SHA256. Download of actual uploaded bytes passed
+whole-archive, exact manifest and thirteen individual image hash verification.
+34 Python contracts pass. Transport publication and one unsigned Mac diagnostic
+are the remaining approved steps; no TestFlight or app runtime adoption.
+Release: https://github.com/GFooteGK1/Fitness-Tracker/releases/tag/photo-screening-fixtures-v1.

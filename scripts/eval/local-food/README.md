@@ -293,6 +293,14 @@ therefore fails the frozen human abstention expectations. Do not call the aggreg
 8/10 food recall an acceptance result. Receipts are under
 `results/fresh-siglip2-windows-20261005/`; native geometry is pending.
 
+The single fresh Mac run37309091907 passed unsigned compilation but stopped on
+source HTTP429 acquiring case11 after ten verified originals. No geometry ran.
+The independently reviewed local recovery package uses an exact frozen fixture
+ZIP and rejects altered hashes/entries before native execution. Greg approved
+fixture prerelease storage and one new run on October6. The published ZIP passed
+exact-byte local readback; native recovery execution is pending. There is no source
+fallback or automatic retry. See `docs/plans/2026-10-05-fixture-transport-recovery.md`.
+
 ## Acquisition receipts
 
 Public source/licence/author links are recorded in `fixtures.json` (CC0/public domain).

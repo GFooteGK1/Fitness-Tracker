@@ -51,6 +51,7 @@ jobs:
       - name: Inspect frozen public fixtures
         env:
           SCENE_DATASET: ${{ inputs.dataset || 'development-v1' }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           SCENE_ROOT="$RUNNER_TEMP/scene-diagnostics"
@@ -59,13 +60,20 @@ jobs:
             development-v1)
               SCENE_MANIFEST=scripts/eval/local-food/fixtures.siglip2-development-v1.json
               "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/make_controls.py "$SCENE_ROOT/images"
+              "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/fetch.py "$SCENE_MANIFEST" "$SCENE_ROOT/images" --spacing-seconds 10
               ;;
             fresh-challenge-v1)
               SCENE_MANIFEST=scripts/eval/local-food/fixtures.fresh-challenge-v1.json
+              gh release download photo-screening-fixtures-v1 \
+                --repo GFooteGK1/Fitness-Tracker \
+                --pattern photo-screening-fixtures-v1.zip --dir "$SCENE_ROOT"
+              "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/fixture_bundle.py unpack \
+                "$SCENE_MANIFEST" "$SCENE_ROOT/photo-screening-fixtures-v1.zip" \
+                c42772f50d4ef24fc8ea177e772bbe0cee627c7e8c29a52bc722391f69f4825c \
+                "$SCENE_ROOT/images"
               ;;
             *) echo "Unsupported frozen dataset" >&2; exit 1 ;;
           esac
-          "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/fetch.py "$SCENE_MANIFEST" "$SCENE_ROOT/images" --spacing-seconds 10
           swift run --package-path ios LocalFoodEval "$SCENE_MANIFEST" "$SCENE_ROOT/images" "$SCENE_ROOT/raw.json" scene-diagnostics
           "$RUNNER_TEMP/scene-venv/bin/python" -B scripts/eval/local-food/diagnose_scene.py "$SCENE_MANIFEST" "$SCENE_ROOT/raw.json" "$SCENE_ROOT/summary.json"
 
