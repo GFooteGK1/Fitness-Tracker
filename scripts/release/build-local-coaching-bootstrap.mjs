@@ -139,6 +139,9 @@ END $whoop_acl$;
 `, { transformation: 'Local-only read grants; no WHOOP OAuth/token/sync writes or fixtures' })
 whole('supabase/migrations/20260918050000_recommendations.sql')
 whole('supabase/migrations/20260921010000_coach_proposal_context_revision.sql')
+whole('supabase/migrations/20260926010000_coach_setup_memory_bindings.sql')
+whole('supabase/migrations/20260928010000_reviewed_session_set_reports.sql')
+whole('supabase/migrations/20260928020000_reviewed_session_completion.sql')
 add('local PostgREST schema reload', `NOTIFY pgrst, 'reload schema';`, { transformation: 'Refresh only the local PostgREST schema cache after bootstrap' })
 
 let sql = ''

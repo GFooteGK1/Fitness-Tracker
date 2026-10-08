@@ -10,7 +10,7 @@ export function coachingDecisionRows(userId = 'user-1') {
     trend: 'stable', status: 'emerging' }] }
   const review = { id: 'review-1', user_id: userId, program_id: 'program-1', base_plan_version_id: 'plan-1',
     review_revision: 1, action: 'continue', presentation_class: 'same_track', evidence_status: 'sufficient',
-    rationale: { contextRevision: 7, messages: ['Keep the accepted dose while collecting comparable observations.'],
+    rationale: { setupMemoryBindings: { schemaVersion: 1, memories: { primary_goal: null, training_schedule: null, available_equipment: null, training_constraints: null } }, contextRevision: 7, messages: ['Keep the accepted dose while collecting comparable observations.'],
       reviewedAt: '2026-09-21T12:00:00.000Z', planningDecision: { action: 'continue', presentationClass: 'same_track',
         evidenceStatus: 'sufficient', doseChange: null, signalRequest: null, safetyBoundary: null } },
     missing_requirements: ['individual_variability_provisional'], evidence_snapshot: evidence,

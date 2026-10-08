@@ -1,3 +1,8 @@
+vi.mock('@/app/lib/coach/setup-memory-bindings', async importOriginal => ({
+  ...await importOriginal<typeof import('@/app/lib/coach/setup-memory-bindings')>(),
+  setupMemoryBindingsCurrent: vi.fn().mockResolvedValue(true),
+  captureSetupMemoryBindings: vi.fn().mockResolvedValue({ schemaVersion: 1, memories: { primary_goal: null, training_schedule: null, available_equipment: null, training_constraints: null } }),
+}))
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BUSY_COACH_CONTEXT_MESSAGE, CoachContextRevisionConflictError, CoachContextRevisionUnavailableError, fetchCoachContextRevision } from '@/app/lib/coach/proposal-context-revision'
 
@@ -19,6 +24,7 @@ import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { fetchCoachRuntimeContext } from '@/app/lib/coach/athlete-context'
 import * as planningContext from '@/app/lib/coach/planning-intent-server'
 import { intent } from '../fixtures/personalized-coaching/intent'
+import { reviewedRollingWeek } from '../fixtures/reviewed-rolling-week'
 
 const planningInput = {
   format: 'complete_programming_intake_v0_3',
@@ -36,6 +42,26 @@ const planningInput = {
 }
 
 describe('/api/coach/weekly', () => {
+  it.each([false, true])('reads the new historical reviewed format with structural validation; corrupted=%s', async corrupted => {
+    const { plan, intent: reviewedIntent } = reviewedRollingWeek()
+    if (corrupted) plan.scheduledSessions[0].prescription.estimatedSeconds = 1
+    const supabase = historyClient({
+      training_programs: [{ data: [{ id: 'program-1', active_plan_version_id: 'reviewed-plan', program_mode: 'rolling_weekly' }], error: null }],
+      training_plan_versions: [{ data: [{ id: 'reviewed-plan', status: 'accepted', sequence_number: 1,
+        window_start: plan.windowStart, window_end: plan.windowEnd, intent: reviewedIntent }], error: null }],
+      coach_weekly_reviews: [{ data: [], error: null }], adaptation_proposals: [{ data: [], error: null }],
+    })
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+    const response = await GET()
+    expect(response.status).toBe(corrupted ? 503 : 200)
+    const body = await response.json()
+    if (!corrupted) {
+      expect(body.currentWeek.intent.reviewed_week).toEqual(plan)
+      expect(body.coachingDecision).toBeUndefined()
+      expect(body.pendingProposal).toBeNull()
+    }
+    expect(fetchCoachContextRevision).not.toHaveBeenCalled()
+  })
   it.each(['revision', 'proposal'])('returns retryable 409 for %s lock contention', async stage => {
     const supabase = postClient()
     vi.mocked(createServerClient).mockResolvedValue(supabase as never)

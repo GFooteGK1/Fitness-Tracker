@@ -33,6 +33,12 @@ Paths are relative to this worktree; symbols are the durable references.
 
 ## Proposed contracts
 
+Greg requested JEV as a check on the decision-making process on September 26.
+The [JEV decision-check design](jev-programming-decision-check.md) adds narrow,
+evidence-bound semantic checks around theme selection and compiled alignment.
+Begin with offline preparation and shadow evaluation; the checker does not replace
+the outcome adapter, deterministic validation or human quality acceptance.
+
 The companion [TypeScript contract and synthetic example](../verification/programming-quality/p3-strategy-contract.ts) makes the principal boundaries inspectable. It is not imported by application code and is not a runtime validation implementation. Production codecs, bounded payload limits and storage migration remain implementation work.
 
 **Basis.** Bind a strategy to the owner, confirmed intent ID/version, source revision, accepted base, evidence packet and policy/catalog versions. The server supplies these values. Current source corrections invalidate an unaccepted draft through the existing revision fence; accepting a proposal compares the same basis transactionally. An accepted strategy remains an immutable historical record even when its sources are later corrected.

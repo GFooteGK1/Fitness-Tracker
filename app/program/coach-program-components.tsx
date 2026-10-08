@@ -30,6 +30,8 @@ import {
   type MovementEquipmentId
 } from '@/app/lib/coach/movement-catalog'
 import { getLocalDate, parseDateString } from '@/app/lib/timezone-utils'
+import { REVIEWED_SESSION_FORMAT } from '@/app/lib/coach/reviewed-session-contract'
+import { ReviewedSessionCard } from './reviewed-session-card'
 import {
   selectTodaySession,
   TodaySessionCard,
@@ -724,6 +726,8 @@ export function ActiveProgramView({
           </TodaySessionCard>
         ) : todayIsTerminal ? (
           <TodayTerminalCard session={todaySession} />
+        ) : todaySession?.prescription.format === REVIEWED_SESSION_FORMAT ? (
+          <ReviewedSessionCard prescription={todaySession.prescription} />
         ) : !todaySession ? (
           <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Today</p>
@@ -788,7 +792,9 @@ export function ActiveProgramView({
                     {formatDate(session.scheduledDate)}
                   </p>
                 )}
-                {isCompletePrescription(session.prescription) ? (
+                {session.prescription.format === REVIEWED_SESSION_FORMAT ? (
+                  <ReviewedSessionCard prescription={session.prescription} />
+                ) : isCompletePrescription(session.prescription) ? (
                   <CompleteSessionCard prescription={session.prescription} />
                 ) : isDetailedPrescription(session.prescription) ? (
                   <SessionPrescriptionCard prescription={session.prescription} />

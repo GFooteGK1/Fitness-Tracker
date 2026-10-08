@@ -1,6 +1,7 @@
 import { exercisePreferencesEnabled } from '@/app/lib/coach/exercise-preferences-server'
 import { validateExercisePreferences } from '@/app/lib/coach/exercise-preferences'
 import { validatePlanningIntent } from '@/app/lib/coach/planning-intent'
+import { validReviewedSetupMemory } from '@/app/lib/coach/reviewed-setup-memory'
 import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
 import { NextResponse } from 'next/server'
 
@@ -355,6 +356,7 @@ function selectedMappings(value: unknown): SelectedMapping[] | null {
 }
 
 function validMemoryContent(memoryKey: string, content: Record<string, unknown>): boolean {
+  if (['training_schedule','available_equipment'].includes(memoryKey) && Object.hasOwn(content, 'schemaVersion')) return validReviewedSetupMemory(memoryKey, content)
   if (memoryKey === 'training_intent') return personalizedCoachingCapabilities().trainingIntent && validatePlanningIntent(content).ok
   if (memoryKey === 'exercise_preferences') return exercisePreferencesEnabled() && validateExercisePreferences(content)
   const allowed: Record<string, readonly string[]> = {

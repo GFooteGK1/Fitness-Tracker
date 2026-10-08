@@ -5,3 +5,7 @@ supabase/migrations/20260921010000_coach_proposal_context_revision.sql -text whi
 # Frozen operator inputs and verification artifacts must hash identically on checkout.
 scripts/release/cutover-* text eol=lf
 docs/verification/programming-quality/production-cutover-* text eol=lf
+# Frozen visible development packets retain the original hash-bound bytes.
+test/fixtures/frozen-whole-week-development-v1/*.json -text
+# The reviewed metadata proof binds the exact query built from this LF source.
+docs/verification/programming-quality/release-catalog-fingerprints.sql text eol=lf

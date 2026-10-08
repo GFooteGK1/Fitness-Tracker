@@ -36,7 +36,7 @@ export async function fetchFactualPlanningContext(supabase: SupabaseClient, user
 
 /** Shared bounded, owned source read; consumers retain separate interpretation authority. */
 export async function fetchPlanningHistorySnapshot(supabase: SupabaseClient, userId: string, input: {
-  startDate: string; asOf?: string; tzOffset?: number; mode?: FactualPlanningContext['mode']; windowDays?: number
+  startDate: string; asOf?: string; tzOffset?: number; mode?: FactualPlanningContext['mode']; windowDays?: number; includeNarrative?: boolean; requireExactCounts?: boolean; includePostCutoffSources?: boolean
 }): Promise<PlanningHistorySnapshot> {
   const asOf = input.asOf ?? new Date().toISOString()
   const tzOffset = input.tzOffset ?? 0
@@ -49,26 +49,36 @@ export async function fetchPlanningHistorySnapshot(supabase: SupabaseClient, use
   const endsOn = input.startDate < today ? input.startDate : today
   const startsOn = formatUTCAsLocalDateWithOffset(new Date(Date.parse(localDateToUTCStart(endsOn, 0)) - (windowDays - 1) * 86400000).toISOString(), 0)
   const mode = input.mode ?? 'current'
-  const query = (columns: string) => supabase.from('workouts').select(columns).eq('user_id', userId)
-    .gte('workout_date', startsOn).lte('workout_date', endsOn).lte('created_at', asOf)
-    .order('workout_date', { ascending: false }).order('id', { ascending: true }).limit(MAX_WORKOUTS + 1)
-  let history = await query(`${canonicalFields},capture_revision,capture_provenance,captured_at,capture_input_method`)
+  if (input.includePostCutoffSources && mode !== 'current') throw new Error('Post-cutoff sources are only available for a current read')
+  const countOptions = input.requireExactCounts ? { count: 'exact' as const } : undefined
+  const query = (columns: string) => {
+    let builder = supabase.from('workouts').select(columns, countOptions).eq('user_id', userId)
+      .gte('workout_date', startsOn).lte('workout_date', endsOn)
+    if (!input.includePostCutoffSources) builder = builder.lte('created_at', asOf)
+    return builder.order('workout_date', { ascending: false }).order('id', { ascending: true }).limit(MAX_WORKOUTS + 1)
+  }
+  const sourceFields = `${canonicalFields}${input.includeNarrative ? ',notes,input_text' : ''}`
+  let history = await query(`${sourceFields},capture_revision,capture_provenance,captured_at,capture_input_method`)
   let legacySchema = false
-  if (missingCaptureSchema(history.error)) { legacySchema = true; history = await query(canonicalFields) }
-  const checkins = await supabase.from('coach_checkins').select('id,user_id,prescribed_session_id,occurred_at,created_at,responses')
-    .eq('user_id', userId).gte('occurred_at', localDateToUTCStart(startsOn, tzOffset)).lte('created_at', asOf)
-    .order('created_at', { ascending: false }).limit(MAX_WORKOUTS + 1)
+  if (missingCaptureSchema(history.error)) { legacySchema = true; history = await query(sourceFields) }
+  let completionQuery = supabase.from('coach_checkins').select('id,user_id,prescribed_session_id,occurred_at,created_at,responses', countOptions)
+    .eq('user_id', userId).gte('occurred_at', localDateToUTCStart(startsOn, tzOffset))
+  if (!input.includePostCutoffSources) completionQuery = completionQuery.lte('created_at', asOf)
+  const checkins = await completionQuery.order('created_at', { ascending: false }).order('id', { ascending: true }).limit(MAX_WORKOUTS + 1)
   const revisionResult = mode === 'historical_replay' ? await supabase.from('activity_revisions')
-    .select('id,user_id,entity_kind,original_entity_id,revision,record,provenance,captured_at,event_at,deleted')
+    .select('id,user_id,entity_kind,original_entity_id,revision,record,provenance,captured_at,event_at,deleted', countOptions)
     .eq('user_id', userId).eq('entity_kind', 'workout').lte('captured_at', asOf)
     // Select terminal revisions even when a correction moved the event outside this window.
-    .order('revision', { ascending: false }).limit(MAX_REVISIONS + 1) : { data: [], error: null }
+    .order('revision', { ascending: false }).order('id', { ascending: true }).limit(MAX_REVISIONS + 1) : { data: [], error: null, count: 0 }
+  const countsComplete = !input.requireExactCounts || [history, checkins, revisionResult].every(result => (
+    Number.isSafeInteger(result.count) && result.count === result.data?.length
+  ))
   return { userId, asOf, startsOn, endsOn, mode,
     workouts: history.error ? [] : (history.data ?? []).slice(0, MAX_WORKOUTS) as unknown as HistoryWorkoutRow[],
     completions: (checkins.data ?? []).slice(0, MAX_WORKOUTS) as HistoryCompletion[],
     revisions: (revisionResult.error ? [] : (revisionResult.data ?? []).slice(0, MAX_REVISIONS)) as ActivityHistoryRevision[],
     available: !history.error && !revisionResult.error && !checkins.error,
-    complete: !history.error && !revisionResult.error && !checkins.error && (checkins.data?.length ?? 0) <= MAX_WORKOUTS && (history.data?.length ?? 0) <= MAX_WORKOUTS && (revisionResult.data?.length ?? 0) <= MAX_REVISIONS,
+    complete: countsComplete && !history.error && !revisionResult.error && !checkins.error && (checkins.data?.length ?? 0) <= MAX_WORKOUTS && (history.data?.length ?? 0) <= MAX_WORKOUTS && (revisionResult.data?.length ?? 0) <= MAX_REVISIONS,
     missing: [...(legacySchema ? ['legacy_capture_provenance_unknown'] : []), ...(history.error ? ['workout_history_unavailable'] : []),
       ...(revisionResult.error ? ['revision_history_unavailable'] : []), ...(checkins.error ? ['completion_links_unavailable'] : [])] }
 }
@@ -127,7 +137,12 @@ export function buildFactualPlanningContext(input: PlanningHistorySnapshot): Fac
 }
 
 /** Only the existing movement-novelty preference consumes history. No dose totals. */
-export function applyFactualPlanningContext(profile: ProgrammingProfile, context: FactualPlanningContext): ProgrammingProfile {
+export function applyFactualPlanningContext(profile: ProgrammingProfile, context: FactualPlanningContext,
+  options: { historyWindowDays?: number } = {}): ProgrammingProfile {
+  if (options.historyWindowDays !== undefined && (!Number.isInteger(options.historyWindowDays)
+    || options.historyWindowDays < 1 || options.historyWindowDays > 180
+    || Date.parse(localDateToUTCStart(context.endsOn, 0)) - Date.parse(localDateToUTCStart(context.startsOn, 0))
+      !== (options.historyWindowDays - 1) * 86400000)) throw new Error('Factual history window differs from the captured scope')
   if (context.status === 'unavailable' || context.status === 'partial' || context.status === 'replay_unavailable') {
     throw new Error('Performed history is unavailable or incomplete. Retry before creating a new direction.')
   }
@@ -135,7 +150,7 @@ export function applyFactualPlanningContext(profile: ProgrammingProfile, context
   const movementIds = [...new Set(context.movements.filter(item => item.familiarityEligible && !avoided.has(item.movementId)).map(item => item.movementId))].sort()
   const updated = { ...profile, planningContext: context,
     recentTraining: { asOfDate: context.sourceIds.length ? context.endsOn : null,
-      lookbackDays: context.sourceIds.length ? 28 : 0, completedSessionCount: context.sourceIds.length,
+      lookbackDays: options.historyWindowDays ?? (context.sourceIds.length ? 28 : 0), completedSessionCount: context.sourceIds.length,
       performedMovementIds: movementIds, doseByCoverageTarget: [] } }
   return { ...updated, prescriptionBasis: buildPrescriptionBasis(updated, context) }
 }

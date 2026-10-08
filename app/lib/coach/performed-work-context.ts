@@ -6,9 +6,21 @@ import { resolveHistorySnapshot, historyFieldProvenance } from './planning-histo
 import { normalizePerformedDoseEvidence } from './performed-dose-evidence'
 
 const RECORD_BUDGET = 16_000
+// Deterministic internal evidence is not sent to a model. Bound record output without
+// imposing the conversational prompt budget on a complete set-level history.
+const EVIDENCE_BUDGET = 8_000_000
 
 /** Factual projection only: retains source quantities without selecting a future dose. */
 export function buildPerformedWorkContext(input: PlanningHistorySnapshot) {
+  return { ...buildBoundedPerformedWork(input, RECORD_BUDGET), purpose: 'coaching_context' as const }
+}
+
+/** Complete bounded projection for the reviewed compiler; partial output grants no authority. */
+export function buildPerformedWorkEvidence(input: PlanningHistorySnapshot) {
+  return { ...buildBoundedPerformedWork(input, EVIDENCE_BUDGET), purpose: 'reviewed_compiler_evidence' as const }
+}
+
+function buildBoundedPerformedWork(input: PlanningHistorySnapshot, recordBudget: number) {
   const resolved = resolveHistorySnapshot({ ...input, revisions: input.revisions ?? [] })
   const normalized = normalizePerformedDoseEvidence({
     userId: input.userId, asOf: input.asOf, startsOn: input.startsOn, endsOn: input.endsOn,
@@ -23,6 +35,7 @@ export function buildPerformedWorkContext(input: PlanningHistorySnapshot) {
         ? 'unreviewed_template_or_import' : null
     if (exclude) { omitted.push({ sourceId: exposure.sourceId, sourcePath: exposure.sourcePath, reason: exclude }); return [] }
     const row = resolved.workouts.find(workout => workout.id === exposure.workoutId)!
+    const sessionRpe = exposure.reviewedSessionRpe !== undefined ? exposure.reviewedSessionRpe : row.rpe
     const record = {
       sourceId: exposure.sourceId, sourcePath: exposure.sourcePath, workoutId: exposure.workoutId,
       completionId: exposure.completionId, sessionId: exposure.sessionId, date: exposure.date,
@@ -43,20 +56,28 @@ export function buildPerformedWorkContext(input: PlanningHistorySnapshot) {
       },
       protocol: exposure.protocol, equipment: exposure.equipment,
       effort: exposure.effort, unilateralConvention: exposure.unilateralConvention,
+      ...(typeof exposure.raw.setReportId === 'string' ? { setEvidence: structuredClone({
+        reportId: exposure.raw.setReportId, revision: exposure.raw.setReportRevision, setNumber: exposure.raw.setNumber,
+        performedAt: exposure.raw.performedAt, durationSeconds: exposure.raw.durationSeconds, distanceMetres: exposure.raw.distanceMetres,
+        restAfterSeconds: exposure.raw.restAfterSeconds, velocity: exposure.raw.velocity,
+        rir: exposure.raw.rir ?? null,
+        stopped: exposure.raw.stopped, symptoms: exposure.raw.symptoms, note: exposure.raw.note,
+      }) } : {}),
       // Workout effort describes the session. It cannot establish effort for
       // this movement, a working set, or a maximum-strength attempt.
       sessionEffort: {
-        scale: 'RPE' as const, scope: 'session' as const, sourcePath: 'rpe' as const,
-        value: typeof row.rpe === 'number' && Number.isFinite(row.rpe) && row.rpe >= 1 && row.rpe <= 10 ? row.rpe : null,
-        recordedValue: structuredClone(row.rpe ?? null),
-        status: row.rpe == null ? 'unknown' as const
-          : typeof row.rpe === 'number' && Number.isFinite(row.rpe) && row.rpe >= 1 && row.rpe <= 10 ? 'recorded' as const : 'invalid' as const,
+        scale: 'RPE' as const, scope: 'session' as const,
+        sourcePath: exposure.reviewedSessionRpe !== undefined ? 'completionRequest.feedback.sessionRpe' : 'rpe',
+        value: typeof sessionRpe === 'number' && Number.isFinite(sessionRpe) && sessionRpe >= 1 && sessionRpe <= 10 ? sessionRpe : null,
+        recordedValue: structuredClone(sessionRpe ?? null),
+        status: sessionRpe == null ? 'unknown' as const
+          : typeof sessionRpe === 'number' && Number.isFinite(sessionRpe) && sessionRpe >= 1 && sessionRpe <= 10 ? 'recorded' as const : 'invalid' as const,
         ...historyFieldProvenance(row.capture_provenance, 'rpe', 'rpe'),
       },
       limitations: exposure.limitations,
     }
     const size = JSON.stringify(record).length
-    if (usedRecordCharacters + size > RECORD_BUDGET) {
+    if (usedRecordCharacters + size > recordBudget) {
       omitted.push({ sourceId: exposure.sourceId, sourcePath: exposure.sourcePath, reason: 'record_budget' }); return []
     }
     usedRecordCharacters += size
@@ -74,7 +95,7 @@ export function buildPerformedWorkContext(input: PlanningHistorySnapshot) {
       : records.length ? 'available' as const : 'no_records' as const,
     coverage: { retrievalComplete: normalized.coverage.retrievalComplete, complete, athleteCoverage: 'unknown' as const,
       selectedRecords: normalized.exposures.length, includedRecords: records.length,
-      recordBudgetCharacters: RECORD_BUDGET, usedRecordCharacters, omitted, missing, issues },
+      recordBudgetCharacters: recordBudget, usedRecordCharacters, omitted, missing, issues },
     records,
   }
 }
@@ -104,5 +125,6 @@ export async function fetchPerformedWorkContextForCoaching(supabase: SupabaseCli
 
 export function renderPerformedWorkContext(context: PerformedWorkContext, userId: string): string {
   if (!userId || context.userId !== userId) throw new Error('Performed-work ownership mismatch')
+  if (context.purpose !== 'coaching_context') throw new Error('Compiler evidence cannot be rendered as coaching prompt context')
   return JSON.stringify(context)
 }

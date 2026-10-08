@@ -27,6 +27,16 @@ export async function refreshConfirmedPlanningContext(supabase: SupabaseClient, 
 
 /** Existing domain allocations are athlete setup choices; incompatible choices need correction, never silent omission. */
 export function applyConfirmedIntentToProfile(profile: ProgrammingProfile, snapshot: PlanningIntentSnapshot): ProgrammingProfile {
+  return applyIntentToProfile(profile, snapshot, false)
+}
+
+/** Manual reviewed content retains every known domain; this function supplies no
+ * automatic dose or approval authority. Ordinary automatic planning stays bounded. */
+export function applyConfirmedReviewedIntentToProfile(profile: ProgrammingProfile, snapshot: PlanningIntentSnapshot): ProgrammingProfile {
+  return applyIntentToProfile(profile, snapshot, true)
+}
+
+function applyIntentToProfile(profile: ProgrammingProfile, snapshot: PlanningIntentSnapshot, reviewed: boolean): ProgrammingProfile {
   const active = snapshot.content.outcomes.filter(o => o.goal.status === 'active')
   const supported = active.filter(o => o.capability.status === 'supported' && o.domain !== null)
   const domains = new Set(supported.map(o => o.domain))
@@ -35,7 +45,8 @@ export function applyConfirmedIntentToProfile(profile: ProgrammingProfile, snaps
   if (snapshot.content.event && active.some(o => snapshot.content.event!.goalIds.includes(o.goal.id) && o.capability.status === 'unsupported')) {
     throw new Error('This event includes an unsupported outcome. Review its missing capability before requesting an event program')
   }
-  if (domains.size > 3 || domains.size !== allocations.length || allocations.some(a => !domains.has(a.domain))) {
+  if ((!reviewed && domains.size > 3) || domains.size !== allocations.length || allocations.some(a => !domains.has(a.domain))
+    || new Set(allocations.map(a => a.domain)).size !== allocations.length) {
     throw new Error('Align the primary and supporting training areas with every supported active outcome. The current compiler supports at most three distinct areas')
   }
   const firstPriority = snapshot.content.priorityOrder?.map(id => supported.find(o => o.goal.id === id)).find(Boolean)

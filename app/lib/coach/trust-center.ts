@@ -1,5 +1,6 @@
 import { validateExercisePreferences, preferenceSummary } from './exercise-preferences'
 import { validatePlanningIntent } from './planning-intent'
+import { parseReviewedScheduleMemory } from './reviewed-setup-memory'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import {
@@ -554,6 +555,10 @@ function memorySummary(key: string, content: Record<string, unknown>): string {
   if (key === 'exercise_preferences') return validateExercisePreferences(content) ? preferenceSummary(content) : 'Exercise preferences need review'
   if (key === 'primary_goal') return stringOrNull(content.goal) ?? 'Goal needs review'
   if (key === 'training_schedule') {
+    if (Object.hasOwn(content, 'schemaVersion')) {
+      const saved = parseReviewedScheduleMemory(content)
+      return saved ? saved.sessionAvailability.map(a => `${titleCase(a.day)}: ${a.minutes} minutes`).join(' · ') : 'Schedule needs review'
+    }
     const days = stringArray(content.trainingDays).map(titleCase).join(', ')
     const minutes = finiteNumber(content.sessionMinutes)
     return [days, minutes === null ? null : `${minutes} minutes per session`]

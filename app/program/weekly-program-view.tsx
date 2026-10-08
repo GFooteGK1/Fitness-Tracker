@@ -12,6 +12,8 @@ import { ExercisePreferenceNotes } from './exercise-preferences-editor'
 import { PrescriptionBasisDetails } from './prescription-basis-details'
 import { GoalReviewDetails, ExecutionPriorityDetails } from './goal-review-details'
 import { CompleteSessionCard } from './coach-program-components'
+import { ReviewedSessionCard, ReviewedWeekView } from './reviewed-session-card'
+import { REVIEWED_SESSION_FORMAT } from '@/app/lib/coach/reviewed-session-contract'
 import {
   selectTodaySession,
   TodaySessionCard,
@@ -24,7 +26,7 @@ export interface WeeklyPlanVersionView {
   window_start: string
   window_end: string
   sequence_number: number
-  intent: { weekly_plan?: RollingWeeklyPlanDraft }
+  intent: { format?: string; weekly_plan?: RollingWeeklyPlanDraft; reviewed_week?: unknown }
 }
 
 export interface WeeklyReviewHistoryView {
@@ -44,7 +46,7 @@ export interface WeeklyReviewHistoryView {
 
 export interface WeeklyCoachState {
   coachingDecision?: CoachingDecisionContext
-  capabilities?: { feedbackV2: boolean }
+  capabilities?: { feedbackV2: boolean; reviewedProgramming?: boolean }
   mode: 'rolling_weekly'
   program: {
     id: string
@@ -116,6 +118,13 @@ export function WeeklyProgramView({
   onRefreshPlan,
   feedbackV2 = false
 }: WeeklyProgramViewProps) {
+  if (state.currentWeek?.intent.format === 'reviewed_weekly_intent_v0_1') {
+    const sessionLinks = state.capabilities?.reviewedProgramming
+      ? Object.fromEntries(activeProgram.upcomingSessions.map(session => [String(session.prescription.sessionId), session.id])) : {}
+    return <>{state.capabilities?.reviewedProgramming && state.program && <a className="app-primary inline-flex min-h-11 items-center px-4 py-3"
+      href={`/program/reviewed/plans/${encodeURIComponent(state.program.id)}`}>Review proposed weeks</a>}
+      <ReviewedWeekView value={state.currentWeek.intent.reviewed_week} sessionLinks={sessionLinks} /></>
+  }
   const acceptedWeek = state.currentWeek?.intent.weekly_plan ?? null
   const todaySession = selectTodaySession(activeProgram)
   const todayPrescription = todaySession && isCompletePrescription(todaySession.prescription)
@@ -152,6 +161,8 @@ export function WeeklyProgramView({
 
   return (
     <div className="space-y-5">
+      {state.capabilities?.reviewedProgramming && <a className="app-primary inline-flex min-h-11 items-center px-4 py-3"
+        href={`/program/reviewed/plans/${encodeURIComponent(state.program.id)}`}>Review proposed weeks</a>}
       <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -210,7 +221,7 @@ export function WeeklyProgramView({
                     {session.status}
                   </span>
                 </div>
-                {isCompletePrescription(session.prescription) && (
+                {session.prescription.format === REVIEWED_SESSION_FORMAT ? <ReviewedSessionCard prescription={session.prescription} /> : isCompletePrescription(session.prescription) && (
                   <div className="mt-3"><CompleteSessionCard prescription={session.prescription} /></div>
                 )}
               </li>

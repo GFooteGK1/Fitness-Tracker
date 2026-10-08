@@ -4,6 +4,292 @@
 
 ## 🏗️ **High-Level Architecture Overview**
 
+First-review setup creation/correction now uses atomic canonical memory writes
+bound to exact latest declarations and current owned program/base/designation.
+Sorted key locks plus latest-row FOR UPDATE NOWAIT fence lifecycle changes and
+avoid waiting behind ordinary row-first corrections. A separate immutable owned
+request ledger preserves saved/no-write historical proof. Four private no-store
+authenticated routes and durable browser recovery connect this to the root;
+shared actor/program coordination excludes either kind of unresolved request.
+Missing declarations stay blank, editing invalidates prepared facts/week state,
+explicit cancellation protects unsaved edits, and program paging retains selection.
+Bounded local/independent evidence:
+docs/verification/programming-quality/first-reviewed-setup-save-2026-10-05.md.
+Complete consecutive root flow and real Auth/native tabs/backend contention remain
+open; new migration remains uninstalled. This adds no enrollment/numeric authority.
+
+First-review root identity/recovery/preview has bounded local and independent
+qualification. Owner metadata retains the linked original proposal key while
+reviewer metadata redacts it. Current designation allows explicit owner review;
+issuance and athlete acceptance stay separate. Local recovery remains visible
+when discovery fails, with account fencing and StrictMode initialization.
+Read-only preview uses the owned complete compiler and writes no lifecycle rows.
+The full setup-to-acceptance interface and actual Auth/native-browser proof remain
+open. Current bounded evidence:
+docs/verification/programming-quality/first-reviewed-root-identity-recovery-2026-10-05.md.
+
+First-review current setup now has a pure owner-only no-store GET, strict
+declaration seed and structured goal/daily-time/equipment/constraint editor.
+It uses latest saved declarations, never old plan facts; factsLoaded:false is
+an explicit unloaded state. Missing/stale declarations require correction.
+The legacy history is preserved through disposable SQL profile confirmation.
+Trust-center conversion is explicitly reviewed or already-versioned only;
+ordinary legacy formats are retained. Root integration, durable setup correction
+recovery and real Auth/browser remain open. Bounded current evidence:
+docs/verification/programming-quality/first-reviewed-current-setup-2026-10-05.md.
+
+First-review browser recovery and blank-week authoring are now locally qualified
+under ADR-0036. One exclusive actor/program UI action wrapper protects pending
+reservation through getter verification/archive/removal, with no retained-request
+resend. The shared complete-week editor can create explicit incomplete first
+sessions and monitoring protocols without copying legacy dose/history. Ordinary
+same/next types and dispatch are unchanged. Current setup/root workflow wiring,
+native multi-tab and real Auth/PostgREST/browser proof remain unfinished. Evidence:
+docs/verification/programming-quality/first-reviewed-browser-authoring-2026-10-05.md.
+
+First-reviewed onboarding is being added under ADR-0036 for an existing legacy
+accepted base. Bounded program/candidate/owner-only profile navigation now uses
+private summary helpers, authenticated paginated getters and three private
+no-store GET routes. Discovery grants no designation, enrollment or write
+authority. Owners retain history after revocation/acceptance; reviewers see only
+current first-review scope. The new 20261005172408 workspace migration is an
+uninstalled draft. Full mobile setup/draft/review/acceptance screens and real
+Auth/PostgREST/browser qualification remain unfinished. See current discovery
+evidence in docs/verification/programming-quality/first-reviewed-workspace-2026-10-05.md.
+
+The first-review transition supports a legacy
+accepted rolling week and an explicit non-adjacent target. Separate private
+operator-versioned first-review designation has no enrollment or acceptance
+authority by itself. First-window/profile confirmation and fresh execution-root
+contracts preserve authenticated facts and leave unreported prior work unknown.
+Separate candidate/decision primitives and a first preparer are drafted, with
+bounded complete legacy/target review and immutable historical receipts. Fresh
+factual projection is built separately with current intent/assessments/history,
+ordered baseline evidence, explicit first-only capture and reviewed-only finite
+domain validation. Immutable owned profile snapshots and authenticated exact
+confirmation now connect pinned fresh facts to preparation and SQL. Getter-only
+receipt recovery leaves absence unresolved; current direction dates and bounded
+profile facts replace legacy copying. Browser parsing is separate from server
+hashing. Saved reviewed setup v2 now carries per-day time and explicit equipment
+resolution with retained original prose through profile/candidate/SQL checks.
+Automatic setup does not flatten v2; the trust read model displays daily limits.
+Candidate submission/decision now have exact immutable actor-scoped closure and
+saved-result recovery; first issue closure reuses the existing registration fence
+before lineage, preserving its lock order. Historical getters stay pure and absent
+receipts unresolved. Local tests and independent review qualify this slice.
+The full onboarding setup editor and real Auth remain required. Full APEX
+qualification, guarded issuance, atomic lineage/anchor
+acceptance and UI/runtime integration are still required.
+Profile preparation/confirmation now also have exact owned closure/recovery,
+private original-request binding and late-writer fencing; bounded local regression
+and independent profile review pass. This does not establish full runtime acceptance.
+Neither the 20261005120000 designation nor 20261005130000 candidate migration is
+applied to retained/hosted storage. These draft primitives do not qualify the full
+onboarding lifecycle.
+
+The20261005155602 first-acceptance draft now binds protected registration and
+issuance to exact first approval, and commits authenticated transaction proof,
+legacy supersession, permanent lineage and the initial anchor atomically.
+Reserved-ID and deferred content/manifest/history checks protect direct paths;
+historical receipts survive later supersession and disabled authority. It creates
+no enrollment. Server review/issuance/separate acceptance factories now compose
+the protected SQL with exact pending recovery. New /api/coach/first-reviewed
+execute/resolution/resolve and bounded candidate/profile reads reuse the existing
+server kill switch; it grants no designation, enrollment or numerical authority.
+Full-envelope profile-confirmation precheck preserves outer program identity;
+public success payloads require exact resource/request binding. Approved private
+source packets remain internal. Bounded service/handler/disposable-SQL evidence
+and independent review are in first-reviewed-services-http-2026-10-05.md.
+Complete UI, real Next/Auth/PostgREST/browser and concurrent-backend acceptance
+remain required; this draft is also uninstalled on retained/hosted storage.
+
+Supervised programming has local review authority and lifecycle enforcement
+(ADR-0035): immutable enrollment/candidates/decisions, bounded reviewer reads,
+exact approved registration and permanent-lineage SQL guards through acceptance,
+execution and disabled receipt recovery. The private issuer retains original
+draft input and recompiles against owned source without per-week registry edits.
+Independent review and disposable SQL/adapter checks pass. Supervised migrations
+through `20261003150403` are applied to retained local PostgreSQL only;
+hosted application is not established by this work. Closed `i40.17.3` connects `/program/supervised`, a read-only
+compilation preview, exact immutable candidate/decision/issuance requests and
+scoped shared reviewed HTTP runtime. Dedicated supervised capability defaults off;
+owned resource lineage prevents nonpilot numerical access. Owner-scoped local
+recovery navigation survives reviewer revocation. Migration20260930040000 adds
+resource classification; this and workspace migration20260930030000 are
+applied locally. Migration20261003134727 adds immutable
+submit/decision no-write fences and scoped reuse of the existing issuance fence.
+Explicit resolve and pure resolution endpoints bind the exact original pending
+envelope. Saved results win; verified archives precede browser pending release.
+Local Auth/PostgREST, six real contention schedules, two browser component cycles
+with final preservation, and revoked original-receipt recovery are independently
+accepted under closed `i40.17.4`. Full Next authentication, named athlete/base,
+coaching suitability and exact scoped release/rollback remain in `i40.17.5`.
+See `supervised-pilot-release-packet-2026-10-03.md`; global policy remains off.
+
+Reviewed session schema 3 adds effort-led repetitions and a contiguous optional
+tail, including that work's preparation/transitions while retaining final logging.
+Compiler/read/display preserve the full estimate and separately disclose required
+time; estimates are never repetition caps or guaranteed fit. Schema 1/2 snapshots
+stay unchanged. Report schema 2 stores independent nullable actual RIR without
+deriving it from RPE; legacy reports and pending requests retain their exact shape.
+Migration20260929010000 now supports schema3 in the verified retained local DB,
+preserves existing data and projects effort-led sets as strength work. The real
+local Auth/PostgREST lifecycle passes45 checks. Actual Next/browser next-week
+proposal, acceptance, RIR correction and optional omission now pass20 fresh
+readback checks; Fitness-Tracker-u5l.11.1 is closed after independent review.
+Saved actual rows show RIR separately from RPE. See ADR-0033, ADR-0034 and
+`effort-rir-storage-2026-09-29.md`. No hosted migration or numerical activation.
+
+Reviewed load trials now require an explicit source/dose/week reconciliation
+before registration. Dated owned evidence, exact base/target content and separate
+session/week reviews survive in the immutable packet. Historical readback exposes
+a verified browser-safe explanation without current eligibility reevaluation.
+See ADR-0032 and `c2r-week-reconciliation-2026-09-28.md`. The synthetic C2-R weekly
+reference is approved; real local Auth/PostgREST/Next proof now passes. W5 is
+closed after independent parent audit; see `w5-acceptance-audit-2026-09-28.md`.
+Reviewed session schema2 preserves qualitative preparation recovery separately
+from its time estimate. Compiler/read/display mark conditional fit explicitly;
+schema1 fixed-rest content stays unchanged and actual-rest reports remain numeric
+or unknown. Migration20260928090000 passed disposable storage verification and
+was applied once to retained local storage with row-count/digest preservation;
+it has not been applied to hosted databases by this work. See ADR-0031 and
+`c2r-week-reconciliation-2026-09-28.md`. Numerical policy stays disabled.
+
+Gated reviewed-proposal discovery uses only the trusted server registry and
+owned saved rows. Detail readback verifies registration/base/target linkage and
+stable revisions before displaying full before/after weeks. The proposal page
+preserves exact issue/accept requests across reload and archives confirmed
+identity before clearing. Explicit proposal resolution now recovers original
+issued/accepted IDs or permanently closes an unissued/unaccepted request under
+writer locks. Late registration/issuance/acceptance is fenced; target evidence
+and the active base are preserved. Historical accepted targets are distinguished
+from the current active pointer. Default registry remains empty/policy false.
+Local browser lifecycle and actual Next auth/page verification now pass; see
+`reviewed-next-auth-2026-09-28.md`, ADR-0030 and
+`reviewed-proposal-resolution-2026-09-27.md`.
+
+Explicit reviewed-session request resolution now recovers the original receipt
+or creates an immutable no-write fence under writer locks. Delayed attempts
+cannot commit after that fence. The browser archives the verified decision
+before clearing pending state and restores actuals/feedback for deliberate
+editing. Default capability stays false. See ADR-0030 and
+`reviewed-request-resolution-2026-09-27.md`; subsequent proposal UI/browser and actual Next proof are recorded above.
+
+Reviewed session GET resolves canonical execution with complete actual history,
+latest report IDs, immutable snapshot validation and before/after freshness
+checks. The gated session runner uses unknown actual defaults and append-only
+corrections; full history is readable on completed sessions. Exact owner/session
+pending requests are persisted before POST and recovered after reload without
+new identities. Subsequent resolution, proposal UI and local browser verification
+are complete; actual Next proof is recorded above. See `reviewed-session-ui-2026-09-27.md`.
+
+Dedicated `/api/coach/reviewed` mutation routes compose strict authenticated
+owner-bound request envelopes with the existing issuance, acceptance, set-report
+and completion RPCs. They preserve exact request identities and return confirmed
+results before any optional refresh. The actual route capability stays disabled;
+readback, pending-request UI and local browser lifecycle are verified. Local
+handler-to-PostgREST evidence: `reviewed-http-boundary-2026-09-27.md`.
+
+`reviewed-proposal-issuer-server.ts` now composes trusted preparation/private
+registration and owned ID-only issuance. Metadata-only owned recovery reuses a
+saved registration without recompilation after source drift or response loss.
+Uncertain outcomes retain request identity; exact known SQL rejections receive
+separate review/conflict results. The default service has an empty registry and
+numerical capability disabled. Local HTTP/UI integration is verified. Local proof:
+`reviewed-server-issuance-2026-09-27.md`.
+
+Reviewed execution continuity uses immutable `coach_reviewed_execution_slots`
+associations to the original prescribed-session row. The plan's immutable storage
+marker selects a complete owner-filtered effective view; missing mappings never
+fall back to partial rows. Source version3/schema2 binds and verifies exact roots,
+date and full prescription. Unchanged begun/completed work survives repeated
+same-week replacement without duplicating actuals or receipts. Runtime/evidence
+readers resolve canonical IDs; writers check current active-plan membership.
+Explicit next-week transitions copy only the profile start date, advance an
+adjacent window/sequence, require an already matching trusted recipe and create
+fresh roots. Prior history stays unchanged; unresolved begun work rejects.
+HTTP/UI issuance remains open. Local proof: `reviewed-next-week-transition-2026-09-27.md`
+and `reviewed-execution-continuity-2026-09-27.md`; numerical activation stays off.
+
+`reviewed-proposal-registration.ts` prepares a server-only exact week/source packet
+with revision/setup/intent bindings and an exclusive lifecycle/local-day deadline.
+The preparer performs no writes. A separate service-only database registration
+reserves proposal/plan IDs; ID-only issuance and exact-content acceptance support
+same-week revisions locally. Pending and accepted uniqueness are separate.
+Begun execution and next-week reconciliation use the continuity contract above;
+HTTP/UI integration remains open. See
+`reviewed-proposal-transactions-2026-09-27.md`. No numerical activation.
+
+`reviewed-movement-eligibility.ts` reconciles trusted recipe identities and exact
+equipment requirements against the canonical catalog. Fourteen passive reviewed
+identities remain outside default generation. No load/protocol equivalence is
+inferred; neutral running coverage stays unspecified. Authenticated reviewed
+source binding version 2 includes the reviewed catalog version. Unchanged version-3
+completion alone enables reviewed identity normalization while retaining raw names.
+
+Factual evidence has two bounded consumers: `buildPerformedWorkContext` retains
+16k record characters for chat; `buildPerformedWorkEvidence` allows8M for internal
+reviewed compilation and is rejected by the chat renderer. The same projection
+retains actual fields and fails incomplete beyond either bound. Real local full-
+week readback preserves105 actual reports across five reviewed sessions.
+
+Reviewed completion now has a separate local RPC `complete_reviewed_session`.
+It verifies latest set IDs and saves one canonical workout/snapshot/receipt with
+the session check-in atomically. Actual per-set evidence survives factual-context
+readback; missing reports never become performed targets. See the September27
+`reviewed-completion` verification receipt. Existing reviewed proposals remain
+fenced. No HTTP completion route or numerical activation is enabled.
+
+Reviewed sessions have a local SQL storage contract with exact dated parent-plan
+correspondence. `reviewed-set-report.ts` and `record_reviewed_session_set` preserve
+actual set/side/revision, effort, rest, load and optional rep velocity provenance
+in owner-only `coach_reviewed_set_reports`. Corrections append; each write advances
+context revision and raw versions enter authenticated source binding. Old reviewed
+proposal and completion paths are fenced until atomic integration is complete.
+Only the synthetic local database has received this migration.
+
+`reviewed-week-context-server.ts` now binds complete reviewed rolling weeks to
+authenticated current source/profile reads. The server fixes all authority;
+the caller selects only an ID. Deep snapshotting precedes authentication awaits.
+Real loopback correction invalidation and owner isolation are verified. This
+remains read-only and non-persistable; atomic acceptance is still required.
+
+`buildReviewedRollingWeeklyPlan` now produces dated lossless reviewed sessions.
+Browser-safe `reviewed-session-contract.ts` and `reviewed-week-plan-contract.ts`
+validate read shape/time/window/source correspondence; `decodeCoachWeeklyIntent`
+dispatches historical formats. Weekly GET, program displays and authenticated
+base reads recognize the new format. No reviewed generation route, SQL
+persistence, legacy set-signal conversion or acceptance is enabled. The standard
+serializer rejects reviewed prescriptions in both session arrays. Database
+storage requires an explicit future contract extension; read validation grants
+no numerical authority.
+
+W5 numerical-policy preparation: `app/lib/coach/initial-dose-policy.ts` is a pure,
+offline-only validator of trusted reviewed options under `initial-dose-0.2.0`.
+`offline-reviewed-session.ts` now lowers registered options through shared
+session-composer prescription fields and an explicit program-validator path.
+Its distinct output cannot be persisted as a weekly session; default live
+validation rejects reviewed-option load anchors. Ordered preparation is bound
+to the reviewed recipe. Timing and whole-week fit remain unverified. No route
+calls this compiler and it grants no authenticated/live numerical authority.
+See ADR-0021 and the policy0.2 review/freeze record for this boundary.
+
+`reviewed-dose-context-server.ts` adds authenticated owned source readback and
+trusted-registration comparison before offline compilation. It reuses canonical
+history, preserves raw contradictory context, checks current setup/base and
+context revisions, and rejects incomplete reads, clock skew and source drift.
+This read-only seam is verified against local Auth/PostgreSQL; no live route
+wiring or numerical-plan persistence is enabled.
+
+`offline-reviewed-week.ts` compiles a complete trusted reviewed week into its own
+non-persistable format. It retains typed ordered preparation, ramps, work,
+monitoring and recovery; derives time totals; checks the exact profile/context,
+reviewed schedule and declared equipment; and records changed exposure spacing.
+The developmental fixture covers all five sessions and the Tue/Wed swap, with
+a 75-minute Saturday. Some movement/equipment identities remain case-local.
+This format does not alter default rolling-week generation or grant canonical
+coverage/catalog eligibility, authenticated acceptance or saved-plan schema.
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        SociusFit App                            │

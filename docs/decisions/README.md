@@ -1,5 +1,14 @@
 # Architecture decisions
 
+- [ADR-0034: Independent set RIR](ADR-0034-independent-set-rir.md) — nullable actual RIR alongside RPE, exact legacy requests and compatible completion; local authenticated storage verified, browser/hosted gates remain.
+- [ADR-0033: Effort-led reviewed work](ADR-0033-effort-led-reviewed-work.md) — uncapped effort targets and explicit optional work; local storage verified, newer browser proof remains.
+- [ADR-0032: Reviewed dose and complete-week reconciliation](ADR-0032-reviewed-dose-week-reconciliation.md) — preserve historical evidence, accepted base and proposed trial with dated source linkage.
+
+- [ADR-0030: Atomic resolution of reviewed session requests](ADR-0030-reviewed-request-resolution.md) — recover a saved receipt or fence the original request before deliberate replacement.
+- [ADR-0031: Qualitative preparation recovery](ADR-0031-reviewed-qualitative-recovery.md) — preserve as-needed rest separately from conditional time estimates.
+
+- [ADR-0030: Atomic resolution of reviewed session requests](ADR-0030-reviewed-request-resolution.md) — recover a saved receipt or fence the original request before deliberate replacement.
+
 | ADR | Title | Status |
 | --- | --- | --- |
 | [ADR-0001](ADR-0001-ai-surface-taxonomy.md) | AI-Surface Taxonomy and the Compute-vs-Compose Boundary | Accepted |
@@ -27,5 +36,7 @@
 - [ADR-0026: Bounded evidence retrieval fidelity](ADR-0026-bounded-evidence-retrieval-fidelity.md) — explicit provenance/exclusions, confirmed-outcome lookup and deliberate older performed-work retrieval.
 
 - [ADR-0027: Signal facts before prescription changes](ADR-0027-signal-facts-before-prescription-changes.md) — improved outcomes retain accepted work; source-linked sensor coverage and working evidence support review without numerical authority.
+
+- [ADR-0035: Supervised programming scope](ADR-0035-supervised-programming-scope.md) — locally accepted design for athlete/program enrollment, authenticated exact-content review and database-enforced access/recovery; implementation remains disabled.
 
 - [ADR-0029: Fractional workout effort and failed-save recovery](ADR-0029-fractional-workout-effort-and-failed-save-recovery.md) — exact session effort, transactional migration and owner-locked no-write proof without reopening failed identities.

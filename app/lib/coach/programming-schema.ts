@@ -2,6 +2,7 @@ import { validateExercisePreferences, type ExercisePreferences } from './exercis
 import { validatePlanningIntentSnapshot } from './planning-intent'
 import { validateFactualPlanningContext } from './planning-context'
 import { validatePrescriptionBasis } from './prescription-basis'
+import { parseReviewedSession } from './reviewed-session-contract'
 import type {
   CoachPlanningContext,
   CoachPlanningInput,
@@ -12,6 +13,7 @@ import type {
   TrainingWeekday
 } from './types'
 import type { TrainingGoal } from './adaptive-programming-contracts'
+import { COACH_PROGRAM_DOMAIN_IDS } from './types'
 
 export const PROGRAMMING_SCHEMA_VERSION = 1 as const
 export const PROGRAMMING_KERNEL_VERSION = '0.3.0'
@@ -50,6 +52,8 @@ export interface ProgrammingSessionAvailability {
 }
 
 export interface ProgrammingEquipmentProfile {
+  /** Original confirmed description, retained independently of unresolved questions. */
+  athleteDescription?: string
   /** Only resolved IDs may participate in deterministic movement eligibility. */
   resolvedIds: string[]
   /** Preserved for review; the kernel must not infer equipment from this field. */
@@ -226,6 +230,20 @@ export type ProgrammingExecutionTarget =
 
 export type ProgrammingLoadAnchor =
   | {
+    /** Offline reviewed lowering only; normal plan validation rejects this source. */
+    source: 'reviewed_option'
+    optionId: string
+    optionHash: string
+    review: { id: string; contentHash: string }
+    sources: Array<{ id: string; revision: number; contentHash: string }>
+    policyVersion: string
+    protocolId: string
+    equipmentId: string
+    loadConvention: 'total_external' | 'per_hand_external'
+    repetitionsPerSide: boolean
+    loadRange: NumericRange & { unit: 'lb' | 'kg' }
+  }
+  | {
     source: 'saved_assessment'
     assessmentId: string
     percentRange: NumericRange
@@ -288,6 +306,7 @@ export interface CompleteProgrammingSessionPrescription {
 export type StoredCoachSessionPrescription =
   | CoachSessionPrescription
   | CompleteProgrammingSessionPrescription
+  | import('./reviewed-session-contract').ReviewedSessionPrescription
 
 export type ProgrammingSchemaValidation = {
   ok: boolean
@@ -345,6 +364,16 @@ export function normalizeLegacyPlanningInput(
 export function validateProgrammingProfile(
   profile: ProgrammingProfile
 ): ProgrammingSchemaValidation {
+  return validateProfile(profile, false)
+}
+
+/** Complete manually reviewed allocations may cover every known domain. This
+ * entry point supplies no automatic dose, approval or activation authority. */
+export function validateReviewedProgrammingProfile(profile: ProgrammingProfile): ProgrammingSchemaValidation {
+  return validateProfile(profile, true)
+}
+
+function validateProfile(profile: ProgrammingProfile, reviewed: boolean): ProgrammingSchemaValidation {
   const errors: string[] = []
   if (profile.trainingIntent !== undefined && !validatePlanningIntentSnapshot(profile.trainingIntent)) errors.push('Confirmed training intent snapshot is invalid')
   if (profile.executionPriority !== undefined && (!profile.executionPriority || typeof profile.executionPriority.goalId !== 'string'
@@ -368,9 +397,11 @@ export function validateProgrammingProfile(
   if (profile.primaryGoal.role !== 'primary' || profile.primaryGoal.allocation !== 'lead') {
     errors.push('Programming profile needs exactly one lead goal')
   }
-  if (profile.secondaryGoals.length > 2) {
+  if (!reviewed && profile.secondaryGoals.length > 2) {
     errors.push('Choose no more than two secondary goals')
   }
+  if (reviewed && (goals.length > COACH_PROGRAM_DOMAIN_IDS.length
+    || goals.some(goal => !COACH_PROGRAM_DOMAIN_IDS.includes(goal.domain)))) errors.push('Reviewed allocations must use the known training domains')
   if (profile.secondaryGoals.some(goal => (
     goal.role !== 'secondary'
     || !['development', 'maintenance'].includes(goal.allocation)
@@ -421,6 +452,11 @@ export function validateProgrammingProfile(
   }
 
   const equipmentIds = profile.equipment.resolvedIds
+  if (profile.equipment.athleteDescription !== undefined && (!reviewed
+    || typeof profile.equipment.athleteDescription !== 'string'
+    || !profile.equipment.athleteDescription.trim() || profile.equipment.athleteDescription.length > 4000)) {
+    errors.push('Original equipment description requires a valid reviewed profile')
+  }
   if (
     new Set(equipmentIds).size !== equipmentIds.length
     || equipmentIds.some(id => id.trim().length === 0)
@@ -498,8 +534,9 @@ export function validateWeeklyCoverageRequirement(
 
 export function detectCoachPrescriptionFormat(
   value: unknown
-): 'legacy_v0_2' | 'complete_v0_3' | 'unknown' {
+): 'legacy_v0_2' | 'complete_v0_3' | 'reviewed_v0_1' | 'unknown' {
   if (!isRecord(value)) return 'unknown'
+  if (value.format === 'reviewed_programming_v0_1') return parseReviewedSession(value) ? 'reviewed_v0_1' : 'unknown'
 
   if (
     value.schemaVersion === PROGRAMMING_SCHEMA_VERSION

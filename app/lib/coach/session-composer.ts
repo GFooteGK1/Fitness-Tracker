@@ -1,4 +1,5 @@
 import { focusedRequirement, orderSessionAssignments } from './execution-priority'
+import { doseContentHash, type ReviewedDoseOption } from './initial-dose-policy'
 import {
   MOVEMENT_CATALOG_VERSION,
   MOVEMENT_EQUIPMENT_IDS,
@@ -44,6 +45,28 @@ export interface SessionCompositionResult {
     day: TrainingWeekday
     reason: 'no_assigned_coverage'
   }>
+}
+
+/** Shared prescription fields without inventing a session duration or coverage allocation. */
+export type ReviewedWorkingPrescription = Pick<CompleteProgrammingExercisePrescription,
+  'movementId' | 'dose' | 'loadAnchor' | 'executionTarget' | 'restSeconds'>
+
+/** Mechanical lowering only. The offline compiler must validate the trusted registry first. */
+export function composeReviewedWorkingPrescription(option: ReviewedDoseOption): ReviewedWorkingPrescription {
+  const { after } = option
+  if (!after.targetRpe) throw new Error('Reviewed working effort is required')
+  return structuredClone({
+    movementId: after.movementId,
+    dose: { kind: 'sets_reps', sets: { min: after.sets, max: after.sets }, repetitions: after.repetitions },
+    executionTarget: { kind: 'rpe', range: after.targetRpe },
+    restSeconds: after.restSeconds,
+    loadAnchor: {
+      source: 'reviewed_option', optionId: option.id, optionHash: doseContentHash(option),
+      review: option.review, sources: option.sources, policyVersion: option.policyVersion,
+      protocolId: after.protocolId, equipmentId: after.equipmentId,
+      loadConvention: after.loadConvention, repetitionsPerSide: after.repetitionsPerSide, loadRange: after.load,
+    },
+  })
 }
 
 interface SelectedMovement {

@@ -10,6 +10,19 @@ import {
 interface Result { data: unknown[] | null; error: { message: string } | null }
 
 describe('coach trust center', () => {
+  it('shows each saved daily duration and retains resolved equipment wording', async () => {
+    const common={kind:'schedule',version:1,provenance:{source:'athlete_confirmed'},confidence:1,
+      confirmed_at:'2026-09-01T12:00:00Z',review_after:null,last_reviewed_at:null}
+    const {supabase,userId}=fixture({coach_memories:[{data:[
+      {...common,id:'schedule-1',memory_key:'training_schedule',content:{schemaVersion:2,experience:'consistent',
+        sessionAvailability:[{day:'monday',minutes:60},{day:'saturday',minutes:75}]}},
+      {...common,id:'equipment-1',kind:'equipment',memory_key:'available_equipment',content:{schemaVersion:2,
+        equipment:'Rack, barbell and bench',resolvedEquipmentIds:['barbell','rack','bench'],unresolvedAthleteDescription:null}}
+    ],error:null}]})
+    const trust=await fetchCoachTrustCenter(supabase,userId,new Date('2026-09-01T18:00:00Z'))
+    expect(trust.memories[0].summary).toBe('Monday: 60 minutes · Saturday: 75 minutes')
+    expect(trust.memories[1].summary).toBe('Rack, barbell and bench')
+  })
   it('builds distinct memory, review, progress, and rationale surfaces', async () => {
     const { supabase, queries } = fixture()
     const trust = await fetchCoachTrustCenter(
