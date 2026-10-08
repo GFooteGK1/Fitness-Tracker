@@ -8,6 +8,10 @@ import { effortWorkInput } from '../fixtures/reviewed-effort-work'
 import { prepareSupervisedCandidate } from '@/app/lib/coach/supervised-candidate-server'
 import { doseContentHash } from '@/app/lib/coach/initial-dose-policy'
 import { formatUTCAsLocalDateWithOffset, localDateToUTCStart } from '@/app/lib/timezone-utils'
+import { buildRollingWeeklyPlan } from '@/app/lib/coach/rolling-weekly-plan'
+import { buildRollingTrainingDirection } from '@/app/lib/coach/rolling-weekly-contracts'
+import { buildStoredRollingWeeklyIntent } from '@/app/lib/coach/rolling-weekly-api'
+import { buildAdaptivePlanContract } from '@/app/lib/coach/adaptive-plan'
 
 export const lifecycleIds = { owner: '00000000-0000-4000-8000-000000000001', reviewer: '00000000-0000-4000-8000-000000000002',
   foreign: '00000000-0000-4000-8000-000000000003', program: '00000000-0000-4000-8000-000000000010', base: '00000000-0000-4000-8000-000000000011' }
@@ -65,7 +69,7 @@ export function sourceClient(db: PGlite, owner: string, role: 'authenticated' | 
   } } as unknown as SupabaseClient
 }
 
-export async function supervisedLifecycleFixture(applyLifecycle = true, applyReview = true) {
+export async function supervisedLifecycleFixture(applyLifecycle = true, applyReview = true, seedLegacyBase = false) {
   const db = await recommendationFixture()
   for (const file of ['20260921010000_coach_proposal_context_revision.sql', '20260923010000_coaching_write_pause.sql', '20260926010000_coach_setup_memory_bindings.sql',
     '20260928010000_reviewed_session_set_reports.sql', '20260928020000_reviewed_session_completion.sql', '20260928030000_reviewed_proposal_registration.sql',
@@ -77,14 +81,24 @@ export async function supervisedLifecycleFixture(applyLifecycle = true, applyRev
   }
   const { owner, reviewer, foreign, program, base } = lifecycleIds
   const original = reviewedRollingWeek()
+  // Create the requested fixture format initially. Never mutate accepted content
+  // or disable its immutability trigger to arrange a legacy-onboarding test.
+  const legacyProfile = { ...structuredClone(original.plan.profileSnapshot), startDate: '2026-09-14' }
+  const initialWeek = seedLegacyBase ? buildRollingWeeklyPlan({ source: 'initial', profile: legacyProfile,
+    windowStart: legacyProfile.startDate, direction: buildRollingTrainingDirection(legacyProfile,
+      { hypothesis: 'Disposable legacy baseline for first-reviewed authority tests.' }) }) : original.plan
+  if (initialWeek.kind === 'safety_pause') throw new Error('Fixture needs a complete legacy baseline')
+  const initialIntent = seedLegacyBase && initialWeek.kind === 'weekly_plan'
+    ? buildStoredRollingWeeklyIntent(initialWeek, buildAdaptivePlanContract(initialWeek.profileSnapshot, [{ schedule: initialWeek.schedule }]))
+    : original.intent
   await db.query('INSERT INTO auth.users(id) VALUES($1),($2),($3)', [owner, reviewer, foreign])
   await db.query(`INSERT INTO training_programs(id,user_id,title,goal_summary,start_date,end_date,status,program_mode)
-    VALUES($1,$2,'Mechanical supervised lifecycle','Not athlete approval',$3,$4,'draft','rolling_weekly')`, [program, owner, original.plan.windowStart, original.plan.windowEnd])
+    VALUES($1,$2,'Mechanical supervised lifecycle','Not athlete approval',$3,$4,'draft','rolling_weekly')`, [program, owner, initialWeek.windowStart, initialWeek.windowEnd])
   await db.query(`INSERT INTO training_plan_versions(id,program_id,user_id,version,status,accepted_at,reference_version,policy_version,plan_mode,window_start,window_end,sequence_number,intent,input_snapshot)
     VALUES($1,$2,$3,1,'accepted',now(),'fixture','initial-dose-0.2.0','rolling_weekly',$4,$5,1,$6,'{}')`,
-  [base, program, owner, original.plan.windowStart, original.plan.windowEnd, JSON.stringify(original.intent)])
+  [base, program, owner, initialWeek.windowStart, initialWeek.windowEnd, JSON.stringify(initialIntent)])
   await db.query("UPDATE training_programs SET status='active',active_plan_version_id=$1 WHERE id=$2", [base, program])
-  for (const [i, slot] of original.plan.scheduledSessions.entries()) await db.query(`INSERT INTO prescribed_sessions(id,plan_version_id,program_id,user_id,week_number,session_index,scheduled_date,prescription)
+  for (const [i, slot] of initialWeek.scheduledSessions.entries()) await db.query(`INSERT INTO prescribed_sessions(id,plan_version_id,program_id,user_id,week_number,session_index,scheduled_date,prescription)
     VALUES($1,$2,$3,$4,1,$5,$6,$7)`, [randomUUID(), base, program, owner, i + 1, slot.scheduledDate, JSON.stringify(slot.prescription)])
   async function actor(user = owner, role = 'authenticated') {
     await db.exec(`RESET ROLE; SET LOCAL ROLE ${role}`)
@@ -148,5 +162,5 @@ export async function supervisedLifecycleFixture(applyLifecycle = true, applyRev
     return scalar<{ id: string; scheduled_date: string; prescription: typeof original.plan.scheduledSessions[0]['prescription'] }>(`SELECT to_jsonb(s) AS value FROM coach_effective_prescribed_sessions s
       WHERE s.user_id=$1 AND s.plan_version_id=coalesce($2::uuid,(SELECT active_plan_version_id FROM training_programs WHERE id=$3)) ORDER BY session_index LIMIT 1`, [owner, planId ?? null, program])
   }
-  return { db, actor, scalar, enrollment, anchor, draft, prepare, register, issue, accept, session, original }
+  return { db, actor, scalar, enrollment, anchor, draft, prepare, register, issue, accept, session, original, initialWeek }
 }

@@ -10,6 +10,7 @@ import { captureSetupMemoryBindings, setupMemoryBindingsCurrent } from './setup-
 import { compileOfflineReviewedSession, type OfflineReviewedSessionContext } from './offline-reviewed-session'
 import { REVIEWED_MOVEMENT_CATALOG_VERSION } from './movement-catalog'
 import { fetchReviewedExecutionSlots } from './reviewed-execution-context-server'
+import { currentFirstReviewedIntent } from './first-reviewed-profile-facts'
 
 type Row = Record<string, unknown>
 export interface ReviewedContextScope {
@@ -65,7 +66,7 @@ async function readBase(db: SupabaseClient, userId: string, scope: ReviewedConte
   if (intent.kind === 'reviewed' && (intent.plan.windowStart !== v.window_start || intent.plan.windowEnd !== v.window_end
     || intent.plan.sequenceNumber !== v.sequence_number)) throw new Error('Reviewed accepted window changed')
   return { program: p, plan: v, profile: intent.plan.profileSnapshot,
-    reviewedSessions: intent.plan.scheduledSessions }
+    reviewedSessions: intent.plan.scheduledSessions, reviewed: intent.kind === 'reviewed' }
 }
 
 async function readOwnedRows(db: SupabaseClient, userId: string, table: string, limit: number): Promise<Row[]> {
@@ -89,10 +90,19 @@ function lifecycle(row: Row, asOf: number) {
 }
 
 /** Authenticates and reads the bounded source packet. A complete query is not complete athlete evidence. */
-export async function fetchReviewedDoseContext(db: SupabaseClient, scope: ReviewedContextScope) {
+export async function fetchReviewedDoseContext(db: SupabaseClient, scope: ReviewedContextScope,
+  options: { firstReviewSetup?: true; firstReviewFacts?: true } = {}) {
+  if (options.firstReviewFacts && !options.firstReviewSetup) throw new Error('First factual reads require explicit first-review setup scope')
   const userId = await authenticatedOwner(db)
   const revision = await readRevision(db, userId)
   const base = await readBase(db, userId, scope)
+  if (options.firstReviewFacts) {
+    const decoded = decodeCoachWeeklyIntent(base.plan.intent)
+    if (!decoded || decoded.kind !== 'standard' || decoded.plan.windowStart !== base.plan.window_start
+      || decoded.plan.windowEnd !== base.plan.window_end || decoded.plan.sequenceNumber !== base.plan.sequence_number) {
+      throw new Error('First factual projection requires the complete current legacy base')
+    }
+  }
   const asOf = new Date().toISOString()
   const [history, memories, assessments, observationGroups, observationValues, imports, setup, setReports, sessionSignals, executionSlots] = await Promise.all([
     fetchPlanningHistorySnapshot(db, userId, { startDate: scope.historyThrough, asOf,
@@ -102,8 +112,10 @@ export async function fetchReviewedDoseContext(db: SupabaseClient, scope: Review
     readOwnedRows(db, userId, 'performance_observation_groups', 200),
     readOwnedRows(db, userId, 'performance_observation_values', 1000),
     readOwnedRows(db, userId, 'measurement_imports', 100),
-    // This stage cannot reconcile changed setup with an old accepted profile yet.
-    captureSetupMemoryBindings(db, userId, base.profile),
+    // First onboarding reads the actual current setup even if the legacy profile
+    // differs. Its adapter must separately verify the confirmed target profile.
+    // Ordinary compilation retains strict accepted-profile agreement.
+    captureSetupMemoryBindings(db, userId, base.profile, { review: options.firstReviewSetup === true, reviewedSetup: base.reviewed }),
     readOwnedRows(db, userId, 'coach_reviewed_set_reports', 2000),
     readOwnedRows(db, userId, 'coach_session_signals', 2000),
     fetchReviewedExecutionSlots(db, userId, scope.programId, scope.basePlanVersionId, base.reviewedSessions),
@@ -124,10 +136,10 @@ export async function fetchReviewedDoseContext(db: SupabaseClient, scope: Review
   if (intents.some(row => !Number.isSafeInteger(row.version) || Number(row.version) < 1)) throw new Error('Invalid training intent version')
   intents.sort((a, b) => Number(b.version) - Number(a.version))
   const currentIntent = intents[0], acceptedIntent = base.profile.trainingIntent
-  if (currentIntent ? !acceptedIntent || memoryStates.find(row => row.id === currentIntent.id)?.state !== 'current'
+  if (!options.firstReviewFacts && (currentIntent ? !acceptedIntent || memoryStates.find(row => row.id === currentIntent.id)?.state !== 'current'
     || currentIntent.id !== acceptedIntent.memoryId || currentIntent.version !== acceptedIntent.memoryVersion
     || doseContentHash(currentIntent.content) !== doseContentHash(acceptedIntent.content)
-    || intents.some(row => row !== currentIntent && row.version === currentIntent.version) : Boolean(acceptedIntent)) {
+    || intents.some(row => row !== currentIntent && row.version === currentIntent.version) : Boolean(acceptedIntent))) {
     throw new Error('Confirmed training intent changed or needs review')
   }
   // Source values, not volatile read timestamps, bind subsequent readback. Lifecycle states
@@ -136,7 +148,24 @@ export async function fetchReviewedDoseContext(db: SupabaseClient, scope: Review
   void _readTime
   const binding = { version: 'reviewed-dose-context-3', reviewedMovementCatalogVersion: REVIEWED_MOVEMENT_CATALOG_VERSION, userId, scope, revision,
     base: { program: base.program, plan: base.plan }, history: historySources,
-    memories, memoryStates, assessments, observationGroups, observationValues, imports, setup, setReports, sessionSignals, executionSlots }
+    memories, memoryStates, assessments, observationGroups, observationValues, imports, setup, setReports, sessionSignals, executionSlots,
+    ...(options.firstReviewFacts ? { intentBaselineWorkouts: [] as Row[] } : {}) }
+  if (options.firstReviewFacts) {
+    const intent = currentFirstReviewedIntent({ userId, asOf, contextHash: doseContentHash(binding), binding, profile: base.profile })
+    if (!intent && acceptedIntent) throw new Error('Current confirmed intent is missing; legacy intent cannot be reused')
+    const referenced = new Set((intent?.content.outcomes ?? []).flatMap(outcome => outcome.baseline.status === 'referenced' ? [outcome.baseline.observationId] : []))
+    const workoutIds = [...new Set(observationGroups.filter(row => referenced.has(String(row.id))
+      && row.source_kind === 'coach_completion').map(row => row.workout_id))]
+    if (workoutIds.length > 8 || workoutIds.some(id => typeof id !== 'string')) throw new Error('Referenced baseline execution identities need review')
+    const baselineRows = await Promise.all(workoutIds.map(async id => {
+      const result = await db.from('workouts').select('id,user_id,capture_revision,execution_revision,created_at,updated_at,captured_at', { count: 'exact' })
+        .eq('user_id', userId).eq('id', id).limit(2)
+      if (result.error || result.data?.length !== 1 || result.count !== 1 || result.data[0].user_id !== userId
+        || result.data[0].id !== id) throw new Error('Referenced baseline execution is missing or ambiguous')
+      return result.data[0] as Row
+    }))
+    binding.intentBaselineWorkouts = baselineRows.sort((a,b) => String(a.id).localeCompare(String(b.id)))
+  }
   const [afterBase, setupCurrent, afterOwner] = await Promise.all([
     readBase(db, userId, scope),
     setupMemoryBindingsCurrent(db, userId, setup), authenticatedOwner(db),

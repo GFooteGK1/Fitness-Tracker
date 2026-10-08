@@ -10,6 +10,7 @@ import { validateCompleteProgrammingWeekDose } from './program-validator'
 import {
   PROGRAMMING_KERNEL_VERSION,
   validateProgrammingProfile,
+  validateReviewedProgrammingProfile,
   type CompleteProgrammingDose,
   type CompleteProgrammingExercisePrescription,
   type CompleteProgrammingSessionPrescription,
@@ -489,7 +490,7 @@ export function buildReviewedRollingWeeklyPlan(input: {
   try {
     if (input.context.profile.startDate !== input.windowStart || isoWeekday(input.windowStart) !== 1
       || !Number.isSafeInteger(input.sequenceNumber) || input.sequenceNumber < 1) throw new Error('Reviewed window/sequence does not match profile')
-    const profileCheck = validateProgrammingProfile(input.context.profile)
+    const profileCheck = validateReviewedProgrammingProfile(input.context.profile)
     const directionErrors = validateRollingTrainingDirection(input.direction, input.context.profile)
     if (!profileCheck.ok || directionErrors.length) throw new Error([...profileCheck.errors, ...directionErrors].join('; '))
     const result = compileOfflineReviewedWeek(input.context, registry)
@@ -509,9 +510,14 @@ export function buildReviewedRollingWeeklyPlan(input: {
       if (!parseReviewedSession(prescription)) throw new Error('Reviewed session does not satisfy the lossless read contract')
       return [{ scheduledDate: addIsoDays(input.windowStart, WEEKDAY_OFFSET[day.day]), prescription }]
     })
+    // Acceptance copies this display title to training_programs (1–160 characters).
+    // PostgreSQL counts Unicode codepoints. Keep the date and full goal snapshots.
+    const titleSuffix = `: ${input.windowStart}`
+    const title = Array.from(input.context.profile.athleteGoalSummary)
+      .slice(0, 160 - titleSuffix.length).join('') + titleSuffix
     const plan: ReviewedRollingWeekPlan = {
       kind: 'reviewed_week_plan', format: 'reviewed_rolling_week_v0_1', schemaVersion: 1,
-      title: `${input.context.profile.athleteGoalSummary}: ${input.windowStart}`, sequenceNumber: input.sequenceNumber,
+      title, sequenceNumber: input.sequenceNumber,
       windowStart: input.windowStart, windowEnd: addIsoDays(input.windowStart, 6),
       profileSnapshot: structuredClone(input.context.profile), directionSnapshot: structuredClone(input.direction),
       basis: { recipeId: input.context.recipeId, recipeHash: week.basis.recipeHash, contextHash: week.basis.contextHash,

@@ -4,6 +4,105 @@
 
 ## 🏗️ **High-Level Architecture Overview**
 
+First-review setup creation/correction now uses atomic canonical memory writes
+bound to exact latest declarations and current owned program/base/designation.
+Sorted key locks plus latest-row FOR UPDATE NOWAIT fence lifecycle changes and
+avoid waiting behind ordinary row-first corrections. A separate immutable owned
+request ledger preserves saved/no-write historical proof. Four private no-store
+authenticated routes and durable browser recovery connect this to the root;
+shared actor/program coordination excludes either kind of unresolved request.
+Missing declarations stay blank, editing invalidates prepared facts/week state,
+explicit cancellation protects unsaved edits, and program paging retains selection.
+Bounded local/independent evidence:
+docs/verification/programming-quality/first-reviewed-setup-save-2026-10-05.md.
+Complete consecutive root flow and real Auth/native tabs/backend contention remain
+open; new migration remains uninstalled. This adds no enrollment/numeric authority.
+
+First-review root identity/recovery/preview has bounded local and independent
+qualification. Owner metadata retains the linked original proposal key while
+reviewer metadata redacts it. Current designation allows explicit owner review;
+issuance and athlete acceptance stay separate. Local recovery remains visible
+when discovery fails, with account fencing and StrictMode initialization.
+Read-only preview uses the owned complete compiler and writes no lifecycle rows.
+The full setup-to-acceptance interface and actual Auth/native-browser proof remain
+open. Current bounded evidence:
+docs/verification/programming-quality/first-reviewed-root-identity-recovery-2026-10-05.md.
+
+First-review current setup now has a pure owner-only no-store GET, strict
+declaration seed and structured goal/daily-time/equipment/constraint editor.
+It uses latest saved declarations, never old plan facts; factsLoaded:false is
+an explicit unloaded state. Missing/stale declarations require correction.
+The legacy history is preserved through disposable SQL profile confirmation.
+Trust-center conversion is explicitly reviewed or already-versioned only;
+ordinary legacy formats are retained. Root integration, durable setup correction
+recovery and real Auth/browser remain open. Bounded current evidence:
+docs/verification/programming-quality/first-reviewed-current-setup-2026-10-05.md.
+
+First-review browser recovery and blank-week authoring are now locally qualified
+under ADR-0036. One exclusive actor/program UI action wrapper protects pending
+reservation through getter verification/archive/removal, with no retained-request
+resend. The shared complete-week editor can create explicit incomplete first
+sessions and monitoring protocols without copying legacy dose/history. Ordinary
+same/next types and dispatch are unchanged. Current setup/root workflow wiring,
+native multi-tab and real Auth/PostgREST/browser proof remain unfinished. Evidence:
+docs/verification/programming-quality/first-reviewed-browser-authoring-2026-10-05.md.
+
+First-reviewed onboarding is being added under ADR-0036 for an existing legacy
+accepted base. Bounded program/candidate/owner-only profile navigation now uses
+private summary helpers, authenticated paginated getters and three private
+no-store GET routes. Discovery grants no designation, enrollment or write
+authority. Owners retain history after revocation/acceptance; reviewers see only
+current first-review scope. The new 20261005172408 workspace migration is an
+uninstalled draft. Full mobile setup/draft/review/acceptance screens and real
+Auth/PostgREST/browser qualification remain unfinished. See current discovery
+evidence in docs/verification/programming-quality/first-reviewed-workspace-2026-10-05.md.
+
+The first-review transition supports a legacy
+accepted rolling week and an explicit non-adjacent target. Separate private
+operator-versioned first-review designation has no enrollment or acceptance
+authority by itself. First-window/profile confirmation and fresh execution-root
+contracts preserve authenticated facts and leave unreported prior work unknown.
+Separate candidate/decision primitives and a first preparer are drafted, with
+bounded complete legacy/target review and immutable historical receipts. Fresh
+factual projection is built separately with current intent/assessments/history,
+ordered baseline evidence, explicit first-only capture and reviewed-only finite
+domain validation. Immutable owned profile snapshots and authenticated exact
+confirmation now connect pinned fresh facts to preparation and SQL. Getter-only
+receipt recovery leaves absence unresolved; current direction dates and bounded
+profile facts replace legacy copying. Browser parsing is separate from server
+hashing. Saved reviewed setup v2 now carries per-day time and explicit equipment
+resolution with retained original prose through profile/candidate/SQL checks.
+Automatic setup does not flatten v2; the trust read model displays daily limits.
+Candidate submission/decision now have exact immutable actor-scoped closure and
+saved-result recovery; first issue closure reuses the existing registration fence
+before lineage, preserving its lock order. Historical getters stay pure and absent
+receipts unresolved. Local tests and independent review qualify this slice.
+The full onboarding setup editor and real Auth remain required. Full APEX
+qualification, guarded issuance, atomic lineage/anchor
+acceptance and UI/runtime integration are still required.
+Profile preparation/confirmation now also have exact owned closure/recovery,
+private original-request binding and late-writer fencing; bounded local regression
+and independent profile review pass. This does not establish full runtime acceptance.
+Neither the 20261005120000 designation nor 20261005130000 candidate migration is
+applied to retained/hosted storage. These draft primitives do not qualify the full
+onboarding lifecycle.
+
+The20261005155602 first-acceptance draft now binds protected registration and
+issuance to exact first approval, and commits authenticated transaction proof,
+legacy supersession, permanent lineage and the initial anchor atomically.
+Reserved-ID and deferred content/manifest/history checks protect direct paths;
+historical receipts survive later supersession and disabled authority. It creates
+no enrollment. Server review/issuance/separate acceptance factories now compose
+the protected SQL with exact pending recovery. New /api/coach/first-reviewed
+execute/resolution/resolve and bounded candidate/profile reads reuse the existing
+server kill switch; it grants no designation, enrollment or numerical authority.
+Full-envelope profile-confirmation precheck preserves outer program identity;
+public success payloads require exact resource/request binding. Approved private
+source packets remain internal. Bounded service/handler/disposable-SQL evidence
+and independent review are in first-reviewed-services-http-2026-10-05.md.
+Complete UI, real Next/Auth/PostgREST/browser and concurrent-backend acceptance
+remain required; this draft is also uninstalled on retained/hosted storage.
+
 Supervised programming has local review authority and lifecycle enforcement
 (ADR-0035): immutable enrollment/candidates/decisions, bounded reviewer reads,
 exact approved registration and permanent-lineage SQL guards through acceptance,
@@ -1064,6 +1163,11 @@ ADR-0008 extends shared logging to the agent, text parsing, and meal-photo route
 `app/lib/logging/server.ts` claims and finalizes authenticated database receipts;
 `save_logged_activity` owns canonical workout/block or meal inserts. Uncertain
 writes stop processing and remain reconcilable through their saved entity IDs.
+Session RPE uses the existing NUMERIC column without rounding. The narrowly scoped
+`confirm_failed_workout_request` RPC proves an exact terminal legacy failure has
+no saved entities or capture operations before permitting a fresh submission.
+Historic receipts remain unchanged and their keys stay closed. See
+[ADR-0029](../decisions/ADR-0029-fractional-workout-effort-and-failed-save-recovery.md).
 Photo response persistence shares the meal transaction. No worker automatically
 re-executes a claimed request. See the release notes for precise scope/limitations.
 

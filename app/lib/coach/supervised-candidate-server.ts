@@ -13,6 +13,7 @@ import { decodeCoachWeeklyIntent } from './rolling-weekly-api'
 import { buildRollingTrainingDirection } from './rolling-weekly-contracts'
 import { parseSupervisedReviewPacket } from './supervised-programming-contract'
 import { parseSupervisedCandidateDraft } from './supervised-candidate-draft'
+import { projectReviewedEvidence } from './reviewed-evidence-projection'
 export { parseSupervisedCandidateDraft, type SupervisedCandidateDraft } from './supervised-candidate-draft'
 
 const same = (a: unknown, b: unknown) => doseContentHash(a) === doseContentHash(b)
@@ -55,20 +56,7 @@ export async function prepareSupervisedCandidate(db: SupabaseClient, input: unkn
     if (source.performed.records.length > 64) return { kind: 'review_required' as const,
       reasons: ['The review packet needs a narrower explicit history window; evidence was not silently truncated.'] }
     const week = prepared.packet.intent.reviewed_week
-    const evidence = source.performed.records.map(row => ({ sourceId: row.sourceId,
-      summary: JSON.stringify({ date: row.date, movement: row.movementId ?? row.recordedName,
-        role: row.role, basis: row.basis, completionState: row.completionState,
-        quantities: row.quantities, quantityProvenance: row.quantityProvenance,
-        recordedWeight: row.recordedWeight, equipment: row.equipment, protocol: row.protocol,
-        unilateralConvention: row.unilateralConvention, effort: row.effort,
-        setEvidence: row.setEvidence ? { reportId: row.setEvidence.reportId, revision: row.setEvidence.revision,
-          setNumber: row.setEvidence.setNumber, performedAt: row.setEvidence.performedAt,
-          durationSeconds: row.setEvidence.durationSeconds, distanceMetres: row.setEvidence.distanceMetres,
-          restAfterSeconds: row.setEvidence.restAfterSeconds, velocity: row.setEvidence.velocity,
-          rir: row.setEvidence.rir, stopped: row.setEvidence.stopped, symptoms: row.setEvidence.symptoms,
-          hasAdditionalNote: Boolean(row.setEvidence.note) } : null,
-        sessionEffort: { value: row.sessionEffort.value, status: row.sessionEffort.status },
-        limitations: row.limitations }) }))
+    const evidence = projectReviewedEvidence(source.performed.records)
     const changes: Array<{ kind: 'changed' | 'preserved' | 'removed'; sessionIds: string[]; summary: string }> = week.scheduledSessions.map(slot => {
       const prior = base.plan.scheduledSessions.find(old => old.prescription.sessionId === slot.prescription.sessionId)
       // Provenance/date changes alone do not masquerade as a dose change.

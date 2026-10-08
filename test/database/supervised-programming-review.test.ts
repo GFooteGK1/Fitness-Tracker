@@ -278,9 +278,13 @@ describe('supervised programming review authority', () => {
     await db.exec('RESET ROLE')
     expect(await scalar('SELECT count(*)::int AS value FROM coach_supervised_decisions')).toBe(1)
   })
-  it('keeps recursive SQL and server privacy fields in parity and rejects nested hidden source data', async () => {
+  it('preserves the installed v1 privacy map and rejects nested hidden source data', async () => {
     await db.exec('RESET ROLE')
-    expect(await scalar('SELECT supervised_review_field_map() AS value')).toEqual(SUPERVISED_REVIEW_SHAPES)
+    // This fixture installs the historical v1 migration, not the new first-review draft.
+    // The new migration's exact full-map parity is covered by reviewed-setup-memory.
+    const installedV1 = structuredClone(SUPERVISED_REVIEW_SHAPES)
+    delete installedV1.equipment.athleteDescription
+    expect(await scalar('SELECT supervised_review_field_map() AS value')).toEqual(installedV1)
     for (const mutate of [
       () => {},
       (week: typeof target) => { Object.assign(week, { memories: [] }) },

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { readCaptureRequest, recoveredCaptureResponse } from '@/app/lib/capture/reconciliation'
+import { readCaptureRequest, recoveredCaptureResponse, recoverFailedWorkoutRequest } from '@/app/lib/capture/reconciliation'
 import { commitCaptureBundle } from '@/app/lib/capture/service'
 import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
 
@@ -40,6 +40,10 @@ async function handle(request: Request, context: { params: Promise<{ id: string 
         if (finished.error) return NextResponse.json({ ...response, state: 'save_unconfirmed' }, { status: 503, headers })
       }
       return NextResponse.json({ ...response, state: bundle.state, retryAllowed: false }, { status: bundle.unresolved.length ? 207 : 200, headers })
+    }
+    if (!state.items.length && !state.receipts.length && !state.retryAllowed) {
+      const recovered = await recoverFailedWorkoutRequest(supabase, state.request)
+      if (recovered) return NextResponse.json({ ...recovered, response: recovered, receipts: [], pendingItems: [] }, { headers })
     }
     const legacySaved = !state.items.length && state.request.status === 'complete' && Array.isArray(state.request.entities) && state.request.entities.length > 0
     return NextResponse.json({ state: (state.receipts.length && state.items.every(item => item.status !== 'pending')) || legacySaved ? 'saved' : state.retryAllowed ? 'draft' : 'save_unconfirmed',

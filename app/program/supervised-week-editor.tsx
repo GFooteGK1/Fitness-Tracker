@@ -4,7 +4,8 @@ import { useState } from 'react'
 import type { ReviewedRest, ReviewedWeekActivity, ReviewedWeekStep } from '@/app/lib/coach/offline-reviewed-week'
 import { REVIEWED_SESSION_DAYS as REVIEWED_WEEK_DAYS, reviewedSessionSchema } from '@/app/lib/coach/reviewed-session-contract'
 import { MOVEMENT_CATALOG, MOVEMENT_EQUIPMENT_IDS } from '@/app/lib/coach/movement-catalog'
-import { copySupervisedSession, removeSupervisedSession, editSupervisedStep, moveSupervisedSession, type SupervisedWeekSeed } from '@/app/lib/coach/supervised-draft-editor'
+import { copySupervisedSession, removeSupervisedSession, editSupervisedStep, moveSupervisedSession, type EditableReviewedWeekSeed } from '@/app/lib/coach/supervised-draft-editor'
+import { addFirstReviewedSession,addFirstReviewedStep } from '@/app/lib/coach/first-reviewed-draft-editor'
 
 const inputClass = 'block min-h-11 w-full rounded border p-2 text-base text-gray-950'
 function NumberField({ label, value, change, minimum = 0 }: { label: string; value: number; change: (n: number) => void; minimum?: number }) {
@@ -125,20 +126,22 @@ export function SupervisedActivityEditor({ activity, onChange, preparationOnly =
   </fieldset>
 }
 
-export function SupervisedWeekEditor({ value, onChange, disabled = false }: {
-  value: SupervisedWeekSeed; onChange: (next: SupervisedWeekSeed) => void; disabled?: boolean
+export function SupervisedWeekEditor<T extends EditableReviewedWeekSeed>({ value, onChange, disabled = false }: {
+  value: T; onChange: (next: T) => void; disabled?: boolean
 }) {
   const [structureError, setStructureError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [copySource, setCopySource] = useState(''), [copyDay, setCopyDay] = useState('')
-  const structural = (change: () => SupervisedWeekSeed) => {
+  const [newDay,setNewDay]=useState('')
+  const structural = (change: () => T) => {
     try {
       const next = change()
       for (const session of next.recipe.sessions) if (reviewedSessionSchema(session) === 1) delete session.conditionalTiming
       onChange(next); setStructureError(null)
+      setExpanded(previous=>new Set([...previous,...next.recipe.sessions.filter(s=>!value.recipe.sessions.some(old=>old.id===s.id)).map(s=>s.id)]))
     } catch (e) { setStructureError(e instanceof Error ? e.message : 'This structural change could not be prepared.') }
   }
-  function edit(change: (next: SupervisedWeekSeed) => void) {
+  function edit(change: (next: T) => void) {
     const next = structuredClone(value); change(next)
     for (const session of next.recipe.sessions) {
       if (reviewedSessionSchema(session) === 1) delete session.conditionalTiming
@@ -151,7 +154,8 @@ export function SupervisedWeekEditor({ value, onChange, disabled = false }: {
   return <fieldset disabled={disabled} className="space-y-5 text-base">
     <legend className="text-xl font-bold">Edit the proposed week</legend>
     <p>Week starting {value.windowStart}. Changes need coach review and athlete acceptance. RPE and RIR are separate targets.</p>
-    <p>Replacing the current week may be unavailable after training has begun. Next-week proposals require unfinished sessions to be resolved first.</p>
+    {value.transition==='first_reviewed'?<p>Build the complete week from the reviewed prescription. Blank fields are unfinished work. Earlier weeks are preserved; this draft does not record performed training.</p>
+      :<p>Replacing the current week may be unavailable after training has begun. Next-week proposals require unfinished sessions to be resolved first.</p>}
     {structureError && <p role="alert">{structureError}</p>}
     {value.recipe.sessions.map((session, si) => <section key={session.id} className="space-y-3 rounded-xl border p-4">
       <button type="button" className="min-h-11 cursor-pointer py-3 text-lg font-bold" aria-expanded={expanded.has(session.id)} onClick={() => setExpanded(previous => {
@@ -192,13 +196,27 @@ export function SupervisedWeekEditor({ value, onChange, disabled = false }: {
                 { ...s, activities: s.activities.map((old, i) => i === ai ? activity : old) })} />)}
             </fieldset>}
       </div>)}
+      {value.transition==='first_reviewed'&&<div className="flex flex-wrap gap-3" aria-label="Add proposed session work">
+        {(['preparation','working','monitoring','cooldown','transition','recovery'] as const).map(kind=><button key={kind} type="button" className="min-h-11 underline"
+          onClick={()=>structural(()=>addFirstReviewedStep(value,session.id,kind,()=>crypto.randomUUID()))}>Add {kind.replaceAll('_',' ')} {kind==='transition'||kind==='recovery'?'allowance':'activity'}</button>)}
+        <p>New work needs explicit equipment, dose, effort, rests and time estimates. Monitoring also needs its protocol.</p>
+      </div>}
       {value.recipe.protocols.filter(p => p.sessionId === session.id).map(protocol => <Lines key={protocol.id}
         label="Monitoring protocol instructions" value={protocol.instructions} change={instructions => edit(d => {
           d.recipe.protocols.find(p => p.id === protocol.id)!.instructions = instructions
         })} />)}
       </>}
     </section>)}
-    {emptyDays.length > 0 && <section className="space-y-3 rounded border p-3">
+    {value.transition==='first_reviewed'&&emptyDays.length>0&&<section className="space-y-3 rounded border p-3">
+      <h2 className="font-semibold">Create a complete session</h2>
+      <label className="block">New session day<select className={inputClass} value={newDay} onChange={e=>setNewDay(e.target.value)}>
+        <option value="">Choose an empty day</option>{emptyDays.map(day=><option key={day}>{day}</option>)}
+      </select></label>
+      <button type="button" className="min-h-11 underline" disabled={!emptyDays.includes(newDay as typeof emptyDays[number])}
+        onClick={()=>structural(()=>addFirstReviewedSession(value,newDay as typeof REVIEWED_WEEK_DAYS[number],()=>crypto.randomUUID()))}>Create session</button>
+      <p>Preparation, working activity and final logging begin blank. Enter the complete reviewed prescription before submission.</p>
+    </section>}
+    {emptyDays.length > 0 && value.recipe.sessions.length>0 && <section className="space-y-3 rounded border p-3">
       <h2 className="font-semibold">Add a session from existing work</h2>
       <p>Copy a complete session, then review its movements, volume, preparation and effort for the new day.</p>
       <label className="block">Session to copy<select className={inputClass} value={copySource} onChange={e => setCopySource(e.target.value)}>

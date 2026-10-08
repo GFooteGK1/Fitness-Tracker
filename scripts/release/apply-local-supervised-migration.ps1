@@ -16,6 +16,7 @@ if ($manifest.sqlSha256 -cne $ExpectedSqlSha256 -or $capturedHash -cne $Expected
 $fixedNames = switch ($manifest.kind) {
   'pause' { @('20260923010000_coaching_write_pause.sql') }
   'issue_closure' { @('20261003150403_supervised_issue_closure_preflight.sql') }
+  'first_reviewed' { @('20261005120000_first_reviewed_designation.sql','20261005130000_first_reviewed_candidates.sql','20261005155602_first_reviewed_acceptance.sql','20261005172408_first_reviewed_workspace.sql','20261005192643_first_reviewed_setup_requests.sql') }
   'supervised' { @('20260930010000_supervised_programming_review.sql','20260930020000_supervised_programming_lifecycle.sql','20260930030000_supervised_programming_workspace.sql','20260930040000_supervised_resource_scope.sql','20261003134727_supervised_request_resolution.sql','20261003150403_supervised_issue_closure_preflight.sql') }
   default { throw 'Unexpected fixed migration kind' }
 }
@@ -25,7 +26,8 @@ foreach ($file in $manifest.files) {
   if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant() -cne $file.sha256) { throw 'Migration source changed since review' }
 }
 $hashMode = switch ($manifest.kind) { 'pause' { '--pause-hash-only' }; 'issue_closure' { '--issue-closure-hash-only' }; default { '--hash-only' } }
-$rebuiltHash = & node (Join-Path $PSScriptRoot 'supervised-local-migration-plan.mjs') $hashMode
+$planBuilder = if ($manifest.kind -eq 'first_reviewed') { 'first-reviewed-local-migration-plan.mjs' } else { 'supervised-local-migration-plan.mjs' }
+$rebuiltHash = & node (Join-Path $PSScriptRoot $planBuilder) $hashMode
 if ($LASTEXITCODE -ne 0 -or ($rebuiltHash -join '').Trim() -cne $ExpectedSqlSha256) { throw 'Reviewed SQL is not the current fixed migration plan' }
 & (Join-Path $PSScriptRoot 'local-supabase.ps1') -Action Status
 if ($LASTEXITCODE -ne 0) { throw 'Local target verification failed' }

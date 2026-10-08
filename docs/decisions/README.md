@@ -38,3 +38,5 @@
 - [ADR-0027: Signal facts before prescription changes](ADR-0027-signal-facts-before-prescription-changes.md) — improved outcomes retain accepted work; source-linked sensor coverage and working evidence support review without numerical authority.
 
 - [ADR-0035: Supervised programming scope](ADR-0035-supervised-programming-scope.md) — locally accepted design for athlete/program enrollment, authenticated exact-content review and database-enforced access/recovery; implementation remains disabled.
+
+- [ADR-0029: Fractional workout effort and failed-save recovery](ADR-0029-fractional-workout-effort-and-failed-save-recovery.md) — exact session effort, transactional migration and owner-locked no-write proof without reopening failed identities.

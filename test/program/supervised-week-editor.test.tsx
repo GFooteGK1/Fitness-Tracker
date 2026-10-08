@@ -4,6 +4,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { SupervisedActivityEditor, SupervisedWeekEditor } from '@/app/program/supervised-week-editor'
 import { seedSupervisedWeek } from '@/app/lib/coach/supervised-draft-editor'
+import { seedFirstReviewedWeek } from '@/app/lib/coach/first-reviewed-draft-editor'
+import { firstReviewedProgram } from '../fixtures/first-reviewed-program'
+import { reviewedRollingWeek } from '../fixtures/reviewed-rolling-week'
+import { compileOfflineReviewedWeek } from '@/app/lib/coach/offline-reviewed-week'
+import { doseContentHash } from '@/app/lib/coach/initial-dose-policy'
 import { reviewedSessionActivities } from '@/app/lib/coach/reviewed-session-contract'
 import { effortWorkPlan } from '../fixtures/reviewed-effort-work'
 import type { ReviewedWeekActivity } from '@/app/lib/coach/offline-reviewed-week'
@@ -21,6 +26,63 @@ function activityHarness(activity: ReviewedWeekActivity) {
 function working() { return reviewedSessionActivities(effortWorkPlan().scheduledSessions[0].prescription.content).find(a => a.id === 'required-work')! }
 
 describe('proposed complete-week editing', () => {
+  it('builds an initial week from explicit blank sessions with effort/rest and monitoring entry',()=>{
+    const p=firstReviewedProgram(),seed=seedFirstReviewedWeek(p,p.athleteId)!;let last=seed
+    function Editor(){const [value,setValue]=useState(seed);return <SupervisedWeekEditor value={value} onChange={next=>{last=next;setValue(next)}} />}
+    render(<Editor />)
+    expect(screen.queryByLabelText('Sets')).toBeNull()
+    fireEvent.change(screen.getByLabelText('New session day'),{target:{value:'tuesday'}})
+    fireEvent.click(screen.getByRole('button',{name:'Create session'}))
+    expect(last.recipe.sessions).toHaveLength(1)
+    expect(screen.getByLabelText('Preparation window seconds')).toBeTruthy()
+    expect(screen.getByLabelText('logging seconds')).toBeTruthy()
+    expect(screen.getAllByLabelText('Minimum RPE')).toHaveLength(2)
+    expect(screen.getAllByLabelText('Rest between sets (seconds)')).toHaveLength(2)
+    const fields=screen.getAllByLabelText('Sets') as HTMLInputElement[]
+    expect(fields.every(f=>f.value==='')).toBe(true)
+    fireEvent.click(screen.getByRole('button',{name:'Add monitoring activity'}))
+    expect(last.recipe.protocols[0].actualObservations).toEqual([])
+    expect(screen.getByLabelText('Monitoring protocol instructions')).toBeTruthy()
+    expect(last.recipe.sessions[0].steps.at(-1)).toMatchObject({kind:'allowance',purpose:'logging'})
+    expect(last.transition).toBe('first_reviewed')
+    expect(screen.queryByText(/Next-week proposals require/)).toBeNull()
+  })
+  it('authors all required fields from blank UI controls and compiles the exact proposed session and monitoring protocol',()=>{
+    const p=firstReviewedProgram(),seed=seedFirstReviewedWeek(p,p.athleteId)!,fixture=reviewedRollingWeek();let last=seed
+    const source=reviewedSessionActivities(fixture.registry[0].recipe.sessions[0]).find(a=>a.role==='working')!
+    function Editor(){const [value,setValue]=useState(seed);return <SupervisedWeekEditor value={value} onChange={next=>{last=next;setValue(next)}} />}
+    render(<Editor />)
+    fireEvent.change(screen.getByLabelText('New session day'),{target:{value:'monday'}})
+    fireEvent.click(screen.getByRole('button',{name:'Create session'}))
+    fireEvent.click(screen.getByRole('button',{name:'Add monitoring activity'}))
+    const fill=(label:string,value:string|number,index?:number)=>fireEvent.change(index===undefined?screen.getByLabelText(label):screen.getAllByLabelText(label)[index],{target:{value:String(value)}})
+    fill('Session focus','Synthetic force work');fill('Session instructions','Mechanical authoring proof only.')
+    fill('Preparation window seconds',300);fill('Preparation instructions','Rehearse the prescribed working movement.')
+    fill('logging seconds',60)
+    for(let i=0;i<3;i++){
+      fill('Movement',source.movementId,i)
+      for(const equipment of source.requiredEquipment)fireEvent.click(screen.getAllByLabelText(equipment.replaceAll('_',' '))[i])
+      fill('Sets',i===1?2:1,i);fill('Minimum repetitions',i===0?5:2,i);fill('Maximum repetitions',i===0?5:2,i)
+      fill('Estimated seconds per repetition (time planning only)',3,i)
+      fill('How to choose the weight','Use the explicitly reviewed synthetic test load; no observed result is assumed.',i)
+      fill('Minimum RPE',i===0?3:6,i);fill('Maximum RPE',i===0?4:7,i)
+      fill('Rest between sets (seconds)',i===1?120:0,i);fill('Rest after this movement (seconds)',i===0?60:0,i)
+      fill('Movement instructions','Keep controlled mechanics and record actual results separately.',i)
+    }
+    fill('Monitoring protocol instructions','Use the same setup and measure each repetition; no observations have been entered.')
+    fill('Week instructions','Synthetic UI/compiler qualification, not a personal program.')
+    fill('Limitations and questions for review','No performance outcome or training adherence is claimed.')
+    const context=structuredClone(fixture.input.context);context.profile.startDate=last.windowStart;context.scheduleId=last.scheduleId
+    const recipe={...fixture.registry[0].recipe,...last.recipe,profileHash:doseContentHash(context.profile)}
+    const compiled=compileOfflineReviewedWeek(context,[{recipe,contentHash:doseContentHash(recipe)}])
+    expect(compiled.kind,JSON.stringify(compiled)).toBe('compiled')
+    if(compiled.kind!=='compiled')throw Error('Expected exact compiled authored session')
+    expect(compiled.week.days.find(d=>d.day==='monday')!.session).toEqual(last.recipe.sessions[0])
+    expect(compiled.week.protocols).toEqual(last.recipe.protocols)
+    expect(compiled.week.protocols[0].actualObservations).toEqual([])
+    expect(compiled.week.numericRuntimeEligible).toBe(false)
+    expect(last.transition).toBe('first_reviewed')
+  })
   it('removes obsolete conditional timing when the last effort-led step is removed', () => {
     const seed = seedSupervisedWeek(effortWorkPlan(), 'next_week')!, session = seed.recipe.sessions[0]
     delete session.optionalTail

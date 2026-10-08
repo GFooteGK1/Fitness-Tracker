@@ -3,6 +3,7 @@ import type { ProgrammingProfile } from './programming-schema'
 import { exercisePreferencesEnabled } from './exercise-preferences-server'
 import { CoachContextRevisionConflictError, CoachContextRevisionUnavailableError } from './proposal-context-revision'
 import { stableStringify } from './rolling-weekly-contracts'
+import { reviewedSetupMatchesProfile } from './reviewed-setup-memory'
 
 export const SETUP_MEMORY_KEYS = ['primary_goal', 'training_schedule', 'available_equipment', 'training_constraints'] as const
 type SetupKey = typeof SETUP_MEMORY_KEYS[number] | 'exercise_preferences'
@@ -19,7 +20,7 @@ const sorted = (value: unknown): unknown => Array.isArray(value) ? [...value].so
  * Canonical training_intent keeps its separate content binding and SQL guard.
  */
 export async function captureSetupMemoryBindings(db: SupabaseClient, userId: string, profile: ProgrammingProfile,
-  options: { review?: boolean } = {}): Promise<SetupMemoryBindings> {
+  options: { review?: boolean; reviewedSetup?: boolean } = {}): Promise<SetupMemoryBindings> {
   const keys: SetupKey[] = [...SETUP_MEMORY_KEYS]
   if (exercisePreferencesEnabled() || profile.exercisePreferences !== undefined) keys.push('exercise_preferences')
   const entries = await Promise.all(keys.map(async key => {
@@ -35,7 +36,10 @@ export async function captureSetupMemoryBindings(db: SupabaseClient, userId: str
       || (typeof value === 'string' && Number.isFinite(Date.parse(value)) && (from ? Date.parse(value) <= now : Date.parse(value) > now))
     const currentAtRead = row.status === 'confirmed' && timeValid(row.effective_from, true) && timeValid(row.effective_until) && timeValid(row.review_after)
     if (!options.review) {
-      if (!currentAtRead || !setupMatchesProfile(key, row.content, profile)) {
+      const matches = Object.hasOwn(row.content, 'schemaVersion') && ['training_schedule','available_equipment'].includes(key)
+        ? options.reviewedSetup === true && reviewedSetupMatchesProfile(key, row.content, profile)
+        : setupMatchesProfile(key, row.content, profile)
+      if (!currentAtRead || !matches) {
         throw new CoachContextRevisionConflictError('Your saved training setup needs confirmation. Save the current setup and create a new proposal.')
       }
     }
@@ -88,6 +92,7 @@ function setupMatchesProfile(key: SetupKey, content: Record<string, unknown>, pr
     expected = [profile.trainingExperience, sorted(profile.sessionAvailability.map(slot => slot.day)), profile.sessionAvailability[0]?.minutes]
     if (new Set(profile.sessionAvailability.map(slot => slot.minutes)).size !== 1) return false
   } else if (key === 'available_equipment') {
+    if (profile.equipment.athleteDescription !== undefined) return false
     actual = [typeof content.equipment === 'string' ? content.equipment.trim() : content.equipment, sorted(content.resolvedEquipmentIds)]
     expected = [profile.equipment.unresolvedAthleteDescription ?? '', sorted(profile.equipment.resolvedIds)]
   } else if (key === 'training_constraints') {

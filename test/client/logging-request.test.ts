@@ -11,6 +11,22 @@ const request = (text = 'eggs', timestamp = '2026-09-04T04:59:00Z') => ({
 })
 const ok = () => new Response(JSON.stringify({ mealId: 'saved' }))
 
+it('releases the failed workout identity only after proof and preserves the Friday entry on resubmission', async () => {
+  const input = { text: 'APEX Training — September 25, 2026. Overall session RPE: 5.5/10.', date: '2026-09-25' }
+  const fetch = vi.fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Failed to parse workout', requestStatus: 'complete', retryAllowed: false }), { status: 500 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'This workout was not saved. Submit your entry again.', state: 'draft', requestStatus: 'complete', retryAllowed: true }), { status: 500 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ workoutId: 'saved-workout' })))
+  vi.stubGlobal('fetch', fetch)
+  const { sendLoggingRequest } = await import('@/app/lib/client/logging-request')
+  for (let attempt = 0; attempt < 3; attempt++) await sendLoggingRequest('/api/parse-workout', { method: 'POST', body: JSON.stringify(input) }, 'athlete-a')
+  const bodies = fetch.mock.calls.map(call => JSON.parse(call[1].body))
+  expect(bodies[0].requestId).toBe(bodies[1].requestId)
+  expect(bodies[2].requestId).not.toBe(bodies[1].requestId)
+  bodies.forEach(body => expect(body).toMatchObject(input))
+  expect(sessionStorage.length).toBe(0)
+})
+
 it('keeps original JSON time and identity across network loss and module reload', async () => {
   const fetch = vi.fn().mockRejectedValueOnce(new TypeError('response lost')).mockResolvedValueOnce(ok())
   vi.stubGlobal('fetch', fetch)

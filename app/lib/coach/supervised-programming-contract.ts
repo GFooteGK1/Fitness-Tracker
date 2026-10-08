@@ -50,7 +50,7 @@ export const SUPERVISED_REVIEW_SHAPES: Record<string, Record<string, string>> = 
   outcome: { statement: 'scalar', kind: 'scalar', horizon: 'horizon', target: 'goalTarget' },
   horizon: { startsOn: 'scalar', endsOn: 'scalar' },
   availability: { day: 'scalar', minutes: 'scalar' },
-  equipment: { resolvedIds: '[]scalar', unresolvedAthleteDescription: 'scalar' },
+  equipment: { resolvedIds: '[]scalar', unresolvedAthleteDescription: 'scalar', athleteDescription: 'scalar' },
   constraint: { id: 'scalar', kind: 'scalar', description: 'scalar', source: 'scalar' },
   preference: { movementId: 'scalar', preference: 'scalar', source: 'scalar' },
   assessment: { id: 'scalar', movement: 'scalar', variation: 'scalar', load: 'scalar', unit: 'scalar', reps: 'scalar', assessedOn: 'scalar', isTrueRepMax: 'scalar', rir: 'scalar', rpe: 'scalar', athleteConfidence: 'scalar', estimatedOneRepMax: 'scalar', estimateKind: 'scalar', calculatorVersion: 'scalar' },

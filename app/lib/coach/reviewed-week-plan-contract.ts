@@ -1,6 +1,6 @@
 /** Shared historical read format. No registry authority, source freshness or writes here. */
 import { parseReviewedSession, REVIEWED_SESSION_DAYS, type ReviewedSessionPrescription } from './reviewed-session-contract'
-import { validateProgrammingProfile, type ProgrammingProfile } from './programming-schema'
+import { validateReviewedProgrammingProfile, type ProgrammingProfile } from './programming-schema'
 import { stableStringify, validateRollingTrainingDirection, type RollingTrainingDirection } from './rolling-weekly-contracts'
 import type { ReviewedWeekSchedule } from './offline-reviewed-week'
 
@@ -47,7 +47,7 @@ export function parseReviewedRollingWeek(value: unknown): ReviewedRollingWeekPla
     if (![basis.recipeHash, basis.contextHash].every(item => typeof item === 'string' && /^[a-f0-9]{64}$/.test(item))
       || !record(value.baseSchedule) || stableStringify(Object.keys(value.baseSchedule).sort()) !== stableStringify([...REVIEWED_SESSION_DAYS].sort())) return null
     const baseSchedule = value.baseSchedule
-    if (!validateProgrammingProfile(profile).ok || profile.startDate !== value.windowStart
+    if (!validateReviewedProgrammingProfile(profile).ok || profile.startDate !== value.windowStart
       || validateRollingTrainingDirection(value.directionSnapshot as unknown as RollingTrainingDirection, profile).length) return null
     const ids: string[] = [], days: string[] = []
     const sessions = value.scheduledSessions.map(item => {

@@ -13,6 +13,7 @@ import { compileAuthenticatedReviewedWeek, type TrustedReviewedWeekRegistration 
 import { prepareReviewedWeekProposalRegistration, reviewedSourceValidBefore } from '@/app/lib/coach/reviewed-proposal-registration'
 import { doseContentHash } from '@/app/lib/coach/initial-dose-policy'
 import { intent } from '../fixtures/personalized-coaching/intent'
+import { projectFirstReviewedProfileFacts } from '@/app/lib/coach/first-reviewed-profile-facts'
 
 type Row = Record<string, any>
 const scope = { programId: 'program-1', basePlanVersionId: 'plan-1', historyThrough: '2026-09-27', historyDays: 28, tzOffset: 300 }
@@ -97,6 +98,43 @@ async function weekRegistration(fixture: ReturnType<typeof database>): Promise<T
   return { id: 'developmental-swap', userId: 'athlete', scope, contextHash: snapshot.contextHash,
     compilation: { ...reviewed.input, context }, reviewedWeeks: reviewed.registry }
 }
+
+describe('first-only captured facts, separate from accepted continuation', () => {
+  function freshFixture() {
+    const f = database(), base = f.tables.training_plan_versions[0], plan = base.intent.weekly_plan
+    Object.assign(base, { window_start: plan.windowStart, window_end: plan.windowEnd, sequence_number: plan.sequenceNumber })
+    f.tables.coach_memories.push({ id: 'current-intent', user_id: 'athlete', memory_key: 'training_intent', kind: 'goal',
+      version: 1, status: 'confirmed', content: intent() })
+    return f
+  }
+  it('captures a newly confirmed intent only in the explicit first factual path; existing preparers still reject stale accepted facts', async () => {
+    const f = freshFixture()
+    await expect(fetchReviewedDoseContext(f.db, scope)).rejects.toThrow('Confirmed training intent changed')
+    await expect(fetchReviewedDoseContext(f.db, scope, { firstReviewSetup: true })).rejects.toThrow('Confirmed training intent changed')
+    const source = await fetchReviewedDoseContext(f.db, scope, { firstReviewSetup: true, firstReviewFacts: true })
+    const target = structuredClone(source.profile); target.primaryGoal.domain = 'aerobic'; target.secondaryGoals = []
+    expect(projectFirstReviewedProfileFacts(source, target).profile.trainingIntent?.memoryId).toBe('current-intent')
+    expect(source.profile.trainingIntent).toBeUndefined()
+    expect(f.rpc).not.toHaveBeenCalled()
+  })
+  it('does not resurrect an older confirmed intent when the latest is withdrawn', async () => {
+    const f = freshFixture()
+    f.tables.coach_memories.push({ ...f.tables.coach_memories[0], id: 'withdrawn', version: 2, status: 'withdrawn' })
+    await expect(fetchReviewedDoseContext(f.db, scope, { firstReviewSetup: true, firstReviewFacts: true })).rejects.toThrow('Latest training intent')
+  })
+  it('rejects a first factual read without explicit setup scope or a mismatched legacy calendar', async () => {
+    const f = freshFixture()
+    await expect(fetchReviewedDoseContext(f.db, scope, { firstReviewFacts: true })).rejects.toThrow('explicit first-review setup')
+    f.tables.training_plan_versions[0].window_start = '2026-09-14'
+    await expect(fetchReviewedDoseContext(f.db, scope, { firstReviewSetup: true, firstReviewFacts: true })).rejects.toThrow('complete current legacy base')
+  })
+  it('rejects a referenced scheduled baseline whose current owned workout is unavailable', async () => {
+    const f = freshFixture(), id = '00000000-0000-4000-8000-000000000099'
+    f.tables.coach_memories[0].content.outcomes[0].baseline = { status: 'referenced', observationId: id }
+    f.tables.performance_observation_groups.push({ id, user_id: 'athlete', source_kind: 'coach_completion', workout_id: 'missing-baseline' })
+    await expect(fetchReviewedDoseContext(f.db, scope, { firstReviewSetup: true, firstReviewFacts: true })).rejects.toThrow('baseline execution is missing')
+  })
+})
 
 describe('server-owned reviewed proposal preparation', () => {
   async function c2rEntry(fixture: ReturnType<typeof database>): Promise<TrustedReviewedWeekRegistration> {

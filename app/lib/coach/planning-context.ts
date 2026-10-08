@@ -137,7 +137,12 @@ export function buildFactualPlanningContext(input: PlanningHistorySnapshot): Fac
 }
 
 /** Only the existing movement-novelty preference consumes history. No dose totals. */
-export function applyFactualPlanningContext(profile: ProgrammingProfile, context: FactualPlanningContext): ProgrammingProfile {
+export function applyFactualPlanningContext(profile: ProgrammingProfile, context: FactualPlanningContext,
+  options: { historyWindowDays?: number } = {}): ProgrammingProfile {
+  if (options.historyWindowDays !== undefined && (!Number.isInteger(options.historyWindowDays)
+    || options.historyWindowDays < 1 || options.historyWindowDays > 180
+    || Date.parse(localDateToUTCStart(context.endsOn, 0)) - Date.parse(localDateToUTCStart(context.startsOn, 0))
+      !== (options.historyWindowDays - 1) * 86400000)) throw new Error('Factual history window differs from the captured scope')
   if (context.status === 'unavailable' || context.status === 'partial' || context.status === 'replay_unavailable') {
     throw new Error('Performed history is unavailable or incomplete. Retry before creating a new direction.')
   }
@@ -145,7 +150,7 @@ export function applyFactualPlanningContext(profile: ProgrammingProfile, context
   const movementIds = [...new Set(context.movements.filter(item => item.familiarityEligible && !avoided.has(item.movementId)).map(item => item.movementId))].sort()
   const updated = { ...profile, planningContext: context,
     recentTraining: { asOfDate: context.sourceIds.length ? context.endsOn : null,
-      lookbackDays: context.sourceIds.length ? 28 : 0, completedSessionCount: context.sourceIds.length,
+      lookbackDays: options.historyWindowDays ?? (context.sourceIds.length ? 28 : 0), completedSessionCount: context.sourceIds.length,
       performedMovementIds: movementIds, doseByCoverageTarget: [] } }
   return { ...updated, prescriptionBasis: buildPrescriptionBasis(updated, context) }
 }

@@ -1,10 +1,1177 @@
 # SociusFit programming quality — current handoff
 
-Updated: 2026-10-03 UTC and Chicago. Project: Fitness-Tracker/SociusFit. Status: milestone one active; broader qualification and release gates remain.
-Objective: execute the accepted evidence-conditioned programming QPlan.
-Tracker: `Fitness-Tracker-i40`; Beads owns package status and dependencies.
+Updated October 8, 2026. Milestone one and the broader programming QPlan remain
+in progress. Canonical epic Fitness-Tracker-i40; Beads owns task state.
 
-## Current state and next action
+## Current goal and verified state
+
+Latest672 execution supersedes preparation below: explicit closure/run approved,
+actual complete UI and distinct reviewer approval passed. Oldrequest exactno_write
+closure preserves content. New acceptance completed once natively200, whole
+response lost; second samebody edge attempt fenced409 before forwarding, origin
+unconfirmed. Approved direct quiescence disabledwrites, then UI originalgetter
+saved recovery/archive/pendingclear. Foreign/disabledfreshwrite checks pass.
+Stoppedruntime/browsers/AuthRESTKong; DBretained. Independent472pins/Auth/public/
+additions/terminal/closure and supplemental fullrawmemory equality pass.
+Frozenreceipt d505e676 staysinspect_required/not_audited due two harness exceptions;
+recovery i40.17.5.1.1 CLOSED on combined proof, enhancement .1.4 OPEN/P3.
+No additional livecycle required for those oracle limitations. Next refresh exact
+integrated title-fix qualification, current Greg context and publication/CI/hosted
+gates. Board672noteunsaved/outbox preserved; Beadsupdated/readback. Numericaloff.
+Evidence ../docs/verification/programming-quality/programming-v1-title-recovery-2026-10-08.md.
+
+Title-integrated candidate5d392a8d now passes5117/0failure/36unchangedskip,
+typecheck/lint/build and independent26decisive cases. All1617source/locks preserved;
+currentmain readbackd3c07c59 matches included19filechanges. Document-only publication
+overlay reconciles current status without editing frozenproof. Next concrete
+publication approval/exactCI, currentGregfacts and compatiblehosted gates.
+Evidence ../docs/verification/programming-quality/programming-v1-title-integration-2026-10-08.md.
+
+Historical672 preparation is superseded by the completed execution above. Greg approved
+the corrected local run. A separate472-file packet is prepared with no start,
+login or designation renewal. Existing failed414 proposal occupies the installed
+single proposed-week slot. One exact existing no-write closure is needed before
+replacement; this changes only failed statuses/decision time, preserves content
+and adds an immutable receipt. The additional closure authority is pending.
+Independent472-pin/import/start-gate review passes; an exact supplemental closure
+row/getter proof is required. Five scope/four maintained closure checks pass;
+all67-table SQL generators validate read-only. Currentv2 expires18:27:52Chicago.
+Board672 preparation note remains unsaved/unverified at281; duplicate retries
+returned UNIQUE outbox.id. Preserve outbox; no flush/delete/replacement ID.
+Evidence ../docs/verification/programming-quality/programming-v1-title-recovery-2026-10-08.md.
+
+Historical414 checkpoint superseded its approval-pending paragraphs below:
+Greg approved414 and it started once with existingv2/no renewal. Actual UI
+setup/facts/completeweek/separate reviewer approval/issuance passed. The sole
+acceptance503 rolled back: a173-character goal generated a185-character title,
+violating the database160-character limit. Original getter not_found and pending
+request preserved; no resend, disable or successful-loss claim. Run finalized
+inspect_required, receipt649be466; prior rows/fixture isolation/normalized changes
+preserved, accepted terminalfalse. Native runtime/test browsers/three started
+services stopped; DB retained. Independent final preservation audit accepts the
+failed-run evidence/all471pins, not a successful lifecycle qualification.
+Title repair under i40.17.5.1.3 now passes461focused checks, final6title cases,
+tsc/lint/inventory; independent exact8-case title/lifecycle reproduction passes.
+Full goal/context, short titles and Unicode retained. Recovery/onboarding remain
+unfinished. Next prepare a separate corrected-candidate qualification packet with
+exact retained counts and obtain new-run authority; never patch frozen414 or resend
+its acceptance. Current real Greg context and exact release/CI/hosted gates remain.
+Evidence ../docs/verification/programming-quality/programming-v1-title-acceptance-2026-10-08.md.
+
+Latest approved execution: Greg approved the bounded d9 local run. One v1->v2
+renewal succeeded; cold Next compilation17.2s exceeded15s startup deadline.
+The run stopped before login/programming writes, with bounded readiness shutdown.
+Readback67public/normalizedAuth and mutable fields unchanged;469frozenfiles intact.
+Failed receiptfe9bbc1e preserved. Test browser and only started Auth/REST/Kong
+services closed; process/listener/stopped-service readback complete.
+
+Harness timing repair independently qualifies49focused checks and one extra
+trickle/deadline challenge. Scope repair repeats exact fixture counts at start.
+Separate414afc27 packet prepared471files/emptyjournal; reuses existingv2 with no
+renewal command. Unstarted35replacement preserved/superseded after review finding.
+Final independent packet audit accepts source/scope/pins; approval for one corrected local run pending;
+do not restart consumed d9. Currentv2 expires October8 at18:27:52Chicago; expiry
+is not authorization to renew. Current Greg context/week still needs confirmation.
+Evidence ../docs/verification/programming-quality/programming-v1-cold-start-recovery-2026-10-08.md.
+Historical pending-approval/goal-blocked paragraphs below are superseded for the
+approved d9 action; the product goal remains unfinished. No production/Git action.
+Current inventory readback retains350exact production inputs,77verification
+sources. Canonical recovery note saved/read backa54111, stillin_progress. Board
+276startup/277progress and278end-run delivered/read back; exact summary/next and
+closed run verified, feedback empty. Older rejected layout stays unsaved/untouched.
+
+October 8 release refocus supersedes the prior critical path. Greg directed
+Programming v1 to be good enough for his reviewed APEX programming; nonblocking
+issues become post-release enhancements. New native goal is active (get_goal
+returned null before creation). Plan: ../docs/plans/programming-v1-release-2026-10-08.md.
+Reuse closed .17.1-.17.4, u5l.11.1 and i40.12. Remaining blockers are first-reviewed
+legacy onboarding/recovery qualification, current real week/context, exact source /
+CI, compatible migration/deployment, scoped hosted pilot and first actual log.
+Broader P0-P6, JEV and display polish remain unfinished backlog; numerical policy off.
+
+October8 source qualification: corrected inventory omission covers first-review
+HTTP/shared setup consumers. Main+independent inventory checks pass. Current451
+inventory sources:350production/72verification/29evidence. Independently reviewed
+105-path rawdelta candidate:63app/5bridgeSQL/37CI; no changedapp/test omission.
+Current focused636pass/0fail/0skip; fullnonincremental typecheck/scopedlint/build0.
+Full first run5077pass/2fail/36skip retained; both exact failures pass isolated.
+Revised4worker fullrun5079pass/0fail/36skip,416actualfiles,all1108sourcepins unchanged;
+independent audit accepts reconciliation. Propertyseeds differ and original cause
+is unproved. No repeated failing mutation, testskip, sourcefix or timeout relaxation.
+Evidence ../docs/verification/programming-quality/programming-v1-source-scope-2026-10-08.md.
+
+LiveGitHub supersedes historical PR84draft:84merged September26,no openPR for
+branch. Remote/localHEAD363eb672 matches; CI37211862901 passed that committed
+checkpoint, not newuncommittedbridge. Historical requested36138184715 passed
+0b012bae. Remote main d3c07c59; branch2ahead/5behind commonbasea9373b4.
+Preserve released fractional-effort/workout-save changes when integrating with
+main.105candidatepaths are newrawdelta,not completePRdiff or release artifact.
+No fetch/merge/indexwrites/commit/push/production action. Localqualification
+approval still pending; after it, finish missing recovery/bridge, reconcile real
+Greg context/week, qualify integrated source/CI and execute only approved rollout.
+Canonical .17.5 checkpoint retained once; multiline CLI saved only first paragraph,
+so read-only inspection preceded one missing single-line supplement. Exact
+supplement readback64a0e0; no note replay or task closure. Board package checkpoint
+272/end-run273 delivered and separately read back, summary/next verified, feedback
+empty. Older rejected layout stays queued/unsaved; no flush, deletion or replacement.
+
+Latest October8 integration advances release preparation: separate c1b76984
+candidate retains current-main19paths and105clean bridge deltas in1614files,
+baseline1523exactGitblobs. Independent composition review accepts no omissions,
+clean document merges and unchanged original index/frozen469packet. Integrated
+5110tests pass/0fail/36unchanged skips across418files; typecheck/68filelint/build0,
+89staticpages/buildId-NwTLzXVRz8LaohK84o6u; all1614inputs/locks unchanged.
+Independent decisive rerun91/91 (acceptance,response-loss,workout-save API/SQL)
+passes without skips or source/lock changes; final independent audit accepts
+source/results/unchanged skip roster and469packet preservation, no materialfinding.
+Independent resultSHA3b76146fb9a209c6eeeb554e9481da801bcea6e880b062c1d248844ac40af9af.
+Earlier842f9d1e EOFconflict and273f26d2 archive-byte candidate retained.273f full
+run5015/57/32 rejected corrupted C2-R bytes; original guard/hash not refreshed.
+This is a filesystem candidate,not a branch merge/releasecommit/CI/hosted proof.
+PR86 remains open/draft on separate setup-freshness-release branch; no PRchanged.
+Local renewal/login qualification approval and current October12-18 athlete
+context question remain pending. No expired request or credential action resumed.
+Evidence ../docs/verification/programming-quality/programming-v1-main-integration-2026-10-08.md.
+
+Blocked audit: the same exact local renewal/login approval remains pending through
+threeconsecutive goalturns (harness270/package273/integrationcontinuation).
+Available source integration/review/checks complete; no relevant live process or
+testhandle remains. Further qualification requires human authorization; no expired
+request/credential action or prematurepublication is permitted. Native goal is
+unfinished and returned blocked; current-week/context question also pending.
+After approval arrives, use the unchanged469packet once, preserving all failed
+preparations. Subsequent source changes invalidate affected integrated checks.
+Canonical final checkpoint saved/read backdfac5b. Board integration end-run275
+delivered and separately read back with exact summary/next, feedback empty.
+Full objective unchanged; blocked is an authority wait, not product completion.
+
+October8 recovery progress: unrelated POST admission and bounded page/asset
+readiness/shutdown repaired; main52 relevant offline/native checks pass and
+independent17 focused pass, no remaining material repair finding. Early close
+rejection finding fixed with executable failure-receipt test. Old journal and
+receipt untouched. Fixed local VM/database were stopped; identity inspection,
+existing VM/DB-only start and pg_isready restored read-only inspection. Other
+services remain stopped. Native readback verifies same eligible synthetic
+legacy base,3planned/0performed,candidates0,profiles1,setupRequests1,expiredv1.
+No new athlete,seed,Auth login,renewal or application writes.
+
+New separate requalification d9d1894e-3cba-4cbd-87b5-c27135737cc1 is prepared
+only:469 frozen files, designation07613609 intended CAS1->2, same existing
+owner/program/base/reviewer/foreign. Main and independent4scope tests pass;
+independent packet review accepts source/pins/preservation, not live proof.
+PacketSHA8820168f2f6ecf699ed3c3e9a751e38fe978e6e07f6a38ccd2ef755693d10caf.
+Exact capped local renewal/login/fullflow qualification question pending.
+Do not execute designate/start or resume expired confirmation before approval.
+See ../docs/verification/programming-quality/programming-v1-harness-qualification-2026-10-08.md
+and investigations/Fitness-Tracker-i40.17.5.1.1.md. Recovery/onboarding remain
+in_progress; native Programmingv1 goal stays active. No release/CI/Git actions.
+Canonical recovery checkpoint saved and separately read back (e997f2). Board
+programming-v1-harness-checkpoint-20261008 delivered/read back at269; final
+programming-v1-harness-handoff-20261008 delivered/read back at270, feedback empty.
+Goal remains unfinished; new local execution approval is still pending.
+
+Canonical .17 acceptance and release labels recorded/read back; ten existing
+packages are priority4 / programming-v1-backlog with original states/dependencies.
+New i40.18 retains post-release two real cycles. Independent scope review found
+no material findings; this is not promotion approval. Board canonical-split note
+programming-v1-canonical-split-20261008 delivered/read back at266. Full merged
+layout event programming-v1-release-plan-20261008 rejected400/queued because an
+in-progress card gained unfinished dependencies. Preserve event/outbox/version;
+do not silently replace/delete it. Layout reconciliation is nonblocking i40.19.
+Board milestone snapshot unchanged; current summary must identify Programmingv1.
+
+Fresh process/TCP inspection found no V3 child16336/launcher41864/listener3014.
+The retained receipt remains listening with67entries/19inspect_required; do not
+claim clean stop or rewrite it. Its designation expired October7. The old pending
+facts-confirmation question cannot authorize resuming that expired request.
+Preserve prior accepted programs and receipts. Prepare a revised bounded method
+and review it before another actual fixture/designation/login attempt. No hosted
+action, credential access, acceptance replay, deletion, commit or push this turn.
+
+Historical October 7 checkpoint below is superseded by the October 8 live readback.
+Fresh scope 0e66bb33-7a4e-4198-b6cb-e7e88b62ce6d was approved. V2 created
+one synthetic Auth athlete, then its atomic public seed rolled back because
+fitness_goals is JSONB, not text[]. The failed attempt and raw readback are
+preserved. Separately reviewed V3 database-only recovery succeeded without
+another Auth creation: 3 planned sessions, zero performed history, raw Auth
+unchanged. Independent seed and post-designation gap audits passed. All 468
+frozen V3 files match; original V1/V2 packets remain unchanged. Focused offline
+suite passed 44/44. No production, personal, enrollment, numerical or Git action.
+
+V3 runtime remains listening at http://127.0.0.1:3014, PID 16336, launcher
+41864, exec session 56290. One athlete login was issued/verified; cached reuse
+only. Designation d3e50f28-d719-4c97-8e4f-7fa93fad2b74 version 1 expires about
+19:51 UTC October 7. Do not renew or replay automatically. Browser 4 tab 9
+(freshTab2) is on /program/first-reviewed. Setup saved and fresh facts loaded;
+performed/outside history unknown, numerical runtime ineligible. Exact facts
+hash fae4c1daa8282e38ec9b0984064d0daff2411ee093bcbc8e7810f583dc7e521e.
+Automatic approval review rejected “Confirm these exact current facts” before
+dispatch. A direct approval question is pending. Do not retry or bypass before
+that answer. No candidate/reviewer approval/issuance/acceptance in this run yet.
+
+Independent read-only audit found 19 retained inspect_required journal entries:
+one aborted layout.js GET and 18 WHOOP initialization JSON parse failures before
+application forwarding. Frozen finalizer requires every journal disposition to
+be terminal; this run cannot receive a clean stopped/collected result as saved.
+Do not erase/reclassify these entries or restart to conceal them. Continue only
+authorized remaining evidence collection after the facts approval; then bounded
+finalization and preservation audit. A separately reviewed revised qualification
+plan is needed before any clean completion claim. Transport child remains
+in_progress. Evidence is in output/app-quality-release/first-reviewed-next-
+0e66bb33-7a4e-4198-b6cb-e7e88b62ce6d-v3 (one continuous directory name).
+Board note first-reviewed-fresh-facts-gate-20261007 delivered/read back at 263.
+
+October6 Go continuation: transport fix independently accepted offline,27 tests
+pass plus operator syntax. New native-transport/relay-local seams leave original
+operators/frozen463-file runtime unchanged. Receipt92f8c974 remains finalizing/
+pending; accepted plan preserved. Independent compression/close/classification/
+clock findings resolved; ADR0037 records the local boundary. Canonical transport
+bug Fitness-Tracker-i40.17.5.1.1 now in_progress, comment
+01a11422-baf2-7483-af53-29474ba96cc0 read back exactly23d72b. Board run/handoff
+first-reviewed-relay-preparation-20261006 delivered/readback259; feedback empty.
+Evidence ../docs/verification/programming-quality/response-relay-integration-2026-10-06.md.
+New-scope proposal0e66bb33 reserves one fresh synthetic athlete/program/base/
+designationv1/3planned sessions; no live rows created. Existing approval question
+asks that full local scope, not production/personal/activation. Exact fresh
+creation/runtime packet still needs preparation and independent review before
+live action. Current relay operator retains historical guard, unusable for the
+new fixture or accepted old program. Auth SDK deadlines/real recovery/foreign/
+mobile/clean drain remain unproved. Do not ask the same scope question again.
+
+Latest approved stop checkpoint, October 6 at 20:52 UTC: the exact stop command
+951e57 refused before mutation because PID7912 was already absent. Fresh native
+process checks confirm child7912, launcher39464 and listener3014 absent. No process
+was terminated by this action; exit reason and clean drain remain unknown. The
+approval question is resolved. Original receipt remains finalizing and acceptance
+pending; do not relabel either. Post-stop read-only evidence646e3e returns saved
+and all four preservation/terminal checks pass. Evidence SHA256
+5cdd5829dda4d0b83a25d7943f53d866dbf696bd0275c38be94659586d029135.
+See the result document's post-stop checkpoint. The next unfinished work is
+canonical transport bug Fitness-Tracker-i40.17.5.1.1: integrate the bounded relay,
+review it, and prepare a fresh fixture for remaining approved-scope qualification.
+Do not reset or reaccept this accepted program. No new live cycle is authorized
+by the stop approval. Historical stop-pending statements below are superseded.
+Independent post-stop audit accepted; canonical comment
+01a112fd-b557-7f29-b7ce-4f07dee986f8 read back exactly9e0f72. Board note256 and
+current summary/next handoff257 delivered/read back; feedback empty. Older
+rejected startup note remains unsaved and untouched.
+
+Latest October6 checkpoint supersedes preparation below. Real local784bae7a
+completed setup/facts/candidate/distinct-reviewer approval/issuance and single
+athlete acceptance. Separate native original getter and independent supplemental
+audit prove saved target, exact lineage/anchor,67public tables and140normalized
+Auth rows preserved; no enrollment. Accepted plan c7face6f is active. The
+response-loss harness exposed200headers, so UI ran automatic getter; patchedend
+left Next waiting forfinish. Lost-response recovery afterdisable is unproved.
+Original receipt pending is preserved; finalizemarker2eea1f closes admissions but
+drain is stuck. ExactPID7912 abnormal-stop approval is pending; do not reaccept
+or reset this now-accepted program. Future isolated relay primitive passed6
+native tests and independent review but needs operator integration/freshscope.
+Canonical newbugs .17.5.1.1 (transport) and .17.5.1.2 (display) are open; parent
+remainsin_progress/nativegoalblocked. Full evidence and limits:
+../docs/verification/programming-quality/first-reviewed-renewed-result-2026-10-06.md.
+Board accepted/harness-defect note delivered/readback254; feedback empty.
+Final board handoff delivered/readback255; canonical resultcomment
+01a1125d-accf-7061-b50e-f82cd861a573 and bothbugs readbackcb076a. Exact abnormal
+stop script independently reviewed, not executed. Olderstartupnote stillqueued/
+rejected400 and unsaved. Next action awaits existingPID7912 stopquestion.
+
+October 6 continuation: Greg approved the pending synthetic declaration
+clarification and fresh local cycle. This supersedes the missing-answer blocker
+below. Failed runtime9057 remains terminal and unchanged. Fresh offline packet
+784bae7a (463 files) targets a new designationv3 after exact retainedv2; no login
+or designation at preparation. Nine offline checks and operator syntax passed.
+Full nonfixture auth.users preservation is added for the future run; the old
+identity-only proof is unchanged. Independent packet review precedes runtime.
+Native goal remains blocked because its API cannot resume; this does not remove
+the explicit approved scope. Exact plan and pins:
+../docs/verification/programming-quality/first-reviewed-renewed-local-2026-10-06.md.
+Canonical i40.17.5.1 remains in_progress. Board run
+first-reviewed-renewed-784bae7a delivered and read back at version252.
+
+Third October6 approvalaudit: originalruntime diagnosis and offlinecontrols
+turn bothmadeprogress butsame syntheticclarification answer remainsmissing.
+Freshcurrent9057terminalreceipt, PID27300absent/3014nolisten, board249feedback[]
+confirm no livewait ornewauthority. Completecandidate/review/issue/acceptance/
+lostresponse/recovery/acceptedanchor remainunproved; identity-onlyAuthpreservation
+cannotclaimfullAuthrowproof. No meaningfulremainingaction within unchangedpacket.
+Nativegoal tobemarkedblocked after3consecutiveauditturns, nevercomplete. Existing
+approvalquestionpending; no needrepeat. Exactaudit:
+../docs/verification/programming-quality/first-reviewed-approval-blocked-audit-2026-10-06.md.
+Canonicalchild remainsunfinished; do notrestart9057 orrelabel itsfacts.
+update_goal returned BLOCKED October6afterfreshaudit; objectiveunchanged.
+Canonicalcomment01a11230-526f-791f-80fc-e60f6ce8f385 exactreadbacktrue; boardnote
+first-reviewed-approval-blocked-audit-20261006-01a0dab8 delivered/readback250.
+
+October6 continuation: pending syntheticclarification is unchanged; no newruntime
+or localwrites. Completed offline response-loss controlbuilder at
+scripts/release/first-reviewed-browser-control.mjs with five Nodechecks9a8b43
+and independent five-test rerun/review. Originalowner issuance+same getter bind
+arm to actualUI summary.proposalRequestId; exact completed response_lost permits
+localdisable; uncertain/mismatched/repeated controls refuse. Purepreparation,
+no dispatch/Auth/filesystem/DB/process/env actions or authoritygrant. Existing
+9057receiptSHA858944bc unchanged; fresh3014nolisten. Canonicalchild in_progress.
+Evidence ../docs/verification/programming-quality/first-reviewed-recovery-control-preparation-2026-10-06.md.
+Next awaiting same scopeamendment; do not clear constraints/relabelfacts orstart
+newpacket without it. Full goal staysactive; thisturn made offlinecontrolprogress.
+Canonicalcomment01a1122d-da05-70f1-b5d7-618bccfaca03 exactreadbacktrue. Boardnote
+first-reviewed-control-offline-checkpoint-20261006-01a0dab8 delivered/readback249.
+
+October6 browser checkpoint supersedes the prepared-only state below. Native
+get_goal returned null and the newly approved bounded first-reviewed local cycle
+goal is active. Run9057ca77 appended exact designationv2 preservingv1, started
+retainedNext3014/API55321, issued/verified one syntheticathlete login and saved
+unchangedsetup request1a96377a. Freshprofile/confirmation2a1634cc succeeded.
+One preview409needs_review: retainedsynthetic test/safety boilerplate maps to
+unresolvedConstraintNote and compiler correctly refuses it. Draft also omitted
+explicit activityequipment checkboxes (operatorauthoring omission).
+Pureoffline originaldraft f353b996 reproduced both; hypotheticalclarification
+plus explicitbarbell/bench andbodyweight compiles two1506s sessions within3600s.
+No candidate/reviewer/issuance/acceptance/losscontrol executed. Controlledfinalize
+6891e8 succeeded after originalEPERM verifiednomarker. Session30422 exit1,
+PID27300/27656 andlistener3014 stopped. Finalreceipt inspect_required/not_audited,
+acceptedterminalfalse; otherthree preservationchecks true. Independent audit
+recomputed67publictables+140Authidentityprojections,462pins, expectedsetup/profile
+additionsonly, revision11→27/recommendation8, unchangedplans/sessions/workouts.
+Authidentity is id/email/deleted_at only, notfullAuthrow preservation.
+ReceiptSHA858944bcd1be45b84f7cb31c19740d994e44c0d61be89568c6fc0c44f446de14.
+Goal andi40.17.5.1 remainunfinished. Scopeamendment requested: clarify synthetic
+no-unresolvedconstraint while retainingboilerplate inlimitations/stopinstructions,
+preservingolddeclarations/v1/v2 andallpriorfact/discomfortevidence. Before another
+runtime prepare/reviewfreshpacket/currenteligibility/freshconfirmation; never
+restart9057 or reusev1observation. Exactresult/revisedscope:
+../docs/verification/programming-quality/first-reviewed-v2-browser-result-2026-10-06.md.
+Boardrunfirst-reviewed-v2-browser-9057ca77-20261006 delivered/readback245.
+Finalend_run first-reviewed-v2-browser-end-9057ca77-20261006 delivered and exact
+handoffreadback248; existingunrelatedboardwrites preserved. Canonicalcomment
+01a11228-0c32-76ff-88db-b346aca3a22d exacttextreadbacktrue. Independent revised
+scope/diagnostic review found no material inconsistency; arithmeticdiagnosis
+uses syntheticreview/sourcebindings and is notfreshsource orcoachingsuitability.
+Startupnote first-reviewed-v2-browser-goal-9057ca77-20261006 queued/rejected400
+because title/bodypayload lacked requiredtext; preserveoutbox, do notclaimsaved.
+No production/personal/Git/CI/enrollment/numericalactions. Earliercutover complete.
+
+Latest October6 result supersedes pending repair below: Greg's "Try again"
+authorized exact reviewed timeout-only v2. Run3825443c applied onceexit0; readback
+e03777 all9checks true, independently audited. Exact3planned sessions match saved
+intent with no actuals, revisions11/8/clock valid, all67old normalized public
+tables and full140Auth fingerprint unchanged. VerificationSHAd433ccb7b324ca6dd2321a647f3be45d546b0d91a9cc690c85be6e28e026baae.
+Maintained owner-role reader nowloadssetup/context; native owner manifest3/3/3.
+Fresh readonly eligibility SHA019a1f3e pins immutablev1 and confirmedrepairproof.
+Fresh offline9057ca77-8db6-40ff-bdf3-1a8d0eac9a69/462-file packet prepared and
+independently accepted, receiptSHA3dd0c56252548bcffd7210608bf58a4c69786bc5dfd0e8cf9a0dab274302878a.
+Expectedv1→v2, previousv1 preserved; newdesignationa3e03e8b, nogrant/login/start.
+Futureharness pinsobservation/proof, exactlatestv2 beforestart/serve, setupversion,
+readonly45s/55s transport. 5focusedtests pass/15filtered,tsc/lint pass. Two fixture
+testfailures retained/reassessed, onlyomitteddisposableprofile added; no native
+schema/application change or exhaustedcompleteflow rerun.
+Current browser schedule explicitly reconfirms/saves syntheticsetup undernewv2,
+then facts/week/reviewer/issuance/separateathleteacceptance/lostresponse recovery.
+Concrete scope: ../docs/verification/programming-quality/first-reviewed-post-repair-browser-packet-2026-10-06.md.
+Next: separate exact9057ca77 designation/3syntheticlogins/start/browser approval.
+Taski40.17.5.1/fullgoal/M8/P0-P6 open. No hosted/Git/CI/enrollment/numerical action.
+Original8s failure/rollbackandv1request remain untouched. No active runtime.
+Final October6 readbacks: canonical comment01a11184-0734-769f-9a6c-4d7c7a604ad4
+exactly verified; board programming-repair-success-v2-ready-20261006-01a0dab8
+delivered and exact summary/next/event at243, feedbackempty. Fresh418-file
+inventoryc7658ddb-e056-4a1b-9f37-797a46034f8e verified60ecf5, SHA
+ccb4876322a7122172b9894cfc2fbded5a76fa2f063b778c2e9c657561ccd75a,
+releaseReadyfalse. Final directESLint86ea6d and inventorytestfd5fbc pass.
+Separate exact9057ca77 browser-stage approval pending; no other action awaited.
+
+Latest October6 repair execution supersedes pending-approval statements below.
+Approved SQLaa2c536 dispatched once in6b9c7ae9 after accepted executor byte-binding
+fix and fresh67-table/full140Auth baseline. PostgreSQL exit3 timeout8s during
+transactional preservation scan. Trace does not identify phase; subsequent
+readback confirms complete rollback. No replay. Original readback failed its native
+query; separately reviewed45s readonly rollback inspection completed14,254ms:
+all old normalized public/Auth rows and metadata unchanged, raw/effective0/0,
+revisions8/5, accepted intent preserved. ProofSHAcee1aefd5f2f892c05a3cfef53eeb1a676c753cfe3a3991aceb5d9eb4f615720.
+Prepared revised SQL changes only statement budget8s→45s; lock timeout1s and all
+data guards retained. SHAa49ca94577c988ed02f8d1abe75422c725c483df48ed562fea3150ae3aa579c5.
+Executor-v2 pins rollback/original SQL bytes and requires separate one-shot v2
+authority;55s transport. No second apply/designation/login/runtime executed.
+Fresh v2/browser packet depends on verified repair. Taski40.17.5.1 in_progress;
+no full-flow/rehearsal reruns, production/Git/CI/enrollment/numerical actions.
+See current repair result in linked recovery evidence below. Preserve all receipts.
+Independent review accepts rollback/timeout-only proposal; fresh readonly v2
+packet3825443c-59ce-4bd6-bcad-c3e7343819e9 prepared2da1da, baselineSHA8b9b44934a8e38c5302707901776df4350234e1a37188db991e26275c26c183a.
+No apply marker. Request new approval for revised one-shot fixture repair only.
+Final October6 records: canonical correction01a11166-7385-783f-8ce7-b0840da2d857
+exact readback verified; board summary programming-repair-rollback-clarified-20261006-01a0dab8
+delivered and exact summary/next/event readback at242. Feedback empty. Fresh
+417-file inventory09335b6d-da8a-418f-9610-1e65832feb2e directly verifiedc1b182,
+SHA82ba7ab5e08c409ce4bbfc033d2395c6764bd127b224854a7df09f10ad562b21,
+releaseReadyfalse. Independent final packet/evidence review accepted, with timeout
+phase clarification recorded; no awaited process or browser session.
+
+Latest October6 execution supersedes prepared-only state below. Approved run
+1b0014bc executed designationv1/start, athlete login and exact setup save.
+Next setup read503: decoded legacyweek3sessions, raw/effective0. Root cause is
+retained synthetic fixture incompleteness, not confirmed production defect.
+Foreign login/exact404 deny verified; reviewer login not issued. No candidate,
+acceptance or recovery completed. Controlled shutdown exited1/inspect_required;
+prior normalized rows/Auth, fixture additions and mutable checks true, terminal
+matchedRows0. Independent audit reproduces checks and462retained source hashes.
+Receipt SHA96a0c582beed83f8e8482d23d5b5df5afe6e6096f1b3b2a8adad85ab537f529c.
+Request06fd1553, v1/history retained; no process/browser tab awaited.
+
+Startup full owner-RLS manifest guard added. Two focused tests, native3/0/0
+fail-closed, tsc and directESLint pass. Prepared exact3planned-row repair passed
+unchanged SQL in fresh disposable fixture, both revision deltas and replay denial;
+independent review accepted proposal. Native fixture unchanged. Separate approval
+required for this newly found repair; then retain a post-repair eligibility
+observation and prepare fresh v2/runtime scope. Never replay original create-v1.
+Current evidence/next action:
+../docs/verification/programming-quality/first-reviewed-retained-fixture-recovery-2026-10-06.md.
+Investigation: investigations/first-reviewed-local-runtime-1b0014bc.md.
+Canonical child stays in_progress; native goal blocked flag cannot be resumed
+via API. Full goal/M8/P0-P6 open; no hosted/Git/CI/enrollment/numerical action.
+
+Final readbacks October6 12:33UTC: canonical comment
+01a11133-35dd-725b-afcc-271dc84f3931 exact text verified (d63104). Board summary
+programming-retained-fixture-diagnosis-20261006-01a0dab8 delivered and exact
+summary/next/event verified at238; feedback empty. Fresh417-file inventory
+3c47ef08-d61f-466c-b163-dbdb5898f0b5 SHA
+a0a5a5c8ebe98e7d6e0b242138b1667ca2632347a25efbc014e62fef6d23bf89,
+all417 current hashes verified6b1379; releaseReadyfalse, partial_failed_retained_manifest.
+Native repair approval requested, pending; do not treat elapsed time as approval.
+
+Release-state correction: direct GitHub read eaa918 confirms PR84 already MERGED
+September26 16:37:09UTC, isDraftfalse. Original draft instruction is historical;
+completed cutover remains untouched. Correct latest board summary accordingly.
+
+Correction delivered/readback at239: programming-retained-fixture-state-correction-20261006-01a0dab8.
+Fresh inventory e324cde0-5691-4cd2-b6df-a56918d58261 supersedes3c47 after that
+evidence correction;417/417hashes verified66b3f5, SHA
+01a1158b701b57a6ed906712dde8a76eecef1e712d4b8c153fd6f405866d88f3.
+Repair SQL SHAaa2c536 unchanged and native approval still pending.
+
+October6 approved checkpoint supersedes pending-approval/failed-checker status
+below. Greg approved revised offline cycle and exact c4a90be1 local installation.
+Three-run cycle resolved: named diagnostics isolate clock equality defect;
+baseline-bounded check replaces it, other11predicates retained. Reviewer findings
+on exactnames and confounded revision proof fixed. Final18/18, independent17/17,
+tsc/lint pass. No more full-flow runs in exhausted approvedcycle. Original3failures
+and new diagnosticfailure retained. Five unchanged reviewed migrations applied
+once (fea678); read-only d4227c confirms59priorpublictables+Auth counts/digests
+unchanged,8newemptytables/RLS/expectedprivileges. No designation/login/runtime yet.
+Evidence/current next-stage packet:
+../docs/verification/programming-quality/first-reviewed-local-checkpoint-2026-10-06.md.
+Fresh offline runtime1b0014bc/462files prepared, not started; separate bounded
+designation/3local-logins/start/browser/acceptance/recovery approval remains next.
+Native contention/expiry/revocation harness and final regression/build/release open.
+Native goal still has blocked flag (API cannot resume); approved work executed,
+full objective not complete. Canonical child stays in_progress. No hosted/Git/CI,
+enrollment/numerical action. Preserve363eb672/private3b535e; M8/P0-P6 unfinished.
+
+October6 final records: canonical checkpoint comment
+01a1110d-ddd1-7d57-9eb4-89806b8e81eb exact readback verified. Board final summary
+programming-first-approved-local-checkpoint-20261006-01a0dab8 delivered and exact
+summary/next/event readback at234. Feedback empty. Fresh416file inventory8cf59273
+SHA c84b1bbde3de91a6bab0ae35dd191fe06d88f29db4f55a07a20f71ed9e5048ad
+has350production/44verification/22evidence,15entrypoints/5migrations; exact416file
+readback2554c1 passes, releaseReadyfalse. Independent runtime packet acceptance:
+462/462hashes, source receipts,34installed direct dependencies verified; no extra
+runtime files beyond expected node_modules junction. Empty journal/no designation
+or start markers. Packet receipt SHA
+76cddced9ff4615370cf183cdc08d961f5e2c602c20f19368d6d006929fb11bd.
+No worker/process awaited. Present concrete next local Auth/browser approval;
+do not repeat completed checker cycle or installation.
+
+Security-review/blocked-audit checkpoint October5 21:47UTC supersedes active
+status below. Native goal is now BLOCKED, not complete; canonical child remains
+in_progress. Independent bounded security/integrity source review found no
+actionable defects across14routes,5bridge migrations,48direct paths and17shared
+changed paths, including ownership/designation freshness, separate approval/
+acceptance, closure fences, atomic lineage/history and browser original-request
+recovery. No tests or operations performed during review. Exact reviewer source
+pins reproduced by c6ed4f; current415-file inventory unchanged. This is not final
+release/runtime approval or exhaustive review of every pure shape/editor helper.
+Evidence: ../output/project-board/first-reviewed-security-source-pins-20261005.json.
+Audit: ../output/project-board/first-reviewed-security-blocked-audit-20261005.json.
+
+Previous goal turn made contention-control progress; this turn completed new
+independent source review. Same missing revised-method/local-install approvals
+remain across3consecutive goal turns (21:23review,21:36control,21:47security).
+Prepared migration still has only manifest/plan, hashes unchanged; no live
+worker/process awaited. No source finding remains to fix, and the next required
+full-flow/retained-runtime work needs human authority. Goal marked blocked after
+this audit; do not continue speculative preparation or auto-retry the stopped
+path. Await approval of named-predicate/max3 revised offline verification and
+separately exact c4a90be1 local migration. Then execute approved stages and prepare
+concrete separately approved designation/login/start/contention scope. Full actual
+Auth/browser/concurrency/expiry/revocation and final regression/build/release
+qualification remain unfinished. No commit/push/CI/hosted/enrollment/numerical
+authority. Preserve363eb672/private3b535e; M8/P0-P6 remain unfinished.
+
+Blocked handoff saved in canonical comment01a10e0b-070c-747a-bf6c-187b9e071c39
+with exact readback. Board summaryprogramming-first-security-blocked-20261005-01a0dab8
+delivered; exact event/summary/next readback verified at232. No run invented,
+task/milestone closed or approval inferred. Native blocked status confirmed.
+
+Contention-control checkpoint October5 21:36UTC. Prior goal-review turn was
+planning only; this turn implements independently reviewed missing native-lock
+preparation without touching the stopped preservation path. New fixed-local
+control qualifies real backend readiness markers, bounded acquire/hold/rollback
+deadlines and exact cleanup evidence. Review found asynchronous evidence could
+fail after launch; synchronous durable recorder enforced, async/nonvoid rejected
+before launch, later evidence failures roll back and remain inspect_required.
+Main9/9 + syntax/lint and independent9/9 pass. Two native Node workers emulate
+psql transport only; no real DB/Podman/Auth/browser contention is proven. Control
+has no CLI, remains unwired, needs caller's exclusive reservation and separately
+approved runtime/contention authority. Expiry/revocation and actual lifecycle open.
+Fresh inventory5d97cc64 pins415files (350production,44verification,21evidence),
+15entrypoints/5migrations;SHA a622bbc66afcb6781a3c430a6504c41ec0c627b81fe0c62f8bf37ec461b1d3f2.
+Exact415-byte-source readback passes;releaseReadyfalse/nativeConcurrencynot_run.
+Original411manifest retained as superseded history. One duplicate evidence entry
+caused inventory3787c8 failure; source inspected/corrected,540df8 passed. Separate
+resolved inventory defect; not a stopped-full-flow attempt. Stopped nextlocal/
+nextscope/integrated source hashes and approved private week freshly unchanged.
+Evidence: ../docs/verification/programming-quality/first-reviewed-contention-control-2026-10-05.md.
+Receipt: ../output/project-board/first-reviewed-contention-preparation-20261005.json.
+Native/task active/in_progress. Both existing approvals pending; no DB lock,
+retained migration/designation/login/start, hosted, Git/CI/enrollment/numerical
+action. No live worker or process is awaited. Three finish checkpoints unchanged.
+
+Contention checkpoint saved in canonical comment01a10e00-4c04-7a9a-a980-d6d515be8111
+with exact readback. Board summaryprogramming-first-contention-preparation-20261005-01a0dab8
+delivered; exact event/summary/next readback verified at231, feedbackempty. No run
+started or completion claimed. All new worker/test processes terminal; neither
+pending approval answered. Receipt records delivery;415-file inventory unchanged.
+
+Goal review October5 21:23UTC is the current execution contract:
+../docs/plans/first-reviewed-goal-review-2026-10-05-2123.md.
+Preserve the existing native goal/child, completed work and frozen week. Finish
+three checkpoints: trustworthy preservation checker/runtime harness; real local
+Auth/Next/PostgreSQL/browser lifecycle; final regression/security/release package.
+Revised-method and exact local-install approvals remain pending. This review
+does not restart the stopped path or authorize installation/designation/login/
+runtime/hosted/commit/push/CI/enrollment/numerical actions. Childin_progress,
+nativeactive, M8unaccepted; board startup229/feedbackempty. Preparation comment
+01a10df0-3cee-7bf1-94ff-18a86c681b08 now exactly read back. New addendum is outside
+the prior411-file manifest; retain that snapshot and refresh after approved repairs.
+
+Goal review saved in canonical comment01a10df4-46cf-77af-8bed-b817fdf31579 with
+exact readback. Board summaryprogramming-goal-review-20261005-2123-01a0dab8
+delivered and exact event/summary/next readback verified at230. This also reports
+the independently reviewed release-preparation checkpoint; no separate run was
+invented. Existing native goal remains active; no acceptance or operational
+authority added. Goal review receipt: ../output/project-board/first-reviewed-goal-review-20261005-2123.json.
+
+Offline release-preparation checkpoint October5 21:19UTC. Previous goal turn
+made implementation/test progress; this turn independently qualifies only the
+new source-inventory/runbook preparation, leaving the stopped checker untouched.
+First-review inventory1b34f6a5 pins411 currentfiles:350 production/prerequisite,
+42verification,19evidence;15entrypoints (14routes+page) and5bridge migrations.
+ManifestSHA b8a2a4ce6f4221f559e28048d2aaecc00d9e14b4eb5fbd8104db15772af05473.
+MainNode1/1, lint/syntax, exact411-file source readback and independentNode1/1
+review pass; no material preparation findings. All authorityflagsfalse;
+releaseReadyfalse. Not a staging selection, deployment artifact, regression or
+full source/security/release review. Unchanged personal week3b535e and local
+planb015bddd hashes freshly read back. Runbook separates local/hosted prerequisites,
+first-designation disable, later enrollment, compatible fallback and original
+receipt recovery. It also lists missing actual personal inputs.
+Packet: ../docs/verification/programming-quality/first-reviewed-release-package-2026-10-05.md.
+Receipt: ../output/project-board/first-reviewed-release-preparation-20261005.json.
+Next remains approved named-predicate diagnostic method/max3 new disposable
+attempts; separate c4a90be1 local-install approval remains pending. Do not fix/
+rerun stopped full-flow path or issue designation/login/start from this package.
+No runtime/schema/hosted/commit/push/CI/enrollment/numerical action. Goal active;
+child in_progress; local package does not finish .17.5.1/M8/P0-P6. No active worker.
+
+Runtime-harness checkpoint October5 21:10UTC supersedes older next actions.
+Offline Auth fixture corrected; source read scope and unconditional drain fixes
+independently reviewed. Draft all-table preservation now constrains additions,
+validates normalized changes and handles owner recommendation invalidation.
+Native one-shot successful acceptance-response suppression implemented;18/18
+transport/scope tests, full nonincremental tsc/lint/syntax pass. These are bounded
+offline/native-loopback checks, not real Next/Auth/PostgREST acceptance.
+Amended integrated full-flow preservation failed3 attempts: ab89e5,493fd5,de9c16.
+Latest reaches successful SQL acceptance/recovery and row isolation, then fails
+terminal predicate. Independent source review confirms invalid equality between
+program NOW()/transaction timestamp and plan clock_timestamp() acceptance time;
+other predicate causes remain unobserved. Stop this blocker under GUARDRAILS.
+Revised named-predicate diagnostic method (at most3 new disposable attempts)
+prepared; approval question pending. Do not fix/rerun that path before approval.
+Evidence/retrospective: ../docs/verification/programming-quality/first-reviewed-runtime-harness-2026-10-05.md.
+No prepared runtime copy, retained migration/designation/login/start or hosted
+action. Exact migration c4a90be1 approval separately pending. Goal/taskactive;
+do not count previous52/5 as qualification of the amended test/harness. Continue
+only independent authorized work while approvals are pending. No active worker.
+Canonical checkpoint01a10de8-0069-7568-ba97-f7ff3cf57686 exactly read back.
+Board summaryprogramming-first-runtime-harness-20261005-01a0dab8 delivered and
+exact event/summary/next readback verified at229. No run started or goal closed.
+
+Goal review October 5, 20:49 UTC supersedes older next-action summaries. Keep the
+existing active native goal and canonical in-progress Fitness-Tracker-i40.17.5.1.
+Updated contract: ../docs/plans/first-reviewed-onboarding-goal-2026-10-05.md.
+Bounded consecutive interface proof is complete; real runtime and final package
+are unfinished. Next qualify the drafted runtime harness offline: its last scope
+run passed8/9, failing because disposable auth.users lacks email/deleted_at.
+Correct that test fixture rather than weakening real Auth preservation. Complete
+response-loss/contention/revocation/expiry controls and independently review the
+prepared harness before requesting bounded designation/login/start authority.
+Exact c4a90be1 local migration approval remains pending; no apply-attempt/log.
+Then approved install/readback, actual Auth/Next/PostgREST/browser/native checks,
+final regression/build/security review and exact release package. No feature
+expansion, new goal identity, completion, hosted/enrollment/numerical authority.
+Fresh branch/head363eb672, child in_progress, nativeactive, board227/feedbackempty.
+This planning review did not rerun tests or alter application/test source.
+Review saved in canonical comment01a10dd5-e3f5-7d62-a715-9997cf17ee01 with exact
+readback. Board summaryprogramming-goal-review-20261005-2049-01a0dab8 delivered
+and exact event/summary/next readback verified at228. No run or completion claimed.
+
+Implementation checkpoint October5 20:25UTC supersedes earlier next actions.
+Consecutive root setup/fresh-facts/UI authoring/distinct-reviewer/issuance/separate
+acceptance now passes actual factories and disposable SQL. Commit-before-response
+loss and new-transaction disabled original-getter recovery preserve history and
+atomic lineage/anchor, one program and zero enrollment. Main52/5, tsc/lint and
+independent8/2 pass. Auth/fetch/DOM locks remain synthetic; real runtime is open.
+Fixed-local five-migration package c4a90be1 is prepared, SQL hash b015bddd4b45e75b61a5409529a1cb4b77b794e982572fb1835f4c2e6ac7aca3.
+Automatic review rejected exact local installation before process creation for
+missing separate authority; no apply-attempt/log exists. Approval question pending.
+Do not bypass or apply superseded1a3b183d. Next: approved one-shot install/readback,
+then real Auth/Next/browser/native contention and final release qualification.
+Evidence: ../docs/verification/programming-quality/first-reviewed-integrated-flow-2026-10-05.md.
+Goal/task active/in_progress; no login/hosted/enrollment/numerical/commit/push action.
+Checkpoint saved and exactly read back in canonical comment01a10dbf-3d8f-7501-9c4c-2b2b682e123c.
+Board summaryprogramming-first-integrated-flow-20261005-01a0dab8 delivered and
+exact event/summary/next readback verified at227; feedback empty. No run started.
+
+Goal review October 5, 20:09 UTC: the existing native goal remains active under
+Fitness-Tracker-i40.17.5.1. Updated execution contract:
+../docs/plans/first-reviewed-onboarding-goal-2026-10-05.md. Finish one consecutive
+six-stage interface flow, real local runtime qualification, and the exact reviewed
+release package. Do not add features or count isolated slice checks as completion.
+Prepare the fixed-local runtime harness before requesting excluded login authority.
+The preceding loopback stack status was healthy; recheck before use, do not reset.
+Canonical child freshly read in_progress; epic open; board startup225/feedback empty.
+This review changes planning records only. No new action authority or goal completion.
+Review saved in canonical comment01a10db1-5ac3-7c2f-b1a5-21976dd8fc25 with exact
+readback. Board summaryprogramming-goal-review-20261005-2009-01a0dab8 delivered
+and exact event/summary/next readback verified at226. Native goal freshly active.
+
+Implementation checkpoint October5 19:58UTC supersedes the next actions below.
+Atomic setup creation/correction, authenticated routes, durable browser recovery
+and root integration are locally and independently accepted as a bounded slice.
+Main221/221 across10 suites, full nonincremental tsc,14-file lint and3 browser
+bundles exit0. Independent final47/47 across3 changed suites accepts current source
+without material findings. All main/reviewer handles terminal. No native completion.
+
+The root creates missing declarations from explicit choices or corrects the exact
+four latest saved versions. Sorted key locks and latest-row FOR UPDATE NOWAIT
+protect CAS/lifecycle and avoid waiting behind ordinary row-first corrections.
+Exact original-request saved/no-write proof survives later corrections and lost
+scope. Shared actor/program browser coordination fences both pending types.
+Lost-response reload, discovery-independent recovery, account/program fences,
+explicit unsaved-edit cancellation and bounded program pagination are covered.
+No training facts, performed work, review or acceptance is inferred from setup.
+
+Next prove the complete consecutive six-stage root workflow and transitions;
+then real local Auth/PostgREST/Next/browser, native tabs/backend contention,
+final integrated security/regression/build and exact release package. Slice tests
+are not full runtime proof. Goal/task remain active/in_progress; epicopen, M8
+unaccepted. Current contract docs/plans/first-reviewed-onboarding-goal-2026-10-05.md.
+Exact source and retained failures:
+../docs/verification/programming-quality/first-reviewed-setup-save-2026-10-05.md.
+Preserve head363eb672 and approved private APEX week3b535e (freshly verified).
+No retained/hosted migration apply, login/credential, commit/push/CI, deployment,
+enrollment or numerical activation. Use footeg1@gmail.com; missing personal
+time/equipment/runway/profile/performed inputs remain explicit, not fabricated.
+Board startup224, feedback empty; no run started. Current checkpoint canonical
+comment01a10da7-df16-749b-9086-10ea94dc1ae6 saved and exactly read back. Board
+summary eventprogramming-first-setup-save-20261005-01a0dab8 delivered and exact
+event/summary/next readback verified at225; feedback empty. Native goal active.
+All15 evidence source hashes freshly match. No task completion or new authority.
+
+### Earlier planning review (retain as history, not current next action)
+
+Goal review October5 19:39 UTC supersedes the next-action summaries below.
+Keep the existing active goal and canonical in-progress Fitness-Tracker-i40.17.5.1:
+finish and prove one complete supervised week-review workflow, then prepare its
+release package. The three completion checkpoints are integrated interface,
+real local runtime qualification, and an exact independently reviewed package.
+Current contract: ../docs/plans/first-reviewed-onboarding-goal-2026-10-05.md.
+
+Latest setup-save draft is not qualified. Dedicated current-source rerun
+19:38UTC passed18/19 tests (8ad3f5, exit1). Changed-base denial is correctly40001;
+the test incorrectly expects55000. Next correct only that expectation, reconcile
+SQL/browser validation and independently qualify atomic saves/receipt recovery.
+Then connect setup routes, durable browser recovery and root creation/correction;
+fence both setup and six-operation pending requests with shared actor/program
+coordination. Finish full six-stage UI/pagination before actual local Auth,
+PostgREST/Next/browser/native contention and final release-package qualification.
+No application or test source changed during this goal review; no third retry.
+
+Branch/head363eb672 and approved private APEX week SHA3b535e freshly verified.
+Root qualification below is bounded; it does not cover the new setup-save draft.
+New migrations remain uninstalled. Native goal active, epic open, parent/child
+in_progress; board M8 (first programming milestone) unaccepted and still requires
+scoped hosted pilot plus two real cycles. No commit/push/CI, hosted action, login,
+deployment/enrollment or numerical activation added. Current accountfooteg1@gmail.com.
+Board startup223, feedback empty. Goal review saved and exactly read back in
+canonical comment01a10d95-c0ad-7e53-96c8-710fa5baedf4 and board summary event
+programming-goal-review-workflow-20261005-1939-01a0dab8 at version224. Delivery,
+exact event, project summary and next-action readback verified; feedback empty.
+No run started or task completed. Native goal freshly read active.
+
+### Earlier checkpoints (retain as evidence, not competing next actions)
+
+Implementation checkpoint October5 19:21UTC supersedes earlier next-step summaries.
+Acceptance identity, root recovery and pure preview now have bounded local and
+independent qualification. Main158/158 across5 suites, full nonincremental tsc,
+10-file lint and3 browser bundles exit0. Independent final104/104 across3 suites
+accepted current source with no unresolved material findings. All handles terminal.
+
+Owner-only metadata supplies the original proposal issuance key, with reviewer
+redaction. Root acceptance uses that key. Designated owner review remains separate
+from issuance and athlete acceptance. Review also repaired discovery-dependent
+recovery navigation and StrictMode actor initialization. Delayed/account-changed
+recovery preserves original work; read-only preview writes no lifecycle rows.
+Fixtures use synthetic Auth and controlled locks, not actual Auth/browser proof.
+Failed fixture/typecheck attempts are preserved in the exact-source evidence:
+../docs/verification/programming-quality/first-reviewed-root-identity-recovery-2026-10-05.md.
+
+Next complete structured setup creation/correction and durable original-request
+recovery/closure in the root; its current Program link is not that integration.
+Then full root lifecycle/pagination/usability, actual local Auth/PostgREST/Next/
+browser/native-tab/database contention and final independent review/release package.
+Keep the active goal/task in progress until all3 completion checkpoints pass.
+Execution contract: ../docs/plans/first-reviewed-onboarding-goal-2026-10-05.md.
+Branch/head363eb672 and approved private APEX week remain preserved; no commit/push.
+Uninstalled draft workspace migration changed, no retained/hosted apply or added
+credential/login, deployment, enrollment, CI or numerical activation authority.
+Milestone one and broader P0-P6 remain unfinished. Board startup222, feedback empty;
+no run started. Prior19:04 goal review comment01a10d75-63a8-7392-8cdf-9cff5be2e9c2
+and noteprogramming-goal-review-integrated-workflow-20261005-1904-01a0dab8 were saved
+and exactly read back at222. Current checkpoint saved and exactly read back in
+canonical comment01a10d85-dac3-7070-b0b7-553818901e25 and board note
+programming-first-root-identity-recovery-20261005-01a0dab8. Delivery plus exact
+event/project-note readback verified at223; feedback empty. No task completion.
+
+Implementation October5 18:47 UTC: current owned setup retrieval and structured
+editing are locally qualified. Main214/214 across8 suites, full nonincremental
+tsc/scoped lint/browser bundles exit0. Independent review found/repaired ordinary
+legacy-to-v2 conversion; final15-case recheck accepts current source without
+remaining material findings. Current declarations pass through disposable SQL
+factual profile confirmation with legacy accepted history unchanged. Synthetic
+Auth claims are not real Auth/browser proof. Failed table-name/label attempts
+retained in ../docs/verification/programming-quality/first-reviewed-current-setup-2026-10-05.md.
+
+Next connect current setup and qualified authoring/recovery to the root six-stage
+interface. Durable setup-write recovery and missing-setup creation remain open.
+Pass reviewedSetup explicitly only in reviewed workflow; ordinary legacy
+corrections retain their format. All six first-review writes use the qualified
+browser wrapper with account/program fencing. Then actual local runtime/native
+tab/database contention/final review and exact release package. All verification
+processes collected terminal0; branch/head/private approved week unchanged.
+No new migration/apply, hosted action, credential/login, commit/push/CI, enrollment
+or numerical activation. Goal/task active/in_progress; milestone one/broader plan
+remain unfinished. Board startup220, feedback empty; no run started.
+Combined doc patch reported failure after updating plan/map; source readback
+verified the partial result before applying this separate remaining edit.
+Checkpoint saved/read back in canonical comment
+01a10d66-d595-7d55-a4c7-85e9f94bd667 and board note
+programming-first-current-setup-20261005-01a0dab8. Delivery plus exact event and
+project-note readback verified at version221; feedback empty. Native goal freshly
+read active. No completion implied.
+
+Goal review October 5, 18:33 UTC: retain the existing active native goal and
+canonical in-progress Fitness-Tracker-i40.17.5.1. Finish the complete local
+current-context/full-week-review/separate-athlete-acceptance workflow, qualify
+the real local runtime independently, then deliver the exact release package.
+The current execution contract is
+../docs/plans/first-reviewed-onboarding-goal-2026-10-05.md.
+
+New setup profile/contract/reader/HTTP/GET-route source exists as unqualified
+draft work. Next qualify this reader and complete the editor before connecting
+the root six-stage interface. Missing/stale declarations require correction;
+legacy profile or unloaded history cannot substitute for current athlete facts.
+Earlier browser-authoring/discovery evidence does not qualify these new files.
+No code or tests changed in this goal review; no verification process started.
+Canonical status freshly read in_progress; native goal active; branch unchanged.
+Board startup219, feedback empty. No run started. No production, credential,
+commit/push/CI, enrollment or numerical-activation authority added.
+The combined documentation patch reported failure after applying the plan;
+readback verified that partial result before this separate handoff edit.
+Goal review saved/read back in canonical comment
+01a10d59-0477-747f-a7e6-442a013fd565 and board note
+programming-goal-review-setup-integration-20261005-1833-01a0dab8. Delivered plus
+exact event/project-note readback verified at version220. No task completion.
+
+Implementation checkpoint October5, 18:15UTC: browser pending recovery and
+initial complete-week authoring are now locally qualified. Main final140/140
+across7 suites, full nonincremental tsc/scoped lint/browser bundles exit0.
+Independent recovery84/2 and authoring27/3 reviews accepted current source with
+no unresolved material findings. Review repaired assessment parity and a moved-
+session baseline overwrite. Complete blank-to-compiler UI test passes; ordinary
+same/next types and dispatch unchanged. Failed typing/fixture/hash-lookup attempts
+are retained in ../docs/verification/programming-quality/first-reviewed-browser-authoring-2026-10-05.md.
+No main verification process remains live; all current handles terminal0.
+
+All future UI writes must use runFirstReviewedBrowserAction, whose exclusive
+actor/program Web Lock covers preservation/send/pure-getter/archive/removal.
+Retained requests cannot be resent; unsupported/busy coordination sends nothing.
+Native multi-tab behavior remains unproven. The UI current-actor callback must
+also fence selected-program changes. Low-level save/perform are not UI entrypoints.
+
+Next: current owned setup seed/editor and full root mobile context/facts/draft/
+review/issue/separate-acceptance/recovery integration. Initial authoring controls
+now exist; do not recreate them or treat jsdom/disposable SQL as real browser/Auth
+acceptance. Then actual local Auth/PostgREST/Next/browser/concurrent backends,
+final checks/independent runtime security review and exact release package.
+Current source uncommitted. Head363eb672 and private approved week SHA2563b535e984a4a5965ab60ee41c7fd7d7f0863aba51bfc6e8a1080c0fedf8279d9
+freshly unchanged. No new migration, hosted action, commit/push/CI, enrollment or
+numerical activation. Native goal/canonical .17.5.1 remain active/in_progress;
+milestone one/broader P0-P6 remain open. Previous turn was a planning review;
+this continuation made concrete code and acceptance-evidence progress.
+Board startup218, feedback empty. No run started.
+
+Checkpoint saved/read back in canonical comment
+01a10d4b-56ae-757b-88fd-343cab9ff00e and board note
+programming-first-browser-authoring-20261005-01a0dab8. Delivered plus exact event
+and project-note readback verified at version219; feedback empty. Native goal
+freshly read active. No completion or additional action authority implied.
+
+Goal review October5, 17:56UTC: Greg requested review and an updated goal. Retain
+the active native goal and canonical in-progress Fitness-Tracker-i40.17.5.1.
+Current finish line: complete mobile current-context/full-week review/separate
+acceptance on the existing program, real local runtime and independent
+qualification, then the exact reviewed release package. Discovery is already
+locally qualified; current setup editing and full screens remain unfinished.
+See ../docs/plans/first-reviewed-onboarding-goal-2026-10-05.md for the revised
+ordered execution contract. No duplicate goal or broader milestone completion.
+
+Newest uncommitted browser-pending helper/test are draft work. The inherited
+focused test run passed23/23; inherited nonincremental tsc failed four mock-call
+typing diagnostics in the test at lines41,42,70. Preserve this failed result.
+Next resolve typing, prove saved prepare/submit results through actual local
+HTTP/SQL, then connect current setup and the full six-stage interface. No tests
+rerun or code edits during this planning review. No live process awaited.
+Board startup217, feedback empty. No run started. No new commit/push/CI, hosted
+actions, enrollment or numerical activation authority; completed cutover stays
+complete. Missing actual daily time/equipment/runway remain personal-input gaps.
+
+Updated goal saved/read back in canonical comment
+01a10d37-c922-7d4f-9537-a05d4c4dd0cc and board note
+programming-goal-review-mobile-finish-20261005-1756-01a0dab8. Delivered plus exact
+event/project-note readback verified at version218. Plan edit returned an error
+after applying its changes; source readback confirmed them before the separate
+remaining handoff edit. Sandbox denied local Beads help; established elevated
+canonical access succeeded. No code or acceptance status changed.
+
+Latest implementation October5, 17:39UTC: bounded first-review discovery is now
+implemented and independently qualified. New private summary helper and three
+authenticated paginated metadata getters/GET routes discover eligible owned
+legacy programs, current reviewer scope, candidate/proposal history and owner-only
+confirmed context. Final103/103 across3 suites, nonincremental tsc/scoped lint/browser
+bundle pass; independent102-case lifecycle review plus46-case final workspace
+recheck accepted, no unresolved findings. The scalar-enum projection finding is
+fixed. Details: ../docs/verification/programming-quality/first-reviewed-workspace-2026-10-05.md.
+New20261005172408 workspace migration is an uninstalled draft; previous three
+bridge migrations remain unchanged. Next: current owned setup seed/editing and
+full mobile confirmation/draft/review/separate-acceptance/pending-recovery screens,
+following ../docs/plans/first-reviewed-interface-2026-10-05.md. Then real local
+Auth/PostgREST/Next/browser/concurrent backends and final release package. All
+verification handles collected terminal exit0; no live process remains. Branch/head
+and private approved week hash freshly verified unchanged. Goal/.17.5.1 remain
+active/in_progress; no hosted actions, numerical activation, commit/push or CI.
+Board startup216, feedback empty. No run started for this continuation slice.
+
+Discovery checkpoint recorded/read back in canonical Beads comment
+01a10d29-45d1-700b-9552-9d62aba09078 and board note
+programming-first-reviewed-discovery-20261005-01a0dab8. Delivery plus exact matching
+event/project-note readback verified at version217. No task/milestone completion.
+
+Goal review October 5, 17:18 UTC: retain the active native goal and canonical
+in-progress .17.5.1. The updated execution contract has three remaining checkpoints:
+complete mobile discovery/context/draft/review/separate-acceptance/recovery UI;
+real local Auth/PostgreSQL/HTTP/browser and concurrent-backend qualification with
+final checks and independent review; exact reviewed release package. The
+server/SQL/HTTP foundation is already locally qualified. No tests were rerun or
+implementation changed for this planning update. Board startup215, feedback empty.
+This review adds no production, enrollment, credential, commit/push or numerical
+activation authority. Missing personal constraints remain separate from generic
+local implementation. The current plan governs older four-deliverable wording.
+
+Updated goal recorded and read back in canonical Beads comment
+01a10d14-cf98-76ee-bd91-128ceee07351 and board note
+programming-goal-review-three-checkpoints-20261005-01a0dab8. Delivery and exact
+matching event/project-note readback verified at version216. No run started.
+
+Latest implementation checkpoint: October5, 17:05UTC. Retain the existing active native goal and
+canonical in-progress Fitness-Tracker-i40.17.5.1. Finish one complete local APEX
+context-confirmation/full-week-review/separate-athlete-acceptance workflow on the
+existing program, then deliver its independently qualified release package.
+All remaining checkpoints require acceptance evidence; see
+[updated execution contract](../docs/plans/first-reviewed-onboarding-goal-2026-10-05.md).
+
+Server review/issuance/separate acceptance and exact recovery are locally
+qualified, along with five new authenticated first-reviewed route entrypoints.
+Full six handlers run against unmocked disposable SQL. Current final285/285 tests
+in14 suites, nonincremental tsc/scoped lint and browser-safe contract bundle pass;
+independent80/80 across three suites accepted, no unresolved material findings.
+Historical236/13+independent24 SQL evidence is superseded for current changed
+source. Acceptance loss crosses actual COMMIT boundaries before disabled recovery.
+Review found and fixed HTTP outer-program confirmation mismatch and incomplete/
+unbound success projection. Failed fixture attempts retained in
+[current services/HTTP evidence](../docs/verification/programming-quality/first-reviewed-services-http-2026-10-05.md).
+No complete athlete UI or actual Next/Auth/PostgREST/browser/concurrent-backend
+proof exists for this first-review extension. No verification process remains live.
+
+Next bounded checkpoint: full mobile athlete/reviewer interface, including bounded
+legacy-program/designation discovery, fresh setup confirmation, complete initial
+week draft/review and separate athlete acceptance, with exact pending recovery
+across reload/account change/lost response. Then actual Next/Auth/PostgREST/browser
+and multiple-backend contention, final source build/regression/security review and
+release package. Do not rebuild accepted profile/setup slices or mark completion.
+
+Branch/checkpoint/private-week hash freshly verified unchanged; new work remains
+uncommitted. No commit/push/CI, hosted action, login issuance, enrollment or numerical
+activation. Implementation-turn board startup214, feedback empty. Current checkpoint
+saved/read back in canonical Beads comment01a10d0b-e189-792f-8a4b-8ce66807badf and
+board note programming-first-services-http-20261005-01a0dab8; delivery and exact
+matching event/project-note readback verified at version215. No run started.
+Previous goal review saved
+and read back in canonical Beads comment
+01a10cea-9bd3-748a-a87a-26f35020d9fc and board note
+programming-goal-review-server-qualification-20261005-01a0dab8. Delivery plus exact
+matching event and project-note readback verified at version214. No run started.
+
+Prior protected-SQL checkpoint saved/read back in canonical Beads comment
+01a10cda-cf71-7a83-9026-3841eb788d46 and board note
+programming-first-atomic-acceptance-20261005-01a0dab8 at version213. No run started.
+
+### Previous goal-review checkpoint
+
+Latest October5 review: retain active native goal and canonical in-progress
+.17.5.1. The updated plan has four remaining deliverables: protected issuance and
+atomic athlete acceptance; complete UI/HTTP; real local Auth/PostgreSQL/browser
+and final independent qualification; reviewed release package. Next: issuance
+and acceptance. No new code changed during this review.
+
+Profile preparation/confirmation closure and exact recovery now pass bounded
+local qualification:212/212 tests across12 suites, nonincremental tsc, scoped lint
+and browser bundle exit0; independent final profile recheck42/42, no unresolved
+findings. See [current recovery evidence](../docs/verification/programming-quality/first-reviewed-profile-request-recovery-2026-10-05.md).
+No live verification process remains. Earlier statements below that profile
+closure is open are superseded; full runtime/release acceptance is still open.
+Branch/checkpoint/private-week hash freshly verified unchanged. Board startup
+version211, feedback empty. Updated goal saved/read back in canonical comment
+01a10cc4-25c1-7562-82b1-8c85408d6169 and board note
+programming-goal-review-finish-workflow-20261005-01a0dab8. Delivery plus matching
+event and project-note readback verified at version212. No run was started.
+
+### Prior review and checkpoint detail
+
+Greg requested a review and updated goal. Retain the existing active native goal
+and canonical in-progress Fitness-Tracker-i40.17.5.1: give Greg one complete local
+path to review and accept the approved APEX week on his existing program, finish
+its qualification and deliver an independently reviewed release
+package. The updated objective and four acceptance checkpoints are in
+[the current plan](../docs/plans/first-reviewed-onboarding-goal-2026-10-05.md).
+
+The implementation checkout is .worktrees/programming-quality on
+codex/programming-quality at 363eb672ecdb4d4c4c21de91fd79a8ae782fa958. New work is
+uncommitted. Preserve unrelated dirty files. Canonical Beads is in the root repo,
+not the worktree database.
+
+Fresh profile confirmation is connected to first candidate preparation and SQL:
+private immutable snapshots, exact authenticated athlete confirmation, pinned
+projection/freshness, current direction dates, bounded facts review and getter-only
+receipt recovery. Latest recorded evidence is 679 focused tests/29 files,
+nonincremental typecheck/scoped lint/browser-contract bundle and independent
+62-test review. No tests were rerun during this goal review. See
+[confirmation evidence](../docs/verification/programming-quality/first-reviewed-profile-confirmation-2026-10-05.md).
+
+## Remaining acceptance checkpoints
+
+1. Saved unequal daily availability and explicit equipment resolution are now
+   implemented in app/SQL and connected through profile confirmation and candidate
+   approval. Final344 tests/15 current files, typecheck/lint and independent review
+   pass. This is local source/disposable-SQL proof; full onboarding UI is still open.
+2. Exact request closure/recovery, guarded registration/issuance, complete reviewer
+   approval and separate athlete acceptance, with atomic lineage/initial anchor
+   and deferred direct-path protection.
+3. Authenticated UI/HTTP and real local Auth/PostgreSQL/browser qualification,
+   concurrency/failure recovery, relevant final regression/build and independent
+   security review.
+4. Reviewed source/migration package with ordered rollout, disable and recovery
+   contract and explicit remaining production gates.
+
+Next is the complete mobile first-reviewed interface and discovery/draft flow;
+current service/HTTP handlers have bounded local qualification. Profile-request
+closure and candidate/decision recovery retain earlier qualification evidence.
+Do not rebuild profile/setup slices or substitute
+synthetic SQL tests for real workflow acceptance. Setup evidence:
+[saved setup qualification](../docs/verification/programming-quality/reviewed-setup-memory-2026-10-05.md).
+
+The goal review verified the active native goal, branch/checkpoint and canonical
+task status without rerunning implementation tests. Subsequent implementation
+qualified exact candidate submission/decision recovery, immutable no-write
+closures, late-writer fencing and first issue closure before lineage. Final196
+tests/12 suites, typecheck/lint/browser-contract bundle and independent35-case
+recheck pass. See [recovery evidence](../docs/verification/programming-quality/first-reviewed-request-recovery-2026-10-05.md).
+No retained migration or real Auth/browser proof from this slice; profile-request
+closure, full issuance/atomic acceptance, UI/runtime and release package remain.
+Original checkpoint/private week hashes unchanged; no live test process remains.
+Board recovery-checkpoint startup version210, feedback empty.
+
+Recovery checkpoint saved/read back in canonical Beads comment
+01a10ca7-52ea-7796-ac87-3e37edb5ac2e and board note
+programming-first-request-recovery-20261005-01a0dab8. Delivered plus matching
+event/project-note readback verified at version211; feedback empty. No run was
+started for this slice. Native goal and canonical task remain active/in_progress.
+
+Updated execution order saved to canonical Beads comment
+01a10c94-990c-7163-b47a-42acf02b1384 and board note
+programming-updated-goal-workflow-20261005-01a0dab8. Delivery plus matching
+event/project-note readback verified at version210. Existing native goal remains
+active; no task, milestone or production completion is claimed.
+
+Actual Greg/APEX daily time, equipment/runway, current profile and newly performed
+sessions remain necessary for personal encoding. Generic implementation can
+continue. Preserve the approved private week SHA256:
+3b535e984a4a5965ab60ee41c7fd7d7f0863aba51bfc6e8a1080c0fedf8279d9. Do not infer
+performed work or missing weeks. Use footeg1@gmail.com for separately authorized
+account actions.
+
+No new commit/push/CI, hosted action, credential/login issuance, deployment,
+enrollment or numerical activation is authorized by this goal review. Numerical
+policy remains disabled; do not repeat the completed production cutover. The
+finish line is local qualification and a reviewed package, not milestone-one or
+production completion.
+
+Board startup readback version207, feedback empty. Earlier confirmation note
+programming-first-profile-confirmation-20261005-01a0dab8 was delivered and verified.
+The goal review is a progress note, not a run/task/milestone completion. Historical
+checkpoints below are retained; the current section and plan govern next work.
+
+Updated goal review saved to canonical Beads and board note
+programming-goal-review-four-checkpoints-20261005-01a0dab8. Delivery plus event
+and project-note readback verified at version208. No task/milestone completion.
+
+Saved setup checkpoint recorded in canonical Beads comment
+01a10c87-0875-77e0-8336-12a34393236b and board note
+programming-saved-reviewed-setup-20261005-01a0dab8. Delivered and event/project-note
+readback verified at version209; feedback empty. No run/task/milestone completion.
+Final344/344 current-source checks, tsc/lint and independent26-case final recheck
+qualify this slice only. No live test process remains from this checkpoint.
+
+## Prior checkpoint history
+
+**October 4 approved live preflight completed:** Greg supplied the exact Socius
+login and approved the prepared reads. Named Supabase project is healthy PG17.6;
+read-only catalog and gated ledger checks passed. Of 19 pinned prerequisites,
+two old context/pause migrations are recorded and must be preserved; 17 new
+setup/reviewed/supervised dependencies remain absent. All three setup predecessor
+definitions match the qualified reference. Fixed Vercel GET-only run exited 0:
+production aliases still serve main d3c07c59, not qualified source 363eb672.
+
+Minimal owner-scoped readback found one active owned program with an accepted
+September 14–20 legacy rolling_weekly_intent_v0_1 base and three prescribed rows.
+It cannot satisfy supervised enrollment/anchor requirements. The general reviewed
+compiler can read legacy context, but ordinary transitions allow only same or
+adjacent weeks. October 5 therefore needs an explicit first reviewed-week bridge;
+do not forge intervening weeks or seed live data from synthetic fixtures.
+Canonical child Fitness-Tracker-i40.17.5.1 is open for this bridge. Preserve the
+existing program/history and separate reviewer approval, athlete acceptance and
+enrollment. Actual daily time/equipment/runway constraints were requested.
+
+New live-evidence board note programming-hosted-preflight-20261004-01a0dab8 was
+delivered and read back at version 197.
+Separate first-base contract checkpoint was delivered/read back at version 198;
+independent preparation review accepted the observations and bounded contract.
+The implementation bridge is still open, not built or qualified.
+Earlier rejected preparation note remains
+preserved; archive scope approved but reporter quiescence unverified. No archive
+writer/global flush executed. No hosted migration, deployment, login issuance,
+enrollment or numerical activation. `.17.5` and milestone one remain unfinished.
+Native goal still reports blocked from the prior stop; resumed work has progressed,
+and no completion/status reset is claimed. See hosted-preflight-results-2026-10-04.md
+and hosted-first-base-contract-2026-10-04.md. Earlier pending-input statements
+below are historical and superseded by these actual observations.
+
+**October 4 readiness blocked audit:** the same live-read authority/account gate
+remains unanswered across three consecutive goal turns. The first two turns made
+local progress (independently accepted metadata packet; reviewed owner/base
+requirements and queue correction). Current revalidation confirms read approval
+false, owner/program/base IDs null, no archive approval receipt, empty board
+feedback and boardversion194 without the queued readiness note. No live worker or
+verification process is being awaited. All independent authorized preparation
+is complete; further target reconciliation/package completion needs the pending
+human answers. Native readiness goal is to be marked blocked; canonical `.17.5`
+remains in progress. Resume on explicit preflight approval and exact Socius login;
+archive/corrected-report approval separately resolves board delivery. Preserve
+all prior source/week hashes, queued envelopes and prepared artifacts. No new
+queries, archive execution, migration, deployment, enrollment or activation.
+
+**October 4 immediate goal refined:** native hosted-pilot readiness goal is active
+after Greg requested refinement/execution. Complete read-only current-target
+reconciliation and an exact reviewed rollout package before asking for live
+mutations. Private packetv2 pins19 source migrations,86 function names and22
+table names; no public RPC or application-row read in its catalog/ledger queries.
+Original packet retained; independent review requested ledger kind/RLS/type
+gates, implemented and independently accepted in v2. New target-specific read-only approval and exact Socius
+account identity are pending. No hosted action, new commit or activation.
+Seehosted-pilot-readiness-goal-2026-10-04.md. Beads checkpoint verified; new board
+event3d5cb1aa-04f0-40b8-b4f0-c8d8453c7e54 is queued, NOT delivered: server400
+"Occurrence time cannot be in the future." Preserve original event/version193
+and2026-10-04T17:47:00Z timestamp; do not resubmit/delete/change identity. Current
+clock17:41:25UTC confirms cause. At17:47:19 clock passed the timestamp, but fresh
+board context wasversion194 after an unrelated camera progress note. Retry stopped
+before flush; original193 envelope cannot be silently rebased. Read-only local
+inspection confirms this exact queued body SHAd3dd6c8295faa164d3af0ecfe0aa4d9c9651db42e0890edd25d85968d6e91016
+and two older unrelated camera entries; preserve those entries. A fixed archive
+operator is prepared for only this rejected readiness note, with full backup and
+hash-bound preservation. Explicit archive/corrected-report authority is pending;
+do not execute it or resubmit a replacement until approved.
+Independent review resolved the full-target-row race by checking the entire
+saved row inside the deletion transaction. Review accepts presenting approval,
+but requires confirmed no in-flight queue retry before execution; syntax/code
+review alone does not prove other clients idle. The explicit archive question
+includes that prerequisite. Existing reporter has no background retry timer;
+this thread has made no flush call. No queue writer/archive has executed.
+Two real cycles remain follow-on
+milestone acceptance, not work that can be fabricated during readiness preparation.
+
+Source inspection also confirms initial-base provisioning only anchors an existing
+owned accepted reviewed-format plan. Local lifecycle qualification seeded that
+base directly and does not qualify live initial import. Owner-scoped read templates
+and explicit post-readback decision branches are prepared; no user/program IDs
+are inferred. Seehosted-owned-base-decision-2026-10-04.md.
+
+**October 4 real personal week approved:** Greg approved the complete revised
+October5–11 APEX week. Frozen private revision1 SHA256
+`3b535e984a4a5965ab60ee41c7fd7d7f0863aba51bfc6e8a1080c0fedf8279d9`
+and its separate acceptance receipt are retained under the ignored
+`output/programming-quality-review/` directory. This resolves the requested
+personal coaching review; do not request it again. Friday's upright introduction
+retains its clear-runway condition, with access still unconfirmed. This is a human
+approved reference, not a hosted owned-base readback or separate authenticated
+coach/athlete transitions. Next: reconcile hosted schema and owner/base identity
+under scoped read-only target authority, then prepare the enrollment gate and
+collect actual sessions. No production, enrollment or numerical activation.
+Canonical `.17.5` remains in progress. Earlier pending-review statements below
+describe previous checkpoints and are superseded by this acceptance.
+
+**October 4 approved source release:** Greg approved the prepared full scope and
+confirmed Greg/APEX as athlete/context with Greg reviewing. One fixed GET-only
+Vercel preflight passed the named project/team/repository/main checks. Exact
+372-file commit `363eb672ecdb4d4c4c21de91fd79a8ae782fa958` was independently
+accepted against the reviewed manifest and qualified source, then normally
+pushed to `codex/programming-quality`. The configured preview completed for
+that SHA. Exactly one CI dispatch, run `37211862901`, passed for that head:
+4,605 tests/0fail/37skip, typecheck/lint/build and all 29 browser tests. Its one
+extra skip is the existing DST-local-time conditional case; the qualified local
+run passed that exact case. No condition was weakened or run restarted. Greg's
+revised personal week is now approved as recorded above; hosted ownership/base
+registration remains unverified. The September 26 handoff remains context. No production/schema/enrollment
+change or numerical activation. Post-run evidence and this handoff are outside
+the source commit. See supervised-approved-release-2026-10-04.md for exact
+identities and remaining acceptance. Canonical `.17.5` remains in progress.
+
 **Git-filtered source independently qualified locally:** read-only clean-filter
 proof maps1,521 files to364 identical blobs and1,157 exact CRLF-to-LF conversions.
 Protected frozen/cutover/query inputs retain exact bytes. Fullclean-source run

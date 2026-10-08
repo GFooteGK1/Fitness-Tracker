@@ -8,12 +8,17 @@ import { stableStringify } from './rolling-weekly-contracts'
 
 export type SupervisedEditableRecipe = Pick<ReviewedWeekRecipe,
   'sessions' | 'baseSchedule' | 'schedules' | 'protocols' | 'instructions' | 'limitations'>
-export interface SupervisedWeekSeed {
-  transition: 'same_week' | 'next_week'
+export interface EditableReviewedWeekSeed {
+  transition: 'same_week' | 'next_week' | 'first_reviewed'
   windowStart: string
   sequenceNumber: number
   scheduleId: string
   recipe: SupervisedEditableRecipe
+}
+/** Ordinary continuation remains restricted to same/next. Only the shared
+ * untrusted editor shape supports the separate first-review transition. */
+export interface SupervisedWeekSeed extends EditableReviewedWeekSeed {
+  transition: 'same_week' | 'next_week'
 }
 
 /** Reconstruct only editable work, not the old review/source tokens. A compiled
@@ -51,7 +56,7 @@ export function seedSupervisedWeek(value: unknown, transition: SupervisedWeekSee
 /** Move a complete session; an occupied destination swaps the two sessions.
  * Both actual day assignments are explicit in the editor before submission.
  */
-export function moveSupervisedSession(seed: SupervisedWeekSeed, sessionId: string, day: keyof ReviewedWeekSchedule): SupervisedWeekSeed {
+export function moveSupervisedSession<T extends EditableReviewedWeekSeed>(seed: T, sessionId: string, day: keyof ReviewedWeekSchedule): T {
   const next = structuredClone(seed), schedule = next.recipe.schedules.find(s => s.id === next.scheduleId)
   const previous = schedule && REVIEWED_WEEK_DAYS.find(d => schedule.days[d] === sessionId)
   if (!schedule || !previous || !REVIEWED_WEEK_DAYS.includes(day)) throw new Error('Session schedule could not be verified.')
@@ -64,7 +69,7 @@ export function moveSupervisedSession(seed: SupervisedWeekSeed, sessionId: strin
 /** Explicit copy operations clone proposed work and its monitoring protocol with
  * new content identities. They never carry review tokens or prescribe a new dose.
  */
-export function copySupervisedSession(seed: SupervisedWeekSeed, sourceId: string, day: keyof ReviewedWeekSchedule, newId: () => string): SupervisedWeekSeed {
+export function copySupervisedSession<T extends EditableReviewedWeekSeed>(seed: T, sourceId: string, day: keyof ReviewedWeekSchedule, newId: () => string): T {
   const next = structuredClone(seed), source = next.recipe.sessions.find(s => s.id === sourceId)
   const schedule = next.recipe.schedules.find(s => s.id === next.scheduleId)
   if (!source || !schedule || schedule.days[day] !== null) throw new Error('Choose an empty training day for the copied session.')
@@ -92,7 +97,7 @@ export function copySupervisedSession(seed: SupervisedWeekSeed, sourceId: string
   return next
 }
 
-export function removeSupervisedSession(seed: SupervisedWeekSeed, sessionId: string): SupervisedWeekSeed {
+export function removeSupervisedSession<T extends EditableReviewedWeekSeed>(seed: T, sessionId: string): T {
   const next = structuredClone(seed)
   if (next.recipe.sessions.length <= 1 || !next.recipe.sessions.some(s => s.id === sessionId)) throw new Error('Keep at least one complete session.')
   next.recipe.sessions = next.recipe.sessions.filter(s => s.id !== sessionId)
@@ -103,7 +108,7 @@ export function removeSupervisedSession(seed: SupervisedWeekSeed, sessionId: str
   return next
 }
 
-export function editSupervisedStep(seed: SupervisedWeekSeed, sessionId: string, stepId: string, operation: 'copy' | 'remove' | 'earlier' | 'later', newId: () => string): SupervisedWeekSeed {
+export function editSupervisedStep<T extends EditableReviewedWeekSeed>(seed: T, sessionId: string, stepId: string, operation: 'copy' | 'remove' | 'earlier' | 'later', newId: () => string): T {
   const next = structuredClone(seed), session = next.recipe.sessions.find(s => s.id === sessionId)
   const index = session?.steps.findIndex(s => s.id === stepId) ?? -1
   if (!session || index < 0) throw new Error('Select an existing step.')

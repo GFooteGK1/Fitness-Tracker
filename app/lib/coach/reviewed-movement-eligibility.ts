@@ -4,7 +4,7 @@ import { MOVEMENT_CATALOG, MOVEMENT_EQUIPMENT_IDS, REVIEWED_MOVEMENT_CATALOG_VER
   type MovementEquipmentId } from './movement-catalog'
 import type { ProgrammingProfile } from './programming-schema'
 
-const equipmentIds: Readonly<Record<string, readonly MovementEquipmentId[]>> = {
+export const REVIEWED_EQUIPMENT_ALIASES: Readonly<Record<string, readonly MovementEquipmentId[]>> = {
   stationary_bike: ['bike'], measured_running_area: ['track'], safe_runout: [],
   flat_bench: ['bench'], rack_safeties: ['rack'], barbell_45lb: ['barbell'], plates: [],
   dumbbells: ['dumbbell'], cable_station: ['cable'], resistance_band: ['band'],
@@ -27,7 +27,7 @@ export function validateReviewedMovementEligibility(movementId: string, profile:
   // Detailed requirements stay mandatory: a generic rack does not imply safeties,
   // a barbell does not imply a high-handle trap bar, and a track implies no runout.
   if (requiredEquipment.some(id => !profile.equipment.resolvedIds.includes(id))) errors.push(`Reviewed setup unavailable: ${movementId}`)
-  const available = profile.equipment.resolvedIds.flatMap(id => equipmentIds[id]
+  const available = profile.equipment.resolvedIds.flatMap(id => REVIEWED_EQUIPMENT_ALIASES[id]
     ?? (MOVEMENT_EQUIPMENT_IDS.includes(id as MovementEquipmentId) ? [id as MovementEquipmentId] : []))
   const avoided = profile.preferences.filter(item => item.preference === 'avoid').map(item => resolveReviewedMovementId(item.movementId) ?? item.movementId)
   // Existing canonical "Run" avoidance must also cover the neutral reviewed

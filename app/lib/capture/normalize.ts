@@ -30,10 +30,10 @@ export function normalizeActivity(kind: ActivityKind, input: Record<string, unkn
   if (typeof input.workout_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(input.workout_date)) throw new CaptureError('Choose the workout date.', '22023')
   if (formatUTCAsLocalDateWithOffset(localDateToUTCStart(input.workout_date, 0), 0) !== input.workout_date) throw new CaptureError('Choose a valid workout date.', '22023')
   if (!Array.isArray(input.blocks) || !input.blocks.length || input.blocks.length > 100) throw new CaptureError('At least one workout block is required.', '22023')
-  // The old integer column cannot represent half-point effort. The source record and provenance retain it.
+  // Preserve exact session effort in both the canonical record and source snapshot.
   if (record.rpe !== null && record.rpe !== undefined && (!numeric(record.rpe) || Number(record.rpe) > 10)) throw new CaptureError('Invalid session effort.', '22023')
   if (numeric(record.rpe)) record.reported_rpe = record.rpe
-  record.rpe = Number.isInteger(record.rpe) ? record.rpe : null
+  record.rpe = numeric(record.rpe) && record.rpe >= 1 ? record.rpe : null
   const blocks = input.blocks.map(raw => {
     const block = object(raw)
     const type = block.block_type ?? block.type
