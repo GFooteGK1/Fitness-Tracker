@@ -1,0 +1,96 @@
+{
+  "reviewedAt": "2026-10-10T21:22:38.670Z",
+  "verdict": "Accepted for scoped local code review and reproduced web verification; native and release qualification remain pending",
+  "scope": "Camera-close opt-in native discovery to GPT screening to owned review drafts, local source and isolated tests only",
+  "finalPin": {
+    "path": "output/photo-review-drafts/gpt-screening-integration/native-bridge-review-pin-v3.json",
+    "sha256": "49491ed27ea96c43d1eccd6070fd1fc754717bbd2f8b90778e7f77b5b762b0c0",
+    "files": 34,
+    "allCurrentFilesMatch": true,
+    "webBase": "d3db5fb316f0f48fc8b61df9250997c20dc12d04",
+    "nativeBase": "d36f85311a77a01b1ca2afe9cab43c4b2cb9e257"
+  },
+  "oracleSource": "Independent 12-point acceptance and negative oracle frozen in reviewer messages before candidate; based on approved scope, web d3db5fb and native d36f853 baselines",
+  "findingsResolved": [
+    {
+      "id": "N1",
+      "resolution": "Fresh per-device persistent Photos checkpoint and private discovery store; prior probe ledger never read/reset for cloud admission; unknown old updates ignored",
+      "evidence": "Inspected native runtime/source and authored test, not Swift-executed"
+    },
+    {
+      "id": "N2",
+      "resolution": "Device revoke preflight outside UI cleanup fallback, explicit receipt owner/ack validation, rechecked active owner, server signout fence, visible menu failure; missing RPC is unconfirmed",
+      "evidence": "Inspected source and reproduced focused AuthContext/server signout tests"
+    },
+    {
+      "id": "N3",
+      "resolution": "All JPEG segments/scans checked, private APP/COM refused, frame/dimension limits, sharp real pixel decode and metadata-free server reencode; native reencode/strip across scans",
+      "evidence": "Reproduced real baseline/progressive pixels, private APP1 after scan rejection, oversized/damaged framing; native stripper source/tests inspected only"
+    },
+    {
+      "id": "N4",
+      "resolution": "Global enrollment lease spans pairing awaits; persistent separately locked epoch fences activation/disable; credential binds epoch; control evidence corruption fails closed",
+      "evidence": "Inspected control/runtime and authored pure Swift store-instance tests, not native-executed"
+    }
+  ],
+  "reproduced": {
+    "command": "npm test -- output/photo-review-drafts/gpt-screening-integration/independent-native-bridge-v2.test.ts test/api/camera-photo-bridge.integration.test.ts test/api/camera-signout.test.ts test/components/camera-photo-setup.test.tsx test/auth/auth-context.test.tsx",
+    "files": 5,
+    "tests": 38,
+    "passed": 38,
+    "failed": 0,
+    "independentTests": 6,
+    "independentTestSha256": "9b464e277d60e9bdec4a55cdcd1889e2ec60c8c45d3bc4832e58d4d43b4187aa",
+    "database": "Disposable PGlite running actual PostgreSQL functions/grants/RLS; fake provider and Supabase HTTP adapters",
+    "independentChecks": [
+      "Concurrent duplicate during suspended screening dispatches provider once",
+      "Changed timestamp conflicts and extra owner metadata rejected",
+      "Native service execution without user identity cannot canonically accept",
+      "Foreign device status is isolated",
+      "Private APP1 metadata after scan rejected on actual JPEG",
+      "Actual progressive JPEG accepted; oversized/damaged framing rejected"
+    ],
+    "mutationSensitivity": "Disposable SQL mutation removing device/owner predicate exposes foreign request and is detected by the independently frozen not_found isolation assertion",
+    "helperMove": "Execution passed after helper moved to library; two earlier import failures were harness location drift, not candidate behavior failures"
+  },
+  "inspectedInvariants": [
+    "Explicit cloud consent includes non-food/sensitive transmission",
+    "Server-only provider credentials and hashed revocable expiring scoped device capability",
+    "No native generic user JWT or canonical accept authority",
+    "Atomic SQL claim and finish/draft; no provider claim reclaim or automatic resend",
+    "Original submitted identity persists before transport and status-only recovery",
+    "No original filename/location/PhotoKit identity or image bytes stored remotely",
+    "Only explicit authenticated web acceptance changes meals",
+    "Pilot bounds, sequential single photo per invocation, no iCloud download, bounded image read/response",
+    "Qualified policy/model/dual threshold retained without fallback"
+  ],
+  "priorEvidence": {
+    "eightArtifactPinsUnchanged": true,
+    "originalReleaseAuditUnchanged": true,
+    "finalReleaseAuditUnchanged": true,
+    "firstNativeReviewPreserved": true
+  },
+  "limitations": [
+    "Swift/Xcode unavailable: nine native core tests authored/inspected but not executed; no native compile claim",
+    "No actual asynchronous iPhone Photos/Keychain/URLSession/cross-process/locked behavior proved",
+    "No hosted database migration, auth/PostgREST parity or native receiver qualification",
+    "Reviewed draft SQL must be installed before web deployment: missing revoke RPC intentionally prevents signout even with bridge flag off",
+    "Selected protected Vercel preview is not a callable native receiver; no bypass credential may be embedded",
+    "Build/typecheck final primary receipts pending; prerender failure without public Supabase build configuration is not treated as source acceptance evidence",
+    "Documentation updates after this pin require separate delta inspection and do not silently alter this receipt",
+    "No calibrated screening, nutrition accuracy, unattended reliability, production promotion or complete device-flow claim"
+  ],
+  "reviewerOperations": {
+    "providerCalls": 0,
+    "hostedCalls": 0,
+    "credentialReads": 0,
+    "deploymentCalls": 0,
+    "trackedSourceEdits": 0
+  },
+  "evidenceHashes": {
+    "initialPin": "8b3e23bcdcbfc42e44c5ebfc9aa132924672d47e680e88323499b5198ac26851",
+    "firstReview": "ef56f576084a32081d95a4674021edf34014cfd638f152b66455a7e9fb347f84",
+    "priorRelease": "9bff2fc06399a175a1d732a2a90561aa0a918e94b1f23d0c40638ddf145ba95a",
+    "priorFinalRelease": "4e5945060ccb8fa2b9f418c67f25adc1a64f497237a968fc7950353af932e69a"
+  }
+}
