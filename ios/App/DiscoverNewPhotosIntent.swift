@@ -45,6 +45,10 @@ enum NewPhotoTrackingRuntime {
         try await session.enroll(token: token)
     }
 
+    static func currentToken() throws -> Data {
+        try archive(PHPhotoLibrary.shared().currentChangeToken)
+    }
+
     static func changes(since data: Data) throws -> NewPhotoDiscoveryBatch {
         guard let previous = try NSKeyedUnarchiver.unarchivedObject(ofClass: PHPersistentChangeToken.self, from: data) else {
             throw NewPhotoTrackingError.invalidRecord

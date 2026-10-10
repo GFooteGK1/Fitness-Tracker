@@ -73,6 +73,10 @@ struct CameraCloseProbeView: View {
                         .frame(minHeight: 44)
                     Text("Optional local classification test. Enable it separately and change the Shortcut action. No uploads or macro estimates.")
                 }
+                Section("Cloud photo logging") {
+                    NavigationLink("Pair Camera Photos with SociusFit") { CloudPhotoSetupView() }.frame(minHeight: 44)
+                    Text("Separate explicit cloud consent. Log New Camera Photos sends new images to GPT screening and creates review drafts. Local probe actions remain unchanged.")
+                }
                 Section("Thumbnail test setup") {
                     Text("In Shortcuts, use Camera → Is Closed → Run Immediately. Add Check Camera Photo Access from SociusFit Auto Meals. Its text result can feed Show Notification during the test.")
                     Text("Use one disposable still photo. Compare the run and timestamps after leaving Camera unlocked, then after taking a photo from Lock Screen without unlocking.")

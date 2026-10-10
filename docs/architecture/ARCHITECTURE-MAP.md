@@ -40,6 +40,20 @@ food accuracy and locked classification remain unqualified. A separate macOS
 through `scripts/eval/local-food/`; it has no access to the phone's library and
 does not establish device execution. See ADR-0006, ADR-0007 and ADR-0008.
 
+## Opt-in cloud Camera-close bridge candidate
+
+`CloudPhotoSetupView` explicitly pairs a scoped capability with SociusFit.
+`LogNewCameraPhotosIntent` calls `CloudPhotoRuntime`: fresh per-device Photos
+checkpoint, atomic delivery queue and per-device lease, status-only reconciliation,
+and pixel normalization before transport. `CloudPhotoControlStore` provides a
+global enrollment lease and persistent epoch so cross-process disable cannot be
+undone by a late pairing. Secrets stay in Keychain; asset IDs stay local. The
+new action does not reuse the local probe ledger or enable the PhotoKit extension.
+The web bridge owns GPT screening and review-only macro drafts. Only explicit
+web acceptance changes nutrition. This separate candidate amends the earlier
+local-only boundaries under explicit cloud consent; it has not been compiled or
+distributed. See ADR-0032 and the matching web release qualification record.
+
 The separate native-feasibility evaluator (ADR-0009) exports SigLIP2's image encoder
 with precomputed text vectors and checks Core ML CPU prediction parity. `LocalFoodEval`
 has an optional `scene` mode using `LocalSceneGuard` face/body/hand evidence;
