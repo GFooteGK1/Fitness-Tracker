@@ -155,8 +155,11 @@ export const anthropicProvider: LlmProvider = {
         : {}),
     }
 
-    const response = req.timeoutMs
-      ? await getClient().messages.create(params, { signal: AbortSignal.timeout(req.timeoutMs) })
+    const response = req.timeoutMs !== undefined || req.maxRetries !== undefined
+      ? await getClient().messages.create(params, {
+          ...(req.timeoutMs !== undefined ? { signal: AbortSignal.timeout(req.timeoutMs) } : {}),
+          ...(req.maxRetries !== undefined ? { maxRetries: req.maxRetries } : {}),
+        })
       : await getClient().messages.create(params)
 
     let text = ''

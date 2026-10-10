@@ -65,6 +65,10 @@ export function CaptureRecovery({ includePhotoDrafts = true }: { includePhotoDra
       if (entry.kind === 'workout-text' && data.state === 'draft' && data.retryAllowed === true && !data.receipts?.length && !entry.originalReceipt) {
         setMessage('No workout was saved. Choose Log another occurrence, then submit your workout again.')
       }
+      if (entry.kind === 'photo-draft' && data.state === 'screened' && data.requestResolved === true) {
+        setMessage(data.outcome === 'non_food' ? 'Screening found no food. No meal estimate was created.'
+          : 'Screening needs review. No meal estimate was created. Use a clearer food photo or enter the meal manually.')
+      }
       setPending(current => current.map(item => item.storageKey === entry.storageKey ? { ...item, result: !data.receipts?.length && item.originalReceipt ? { ...data, receipts: [item.originalReceipt] } : data, pendingItems: data.pendingItems ?? data.receiptBundle?.unresolved?.map((item: { operationId: string }) => item.operationId) ?? [], resolved: data.state === 'saved' || data.retryAllowed === true || data.requestResolved === true } : item))
     } catch (error) { if (currentOwner.current === owner) setMessage(error instanceof Error ? error.message : 'Save remains unconfirmed.') }
     finally { if (currentOwner.current === owner) setBusy(false) }

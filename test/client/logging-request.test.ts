@@ -11,15 +11,61 @@ const request = (text = 'eggs', timestamp = '2026-09-04T04:59:00Z') => ({
 })
 const ok = () => new Response(JSON.stringify({ mealId: 'saved' }))
 
-it('clears old photo uncertainty after a recovered draft and approval of a different photo', async () => {
+it('preserves an older uncertain photo identity when stale owner generation cancels replay', async () => {
+  const { webcrypto } = await import('node:crypto')
+  vi.stubGlobal('crypto', { randomUUID: () => webcrypto.randomUUID(), subtle: webcrypto.subtle })
+  const fetch = vi.fn().mockRejectedValueOnce(new Error('Photo response lost')); vi.stubGlobal('fetch',fetch)
+  const { sendLoggingRequest } = await import('@/app/lib/client/logging-request')
+  const form = () => { const body = new FormData(); body.set('photo',new File(['first-photo'],'meal.jpg',{ type:'image/jpeg' })); body.set('screeningApproved','true'); return { method:'POST',body } }
+  await expect(sendLoggingRequest('/api/meals/photo-drafts',form(),'athlete-a')).rejects.toThrow('Photo response lost')
+  const saved = sessionStorage.getItem('socius-pending:athlete-a:/api/meals/photo-drafts')
+  await expect(sendLoggingRequest('/api/meals/photo-drafts',form(),'athlete-a',120000,undefined,() => false)).rejects.toThrow('earlier sign-in')
+  expect(fetch).toHaveBeenCalledTimes(1)
+  expect(sessionStorage.getItem('socius-pending:athlete-a:/api/meals/photo-drafts')).toBe(saved)
+})
+
+it('removes only the new unsent identity when owner generation changes after an older screen is reconciled', async () => {
+  const { webcrypto } = await import('node:crypto')
+  vi.stubGlobal('crypto', { randomUUID: () => webcrypto.randomUUID(), subtle: webcrypto.subtle })
+  const fetch = vi.fn().mockRejectedValueOnce(new Error('Photo response lost'))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ state:'screened',requestResolved:true,canonicalChanged:false,retryAllowed:false,receipts:[] })))
+  vi.stubGlobal('fetch',fetch)
+  const form = (bytes: string) => { const body = new FormData(); body.set('photo',new File([bytes],'meal.jpg',{ type:'image/jpeg' })); body.set('screeningApproved','true'); return { method:'POST',body } }
+  const { sendLoggingRequest } = await import('@/app/lib/client/logging-request')
+  await expect(sendLoggingRequest('/api/meals/photo-drafts',form('first-photo'),'athlete-a')).rejects.toThrow('Photo response lost')
+  let current = true, guardCalls = 0
+  vi.stubGlobal('crypto', { randomUUID: () => webcrypto.randomUUID(), subtle: { digest: async (...args: Parameters<typeof webcrypto.subtle.digest>) => {
+    if (guardCalls > 0) current = false
+    return webcrypto.subtle.digest(...args)
+  } } })
+  await expect(sendLoggingRequest('/api/meals/photo-drafts',form('second-photo'),'athlete-a',120000,undefined,() => { guardCalls++; return current })).rejects.toThrow('earlier sign-in')
+  expect(fetch).toHaveBeenCalledTimes(2)
+  expect(sessionStorage.length).toBe(0)
+})
+
+it('cancels newly prepared photo work if owner generation changes during its asynchronous preparation', async () => {
+  const { webcrypto } = await import('node:crypto')
+  const send = vi.fn(); vi.stubGlobal('fetch', send)
+  let current = true
+  vi.stubGlobal('crypto', { randomUUID: () => webcrypto.randomUUID(), subtle: { digest: async (...args: Parameters<typeof webcrypto.subtle.digest>) => {
+    current = false
+    return webcrypto.subtle.digest(...args)
+  } } })
+  const body = new FormData(); body.set('photo', new File(['photo'], 'meal.jpg', { type: 'image/jpeg' })); body.set('screeningApproved','true')
+  const { sendLoggingRequest } = await import('@/app/lib/client/logging-request')
+  await expect(sendLoggingRequest('/api/meals/photo-drafts', { method: 'POST', body }, 'athlete-a',120000,undefined,() => current)).rejects.toThrow('earlier sign-in')
+  expect(send).not.toHaveBeenCalled(); expect(sessionStorage.length).toBe(0)
+})
+
+it.each(['draft','screened'])('clears old photo uncertainty after a recovered %s and approval of a different photo', async state => {
   const { webcrypto } = await import('node:crypto')
   vi.stubGlobal('crypto', { randomUUID: () => webcrypto.randomUUID(), subtle: webcrypto.subtle })
   window.history.replaceState({}, '', '/capture/photos?recommendationId=22222222-2222-4222-8222-222222222222')
   const fetch = vi.fn().mockRejectedValueOnce(new Error('Draft response lost'))
-    .mockResolvedValueOnce(new Response(JSON.stringify({ state: 'draft', requestResolved: true, canonicalChanged: false, receipts: [] })))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ state, requestResolved: true, canonicalChanged: false, receipts: [] })))
     .mockResolvedValueOnce(new Response(JSON.stringify({ state: 'draft', draft: { id: 'new-draft' }, canonicalChanged: false })))
   vi.stubGlobal('fetch', fetch)
-  const form = (bytes: string) => { const body = new FormData(); body.set('photo', new File([bytes], 'meal.jpg', { type: 'image/jpeg' })); body.set('timestamp', '2026-10-06T12:00:00Z'); body.set('approved', 'true'); return { method: 'POST', body } }
+  const form = (bytes: string) => { const body = new FormData(); body.set('photo', new File([bytes], 'meal.jpg', { type: 'image/jpeg' })); body.set('timestamp', '2026-10-06T12:00:00Z'); body.set('approved', 'true'); body.set('screeningApproved', 'true'); return { method: 'POST', body } }
   const { sendLoggingRequest } = await import('@/app/lib/client/logging-request')
   const { hasUnreconciledCapture } = await import('@/app/lib/client/capture-uncertainty')
   const { refreshAfterCanonicalSave } = await import('@/app/lib/client/recommendations')
@@ -30,6 +76,7 @@ it('clears old photo uncertainty after a recovered draft and approval of a diffe
   expect(hasUnreconciledCapture('athlete-a')).toBe(false); expect(sessionStorage.length).toBe(0)
   const first = fetch.mock.calls[0][1].body as FormData, second = fetch.mock.calls[2][1].body as FormData
   expect(first.get('requestId')).not.toBe(second.get('requestId')); expect(second.has('recommendationId')).toBe(false)
+  expect(first.get('screeningApproved')).toBe('true'); expect(second.get('screeningApproved')).toBe('true')
   expect(refreshAfterCanonicalSave).not.toHaveBeenCalled()
 })
 

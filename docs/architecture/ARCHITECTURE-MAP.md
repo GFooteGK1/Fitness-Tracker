@@ -28,11 +28,14 @@
 ### Selected photo review
 
 `/capture/photos` sends an explicitly approved image to
-`/api/meals/photo-drafts`, which reuses the Socius vision analyzer and stages an
-owned `activity_drafts` record. Corrections use the photo-draft revision boundary;
+`/api/meals/photo-drafts`, which first uses GPT Decisions screening with explicit
+OpenAI consent. Food candidates continue through the Socius vision analyzer to an
+owned `activity_drafts` record; non-food and uncertain results stop in the request
+ledger without a draft. Corrections use the photo-draft revision boundary;
 acceptance or dismissal uses `/api/capture/drafts`. Only atomic acceptance writes
 canonical nutrition. Photo bytes are transient; no storage upload is enabled.
-The existing capture-v2 pause applies. See ADR-0030 for recovery and release scope.
+The existing capture-v2 pause applies. See ADR-0030 and ADR-0031 for recovery,
+screening thresholds, consent and release scope. Automatic Camera uploads remain separate.
 
 ### **Core Components:**
 - **AuthContext** (`app/lib/auth/AuthContext.tsx`) - Central auth state management

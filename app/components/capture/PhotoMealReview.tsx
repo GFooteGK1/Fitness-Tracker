@@ -18,6 +18,7 @@ export function PhotoMealReview() {
   const session = useRef({ owner, generation: 0 })
   if (session.current.owner !== owner) session.current = { owner, generation: session.current.generation + 1 }
   const locked = useRef(false)
+  const fileInput = useRef<HTMLInputElement>(null)
   const [loadedOwner, setLoadedOwner] = useState(owner)
   const [drafts, setDrafts] = useState<PhotoMealDraft[]>([])
   const [file, setFile] = useState<File | null>(null)
@@ -31,6 +32,7 @@ export function PhotoMealReview() {
 
   useEffect(() => {
     locked.current = false
+    if (fileInput.current) fileInput.current.value = ''
     setLoadedOwner(owner); setDrafts([]); setFile(null); setEditing(null); setApproved(false); setBusy(false); setMessage('')
     const now = new Date()
     setPhotoTime(`${getLocalDate(now)}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`)
@@ -58,14 +60,15 @@ export function PhotoMealReview() {
     return () => { active = false; window.removeEventListener('capture-updated', load) }
   }, [owner, refresh])
 
-  const perform = async (operation: () => Promise<Response>, success: (data: Record<string, unknown>) => void) => {
+  const perform = async (operation: (current: () => boolean) => Promise<Response>, success: (data: Record<string, unknown>) => void) => {
     if (!owner || locked.current) return
     const generation = session.current.generation
     const current = () => session.current.owner === owner && session.current.generation === generation
     locked.current = true; setBusy(true); setMessage('')
     try {
       await assertCaptureOwner(owner)
-      const response = await operation()
+      if (!current()) return
+      const response = await operation(current)
       const data = await response.json()
       await assertCaptureOwner(owner)
       if (!current()) return
@@ -79,14 +82,24 @@ export function PhotoMealReview() {
     const selected = file
     const timestamp = new Date(photoTime)
     if (!Number.isFinite(timestamp.getTime())) { setMessage('Choose when this photo was taken.'); return }
-    void perform(async () => {
+    void perform(async current => {
       const converted = await compressImage(selected, 0.95, 1200)
       const blob = await fetch(converted.compressedDataUrl).then(response => response.blob())
+      if (!current()) throw new Error('The selected photo belongs to an earlier sign-in. Select and approve it again.')
       const form = new FormData()
       form.set('photo', new File([blob], 'meal.jpg', { type: 'image/jpeg' }))
-      form.set('timestamp', timestamp.toISOString()); form.set('approved', 'true')
-      return sendLoggingRequest(endpoint, { method: 'POST', body: form }, owner)
-    }, () => { setFile(null); setApproved(false); setMessage('Estimate saved for review. Nutrition totals have not changed.') })
+      form.set('timestamp', timestamp.toISOString()); form.set('approved', 'true'); form.set('screeningApproved', 'true')
+      return sendLoggingRequest(endpoint, { method: 'POST', body: form }, owner, 120_000, undefined, current)
+    }, data => {
+      const draft = data.draft as { id?: unknown } | undefined
+      let result: string
+      if (data.state === 'screened' && data.outcome === 'non_food') result = 'No food was detected. No estimate was created; nutrition totals have not changed.'
+      else if (data.state === 'screened' && data.outcome === 'review_required') result = 'This photo could not be confidently screened as food. No estimate was created. Try a clearer food photo or enter the meal manually.'
+      else if (typeof draft?.id === 'string') result = 'Estimate saved for review. Nutrition totals have not changed.'
+      else throw new Error('The photo result is unconfirmed. Check pending saves before submitting another photo.')
+      setFile(null); setApproved(false); setMessage(result)
+      if (fileInput.current) fileInput.current.value = ''
+    })
   }
   const draftAction = (draft: PhotoMealDraft, action: 'commit' | 'discard') => {
     if (!owner) return
@@ -107,13 +120,14 @@ export function PhotoMealReview() {
   return <div className="mx-auto max-w-xl space-y-6">
     <header><h1 className="app-title">Review a meal photo</h1><p className="app-muted mt-2">Photo estimates stay out of nutrition totals until you accept them.</p></header>
     <section className="app-panel p-5 space-y-4" aria-label="Choose a photo for analysis">
-      <label className="block">Photo<input className="block w-full min-h-11 text-base mt-2" type="file" accept="image/*" disabled={busy} onChange={event => { setFile(event.target.files?.[0] ?? null); setApproved(false) }} /></label>
+      <label className="block">Photo<input ref={fileInput} className="block w-full min-h-11 text-base mt-2" type="file" accept="image/*" disabled={busy} onChange={event => { setFile(event.target.files?.[0] ?? null); setApproved(false) }} /></label>
       {preview && <img src={preview} alt="Selected meal photo" className="w-full max-h-80 object-contain rounded-xl" />}
       <label className="block">Photo time<input type="datetime-local" className="app-input w-full min-h-11 text-base" value={photoTime} disabled={busy} onChange={event => setPhotoTime(event.target.value)} /></label>
-      <label className="flex items-start gap-3 min-h-11"><input type="checkbox" className="mt-1 h-5 w-5" checked={approved} disabled={busy || !file} onChange={event => setApproved(event.target.checked)} /><span>Send this selected photo to Socius’s AI service for analysis. The photo is not saved by Socius; its estimate is saved for review.</span></label>
+      <label className="flex items-start gap-3 min-h-11"><input type="checkbox" className="mt-1 h-5 w-5" checked={approved} disabled={busy || !file} onChange={event => setApproved(event.target.checked)} /><span>Send this selected photo to OpenAI to check for food. Food candidates also go to Socius’s AI service for a macro estimate. Non-food photos reach OpenAI too. Socius saves the screening result and any estimate, but does not save the photo. This approves only this selected photo.</span></label>
       <button className="app-primary w-full min-h-11" type="button" disabled={busy || !file || !approved} onClick={analyze}>{busy ? 'Working…' : 'Analyze approved photo'}</button>
     </section>
     {message && <p role="status">{message}</p>}
+    <Link className="app-secondary min-h-11 inline-flex items-center" href="/food-progress?view=camera">Enter a meal manually</Link>
     <button type="button" className="app-secondary min-h-11" disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh drafts</button>
     <section className="space-y-4" aria-label="Photo estimates awaiting review">
       {!drafts.length && <p className="app-muted">No photo estimates awaiting review.</p>}

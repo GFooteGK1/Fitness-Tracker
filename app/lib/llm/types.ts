@@ -82,6 +82,8 @@ export interface LlmRequest {
   /** Schema for responseFormat 'json' on providers that support strict mode. */
   jsonSchema?: { name: string; schema: Record<string, unknown> }
   timeoutMs?: number
+  /** Optional per-request retry override; leave unrelated provider defaults intact. */
+  maxRetries?: number
   /**
    * Reasoning effort for reasoning-capable models (GPT-5.x); ignored where
    * unsupported. Per the cost strategy, extraction purposes use 'low'.

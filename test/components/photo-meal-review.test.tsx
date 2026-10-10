@@ -9,6 +9,7 @@ vi.mock('@/app/components/capture/CaptureRecovery', () => ({ CaptureRecovery: ()
 vi.mock('@/app/lib/client/logging-request', () => ({ assertCaptureOwner: vi.fn(async () => {}), sendCaptureCorrection: vi.fn(), sendLoggingRequest: vi.fn() }))
 vi.mock('@/app/lib/imageUtils', () => ({ compressImage: vi.fn(async () => ({ compressedDataUrl: 'data:image/jpeg;base64,ZWdn' })) }))
 import { sendCaptureCorrection, sendLoggingRequest } from '@/app/lib/client/logging-request'
+import { compressImage } from '@/app/lib/imageUtils'
 import { PhotoMealReview } from '@/app/components/capture/PhotoMealReview'
 
 const item = { food: 'Egg', portion: '1 egg', protein: 6, carbs: 0, fat: 5, calories: 69 }
@@ -34,7 +35,8 @@ describe('photo review UI', () => {
     fireEvent.click(button)
     await waitFor(() => expect(sendLoggingRequest).toHaveBeenCalledTimes(1))
     const form = vi.mocked(sendLoggingRequest).mock.calls[0][1].body as FormData
-    expect(form.get('approved')).toBe('true'); expect(form.get('timestamp')).toMatch(/Z$/)
+    expect(form.get('approved')).toBe('true'); expect(form.get('screeningApproved')).toBe('true'); expect(form.get('timestamp')).toMatch(/Z$/)
+    expect(screen.getByText(/Non-food photos reach OpenAI too/)).toBeVisible()
     expect(sendCaptureCorrection).not.toHaveBeenCalled()
     await screen.findByText('Estimate saved for review. Nutrition totals have not changed.')
   })
@@ -52,6 +54,28 @@ describe('photo review UI', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Accept meal' }))
     await screen.findByText('Meal accepted and added to nutrition totals.')
     expect(vi.mocked(sendCaptureCorrection).mock.calls[1][2]).toMatchObject({ action: 'commit', expectedRevision: 2 })
+  })
+  it.each([['non_food','No food was detected.'],['review_required','This photo could not be confidently screened as food.']])('shows %s without claiming an estimate was saved or accepting a meal', async (outcome, text) => {
+    drafts = []
+    vi.mocked(sendLoggingRequest).mockResolvedValue(response({ state: 'screened', outcome, canonicalChanged: false }))
+    render(<PhotoMealReview />)
+    fireEvent.change(screen.getByLabelText('Photo', { exact: true }), { target: { files: [new File(['egg'], 'meal.jpg', { type: 'image/jpeg' })] } })
+    fireEvent.click(screen.getByRole('checkbox')); fireEvent.click(screen.getByRole('button', { name: 'Analyze approved photo' }))
+    await screen.findByText(new RegExp(text))
+    expect(screen.queryByText('Estimate saved for review. Nutrition totals have not changed.')).not.toBeInTheDocument()
+    expect(sendCaptureCorrection).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: 'Enter a meal manually' })).toHaveAttribute('href','/food-progress?view=camera')
+    expect(screen.getByRole('button', { name: 'Analyze approved photo' })).toBeDisabled()
+  })
+  it('retains an unavailable photo without announcing success or automatically resending it', async () => {
+    vi.mocked(sendLoggingRequest).mockResolvedValue(response({ error: 'Photo screening is unavailable.' },503))
+    render(<PhotoMealReview />)
+    fireEvent.change(screen.getByLabelText('Photo', { exact: true }), { target: { files: [new File(['egg'], 'meal.jpg', { type: 'image/jpeg' })] } })
+    fireEvent.click(screen.getByRole('checkbox')); fireEvent.click(screen.getByRole('button', { name: 'Analyze approved photo' }))
+    await screen.findByText('Photo screening is unavailable.')
+    expect(sendLoggingRequest).toHaveBeenCalledTimes(1)
+    expect(screen.getByAltText('Selected meal photo')).toBeVisible()
+    expect(sendCaptureCorrection).not.toHaveBeenCalled()
   })
   it('dismisses only after the explicit action and retains uncertainty after a lost response', async () => {
     vi.mocked(sendCaptureCorrection).mockRejectedValue(new Error('Transport lost. Retry unchanged values.'))
@@ -72,5 +96,17 @@ describe('photo review UI', () => {
     expect(screen.queryByText(/Egg · 1 egg/)).not.toBeInTheDocument()
     auth.user = { id: 'athlete-a' }; ui.rerender(<PhotoMealReview />)
     await waitFor(() => expect(within(screen.getByRole('region', { name: 'Photo estimates awaiting review' })).queryByText(/Egg · 1 egg/)).not.toBeInTheDocument())
+  })
+  it('cancels a selected photo while compression waits across A to B to A sign-ins', async () => {
+    let resolve!: (value: Awaited<ReturnType<typeof compressImage>>) => void
+    vi.mocked(compressImage).mockImplementationOnce(() => new Promise(done => { resolve = done }))
+    const ui = render(<PhotoMealReview />)
+    fireEvent.change(screen.getByLabelText('Photo', { exact: true }), { target: { files: [new File(['egg'], 'meal.jpg', { type: 'image/jpeg' })] } })
+    fireEvent.click(screen.getByRole('checkbox')); fireEvent.click(screen.getByRole('button', { name: 'Analyze approved photo' }))
+    await waitFor(() => expect(compressImage).toHaveBeenCalled())
+    auth.user = { id: 'athlete-b' }; ui.rerender(<PhotoMealReview />)
+    auth.user = { id: 'athlete-a' }; ui.rerender(<PhotoMealReview />)
+    await act(async () => resolve({ compressedDataUrl: 'data:image/jpeg;base64,ZWdn', originalSizeMB: 0, compressedSizeMB: 0, compressionRatio: 1, finalQuality: 0.85 }))
+    expect(sendLoggingRequest).not.toHaveBeenCalled(); expect(screen.getByRole('checkbox')).not.toBeChecked()
   })
 })

@@ -10,14 +10,20 @@ import { POST as analyze } from '@/app/api/meals/photo-drafts/route'
 import { PATCH as edit } from '@/app/api/meals/photo-drafts/[id]/route'
 import { GET as list, POST as decide } from '@/app/api/capture/drafts/route'
 import { GET as check } from '@/app/api/logging/requests/[id]/route'
+import { PHOTO_SCREENING_MODEL } from '@/app/lib/nutrition/photo-screening'
 
 let db: PGlite, owner: string | null, client: ReturnType<typeof photoDraftClient>
+let screeningFetch: ReturnType<typeof vi.fn>
+function decision(choice = 'food', confidence = 1, selected = 1) {
+  return { model: PHOTO_SCREENING_MODEL, answers: [{ name: 'food_screen', type: 'choice', choice, confidence,
+    probabilities: ['food','non_food','uncertain'].map(value => ({ value, probability: value === choice ? selected : (1 - selected) / 2 })) }] }
+}
 const food = { food: 'Egg', portion: '1 egg', protein: 6, carbs: 0, fat: 5, calories: 69 }
 const model = { items: [food], total_protein: 6, total_carbs: 0, total_fat: 5, total_calories: 69, confidence: 0.8, notes: 'Estimate portion size.' }
 function upload(id = randomUUID(), changes: Record<string, string> = {}) {
   const form = new FormData()
   form.set('photo', new File([new Uint8Array(2048)], 'egg.jpg', { type: 'image/jpeg' }))
-  for (const [key, value] of Object.entries({ requestId: id, expectedUserId: owner!, timestamp: '2026-10-06T12:00:00Z', approved: 'true', ...changes })) form.set(key, value)
+  for (const [key, value] of Object.entries({ requestId: id, expectedUserId: owner!, timestamp: '2026-10-06T12:00:00Z', approved: 'true', screeningApproved: 'true', ...changes })) form.set(key, value)
   return new Request('http://localhost/api/meals/photo-drafts', { method: 'POST', body: form })
 }
 function json(body: object, method = 'POST') { return new Request('http://localhost/api/capture/drafts', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expectedUserId: owner, requestId: randomUUID(), ...body }) }) }
@@ -26,11 +32,14 @@ async function draft() { return (await (await analyze(upload())).json()).draft }
 beforeAll(async () => { db = await photoDraftDatabase() }, 30000)
 beforeEach(async () => {
   vi.clearAllMocks(); vi.stubEnv('CAPTURE_RECEIPTS_V2_ENABLED', 'true')
+  vi.stubEnv('OPENAI_API_KEY', 'test-only-screening-key')
+  screeningFetch = vi.fn(async () => new Response(JSON.stringify(decision())))
+  vi.stubGlobal('fetch', screeningFetch)
   owner = randomUUID(); await db.exec('RESET ROLE'); await db.query('INSERT INTO auth.users(id) VALUES($1)', [owner]); await photoDraftActor(db, owner)
   client = photoDraftClient(db, () => owner); vi.mocked(createServerClient).mockResolvedValue(client as never)
   vi.mocked(complete).mockResolvedValue({ text: JSON.stringify(model), toolCalls: [], usage: { input: 0, output: 0 }, stopReason: 'stop', provider: 'anthropic', model: 'test-only' })
 })
-afterEach(() => { vi.unstubAllEnvs() })
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals() })
 afterAll(async () => { await db?.close() })
 
 describe('selected photo to reviewed nutrition draft (PostgreSQL integration)', () => {
@@ -38,8 +47,11 @@ describe('selected photo to reviewed nutrition draft (PostgreSQL integration)', 
     const id = randomUUID(), first = await analyze(upload(id)), data = await first.json()
     expect(first.status).toBe(200); expect(data.canonicalChanged).toBe(false); expect(await meals()).toHaveLength(0)
     expect(data.draft.normalized.provenance.occurrence.reviewState).toBe('unreviewed')
+    expect(data.draft.normalized.response.screening).toMatchObject({ policy: 'decisions-food-v2', route: 'food_candidate' })
     expect((await (await analyze(upload(id))).json()).draft.id).toBe(data.draft.id)
     expect(complete).toHaveBeenCalledTimes(1)
+    expect(screeningFetch).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(complete).mock.calls[0][0]).toMatchObject({ timeoutMs: 45000, maxRetries: 0 })
     const listed = await (await list()).json(); expect(listed.drafts.map((d: { id: string }) => d.id)).toContain(data.draft.id)
     const editId = randomUUID(), payload = { requestId: editId, expectedRevision: 1, items: [{ ...food, protein: 12, portion: '2 eggs' }] }
     const changed = await (await edit(json(payload, 'PATCH'), { params: Promise.resolve({ id: data.draft.id }) })).json()
@@ -123,9 +135,9 @@ describe('selected photo to reviewed nutrition draft (PostgreSQL integration)', 
     expect((await decide(json({ action: 'commit', draftId: d.id, expectedRevision: 1 }))).status).toBe(409)
     expect(await meals()).toHaveLength(0)
   })
-  it.each<Record<string, string>>([{ approved: 'false' }, { timestamp: 'garbage' }, { expectedUserId: 'different' }, { photoUrl: 'https://private.example' }])('rejects invalid or unapproved input before analysis: %j', async changes => {
+  it.each<Record<string, string>>([{ approved: 'false' }, { screeningApproved: '' }, { screeningApproved: 'false' }, { timestamp: 'garbage' }, { expectedUserId: 'different' }, { photoUrl: 'https://private.example' }])('rejects invalid or unapproved input before analysis: %j', async changes => {
     expect((await analyze(upload(randomUUID(), changes))).status).toBeGreaterThanOrEqual(400)
-    expect(complete).not.toHaveBeenCalled(); expect(await meals()).toHaveLength(0)
+    expect(complete).not.toHaveBeenCalled(); expect(screeningFetch).not.toHaveBeenCalled(); expect(await meals()).toHaveLength(0)
   })
   it('does not save invalid analysis and makes a completed no-write failure recoverable', async () => {
     vi.mocked(complete).mockResolvedValueOnce({ text: '{"items":[]}', toolCalls: [], usage: { input: 0, output: 0 }, stopReason: 'stop', provider: 'anthropic', model: 'test-only' })
@@ -136,5 +148,46 @@ describe('selected photo to reviewed nutrition draft (PostgreSQL integration)', 
   it('honors authentication and the rollout pause before provider work', async () => {
     vi.stubEnv('CAPTURE_RECEIPTS_V2_ENABLED', 'false'); expect((await analyze(upload())).status).toBe(409)
     owner = null; expect((await analyze(upload())).status).toBe(401); expect(complete).not.toHaveBeenCalled()
+    expect(screeningFetch).not.toHaveBeenCalled()
+  })
+  it.each([['non_food',1,1,'non_food'], ['uncertain',1,1,'review_required'], ['food',0.89,1,'review_required'], ['food',1,0.89,'review_required']])('stops %s %s/%s before macros and replays the terminal result', async (choice, confidence, selected, outcome) => {
+    screeningFetch.mockResolvedValue(new Response(JSON.stringify(decision(String(choice), Number(confidence), Number(selected)))))
+    const id = randomUUID(), result = await (await analyze(upload(id))).json()
+    expect(result).toMatchObject({ state: 'screened', outcome, canonicalChanged: false })
+    expect(result.draft).toBeUndefined(); expect((await (await list()).json()).drafts).toHaveLength(0)
+    const replay = await analyze(upload(id)); expect(replay.status).toBe(200); expect(await replay.json()).toEqual(result)
+    const recovered = await (await check(new Request(`http://localhost/api/logging/requests/photo-draft:${id}?expectedUserId=${owner}`), { params: Promise.resolve({ id: `photo-draft:${id}` }) })).json()
+    expect(recovered).toMatchObject({ state: 'screened', requestResolved: true, retryAllowed: false, outcome, canonicalChanged: false })
+    expect(screeningFetch).toHaveBeenCalledTimes(1); expect(complete).not.toHaveBeenCalled(); expect(await meals()).toHaveLength(0)
+  })
+  it('recovers a committed screening-only finish receipt after its response is lost', async () => {
+    screeningFetch.mockResolvedValue(new Response(JSON.stringify(decision('non_food'))))
+    const id = randomUUID(), rpc = client.rpc
+    const lost = vi.spyOn(client, 'rpc').mockImplementation(async (name, args) => {
+      const result = await rpc(name, args)
+      return name === 'finish_logging_request' ? { data: null, error: { code: undefined, message: 'Lost after commit' } } : result
+    })
+    expect((await analyze(upload(id))).status).toBe(200)
+    lost.mockRestore()
+    expect((await analyze(upload(id))).status).toBe(200)
+    expect(screeningFetch).toHaveBeenCalledTimes(1); expect(complete).not.toHaveBeenCalled(); expect(await meals()).toHaveLength(0)
+  })
+  it('keeps a screening result unconfirmed when its finish never committed, without resending', async () => {
+    screeningFetch.mockResolvedValue(new Response(JSON.stringify(decision('uncertain'))))
+    const id = randomUUID(), rpc = client.rpc
+    const failed = vi.spyOn(client, 'rpc').mockImplementation(async (name, args) => name === 'finish_logging_request'
+      ? { data: null, error: { code: undefined, message: 'Unavailable' } } : rpc(name, args))
+    expect((await analyze(upload(id))).status).toBe(503)
+    failed.mockRestore()
+    expect((await analyze(upload(id))).status).toBe(409)
+    expect(screeningFetch).toHaveBeenCalledTimes(1); expect(complete).not.toHaveBeenCalled(); expect(await meals()).toHaveLength(0)
+  })
+  it.each(['refusal','invalid','http','transport'])('does not fall back on a %s screening failure', async mode => {
+    if (mode === 'transport') screeningFetch.mockRejectedValue(new Error('private provider body'))
+    else screeningFetch.mockResolvedValue(new Response(mode === 'invalid' ? 'bad json' : JSON.stringify({ ...decision(), answers: [{ name: 'food_screen', type: 'refusal', refusal: 'private body' }] }), { status: mode === 'http' ? 429 : 200 }))
+    const id = randomUUID(), result = await analyze(upload(id)), body = await result.json()
+    expect(result.status).toBe(503); expect(body).toMatchObject({ canonicalChanged: false, retryAllowed: true, requestStatus: 'complete' })
+    expect(JSON.stringify(body)).not.toContain('private'); expect((await analyze(upload(id))).status).toBe(503)
+    expect(screeningFetch).toHaveBeenCalledTimes(1); expect(complete).not.toHaveBeenCalled(); expect(await meals()).toHaveLength(0)
   })
 })

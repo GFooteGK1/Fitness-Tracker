@@ -75,4 +75,5 @@ scripts/eval/manifest.*.json
 # Local photo-review verification and browser session state
 /.playwright-cli/
 /output/playwright/photo-review/
+/output/playwright/photo-screening/
 /output/photo-review-drafts/

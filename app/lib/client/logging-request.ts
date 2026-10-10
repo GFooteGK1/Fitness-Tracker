@@ -31,7 +31,7 @@ export async function fileFingerprint(file: Blob): Promise<string> {
 
 /** One unresolved occurrence per surface and owner. Editing first reconciles its original save. */
 async function sendLoggingRequestInternal(url: string, init: RequestInit, userId: string,
-  timeoutMs = 60_000, origin?: string): Promise<Response> {
+  timeoutMs = 60_000, origin?: string, isCurrent?: () => boolean): Promise<Response> {
   if (!userId) throw new Error('Sign in before logging. Pending work remains on this device.')
   await assertCaptureOwner(userId)
   let signature: string
@@ -85,7 +85,10 @@ async function sendLoggingRequestInternal(url: string, init: RequestInit, userId
     try { sessionStorage.removeItem(key) } catch { /* optional storage */ }
     submission = undefined; stored = null
   }
+  let createdUnsentIdentity = false
   if (!submission) {
+    if (isCurrent && !isCurrent()) throw new Error('The selected photo belongs to an earlier sign-in. Select and approve it again.')
+    createdUnsentIdentity = !stored?.requestId
     const requestId = stored?.requestId ?? crypto.randomUUID()
     const submittedAt = stored?.submittedAt ?? new Date().toISOString()
     let body: BodyInit
@@ -114,6 +117,14 @@ async function sendLoggingRequestInternal(url: string, init: RequestInit, userId
     catch { pending.delete(key); throw new Error('Could not preserve this request on the device. Nothing new was submitted.') }
   }
   await assertCaptureOwner(userId)
+  if (isCurrent && !isCurrent()) {
+    // This newly prepared identity has never reached HTTP. Preserve any older uncertain request.
+    if (createdUnsentIdentity) {
+      pending.delete(key)
+      sessionStorage.removeItem(key)
+    }
+    throw new Error('The selected photo belongs to an earlier sign-in. Select and approve it again.')
+  }
   markCaptureCertainty(userId, key, false)
   const response = await fetchWithTimeout(url, submission.init, timeoutMs)
   await assertCaptureOwner(userId)
@@ -152,10 +163,10 @@ export async function sendCaptureCorrection(url: string, method: 'PUT' | 'PATCH'
 }
 
 const inFlight = new Set<string>()
-export async function sendLoggingRequest(url: string, init: RequestInit, userId: string, timeoutMs = 60_000, origin?: string): Promise<Response> {
+export async function sendLoggingRequest(url: string, init: RequestInit, userId: string, timeoutMs = 60_000, origin?: string, isCurrent?: () => boolean): Promise<Response> {
   const key = `${userId}:${url}`
   if (inFlight.has(key)) throw new Error('This save is already in progress. Wait for its receipt before retrying.')
   inFlight.add(key)
-  try { return await sendLoggingRequestInternal(url, init, userId, timeoutMs, origin) }
+  try { return await sendLoggingRequestInternal(url, init, userId, timeoutMs, origin, isCurrent) }
   finally { inFlight.delete(key) }
 }

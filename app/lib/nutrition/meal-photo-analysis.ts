@@ -177,12 +177,16 @@ export function parseMealPhotoAnalysis(text: string): MealPhotoAnalysis {
 export async function analyzeMealPhoto(input: {
   base64Image: string
   mediaType: MealPhotoMediaType
+  timeoutMs?: number
+  maxRetries?: number
 }): Promise<MealPhotoAnalysis> {
   const llmResult = await complete({
     purpose: 'vision',
     maxTokens: 1024,
     temperature: 0,
     reasoningEffort: 'low',
+    ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
+    ...(input.maxRetries !== undefined ? { maxRetries: input.maxRetries } : {}),
     messages: [{
       role: 'user',
       content: [
