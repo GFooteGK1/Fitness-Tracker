@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/lib/auth/AuthContext'
+import { programReturnPath } from '@/app/lib/auth/program-return'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -21,7 +22,8 @@ export default function ProtectedRoute({
     if (!loading && !waitingForRequiredProfile) {
       if (!user) {
         // Not authenticated, redirect to sign in
-        router.push('/auth/signin')
+        const destination = programReturnPath(`${window.location.pathname}${window.location.search}${window.location.hash}`)
+        router.push(destination ? `/auth/signin?returnTo=${encodeURIComponent(destination)}` : '/auth/signin')
       } else if (requireOnboarding && profileStatus === 'ready' && !hasCompletedOnboarding) {
         // Authenticated but onboarding not complete
         router.push('/onboarding')

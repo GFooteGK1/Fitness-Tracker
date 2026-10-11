@@ -230,7 +230,8 @@ function FirstReviewedActorWorkspace({userId}:{userId:string}){
     &&confirmation.snapshotId===snapshot.snapshotId&&Date.parse(snapshot.validBefore)>Date.now())
   const boundCandidate=!!(candidate&&d&&candidate.designationId===d.designationId&&candidate.designationVersion===d.version&&candidate.basePlanVersionId===d.basePlanVersionId)
   return <section className="mx-auto max-w-5xl space-y-6 p-4 text-base">
-    <h1 className="text-2xl font-bold">First reviewed week</h1>
+    <a href="/program" className="inline-flex min-h-11 items-center underline">Back to your plan</a>
+    <h1 className="text-2xl font-bold">Review your next week</h1>
     <p>Confirm current context, review the complete week, then separately accept it. A gap between weeks does not establish completed or skipped training.</p>
     {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
     {!programs&&!error&&<p role="status">Loading your programs…</p>}
