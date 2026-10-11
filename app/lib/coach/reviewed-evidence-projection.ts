@@ -6,6 +6,7 @@ export function projectReviewedEvidence(records: Records) {
     summary: JSON.stringify({ date: row.date, movement: row.movementId ?? row.recordedName,
       role: row.role, basis: row.basis, completionState: row.completionState,
       quantities: row.quantities, quantityProvenance: row.quantityProvenance,
+      recordedEvent: row.recordedEvent ?? null,
       recordedWeight: row.recordedWeight, equipment: row.equipment, protocol: row.protocol,
       unilateralConvention: row.unilateralConvention, effort: row.effort,
       setEvidence: row.setEvidence ? { reportId: row.setEvidence.reportId, revision: row.setEvidence.revision,

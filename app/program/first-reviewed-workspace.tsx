@@ -39,6 +39,7 @@ function FirstReviewedActorWorkspace({userId}:{userId:string}){
   const [programs,setPrograms]=useState<FirstReviewProgramsPage|null>(null),[selected,setSelected]=useState<string|null>(null)
   const [workspace,setWorkspace]=useState<FirstReviewProgramWorkspace|null>(null),[snapshots,setSnapshots]=useState<FirstReviewSnapshotsPage|null>(null)
   const [setup,setSetup]=useState<FirstReviewedSetupSeed|null>(null),[setupGap,setSetupGap]=useState<string|null>(null)
+  const [historyWindow,setHistoryWindow]=useState('90')
   const [setupEditor,setSetupEditor]=useState<FirstReviewSetupEditorSeed|null>(null),[setupEdits,setSetupEdits]=useState<FirstReviewSetupContents|null>(null)
   const [setupPending,setSetupPending]=useState<FirstReviewSetupRequest|null>(null)
   const [snapshot,setSnapshot]=useState<FirstReviewedProfileSnapshot|null>(null),[confirmation,setConfirmation]=useState<FirstReviewedProfileReceipt|null>(null)
@@ -110,13 +111,15 @@ function FirstReviewedActorWorkspace({userId}:{userId:string}){
   }
   async function loadSetup(){
     if(!selected)return
+    const historyDays=Number(historyWindow)
+    if(!Number.isSafeInteger(historyDays)||historyDays<1||historyDays>180)throw Error('Choose a whole number of history days from 1 to 180.')
     const program=selected,token=epoch.current;setSetup(null);setSetupGap(null);setSnapshot(null);setConfirmation(null);setDraft(null);setPreview(null)
-    const response=await fetch(`/api/coach/first-reviewed/programs/${program}/setup?historyDays=90&tzOffset=${getTimezoneOffset()}`,{cache:'no-store'}),body=await json(response)
+    const response=await fetch(`/api/coach/first-reviewed/programs/${program}/setup?historyDays=${historyDays}&tzOffset=${getTimezoneOffset()}`,{cache:'no-store'}),body=await json(response)
     if(!current(program,token))return
     if(body.kind==='setup_required'){setSetupGap('Current setup needs correction before factual confirmation.');return}
     if(body.kind==='review_required'){setSetupGap('A current designated reviewer is required before this transition.');return}
     const seed=parseFirstReviewedSetupSeed(body.seed,userId,program)
-    if(!response.ok||body.kind!=='setup'||!seed)throw Error('Current setup could not be verified.')
+    if(!response.ok||body.kind!=='setup'||!seed||seed.historyDays!==historyDays)throw Error('Current setup could not be verified.')
     setSetup(seed)
   }
   function invalidatePreparedContext(){setSetup(null);setSnapshot(null);setConfirmation(null);setDraft(null);setPreview(null);setCandidate(null);setReviewed(false);setAcceptReviewed(false)}
@@ -220,6 +223,7 @@ function FirstReviewedActorWorkspace({userId}:{userId:string}){
   const p=workspace?.program,d=p?.latestDesignation,summary=workspace?.candidates.find(c=>c.candidateId===candidate?.candidateId)
   const freshScope=!!(p?.reviewAvailable&&d?.enabled&&Date.parse(d.expiresAt)>Date.now())
   const retained=!!pending||!!setupPending
+  const validHistoryWindow=Number.isSafeInteger(Number(historyWindow))&&Number(historyWindow)>=1&&Number(historyWindow)<=180
   const unavailable=busy||!storageReady||retained||!writesEnabled||!freshScope
   const owner=p?.role==='athlete'&&p.athleteId===userId
   const contextCurrent=!!(snapshot&&confirmation&&d&&snapshot.designationId===d.designationId&&snapshot.basePlanVersionId===d.basePlanVersionId
@@ -249,7 +253,11 @@ function FirstReviewedActorWorkspace({userId}:{userId:string}){
     {p&&!freshScope&&<p role="status">Current reviewer scope is not configured, expired or revoked. Historical results remain separate from authority for a new week.</p>}
     {p&&<button className={action} disabled={busy} onClick={()=>void perform(async()=>{await readWorkspace(p.programId);if(owner)await readSnapshots(p.programId)})}>Refresh current scope and history</button>}
     {owner&&<section aria-label="1 Confirm current setup" className="space-y-3"><h2 className="text-xl font-bold">1. Confirm current setup</h2>
-      <button className={action} disabled={busy||retained||!storageReady||!freshScope||!!setupEditor} onClick={()=>void perform(loadSetup)}>Read current saved setup</button>
+      <label className="block">Training history lookback (days)<input className="ml-2 min-h-11 rounded border p-2 text-base" type="number" min={1} max={180} step={1}
+        disabled={busy||retained||!!setupEditor} value={historyWindow} onChange={e=>{if(busy||retained||setupEditor)return;setHistoryWindow(e.target.value);invalidatePreparedContext();setSetupGap(null);setError(null)}}/></label>
+      <p>Choose 1–180 days of logged training for this review. A shorter window leaves older work outside the review; it does not mean that work was absent. Evidence is never silently truncated.</p>
+      {!validHistoryWindow&&<p role="status">Choose a whole number of history days from 1 to 180.</p>}
+      <button className={action} disabled={busy||retained||!storageReady||!freshScope||!!setupEditor||!validHistoryWindow} onClick={()=>void perform(loadSetup)}>Read current saved setup</button>
       <button className={action} disabled={busy||retained||!storageReady} onClick={()=>void perform(loadSetupEditor)}>Review or update current setup</button>
       {setupGap&&<p role="status">{setupGap}</p>}
       <p>Use your saved daily availability, equipment and constraints. Training facts are loaded separately; an empty declaration seed does not mean no training occurred.</p>
