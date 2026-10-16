@@ -14,6 +14,7 @@ export async function assertCaptureOwner(userId: string): Promise<void> {
 const pending = new Map<string, PendingSubmission>()
 if (typeof window !== 'undefined') window.addEventListener('capture-request-resolved', event => pending.delete((event as CustomEvent<string>).detail))
 const requestKinds: Record<string, string> = {
+  '/api/meals/photo-drafts': 'photo-draft',
   '/api/parse-workout': 'workout-text', '/api/meals/parse-text': 'meal-text', '/api/meals/upload': 'photo',
   '/api/meals/quick-log': 'quick-meal', '/api/foods/log': 'reviewed-food', '/api/agent/process': 'agent'
 }
@@ -30,7 +31,7 @@ export async function fileFingerprint(file: Blob): Promise<string> {
 
 /** One unresolved occurrence per surface and owner. Editing first reconciles its original save. */
 async function sendLoggingRequestInternal(url: string, init: RequestInit, userId: string,
-  timeoutMs = 60_000, origin?: string): Promise<Response> {
+  timeoutMs = 60_000, origin?: string, isCurrent?: () => boolean): Promise<Response> {
   if (!userId) throw new Error('Sign in before logging. Pending work remains on this device.')
   await assertCaptureOwner(userId)
   let signature: string
@@ -68,7 +69,7 @@ async function sendLoggingRequestInternal(url: string, init: RequestInit, userId
     const statusResponse = await fetchWithTimeout(`/api/logging/requests/${encodeURIComponent(`${kind}:${oldRequestId}`)}?expectedUserId=${encodeURIComponent(userId)}`, { method: 'GET' }, 15_000)
     const status = await statusResponse.json().catch(() => null)
     if (!statusResponse.ok || !status) throw new Error('The original save is still unconfirmed. Retry the original entry before editing.')
-    if (status.state === 'saved' || status.retryAllowed === true) markCaptureCertainty(userId, key, true)
+    if (status.state === 'saved' || status.retryAllowed === true || (url === '/api/meals/photo-drafts' && status.requestResolved === true)) markCaptureCertainty(userId, key, true)
     const receipts: CaptureReceipt[] = status.receipts ?? []
     if (frozenCorrection && status.state !== 'saved') return new Response(JSON.stringify({
       error: 'The saved entry still exists. Reopen its receipt to correct it, or explicitly choose Log another occurrence.',
@@ -77,14 +78,17 @@ async function sendLoggingRequestInternal(url: string, init: RequestInit, userId
     if (status.state === 'saved' && receipts.length === 1 && url !== '/api/agent/process') {
       correctionReceipt = receipts[0]
       correction = { entityId: receipts[0].entityId, expectedRevision: receipts[0].revision, requestId: crypto.randomUUID() }
-    } else if (status.retryAllowed !== true) {
+    } else if (status.retryAllowed !== true && !(url === '/api/meals/photo-drafts' && status.requestResolved === true)) {
       return new Response(JSON.stringify({ error: 'Review the saved and unresolved entries before editing.', correctionRequired: receipts.length > 0, receipts, state: 'save_unconfirmed' }), { status: 409, headers: { 'Content-Type': 'application/json' } })
     }
     pending.delete(key)
     try { sessionStorage.removeItem(key) } catch { /* optional storage */ }
     submission = undefined; stored = null
   }
+  let createdUnsentIdentity = false
   if (!submission) {
+    if (isCurrent && !isCurrent()) throw new Error('The selected photo belongs to an earlier sign-in. Select and approve it again.')
+    createdUnsentIdentity = !stored?.requestId
     const requestId = stored?.requestId ?? crypto.randomUUID()
     const submittedAt = stored?.submittedAt ?? new Date().toISOString()
     let body: BodyInit
@@ -95,7 +99,7 @@ async function sendLoggingRequestInternal(url: string, init: RequestInit, userId
       if (stored?.photoHash && photoHash !== stored.photoHash) throw new Error('Reselect the original photo to recover this save.')
       if (stored?.form) Object.entries(stored.form).forEach(([name, value]) => form.set(name, value))
       else init.body.forEach((value, name) => { if (typeof value === 'string') form.set(name, value) })
-      if (!stored?.form && !form.has('recommendationId')) { const originId = recommendationOrigin(); if (originId) form.set('recommendationId', originId) }
+      if (url !== '/api/meals/photo-drafts' && !stored?.form && !form.has('recommendationId')) { const originId = recommendationOrigin(); if (originId) form.set('recommendationId', originId) }
       form.set('photo', photo)
       form.set('requestId', requestId)
       form.set('expectedUserId', userId)
@@ -113,6 +117,14 @@ async function sendLoggingRequestInternal(url: string, init: RequestInit, userId
     catch { pending.delete(key); throw new Error('Could not preserve this request on the device. Nothing new was submitted.') }
   }
   await assertCaptureOwner(userId)
+  if (isCurrent && !isCurrent()) {
+    // This newly prepared identity has never reached HTTP. Preserve any older uncertain request.
+    if (createdUnsentIdentity) {
+      pending.delete(key)
+      sessionStorage.removeItem(key)
+    }
+    throw new Error('The selected photo belongs to an earlier sign-in. Select and approve it again.')
+  }
   markCaptureCertainty(userId, key, false)
   const response = await fetchWithTimeout(url, submission.init, timeoutMs)
   await assertCaptureOwner(userId)
@@ -151,10 +163,10 @@ export async function sendCaptureCorrection(url: string, method: 'PUT' | 'PATCH'
 }
 
 const inFlight = new Set<string>()
-export async function sendLoggingRequest(url: string, init: RequestInit, userId: string, timeoutMs = 60_000, origin?: string): Promise<Response> {
+export async function sendLoggingRequest(url: string, init: RequestInit, userId: string, timeoutMs = 60_000, origin?: string, isCurrent?: () => boolean): Promise<Response> {
   const key = `${userId}:${url}`
   if (inFlight.has(key)) throw new Error('This save is already in progress. Wait for its receipt before retrying.')
   inFlight.add(key)
-  try { return await sendLoggingRequestInternal(url, init, userId, timeoutMs, origin) }
+  try { return await sendLoggingRequestInternal(url, init, userId, timeoutMs, origin, isCurrent) }
   finally { inFlight.delete(key) }
 }

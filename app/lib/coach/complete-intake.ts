@@ -28,6 +28,7 @@ export interface CompleteCoachSecondaryGoalInput {
 /** Validate persisted availability itself before any form fallback can make it appear confirmed. */
 export function savedSetupIsConfirmed(schedule: unknown, equipment: unknown): boolean {
   if (!isRecord(schedule) || !isRecord(equipment)) return false
+  if (Object.hasOwn(schedule, 'schemaVersion') || Object.hasOwn(equipment, 'schemaVersion')) return false
   return validateCompleteCoachPlanningInput({ format: 'complete_programming_intake_v0_3', primaryDomain: 'strength',
     goal: 'Validate saved availability', experience: schedule.experience, trainingDays: schedule.trainingDays,
     sessionMinutes: schedule.sessionMinutes, startDate: '2026-09-14', equipment: equipment.equipment,

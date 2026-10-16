@@ -106,12 +106,20 @@ function ProfileUpdateProbe() {
   )
 }
 
+function SignOutProbe() {
+  const { signOut, user } = useAuth()
+  const [error, setError] = React.useState('')
+  return <><button onClick={() => { void signOut().catch(e => setError(e.message)) }}>Sign out</button>
+    <div data-testid="signout-user">{user?.id ?? 'none'}</div><div role="alert">{error}</div></>
+}
+
 function createSupabaseMock(profileResult: Promise<{ data: typeof completeProfileRow | null; error: null }> = Promise.resolve({
   data: completeProfileRow,
   error: null,
 })) {
   return {
     auth: {
+      getUser: vi.fn().mockResolvedValue({data:{user:mockUser},error:null}),
       getSession: vi.fn().mockResolvedValue({
         data: {
           session: {
@@ -157,6 +165,35 @@ describe('AuthContext', () => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
     vi.useRealTimers()
+  })
+
+  it.each([
+    { status:503, body:{error:'unconfirmed'} },
+    { status:200, body:{revoked:true,userId:'other-account'} },
+    { status:200, body:{} },
+  ])('preserves the session when device revocation is unconfirmed: %j', async receipt => {
+    const fetchMock=vi.fn(async (url:string) => new Response(JSON.stringify(url==='/api/capture/devices'?receipt.body:{initialized:false}),{status:url==='/api/capture/devices'?receipt.status:200}))
+    vi.stubGlobal('fetch',fetchMock)
+    render(<AuthProvider><SignOutProbe/></AuthProvider>)
+    await waitFor(()=>expect(screen.getByTestId('signout-user')).toHaveTextContent(mockUser.id))
+    fireEvent.click(screen.getByRole('button',{name:'Sign out'}))
+    await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('Camera device disable was not confirmed'))
+    expect(screen.getByTestId('signout-user')).toHaveTextContent(mockUser.id)
+    expect(mockSessionCleanupService.signOut).not.toHaveBeenCalled()
+    expect(mockSessionSyncService.broadcastSessionChange).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledWith('/api/capture/devices',expect.objectContaining({method:'DELETE',body:JSON.stringify({expectedUserId:mockUser.id})}))
+  })
+
+  it('does not clean up a new account after a late revocation acknowledgement', async () => {
+    const client=createSupabaseMock()
+    client.auth.getUser.mockResolvedValue({data:{user:{...mockUser,id:'other-account'}},error:null})
+    mockCreateClient.mockReturnValue(client)
+    vi.stubGlobal('fetch',vi.fn(async(url:string)=>new Response(JSON.stringify(url==='/api/capture/devices'?{revoked:true,userId:mockUser.id}:{initialized:false}))))
+    render(<AuthProvider><SignOutProbe/></AuthProvider>)
+    await waitFor(()=>expect(screen.getByTestId('signout-user')).toHaveTextContent(mockUser.id))
+    fireEvent.click(screen.getByRole('button',{name:'Sign out'}))
+    await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('account changed'))
+    expect(mockSessionCleanupService.signOut).not.toHaveBeenCalled()
   })
 
   it('unblocks auth-gated pages even when WHOOP initialization is still pending', async () => {

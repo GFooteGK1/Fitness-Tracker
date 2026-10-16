@@ -16,9 +16,13 @@ import { ExercisePreferencesEditor, PREFERENCES_CHANGED_EVENT } from './exercise
 import { PlanningIntentEditor } from './training-intent-editor'
 import { validatePlanningIntent } from '@/app/lib/coach/planning-intent'
 import { QwikImportPanel } from './qwik-import-panel'
+import { ReviewedSetupEditor } from './reviewed-setup-editor'
+import { reviewedSetupEditorValue,validReviewedSetupEdit } from '@/app/lib/coach/reviewed-setup-memory'
 
 interface CoachTrustCenterProps {
   onPlanChanged?: () => void | Promise<void>
+  /** Explicit reviewed workflow only; ordinary legacy edits preserve their format. */
+  reviewedSetup?: boolean
 }
 
 type TrustAction =
@@ -38,7 +42,7 @@ const ROLE_LABELS: Record<string, string> = {
   direct_outcome: 'Direct outcomes'
 }
 
-export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
+export function CoachTrustCenter({ onPlanChanged,reviewedSetup=false }: CoachTrustCenterProps) {
   const { user } = useAuth()
   const [trust, setTrust] = useState<CoachTrustCenterModel | null>(null)
   const [preferencesEnabled, setPreferencesEnabled] = useState(false)
@@ -215,6 +219,7 @@ export function CoachTrustCenter({ onPlanChanged }: CoachTrustCenterProps) {
 
             {editMemoryId === memory.id && (
               <MemoryCorrectionForm
+                reviewedSetup={reviewedSetup}
                 memory={memory}
                 value={memoryDrafts[memory.id] ?? memory.content}
                 onChange={content => {
@@ -411,12 +416,22 @@ function ProposalReviewCard(props: {
 
 function MemoryCorrectionForm(props: {
   memory: CoachTrustMemory
+  reviewedSetup?: boolean
   value: Record<string, unknown>
   onChange: (value: Record<string, unknown>) => void
   onCancel: () => void
   onSave: (value: Record<string, unknown>) => void
   saving: boolean
 }) {
+  if (['primary_goal','training_schedule','available_equipment','training_constraints'].includes(props.memory.memoryKey)
+    &&(props.reviewedSetup||(['training_schedule','available_equipment'].includes(props.memory.memoryKey)&&Object.hasOwn(props.value,'schemaVersion')))) {
+    const current=reviewedSetupEditorValue(props.memory.memoryKey,props.value),valid=validReviewedSetupEdit(props.memory.memoryKey,current)
+    return <form className="mt-4 space-y-3 rounded-xl border p-4" onSubmit={e=>{e.preventDefault();if(valid)props.onSave(current)}}>
+      <ReviewedSetupEditor memoryKey={props.memory.memoryKey} value={current} onChange={props.onChange} disabled={props.saving}/>
+      <button type="submit" disabled={props.saving||!valid} className={primaryButton}>{props.saving?'Saving…':'Save correction'}</button>
+      <button type="button" disabled={props.saving} onClick={props.onCancel} className={secondaryButton}>Cancel</button>
+    </form>
+  }
   if (props.memory.memoryKey === 'training_intent') {
     const parsed = validatePlanningIntent(props.value)
     if (!validatePlanningIntent(props.memory.content).ok) return <p role="alert">Saved outcomes need review in Program before correction.</p>

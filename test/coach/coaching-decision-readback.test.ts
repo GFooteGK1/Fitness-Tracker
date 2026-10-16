@@ -42,10 +42,29 @@ function client(invalidated = false, revision = 7, acceptedReplacement = false) 
         limit: async (n: number) => ({ data: rows.slice(0, n), error: null }) }
       return q
     }) }
-  return { fixture, supabase: supabase as unknown as SupabaseClient, queries }
+  return { fixture, supabase: supabase as unknown as SupabaseClient, queries, tables }
 }
 
 describe('saved coaching decision readback parity', () => {
+  it('hides time-expired pending acceptance and marks its stored review stale with unchanged revision', async () => {
+    const { fixture, supabase, tables } = client()
+    const content = { trainingDays: ['monday'], sessionMinutes: 60, experience: 'consistent' }
+    const binding = { ...fixture.review.rationale.setupMemoryBindings, memories: { ...fixture.review.rationale.setupMemoryBindings.memories,
+      training_schedule: { memoryId: 'schedule', memoryVersion: 1, currentAtRead: true, content,
+        lifecycle: { status: 'confirmed', effectiveFrom: null, effectiveUntil: null, reviewAfter: '2020-01-01T00:00:00Z' } } } }
+    tables.coach_weekly_reviews[0] = { ...fixture.review, rationale: { ...fixture.review.rationale, setupMemoryBindings: binding } }
+    tables.coach_memories = [{ id: 'schedule', user_id: fixture.userId, memory_key: 'training_schedule', kind: 'schedule', version: 1,
+      content, status: 'confirmed', effective_from: null, effective_until: null, review_after: '2020-01-01T00:00:00Z' }]
+    tables.training_plan_versions.push({ ...tables.training_plan_versions[0], id: fixture.proposal.proposed_plan_version_id,
+      status: 'proposed', input_snapshot: { contextRevision: 7, setupMemoryBindings: binding } })
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+    const response = await GET(), state = await response.json()
+    expect(response.status).toBe(200)
+    expect(state.pendingProposal).toBeNull()
+    expect(state.history.reviews[0].sourceInvalidated).toBe(true)
+    expect(state.coachingDecision).toMatchObject({ status: 'invalidated', decision: null })
+    expect(tables.coach_context_revisions[0].revision).toBe(7)
+  })
   it.each([false, true])('preserves accepted origin in chat and Program after base changes; corrected=%s', async corrected => {
       const { fixture, supabase, queries } = client(corrected, 12, true)
       vi.mocked(createServerClient).mockResolvedValue(supabase as never)

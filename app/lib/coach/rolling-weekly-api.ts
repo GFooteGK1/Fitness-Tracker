@@ -13,6 +13,7 @@ import {
   validateRollingTrainingDirection
 } from './rolling-weekly-contracts'
 import type { RollingWeeklyPlanDraft } from './rolling-weekly-plan'
+import { parseReviewedRollingWeek } from './reviewed-week-plan-contract'
 
 export interface StoredRollingWeeklyIntent {
   format: 'rolling_weekly_intent_v0_1'
@@ -92,6 +93,18 @@ export class ConfirmedEventDateConflictError extends Error {
   }
 }
 
+/** Read dispatch only. Old mutation paths deliberately retain the old-format parser. */
+export function decodeCoachWeeklyIntent(value: unknown) {
+  if (!isRecord(value)) return null
+  if (value.format === 'reviewed_weekly_intent_v0_1') {
+    if (value.horizon_weeks !== 1) return null
+    const plan = parseReviewedRollingWeek(value.reviewed_week)
+    return plan ? { kind: 'reviewed' as const, plan } : null
+  }
+  const intent = parseStoredRollingWeeklyIntent(value)
+  return intent ? { kind: 'standard' as const, plan: intent.weekly_plan } : null
+}
+
 export function profileForDirectionHorizon(
   profile: ProgrammingProfile,
   startDate: string,
@@ -130,6 +143,11 @@ export function profileForDirectionHorizon(
 }
 
 export function serializeRollingSessions(plan: RollingWeeklyPlanDraft) {
+  if (plan.format !== 'rolling_weekly_plan_v0_1' || !Array.isArray(plan.sessions) || !Array.isArray(plan.scheduledSessions)
+    || plan.sessions.some(session => session.format !== 'complete_programming_v0_3')
+    || plan.scheduledSessions.some(session => session.prescription.format !== 'complete_programming_v0_3')) {
+    throw new Error('Reviewed session persistence requires its own verified acceptance contract')
+  }
   return plan.scheduledSessions.map((session, index) => ({
     week_number: 1,
     session_index: index + 1,

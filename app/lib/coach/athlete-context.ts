@@ -10,6 +10,9 @@ import {
   type PerformanceMetricId
 } from './adaptive-programming-contracts'
 import { MOVEMENT_CATALOG } from './movement-catalog'
+import { REVIEWED_SESSION_FORMAT } from './reviewed-session-contract'
+import { decodeCoachWeeklyIntent } from './rolling-weekly-api'
+import { fetchReviewedExecutionSlots } from './reviewed-execution-context-server'
 import {
   buildCoachWeeklyReview,
   validateStoredCoachSessionCheckin,
@@ -81,6 +84,7 @@ interface TrainingPlanVersionRow {
   reference_version: string
   policy_version: string
   intent: unknown
+  input_snapshot?: Record<string, unknown>
 }
 
 interface PrescribedSessionRow {
@@ -209,7 +213,7 @@ async function fetchActiveProgram(
   const [versionResult, sessionResult, checkinResult] = await Promise.all([
     supabase
       .from('training_plan_versions')
-      .select('id, version, reference_version, policy_version, intent')
+      .select('id, version, reference_version, policy_version, intent, input_snapshot')
       .eq('id', program.active_plan_version_id)
       .eq('user_id', userId)
       .limit(1),
@@ -241,19 +245,37 @@ async function fetchActiveProgram(
   }
 
   const version = versionResult.data[0] as TrainingPlanVersionRow
+  let sessionRows = (sessionResult.data ?? []) as PrescribedSessionRow[]
+  let checkinRows = (checkinResult.data ?? []) as CoachCheckinRow[]
+  if (version.input_snapshot?.reviewedExecutionStorage === 'reviewed_execution_slots_v1') {
+    // Hosted legacy plans do not depend on the local-only execution view.
+    const decoded = decodeCoachWeeklyIntent(version.intent)
+    if (decoded?.kind !== 'reviewed') return null
+    try {
+      const slots = await fetchReviewedExecutionSlots(supabase, userId, program.id, version.id, decoded.plan.scheduledSessions)
+      sessionRows = slots.map(slot => ({ id: slot.executionSessionId, week_number: 1, session_index: slot.sessionIndex,
+        scheduled_date: slot.scheduledDate, prescription: slot.prescription, status: slot.status,
+        completion_contract_version: slot.completionContractVersion, completed_workout_id: slot.completedWorkoutId }))
+      const checkins = await supabase.from('coach_checkins').select('id, prescribed_session_id, responses, occurred_at', { count: 'exact' })
+        .eq('user_id', userId).in('prescribed_session_id', slots.map(slot => slot.executionSessionId))
+        .eq('checkin_type', 'session').order('occurred_at', { ascending: true }).limit(MAX_SESSION_CHECKINS)
+      if (checkins.error || !Array.isArray(checkins.data) || checkins.count !== checkins.data.length) return null
+      checkinRows = checkins.data as CoachCheckinRow[]
+    } catch { return null }
+  }
   const weeks = normalizeWeeks(version.intent)
   const currentWeek = calculateCurrentWeek(program.start_date, program.end_date, referenceDate)
   const currentWeekRole: EightWeekRole | null = currentWeek === null
     ? null
     : weeks.find(week => week.week === currentWeek)?.role ?? null
-  const normalizedSessions = ((sessionResult.data ?? []) as PrescribedSessionRow[])
+  const normalizedSessions = sessionRows
     .map(normalizeSession)
     .filter((session): session is ActiveCoachProgramSummary['upcomingSessions'][number] => session !== null)
   const sessions = assignScheduledMeasurements(
     normalizedSessions,
     normalizeScheduledMeasurements(version.intent)
   )
-  const sessionCheckins = ((checkinResult.data ?? []) as CoachCheckinRow[])
+  const sessionCheckins = checkinRows
     .map(normalizeSessionCheckin)
     .filter((checkin): checkin is CoachSessionCheckinSummary => checkin !== null)
   const currentWeekIntent = currentWeek === null
@@ -391,6 +413,8 @@ function assignScheduledMeasurements(
   for (const measurement of measurements) {
     const candidates = sessions
       .filter(session => session.weekNumber === measurement.weekNumber)
+      // Reviewed monitoring is not an automatic match for a legacy formal assessment.
+      .filter(session => session.prescription.format !== REVIEWED_SESSION_FORMAT)
       .sort((left, right) => {
         const leftCompatibility = sessionMeasurementCompatibility(
           left, measurement.assessmentDefinition.id

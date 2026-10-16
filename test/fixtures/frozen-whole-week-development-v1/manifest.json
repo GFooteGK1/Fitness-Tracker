@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "packetVersion": "programming-whole-week-development-1",
+  "status": "offline_prepared_awaiting_review",
+  "paidCallsAuthorized": 0,
+  "oldRunnerCompatible": false,
+  "entries": [
+    {
+      "id": "week_01",
+      "file": "week_01.request.json",
+      "sha256": "b2e29484569290aabab8fc4df3f3253180fcea473389bca0e09eae87a656b1f0",
+      "bytes": 107487,
+      "questions": 6
+    },
+    {
+      "id": "week_02",
+      "file": "week_02.request.json",
+      "sha256": "b210c8604f032de5a38abed4476cabbaa48291348a694c333d923841eb94fbfd",
+      "bytes": 141252,
+      "questions": 6
+    },
+    {
+      "id": "week_03",
+      "file": "week_03.request.json",
+      "sha256": "f58756544c45fea4df26b8a7883f905899a018b65cac9308eb863544a0a32c98",
+      "bytes": 92524,
+      "questions": 6
+    },
+    {
+      "id": "week_04",
+      "file": "week_04.request.json",
+      "sha256": "4e0d1afb10b263389e04c7b450e52b496560ef27ee3ee740906dd4a84c2e0d1f",
+      "bytes": 124106,
+      "questions": 6
+    }
+  ]
+}

@@ -71,3 +71,13 @@ scripts/eval/manifest.*.json
 
 # Local UI audit logs and working evidence
 /output/ui-consistency/
+
+# Local photo-review verification and browser session state
+/.playwright-cli/
+/output/playwright/photo-review/
+/output/playwright/photo-screening/
+/output/photo-review-drafts/
+# Sealed evaluation inputs and separate local key custody; never commit.
+/output/programming-quality-holdout/
+/output/programming-quality-holdout-custody/
+/output/programming-quality-review/

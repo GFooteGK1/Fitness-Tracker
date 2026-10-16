@@ -175,8 +175,11 @@ export const openaiProvider: LlmProvider = {
         : {}),
     }
 
-    const response = req.timeoutMs
-      ? await getClient().responses.create(params, { signal: AbortSignal.timeout(req.timeoutMs) })
+    const response = req.timeoutMs !== undefined || req.maxRetries !== undefined
+      ? await getClient().responses.create(params, {
+          ...(req.timeoutMs !== undefined ? { signal: AbortSignal.timeout(req.timeoutMs) } : {}),
+          ...(req.maxRetries !== undefined ? { maxRetries: req.maxRetries } : {}),
+        })
       : await getClient().responses.create(params)
 
     const toolCalls = extractToolCalls(response)

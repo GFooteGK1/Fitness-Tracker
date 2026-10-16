@@ -26,6 +26,8 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
+  const currentOwner = useRef(user?.id)
+  currentOwner.current = user?.id
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileStatus, setProfileStatus] = useState<AuthContextType['profileStatus']>('idle')
   const [profileError, setProfileError] = useState<string | null>(null)
@@ -315,6 +317,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Sign out function - uses SessionCleanupService
   const signOut = async () => {
+    // Keep the session available to retry an unconfirmed revoke. This preflight
+    // must stay outside the cleanup fallback, which clears the signed-in UI.
+    if (user) {
+      const disabled = await fetch('/api/capture/devices', { method: 'DELETE',
+        signal: AbortSignal.timeout(15_000),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expectedUserId: user.id }) })
+      const receipt = await disabled.json().catch(() => null)
+      if (!disabled.ok || receipt?.revoked !== true || receipt?.userId !== user.id) {
+        throw new Error('Camera device disable was not confirmed. Try sign-out again while connected.')
+      }
+      const { data: { user: activeUser }, error } = await supabase.auth.getUser()
+      if (error || activeUser?.id !== user.id || currentOwner.current !== user.id) {
+        throw new Error('The signed-in account changed. Sign out again from the current account.')
+      }
+    }
     try {
       console.log('[AuthContext] Starting sign-out process')
 
