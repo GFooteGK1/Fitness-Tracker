@@ -21,6 +21,21 @@ function pending():FirstReviewedPending{return {schemaVersion:1,userId:owner,pro
 function coordinate(){
   Object.defineProperty(navigator,'locks',{configurable:true,value:{request:async(name:string,_options:LockOptions,run:(lock:Lock)=>Promise<unknown>)=>run({name,mode:'exclusive'} as Lock)}})
 }
+function candidateFixture(selfReview=false){
+  const p=firstReviewedProgram(),week=effortWorkPlan(),profile={...reviewedRollingWeek().plan.profileSnapshot,startDate:'2026-09-14'}
+  if(selfReview)p.latestDesignation!.reviewerId=owner
+  const legacy=buildRollingWeeklyPlan({source:'initial',profile,windowStart:profile.startDate,
+    direction:buildRollingTrainingDirection(profile,{hypothesis:'Synthetic legacy UI fixture.'})})
+  if(legacy.kind!=='weekly_plan')throw Error('Expected complete legacy fixture')
+  const candidate={candidateId,designationId:p.latestDesignation!.designationId,designationVersion:1,programId,userId:owner,
+    reviewerId:p.latestDesignation!.reviewerId,basePlanVersionId:p.legacyBase.planVersionId,contentHash:'a'.repeat(64),sourceHash:'b'.repeat(64),createdAt:'2026-10-05T19:00:00Z',
+    reviewPacket:{schemaVersion:1,reviewMode:'manual_first_reviewed_week',week,legacyBase:legacyReviewBase(legacy),
+      profileFacts:{snapshotId:id(20),confirmationRequestId:id(21),projectionAsOf:'2026-10-05T19:00:00Z',factsHash:'c'.repeat(64),assessments:[],baselines:[]},
+      rationale:'Synthetic complete-week UI identity check, not athlete suitability.',changes:[{kind:'changed',summary:'Reviewed working sets.',sessionIds:[week.scheduledSessions[0].prescription.sessionId]}],
+      evidence:[{sourceId:'fixture:1',summary:'No performed athlete evidence.'}],evidenceSource:{sourceHash:'b'.repeat(64),revision:1,historyThrough:'2026-10-04',historyDays:90},limitations:['Synthetic UI reference only.']}}
+  expect(parseFirstReviewedCandidateReview(candidate)).not.toBeNull()
+  return {p,candidate}
+}
 beforeEach(()=>{localStorage.clear();vi.stubGlobal('crypto',webcrypto);coordinate()})
 afterEach(()=>{cleanup();vi.unstubAllGlobals();Object.defineProperty(navigator,'locks',{configurable:true,value:undefined})})
 
@@ -102,18 +117,7 @@ describe('first reviewed root identity and recovery (component transport, not re
     expect(h.posts).toEqual([]);expect(readFirstReviewedPending(localStorage,owner,programId)).toEqual(q)
   })
   it.each([false,true])('keeps designated self-review separate from exact-key athlete acceptance (self-review=%s)',async selfReview=>{
-    const p=firstReviewedProgram(),week=effortWorkPlan(),profile={...reviewedRollingWeek().plan.profileSnapshot,startDate:'2026-09-14'}
-    if(selfReview)p.latestDesignation!.reviewerId=owner
-    const legacy=buildRollingWeeklyPlan({source:'initial',profile,windowStart:profile.startDate,
-      direction:buildRollingTrainingDirection(profile,{hypothesis:'Synthetic legacy UI fixture.'})})
-    if(legacy.kind!=='weekly_plan')throw Error('Expected complete legacy fixture')
-    const candidate={candidateId,designationId:p.latestDesignation!.designationId,designationVersion:1,programId,userId:owner,
-      reviewerId:p.latestDesignation!.reviewerId,basePlanVersionId:p.legacyBase.planVersionId,contentHash:'a'.repeat(64),sourceHash:'b'.repeat(64),createdAt:'2026-10-05T19:00:00Z',
-      reviewPacket:{schemaVersion:1,reviewMode:'manual_first_reviewed_week',week,legacyBase:legacyReviewBase(legacy),
-        profileFacts:{snapshotId:id(20),confirmationRequestId:id(21),projectionAsOf:'2026-10-05T19:00:00Z',factsHash:'c'.repeat(64),assessments:[],baselines:[]},
-        rationale:'Synthetic complete-week UI identity check, not athlete suitability.',changes:[{kind:'changed',summary:'Reviewed working sets.',sessionIds:[week.scheduledSessions[0].prescription.sessionId]}],
-        evidence:[{sourceId:'fixture:1',summary:'No performed athlete evidence.'}],evidenceSource:{sourceHash:'b'.repeat(64),revision:1,historyThrough:'2026-10-04',historyDays:90},limitations:['Synthetic UI reference only.']}}
-    expect(parseFirstReviewedCandidateReview(candidate)).not.toBeNull()
+    const {p,candidate}=candidateFixture(selfReview)
     const summary={candidateId,designationId:candidate.designationId,designationVersion:1,reviewerId:candidate.reviewerId,createdAt:candidate.createdAt,
       decision:selfReview?'pending':'approve',proposalId:selfReview?null:proposalId,proposalStatus:selfReview?null:'proposed',
       planVersionId:selfReview?null:planVersionId,proposalRequestId:selfReview?null:'original-issued-request'}
@@ -144,17 +148,24 @@ describe('first reviewed root identity and recovery (component transport, not re
     }))
     render(<FirstReviewedWorkspace userId={owner}/>)
     fireEvent.click(await screen.findByRole('button',{name:/Review complete week from/}))
+    const savedWeeks=screen.getByRole('region',{name:'Candidate history'})
+    expect(savedWeeks.compareDocumentPosition(screen.getByRole('region',{name:'1 Confirm current setup'})) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await screen.findByRole('link',{name:'Go to the selected week and next step'})
+    expect(screen.getByRole('link',{name:'Go to the selected week and next step'}).getAttribute('href')).toBe('#saved-week-review')
     if(selfReview){
+      expect(screen.getByText('Awaiting coach approval')).toBeTruthy()
       const approve=await screen.findByRole('button',{name:'Approve this exact week'}) as HTMLButtonElement
       expect(approve.disabled).toBe(true);expect(screen.queryByRole('button',{name:'Accept this exact week'})).toBeNull()
       fireEvent.click(screen.getByRole('checkbox',{name:'I reviewed the complete week, previous plan, facts and limitations.'}))
       fireEvent.click(approve)
       const issue=await screen.findByRole('button',{name:'Create the athlete proposal'})
+      expect(screen.getByText('Coach approved — create athlete proposal')).toBeTruthy()
       expect(decisions).toHaveLength(1);expect(requests).toEqual([])
       expect(decisions[0]).toMatchObject({userId:owner,operation:'decide',body:{expectedUserId:owner,candidateId,designationId:candidate.designationId,decision:'approve'}})
       fireEvent.click(issue)
     }
     const accept=await screen.findByRole('button',{name:'Accept this exact week'}) as HTMLButtonElement
+    expect(screen.getByText('Awaiting your acceptance')).toBeTruthy()
     expect(accept.disabled).toBe(true);expect(requests).toEqual([])
     expect(screen.getByText('Synthetic complete-week UI identity check, not athlete suitability.')).toBeTruthy()
     fireEvent.click(screen.getByRole('checkbox',{name:'I reviewed this complete proposed week and want to accept it.'}))
@@ -165,5 +176,37 @@ describe('first reviewed root identity and recovery (component transport, not re
     await screen.findByText(/This exact week is accepted on your existing program/)
     await screen.findByText('This exact week is accepted. Your prior program history remains preserved.')
     expect(readFirstReviewedPending(localStorage,owner,programId)).toBeNull()
+  })
+  it.each([
+    ['athlete','pending'],['reviewer','pending'],['reviewer','approve'],['reviewer','proposed']
+  ] as const)('shows only the correct actor next step (%s, %s)',async(role,state)=>{
+    const {p,candidate}=candidateFixture(),actor=role==='athlete'?owner:candidate.reviewerId
+    if(role==='reviewer'){p.role='reviewer';p.activePlanVersionId=null}
+    const summary={candidateId,designationId:candidate.designationId,designationVersion:1,reviewerId:candidate.reviewerId,createdAt:candidate.createdAt,
+      decision:state==='pending'?'pending':'approve',proposalId:state==='proposed'?proposalId:null,proposalStatus:state==='proposed'?'proposed':null,
+      planVersionId:state==='proposed'?planVersionId:null,proposalRequestId:null}
+    const fetcher=vi.fn(async(url:string|URL|Request,init?:RequestInit)=>{
+      if(init?.method==='POST')throw Error('Read-only status navigation must not mutate')
+      const path=String(url)
+      if(path==='/api/coach/first-reviewed/programs')return Response.json({kind:'programs',page:{schemaVersion:1,actorId:actor,programs:[p],nextAfterProgramId:null},writesEnabled:true})
+      if(path.endsWith('/profiles'))return Response.json({kind:'snapshots',page:{schemaVersion:1,actorId:actor,programId,snapshots:[],nextAfterSnapshotId:null},writesEnabled:true})
+      if(path.endsWith(`/candidates/${candidateId}`))return Response.json({kind:'candidate',candidate})
+      return Response.json({kind:'workspace',page:{schemaVersion:1,actorId:actor,program:p,candidates:[summary],nextAfterCandidateId:null},writesEnabled:true})
+    })
+    vi.stubGlobal('fetch',fetcher)
+    render(<FirstReviewedWorkspace userId={actor}/> )
+    fireEvent.click(await screen.findByRole('button',{name:/Review complete week from/}))
+    await screen.findByRole('link',{name:'Go to the selected week and next step'})
+    if(role==='athlete'){
+      expect(screen.getByText('The designated reviewer must save approval before an athlete proposal can be created.')).toBeTruthy()
+      expect(screen.queryByRole('button',{name:'Approve this exact week'})).toBeNull()
+    }else{
+      expect(screen.queryByText('Awaiting your acceptance')).toBeNull()
+      expect(screen.queryByRole('button',{name:'Create the athlete proposal'})).toBeNull()
+      expect(screen.queryByRole('button',{name:'Accept this exact week'})).toBeNull()
+      if(state==='pending')expect(screen.getByRole('button',{name:'Approve this exact week'})).toBeTruthy()
+      else expect(screen.getByText(state==='proposed'?'Awaiting athlete acceptance':'Coach approved — awaiting athlete proposal')).toBeTruthy()
+    }
+    expect(fetcher.mock.calls.every(([,init])=>!init?.method||init.method==='GET')).toBe(true)
   })
 })

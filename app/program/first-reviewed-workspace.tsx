@@ -2,7 +2,7 @@
 import { useCallback,useEffect,useRef,useState } from 'react'
 import { getTimezoneOffset } from '@/app/lib/timezone-utils'
 import { parseFirstReviewProgramsPage,parseFirstReviewProgramWorkspace,parseFirstReviewSnapshotsPage,
-  type FirstReviewProgramsPage,type FirstReviewProgramWorkspace,type FirstReviewSnapshotsPage } from '@/app/lib/coach/first-reviewed-workspace-contract'
+  type FirstReviewProgramsPage,type FirstReviewProgramWorkspace,type FirstReviewSnapshotsPage,type FirstReviewCandidateSummary } from '@/app/lib/coach/first-reviewed-workspace-contract'
 import { parseFirstReviewedSetupSeed,type FirstReviewedSetupSeed } from '@/app/lib/coach/first-reviewed-setup-contract'
 import { parseFirstReviewedProfileSnapshot,parseFirstReviewedProfileReceipt,type FirstReviewedProfileSnapshot,type FirstReviewedProfileReceipt } from '@/app/lib/coach/first-reviewed-profile-contract'
 import { parseFirstReviewedDraft,parseFirstReviewedCandidateReview,type FirstReviewedDraft,type FirstReviewedCandidateReview } from '@/app/lib/coach/first-reviewed-contract'
@@ -24,6 +24,14 @@ const label=(v:string)=>v==='rir'?'Reps in reserve':v==='rpe'?'RPE':v.replace(/(
 const errorText=(v:unknown)=>v instanceof Error?v.message:'This result could not be verified. Recover a saved request before another action.'
 const hidden=new Set(['id','userId','user_id','memoryId','snapshotId','kernelVersion','schemaVersion','hash','contentHash','sourceHash'])
 const savedPrograms=(actor:string)=>[...new Set([...listFirstReviewedPendingPrograms(localStorage,actor),...listFirstReviewSetupPendingPrograms(localStorage,actor)])].sort()
+function savedWeekStatus(c:FirstReviewCandidateSummary,owner:boolean){
+  if(c.proposalStatus==='accepted')return owner?'Accepted — available in Plan':'Accepted by the athlete'
+  if(c.proposalStatus==='rejected'||c.proposalStatus==='expired')return 'Proposal '+c.proposalStatus
+  if(c.decision==='reject')return 'Review rejected'
+  if(c.proposalStatus==='proposed')return owner?'Awaiting your acceptance':'Awaiting athlete acceptance'
+  if(c.decision==='approve')return owner?'Coach approved — create athlete proposal':'Coach approved — awaiting athlete proposal'
+  return 'Awaiting coach approval'
+}
 /** Structured attributed facts and legacy prescriptions; never raw JSON or inferred performance. */
 function ContextFacts({value}:{value:unknown}){
   if(value===null||value===undefined)return <span>Not reported</span>
@@ -253,6 +261,16 @@ function FirstReviewedActorWorkspace({userId}:{userId:string}){
     </section>}
     {p&&!freshScope&&<p role="status">Current reviewer scope is not configured, expired or revoked. Historical results remain separate from authority for a new week.</p>}
     {p&&<button className={action} disabled={busy} onClick={()=>void perform(async()=>{await readWorkspace(p.programId);if(owner)await readSnapshots(p.programId)})}>Refresh current scope and history</button>}
+    {workspace&&<section aria-label="Candidate history" className="space-y-3 rounded-xl border p-4"><h2 className="text-xl font-bold">Saved weeks</h2>
+      <p>Saved reviews appear here before they become your active plan. Coach approval and athlete acceptance are separate steps.</p>
+      {workspace.candidates.map(c=><div key={c.candidateId} className="space-y-2">
+        <p className="font-semibold">{savedWeekStatus(c,owner)}</p>
+        <button className={action} disabled={busy||retained} onClick={()=>void perform(()=>loadCandidate(c.candidateId))}>Review complete week from {c.createdAt} · {savedWeekStatus(c,owner)}</button>
+      </div>)}
+      {candidate&&<a className="inline-flex min-h-11 items-center underline" href="#saved-week-review">Go to the selected week and next step</a>}
+      {!workspace.candidates.length&&<p>No reviewed candidate has been saved.</p>}
+      {workspace.nextAfterCandidateId&&<button className={action} disabled={busy} onClick={()=>void perform(async()=>{await readWorkspace(workspace.program.programId,workspace.nextAfterCandidateId)})}>More candidates</button>}
+    </section>}
     {owner&&<section aria-label="1 Confirm current setup" className="space-y-3"><h2 className="text-xl font-bold">1. Confirm current setup</h2>
       <label className="block">Training history lookback (days)<input className="ml-2 min-h-11 rounded border p-2 text-base" type="number" min={1} max={180} step={1}
         disabled={busy||retained||!!setupEditor} value={historyWindow} onChange={e=>{if(busy||retained||setupEditor)return;setHistoryWindow(e.target.value);invalidatePreparedContext();setSetupGap(null);setError(null)}}/></label>
@@ -295,12 +313,13 @@ function FirstReviewedActorWorkspace({userId}:{userId:string}){
       {preview&&<><ReviewedWeekView value={preview.packet.week} showLogging={false}/><p>Preview does not establish reviewer approval or athlete acceptance.</p>
         <button className={action} disabled={unavailable} onClick={()=>void perform(()=>send({schemaVersion:1,userId,programId:preview.draft.programId,operation:'submit',body:{expectedUserId:userId,draft:preview.draft}},'send'))}>Save this exact candidate for review</button></>}
     </section>}
-    {workspace&&<section aria-label="Candidate history" className="space-y-3"><h2 className="text-xl font-bold">Candidate history</h2>
-      {workspace.candidates.map(c=><button className={action} disabled={busy||retained} key={c.candidateId} onClick={()=>void perform(()=>loadCandidate(c.candidateId))}>Review complete week from {c.createdAt} · {c.proposalStatus??c.decision}</button>)}
-      {!workspace.candidates.length&&<p>No reviewed candidate has been saved.</p>}
-      {workspace.nextAfterCandidateId&&<button className={action} disabled={busy} onClick={()=>void perform(async()=>{await readWorkspace(workspace.program.programId,workspace.nextAfterCandidateId)})}>More candidates</button>}
-    </section>}
-    {candidate&&<section aria-label="4 Designated reviewer decision" className="space-y-3"><h2 className="text-xl font-bold">4. Designated reviewer decision</h2>
+    {candidate&&<section id="saved-week-review" aria-label="4 Designated reviewer decision" className="scroll-mt-4 space-y-3"><h2 className="text-xl font-bold">4. Designated reviewer decision</h2>
+      {summary&&<p role="status">{candidate.reviewPacket.week.windowStart}–{candidate.reviewPacket.week.windowEnd}: {savedWeekStatus(summary,owner)}.</p>}
+      {summary?.decision==='pending'&&<p>{candidate.reviewerId===userId&&d?.reviewerId===userId
+        ?'Review the complete week below, then check the review confirmation and select “Approve this exact week.” Until that result is saved, this week remains pending.'
+        :'The designated reviewer must save approval before an athlete proposal can be created.'}</p>}
+      {summary?.decision==='approve'&&!summary.proposalId&&<p>{owner?'Coach approval is saved. Create the athlete proposal below to continue to your separate acceptance.':'Coach approval is saved. The athlete can create the proposal and separately accept it.'}</p>}
+      {summary?.proposalStatus==='proposed'&&<p>{owner?'The proposal is ready. Accept this exact week below to make it active in Plan.':'The proposal is ready for the athlete’s separate acceptance.'}</p>}
       <p>{candidate.reviewPacket.rationale}</p><details><summary className="min-h-11 cursor-pointer py-3">Previous accepted legacy week</summary><ContextFacts value={candidate.reviewPacket.legacyBase}/></details>
       <ReviewedWeekView value={candidate.reviewPacket.week} showLogging={false}/>
       <details><summary className="min-h-11 cursor-pointer py-3">Current facts, evidence and uncertainty</summary><ContextFacts value={{facts:candidate.reviewPacket.profileFacts,evidence:candidate.reviewPacket.evidence,limitations:candidate.reviewPacket.limitations}}/></details>
