@@ -1,3 +1,4 @@
+import { captureSetupMemoryBindings } from '@/app/lib/coach/setup-memory-bindings'
 import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coaching-capabilities'
 import { fetchDirectionReconciliation } from '@/app/lib/coach/direction-reconciliation-server'
 import { replacementSetupMatches } from '@/app/lib/coach/direction-reconciliation'
@@ -224,7 +225,9 @@ export async function POST(request: Request) {
       })
     }
 
+    const setupMemoryBindings = await captureSetupMemoryBindings(supabase, user.id, storedIntent.weekly_plan.profileSnapshot, { review: true })
     const reviewFingerprint = rollingFingerprint({
+      setupMemoryBindings,
       signalEvidence,
       directionReconciliation,
       contextRevision,
@@ -261,6 +264,7 @@ export async function POST(request: Request) {
       p_missing_requirements: review.missing,
       p_safety_override: review.safetyOverride,
       p_rationale: {
+        setupMemoryBindings,
         signalEvidence,
         directionReconciliation,
         contextRevision,
@@ -341,6 +345,7 @@ export async function POST(request: Request) {
     if (!nextWeek.ok) return apiError(nextWeek.error, 409)
 
     const sourceSnapshot = {
+      setupMemoryBindings,
       contextRevision,
       reason: 'rolling_weekly_review',
       basePlanVersionId: planRow.id,

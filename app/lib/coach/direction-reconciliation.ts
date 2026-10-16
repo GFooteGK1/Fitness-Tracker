@@ -66,6 +66,9 @@ export function reconcileTrainingDirection(input: {
   for (const [key, fields] of setupFields) {
     const content = validRows[key]
     if (!content) continue
+    if (['training_schedule','available_equipment'].includes(key) && Object.hasOwn(content, 'schemaVersion')) {
+      return { status:'unsupported', reasons:[...reasons,'Saved reviewed setup requires the complete reviewed-week workflow'], changedFields:[key] }
+    }
     if (fields.some(field => !Object.hasOwn(content, field)) || (key === 'training_constraints' && typeof content.constraints !== 'string')) {
       block(`Saved ${key} is incomplete`); continue
     }

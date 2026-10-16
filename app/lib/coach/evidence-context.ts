@@ -1,6 +1,8 @@
 import { exercisePreferencesEnabled } from './exercise-preferences-server'
 import { confirmedOutcomeSampleMatches, resolveConfirmedOutcomeScope } from './confirmed-outcome-scope'
 import type { PlanningOutcome } from './planning-intent'
+import { decodeCoachWeeklyIntent } from './rolling-weekly-api'
+import { fetchReviewedExecutionSlots } from './reviewed-execution-context-server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   ADAPTIVE_EVIDENCE_POLICY_VERSION,
@@ -130,6 +132,7 @@ export interface CoachEvidencePlanVersionRow {
   reference_version: string
   policy_version: string
   intent: unknown
+  input_snapshot?: Record<string, unknown>
 }
 
 export interface CoachEvidenceSessionRow {
@@ -489,7 +492,7 @@ export async function fetchCoachEvidenceContext(
   const planPromise = activePlanVersionId
     ? supabase
       .from('training_plan_versions')
-      .select('id, user_id, program_id, version, status, reference_version, policy_version, intent')
+      .select('id, user_id, program_id, version, status, reference_version, policy_version, intent, input_snapshot')
       .eq('user_id', userId)
       .eq('id', activePlanVersionId)
       .limit(1)
@@ -556,6 +559,20 @@ export async function fetchCoachEvidenceContext(
   if (assessmentResult.error) errors.push('strength_assessments_unavailable')
   if (groupResult.error) errors.push('performance_observations_unavailable')
 
+  let activeSessions = (sessionsResult.data ?? []) as CoachEvidenceSessionRow[]
+  const selectedPlan = planResult.data?.[0] as CoachEvidencePlanVersionRow | undefined
+  if (selectedPlan?.input_snapshot?.reviewedExecutionStorage === 'reviewed_execution_slots_v1') {
+    activeSessions = []
+    try {
+      const decoded = decodeCoachWeeklyIntent(selectedPlan.intent)
+      if (!selectedProgram || decoded?.kind !== 'reviewed') throw new Error('Invalid mapped plan')
+      const slots = await fetchReviewedExecutionSlots(supabase, userId, selectedProgram.id, selectedPlan.id, decoded.plan.scheduledSessions)
+      activeSessions = slots.map(slot => ({ id: slot.executionSessionId, user_id: userId, program_id: selectedProgram.id,
+        plan_version_id: selectedPlan.id, week_number: 1, session_index: slot.sessionIndex, scheduled_date: slot.scheduledDate,
+        prescription: slot.prescription, status: slot.status, completed_workout_id: slot.completedWorkoutId }))
+    } catch { errors.push('active_execution_manifest_unavailable') }
+  }
+
   const groups = (groupResult.data ?? []) as CoachEvidenceObservationGroupRow[]
   const workoutIds = unique(groups.flatMap(group => group.workout_id ? [group.workout_id] : []))
   let workoutResult: { data: unknown[] | null; error: unknown } = { data: [], error: null }
@@ -611,7 +628,7 @@ export async function fetchCoachEvidenceContext(
     sessionCheckins: (feedbackResult.data ?? []) as NonNullable<CoachEvidenceContextSource['sessionCheckins']>,
     programs,
     planVersions: (planResult.data ?? []) as CoachEvidencePlanVersionRow[],
-    sessions: (sessionsResult.data ?? []) as CoachEvidenceSessionRow[],
+    sessions: activeSessions,
     exercisePreferenceSnapshot: (preferenceSnapshotResult.data?.[0] ?? null) as CoachEvidenceMemoryRow | null,
     memories: (memoryResult.data ?? []) as CoachEvidenceMemoryRow[],
     strengthAssessments: (assessmentResult.data ?? []) as CoachEvidenceStrengthAssessmentRow[],

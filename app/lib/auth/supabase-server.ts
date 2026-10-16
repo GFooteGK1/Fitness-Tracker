@@ -7,7 +7,10 @@ import { cookies } from 'next/headers'
 // any route that runs in a user's session; wrong for cron/system contexts
 // that have no session (RLS then returns zero rows — see createServiceRoleClient).
 export const createServerClient = async () => {
-  return createServerComponentClient({ cookies })
+  const cookieStore = await cookies()
+  // auth-helpers 0.8 reads this callback synchronously. Its declaration inherits
+  // Next 15's Promise return type, although its runtime needs the resolved store.
+  return createServerComponentClient({ cookies: () => cookieStore as unknown as ReturnType<typeof cookies> })
 }
 
 /**

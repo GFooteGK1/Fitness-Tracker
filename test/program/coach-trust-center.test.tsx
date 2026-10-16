@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { CoachTrustCenter } from '@/app/program/coach-trust-center'
 import type { CoachTrustCenter as CoachTrustCenterModel } from '@/app/lib/coach/trust-center'
+import { savedSetupIsConfirmed } from '@/app/lib/coach/complete-intake'
 
 vi.mock('@/app/lib/auth/AuthContext', () => ({
   useAuth: () => ({ user: { id: '91111111-1111-4111-8111-111111111111' } })
@@ -13,6 +14,39 @@ vi.mock('@/app/lib/auth/AuthContext', () => ({
 
 describe('CoachTrustCenter', () => {
   afterEach(() => vi.unstubAllGlobals())
+
+  it('preserves ordinary uniform setup correction for the automatic legacy path',async()=>{
+    const fixture=trustFixture(),requests:Record<string,unknown>[]=[]
+    const schedule={experience:'consistent',trainingDays:['monday','friday'],sessionMinutes:60,startDate:'2026-10-05'}
+    const equipment={equipment:'Barbell, rack and bench',resolvedEquipmentIds:['barbell','rack','bench','bodyweight']}
+    fixture.memories=[{...fixture.memories[0],memoryKey:'training_schedule',kind:'schedule',content:schedule}]
+    vi.stubGlobal('fetch',vi.fn(async(_url:string,init?:RequestInit)=>{
+      if(!init)return response({trust:fixture})
+      const body=JSON.parse(String(init.body));requests.push(body);fixture.memories[0].content=body.content
+      return response({saved:true,trust:fixture})
+    }))
+    render(<CoachTrustCenter/>);fireEvent.click(await screen.findByRole('button',{name:'Correct'}))
+    fireEvent.change(screen.getByLabelText('SessionMinutes'),{target:{value:'75'}})
+    fireEvent.click(screen.getByRole('button',{name:'Save correction'}));await waitFor(()=>expect(requests).toHaveLength(1))
+    expect(requests[0]).toMatchObject({action:'correct_memory',resourceId:fixture.memories[0].id,content:{...schedule,sessionMinutes:75}})
+    expect(requests[0].content).not.toHaveProperty('schemaVersion');expect(savedSetupIsConfirmed(requests[0].content,equipment)).toBe(true)
+  })
+  it('saves explicit reviewed per-day corrections through the existing canonical action',async()=>{
+    const fixture=trustFixture(),requests:Record<string,unknown>[]=[]
+    fixture.memories=[{...fixture.memories[0],memoryKey:'training_schedule',kind:'schedule',content:{experience:'consistent',trainingDays:['monday','friday'],sessionMinutes:60,startDate:'2026-10-05'}}]
+    vi.stubGlobal('fetch',vi.fn(async(_url:string,init?:RequestInit)=>{
+      if(!init)return response({trust:fixture})
+      const body=JSON.parse(String(init.body));requests.push(body);fixture.memories[0].content=body.content
+      return response({saved:true,trust:fixture})
+    }))
+    render(<CoachTrustCenter reviewedSetup/>);fireEvent.click(await screen.findByRole('button',{name:'Correct'}))
+    fireEvent.change(screen.getByLabelText('Minutes on monday'),{target:{value:'75'}})
+    fireEvent.click(screen.getByRole('button',{name:'Save correction'}));await waitFor(()=>expect(requests).toHaveLength(1))
+    expect(requests[0]).toMatchObject({action:'correct_memory',resourceId:fixture.memories[0].id,content:{schemaVersion:2,experience:'consistent',
+      sessionAvailability:[{day:'monday',minutes:75},{day:'friday',minutes:60}]}})
+    expect(requests[0].idempotencyKey).toEqual(expect.any(String))
+    expect(await screen.findByText('Coach memory corrected as a new version.')).not.toBeNull()
+  })
 
   it('shows the four trust layers and reuses an idempotency key after interruption', async () => {
     const calls: RequestInit[] = []

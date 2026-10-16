@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "baselineSha256": "4ca926f4535b0d334d5222dd421f75876148660caf1707269a758c3e1979edff",
+  "rubricSha256": "0cdd156db32ad502998926d52fddc00b065b2ff6e83b2f1df8b99552d76261ef",
+  "acceptedSignalsSha256": "b14e624c4e87dbf0ec01e2abc3a3fa18176bed2a56be6c42b4c928fe904c26e9",
+  "calibration": null,
+  "cases": [
+    {
+      "caseId": "domain-new-bodyweight-strength-2x30",
+      "inputHash": "12a7c8b70f9cb4fe0cfc669e5f36610df6cd38e9cc8b0b81c7ba42cf4a764b22",
+      "outputHash": "dee9d057307d48dafdb891ada0c7a9f0c98ecb4eb308524e36040b6f3bf66ede",
+      "review": null
+    },
+    {
+      "caseId": "domain-consistent-full-gym-hypertrophy-3x60",
+      "inputHash": "758f9cbce305fb9769a2d269dd412e43008ff5e9bb79ae48ce9bbefa9ddeeca0",
+      "outputHash": "cfb41f6111086f48804511ad0c465d561aa80de999b839526e5dc64952c61ee1",
+      "review": {
+        "status": "partial",
+        "reviewer": "Greg Foote",
+        "reviewedAt": "2026-09-27",
+        "decisionSource": "Programming-quality conversation: direct reply to prescription-suitability question call_Lm5kWDenQnsYwTqvpFQ4jAFZ; quoted in development-review-decisions.md",
+        "rationale": "0, why are we only programming single leg hip bridge when there is a full gym of equipment",
+        "expectedDecision": "Reject the original prescription as unacceptable; address its movement selection in the context of full-gym access before accepting a revision.",
+        "prohibitedInferences": [
+          "The response does not score the other five dimensions or approve the complete serialized output.",
+          "No particular replacement movement, load, dose or runtime activation was approved."
+        ],
+        "scores": {
+          "evidence_fidelity": null,
+          "athlete_fit": null,
+          "prescription_suitability": 0,
+          "whole_week_feasibility": null,
+          "monitoring_judgment": null,
+          "executable_consistency": null
+        }
+      }
+    },
+    {
+      "caseId": "domain-experienced-field-power-4x75",
+      "inputHash": "bbc2774db2234d768ecda22ce8959efb91aef55605772f167855e867152dac2b",
+      "outputHash": "2e47862e215898c7416124cf23e885994b59cad485d27a8fd93451402aa7866d",
+      "review": null
+    },
+    {
+      "caseId": "domain-consistent-track-speed-4x60",
+      "inputHash": "cfcbf3c78d6d8aa77da26bc7a8061187c6f76e4b5bbaf3c9bda57bb9840db403",
+      "outputHash": "fe8e83306f043e09545cf6b8353c49c971b88a4885e53131393c445ac4fc1672",
+      "review": null
+    },
+    {
+      "caseId": "domain-experienced-cyclical-aerobic-5x45",
+      "inputHash": "4e43cc4739a624cdfd352c82971b28ed7e86c1c2c27b77e8804c7a757e63b4d9",
+      "outputHash": "6161cf70292f333736d5b78fdb1e0effd5fb2a7600a26fa32c502c0fa152b1b2",
+      "review": null
+    },
+    {
+      "caseId": "domain-new-bodyweight-resilience-3x45",
+      "inputHash": "3bd87203f92bb9deefd38c2046e402c0536439879bbe2d3cbd81a69e5454f83a",
+      "outputHash": "6202289834248acd869a584d26d9dd014bba956855b4dd0696cdd3dc0469905f",
+      "review": null
+    },
+    {
+      "caseId": "history-volume",
+      "inputHash": "21f8ab8d25be5678ddce7d9fcbfa884cc6b470e17e53af07016e4bbfb3e1a6d7",
+      "outputHash": "973450dd34403f22c34d68731bf90967ec599958163306a38c2409e48eb1a286",
+      "review": null
+    },
+    {
+      "caseId": "history-heavy",
+      "inputHash": "0fae0aa5c4428f844883cb40744543c5a3d25fdf14afe624b4946723cdbd2bf7",
+      "outputHash": "973450dd34403f22c34d68731bf90967ec599958163306a38c2409e48eb1a286",
+      "review": null
+    },
+    {
+      "caseId": "history-empty",
+      "inputHash": "7ee553875045dd2e25fb297e99fc0b2c03b3b7384f7713445db1ce7aeb50ccfb",
+      "outputHash": "a3d68c92c5ca9e279b57c36a7f2630a60239563864da7a4dcec16c29923efbe1",
+      "review": null
+    },
+    {
+      "caseId": "history-partial",
+      "inputHash": "646bd1ce3b1a24aa3951895b266ab9a4c43172d137e805c2d40d7711c43794e0",
+      "outputHash": "be64182ff60ef72b45cff15d0053f6d5f0757e7c911ca51de9f104c700885b7b",
+      "review": null
+    },
+    {
+      "caseId": "outside-unknown",
+      "inputHash": "0d235c8dcd8c33a4ebb78d451b8ef49f2981f861241c077bcdfbb8103101825e",
+      "outputHash": "a3d68c92c5ca9e279b57c36a7f2630a60239563864da7a4dcec16c29923efbe1",
+      "review": null
+    },
+    {
+      "caseId": "outside-practice",
+      "inputHash": "d76884d76ea48728d9dfe9c24356e28f913250af159c23303ee3f4028e53663b",
+      "outputHash": "aabfdbd31efd1efe1385c579122749895e7b911be914c7ff243ffba4a8a02bf9",
+      "review": null
+    },
+    {
+      "caseId": "velocity-monitoring-request",
+      "inputHash": "58c1469d630692c504e8474cddec27d7cdc2f71169ce634c0d6aa5eff27f8c87",
+      "outputHash": "ff8b05357abef177b5b8e0ebc407923016c51ea4017349eb17b3c8b89632a386",
+      "review": null
+    },
+    {
+      "caseId": "availability-correction",
+      "inputHash": "55e11e836092eec31eae3bc4389b588d0bd329f207bcb3382cc380c54dfa46e5",
+      "outputHash": "7bf6380a7ac01beff73920a099d86a2f97551204ebc8d4cd5c9cb7e15ac37e4b",
+      "review": null
+    },
+    {
+      "caseId": "four-domain-event",
+      "inputHash": "65716e5f8c8ff71e8b88142a71d9833154a77f7d2fa84f2aa07cd3965825700e",
+      "outputHash": "c4bb2b182239992f5707ad8047919f8962a39f699176e1458f0189a9b767d5b0",
+      "review": null
+    },
+    {
+      "caseId": "twenty-minute-budget",
+      "inputHash": "3f4f3379146ac290bb93f0ceca471794b8396c33f96756d02626878c4dd64da8",
+      "outputHash": "70d98fda8e0367bb476fa76bf8efb5572edb667b3346ab2abc2e86f10734d64e",
+      "review": null
+    },
+    {
+      "caseId": "history-corrected-revision",
+      "inputHash": "5eef7cabf3f55d137e19331c9457189323df6098796d38602d22df1c8a27ab89",
+      "outputHash": "a9554e00c0acb9d75d49368ec24582a37b29ea69f2bbdd1f0a197e2adef66b75",
+      "review": null
+    },
+    {
+      "caseId": "history-confirmed-estimate",
+      "inputHash": "6a14e6b6f84b77ba1b9832b9c9319b5abcc6ddf995e07b26179ef8b2ce9d26f5",
+      "outputHash": "2a071233ffbdd9957170951aad24d20351b91fd69dfd6979e2c39515959fe855",
+      "review": null
+    },
+    {
+      "caseId": "history-unreviewed-import",
+      "inputHash": "99247c3e45d850c8822973172eb47a41605890f788400a06b7db3fee305de328",
+      "outputHash": "c05f11c07004ef9a27ae96f22dea3f831df09fa9b17299746e878caa90b86e4a",
+      "review": null
+    },
+    {
+      "caseId": "history-two-same-day-sessions",
+      "inputHash": "6ee8bd012fb94c9cca934acd8a623d14ea97eab6dfece4ba10d26c53aa122331",
+      "outputHash": "eaf1f95190c6e50a04b9ed20f43dd477141feade27bbb7e8a906d69b4e42883f",
+      "review": null
+    },
+    {
+      "caseId": "history-unknown-load",
+      "inputHash": "303676cf121c8294703280851705bc19a386b35c4800b6412d0aab11ce6b4d85",
+      "outputHash": "973450dd34403f22c34d68731bf90967ec599958163306a38c2409e48eb1a286",
+      "review": null
+    },
+    {
+      "caseId": "assessment-matched",
+      "inputHash": "4fd5acbd7651e688c641f6bbdac98ce990cd5904a501c27d094ce1d403b2ca8d",
+      "outputHash": "b6b411d0b77576786b1dfbf130aea4d0f8a3c345cb3378f9714c50a8bb7af2b7",
+      "review": null
+    },
+    {
+      "caseId": "assessment-variation-changed",
+      "inputHash": "be0bc4e1b913e8e7bfe509853ee70ad9ecd1b1a5a1de94be47099e6b331c7a48",
+      "outputHash": "b6d6bf3a1171491f1a9302443c5d6588c5dab31ec93d3abab0d55b028c1f471f",
+      "review": null
+    },
+    {
+      "caseId": "five-sixty-minute-opportunities",
+      "inputHash": "4ed4e6a5f13a7cfb49772d7c2579a28f6156164afd8e84c2564b9deabdfdfba1",
+      "outputHash": "c18ea851794388fc58351355ed75a7626acc076f138f22625f64b8fa2af2dd5d",
+      "review": null
+    }
+  ]
+}

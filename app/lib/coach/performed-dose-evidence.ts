@@ -1,6 +1,7 @@
 import { MOVEMENT_CATALOG } from './movement-catalog'
 import { stableStringify } from './rolling-weekly-contracts'
 import { historyFieldProvenance } from './planning-history'
+import { resolveReviewedMovementId } from './reviewed-movement-eligibility'
 
 type ObjectRecord = Record<string, unknown>
 const object = (v: unknown): v is ObjectRecord => Boolean(v && typeof v === 'object' && !Array.isArray(v))
@@ -61,6 +62,7 @@ export function normalizePerformedDoseEvidence(input: DoseEvidenceSnapshot) {
     role: 'working' | 'preparation' | 'unknown'; basis: 'confirmed_prescription' | 'reported_work' | 'unverified_prescription' | 'legacy_unknown' | 'estimated_work'
     capturedAt: string; snapshotId: string | null; origin: string; reviewState: string
     unilateralConvention: unknown; equipment: unknown; protocol: unknown; effort: unknown
+    reviewedSessionRpe?: number | null
     quantityProvenance: Record<string, { origin: string; reviewState: string }>
     sets: EvidenceQuantity; repetitions: EvidenceQuantity; load: EvidenceQuantity; durationMinutes: EvidenceQuantity
     loadUnit: 'lb' | 'kg' | null; raw: ObjectRecord; limitations: string[]
@@ -103,7 +105,24 @@ export function normalizePerformedDoseEvidence(input: DoseEvidenceSnapshot) {
       && (row.capture_revision === undefined || row.capture_revision === 1)
       && performed.blocks === null && performed.inputText === null
       && performed.workoutDate === row.workout_date
-    if (linked.length && !confirmed) issues.push({ sourceId: id, reason: 'completion_does_not_confirm_current_prescription_snapshot' })
+    // v3 stores explicit set actuals, never a confirmed execution of every target.
+    // The exact original block snapshot binds the link; amendments remain visible
+    // as current reported work but require review of the superseded completion.
+    const reviewedActuals = candidate && response?.completionContractVersion === 3 && response.resultStatus === 'completed'
+      && request?.contractVersion === 3 && request.status === 'completed' && request.sessionId === candidate.prescribed_session_id
+      && !conflictingCompletionIds.has(candidate.id) && Boolean(candidate.prescribed_session_id)
+      && time(request.occurredAt) === time(candidate.occurred_at)
+      && Number.isFinite(time(candidate.created_at)) && time(candidate.created_at) <= asOf
+      && Number.isFinite(time(candidate.occurred_at)) && time(candidate.occurred_at) <= asOf
+      // The v3 RPC permits up to five minutes of client clock skew. Retain the
+      // honest server capture time, but never expose occurrence beyond asOf.
+      && time(candidate.created_at) + 300_000 >= time(candidate.occurred_at)
+      && row.execution_source === 'program_runner' && row.execution_status === 'completed'
+      && row.execution_revision === 0 && row.capture_revision === 1 && request.workoutDate === row.workout_date
+      && Array.isArray(response.performedBlocks) && stableStringify(response.performedBlocks) === stableStringify(row.blocks)
+      && Array.isArray(response.setReportIds) && Array.isArray(request.setReportIds)
+      && stableStringify([...response.setReportIds].sort()) === stableStringify([...request.setReportIds].sort())
+    if (linked.length && !confirmed && !reviewedActuals) issues.push({ sourceId: id, reason: 'completion_does_not_confirm_current_prescription_snapshot' })
     const blocks = Array.isArray(row.blocks) ? row.blocks : object(row.blocks) && Array.isArray(row.blocks.blocks) ? row.blocks.blocks : null
     if (!blocks) { issues.push({ sourceId: id, reason: 'unsupported_blocks_shape' }); continue }
     const root = Array.isArray(row.blocks) ? 'blocks' : 'blocks.blocks'
@@ -121,7 +140,8 @@ export function normalizePerformedDoseEvidence(input: DoseEvidenceSnapshot) {
         if (!object(entry)) { issues.push({ sourceId: id, reason: `unsupported_exercise:${bi}:${ei}` }); continue }
         const path = `${root}[${bi}].${canonical ? 'exercises' : 'movements'}[${ei}]`
         const name = typeof entry.name === 'string' ? entry.name.trim().toLowerCase() : null
-        const byId = canonical ? MOVEMENT_CATALOG.find(m => m.id === entry.movementId) : undefined
+        const reviewedId = reviewedActuals && typeof entry.movementId === 'string' ? resolveReviewedMovementId(entry.movementId) : null
+        const byId = canonical || reviewedId ? MOVEMENT_CATALOG.find(m => m.id === (reviewedId ?? entry.movementId)) : undefined
         const byName = !canonical ? MOVEMENT_CATALOG.find(m => m.id === name || m.name.toLowerCase() === name) : undefined
         const movement = byId ?? byName
         const roleValue = entry.role ?? block.role
@@ -145,12 +165,15 @@ export function normalizePerformedDoseEvidence(input: DoseEvidenceSnapshot) {
           unilateralConvention: structuredClone(entry.unilateralConvention ?? entry.perSide ?? null),
           equipment: structuredClone(entry.equipment ?? null), protocol: structuredClone(entry.protocol ?? null),
           effort: structuredClone(entry.effort ?? entry.rpe ?? null),
+          ...(reviewedActuals ? { reviewedSessionRpe: typeof feedback?.sessionRpe === 'number'
+            && feedback.sessionRpe >= 1 && feedback.sessionRpe <= 10 ? feedback.sessionRpe : null } : {}),
           quantityProvenance: Object.fromEntries(Object.entries({ sets, repetitions, load, durationMinutes }).map(([key, value]) => [key,
             historyFieldProvenance(row.capture_provenance, value.sourcePath, 'quantities')])),
           sourcePath: path, movementId: movement?.id ?? null, role, basis,
           sets, repetitions, load, durationMinutes, loadUnit: unit === 'lb' || unit === 'kg' ? unit : null,
           raw: structuredClone(entry), limitations: [
             'No protocol equivalence or complete weekly workload inferred.',
+            ...(reviewedActuals ? ['Reviewed completion contains reported sets only; unreported prescribed work remains unknown.'] : []),
             ...(canonical ? ['Prescription ranges are not exact performed repetitions, load or effort.'] : ['Stored fields retain their capture origin and are not independently verified completed working sets.']),
             ...(role === 'unknown' ? ['Working versus preparation role is unknown.'] : []),
             ...(!movement ? ['Movement identity is unresolved; no alias inference.'] : []),

@@ -1,0 +1,375 @@
+{
+  "schemaVersion": 1,
+  "id": "reviewed-hypertrophy-week-1",
+  "source": {
+    "path": "docs/verification/programming-quality/hypertrophy-week-revision-1.md",
+    "sha256": "93ed63584428468d0e75421be875b4240c3b37961d610a2489f88e9403f29998",
+    "baselineCaseId": "domain-consistent-full-gym-hypertrophy-3x60",
+    "inputHash": "758f9cbce305fb9769a2d269dd412e43008ff5e9bb79ae48ce9bbefa9ddeeca0",
+    "reviewKind": "qualitative_acceptance",
+    "reviewer": "Greg Foote",
+    "responses": [
+      "let's make sure we have RPE targets with our sets as well otherwise this look good",
+      "looks good now"
+    ],
+    "rubricScores": null,
+    "runtimeAuthority": false
+  },
+  "secondsPerRepForAccounting": 3,
+  "sessions": [
+    {
+      "day": "monday",
+      "availableMinutes": 60,
+      "preparationMinutes": 13,
+      "preparationRpe": {
+        "min": 3,
+        "max": 4
+      },
+      "transitionMinutes": 8,
+      "loggingMinutes": 3,
+      "exercises": [
+        {
+          "name": "Dumbbell bench press",
+          "sets": 3,
+          "repetitions": {
+            "min": 8,
+            "max": 12
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 120,
+            "max": 180
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        },
+        {
+          "name": "Seated machine shoulder press",
+          "sets": 2,
+          "repetitions": {
+            "min": 8,
+            "max": 12
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 120,
+            "max": 180
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        },
+        {
+          "name": "Cable chest fly",
+          "sets": 2,
+          "repetitions": {
+            "min": 10,
+            "max": 15
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 90,
+            "max": 120
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        },
+        {
+          "name": "Dumbbell lateral raise",
+          "sets": 2,
+          "repetitions": {
+            "min": 10,
+            "max": 15
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 90,
+            "max": 120
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        },
+        {
+          "name": "Cable triceps pressdown",
+          "sets": 2,
+          "repetitions": {
+            "min": 10,
+            "max": 15
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 90,
+            "max": 120
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        }
+      ]
+    },
+    {
+      "day": "tuesday",
+      "availableMinutes": 60,
+      "preparationMinutes": 13,
+      "preparationRpe": {
+        "min": 3,
+        "max": 4
+      },
+      "transitionMinutes": 8,
+      "loggingMinutes": 3,
+      "exercises": [
+        {
+          "name": "Lat pulldown",
+          "sets": 3,
+          "repetitions": {
+            "min": 8,
+            "max": 12
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 120,
+            "max": 180
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        },
+        {
+          "name": "Chest-supported dumbbell row",
+          "sets": 3,
+          "repetitions": {
+            "min": 8,
+            "max": 12
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 120,
+            "max": 180
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        },
+        {
+          "name": "Cable rear-delt fly",
+          "sets": 2,
+          "repetitions": {
+            "min": 10,
+            "max": 15
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 90,
+            "max": 120
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        },
+        {
+          "name": "Dumbbell curl",
+          "sets": 2,
+          "repetitions": {
+            "min": 10,
+            "max": 15
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 90,
+            "max": 120
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        },
+        {
+          "name": "Cable Pallof press",
+          "sets": 2,
+          "repetitions": {
+            "min": 10,
+            "max": 10
+          },
+          "sides": 2,
+          "targetRpe": {
+            "min": 6,
+            "max": 7
+          },
+          "restSeconds": {
+            "min": 90,
+            "max": 90
+          },
+          "sideChangeSecondsPerRound": 15,
+          "controlPriority": true,
+          "load": null,
+          "actualRpe": null
+        }
+      ]
+    },
+    {
+      "day": "wednesday",
+      "availableMinutes": 60,
+      "preparationMinutes": 13,
+      "preparationRpe": {
+        "min": 3,
+        "max": 4
+      },
+      "transitionMinutes": 8,
+      "loggingMinutes": 3,
+      "exercises": [
+        {
+          "name": "Leg press",
+          "sets": 3,
+          "repetitions": {
+            "min": 8,
+            "max": 12
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 120,
+            "max": 180
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        },
+        {
+          "name": "Dumbbell Romanian deadlift",
+          "sets": 3,
+          "repetitions": {
+            "min": 8,
+            "max": 12
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 120,
+            "max": 180
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        },
+        {
+          "name": "Seated leg curl",
+          "sets": 2,
+          "repetitions": {
+            "min": 10,
+            "max": 15
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 90,
+            "max": 120
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        },
+        {
+          "name": "Leg extension",
+          "sets": 2,
+          "repetitions": {
+            "min": 10,
+            "max": 15
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 90,
+            "max": 120
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        },
+        {
+          "name": "Bilateral calf raise on the leg-press machine",
+          "sets": 2,
+          "repetitions": {
+            "min": 10,
+            "max": 15
+          },
+          "sides": 1,
+          "targetRpe": {
+            "min": 7,
+            "max": 8
+          },
+          "restSeconds": {
+            "min": 90,
+            "max": 120
+          },
+          "sideChangeSecondsPerRound": 0,
+          "controlPriority": false,
+          "load": null,
+          "actualRpe": null
+        }
+      ]
+    }
+  ]
+}

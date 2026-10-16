@@ -1,5 +1,11 @@
+vi.mock('@/app/lib/coach/setup-memory-bindings', async importOriginal => ({
+  ...await importOriginal<typeof import('@/app/lib/coach/setup-memory-bindings')>(),
+  setupMemoryBindingsCurrent: vi.fn().mockResolvedValue(true),
+  captureSetupMemoryBindings: vi.fn().mockResolvedValue({ schemaVersion: 1, memories: { primary_goal: null, training_schedule: null, available_equipment: null, training_constraints: null } }),
+}))
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BUSY_COACH_CONTEXT_MESSAGE } from '@/app/lib/coach/proposal-context-revision'
+import { captureSetupMemoryBindings, setupMemoryBindingsCurrent } from '@/app/lib/coach/setup-memory-bindings'
 import { fetchDirectionReconciliation } from '@/app/lib/coach/direction-reconciliation-server'
 import type { CompleteCoachPlanningInput } from '@/app/lib/coach/complete-intake'
 
@@ -76,6 +82,7 @@ describe('POST /api/coach/weekly/reviews/[id]/proposal', () => {
 
   it('reconstructs one adjacent proposal from an immutable stored review', async () => {
     const supabase = client()
+    const originalBinding = structuredClone(supabase.storedReview.rationale.setupMemoryBindings)
     vi.mocked(createServerClient).mockResolvedValue(supabase as never)
 
     const response = await POST(request(), { params: Promise.resolve({ id: REVIEW_ID }) })
@@ -89,15 +96,38 @@ describe('POST /api/coach/weekly/reviews/[id]/proposal', () => {
       idempotencyKey: 'proposal-week-2'
     })
     expect(body.proposal.windowStart).toBe('2026-09-14')
+    expect(captureSetupMemoryBindings).not.toHaveBeenCalled()
     expect(supabase.rpc).toHaveBeenCalledWith(
       'create_rolling_weekly_replacement_proposal',
       expect.objectContaining({
         p_weekly_review_id: REVIEW_ID,
-        p_input_snapshot: expect.objectContaining({ contextRevision: 7 }),
+        p_input_snapshot: expect.objectContaining({ contextRevision: 7, setupMemoryBindings: originalBinding }),
         p_window_start: '2026-09-14',
         p_input_fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/)
       })
     )
+  })
+
+  it('asks for a fresh review when saved setup authority expires without rebinding the stored decision', async () => {
+    const supabase = client()
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+    vi.mocked(setupMemoryBindingsCurrent).mockResolvedValueOnce(false)
+    const response = await POST(request(), { params: Promise.resolve({ id: REVIEW_ID }) })
+    expect(response.status).toBe(409)
+    expect((await response.json()).error).toContain('Review the current training setup again')
+    expect(supabase.rpc).not.toHaveBeenCalled()
+    expect(captureSetupMemoryBindings).not.toHaveBeenCalled()
+  })
+
+  it('requires a new review for legacy missing bindings before any proposal RPC', async () => {
+    const supabase = client()
+    delete supabase.storedReview.rationale.setupMemoryBindings
+    vi.mocked(createServerClient).mockResolvedValue(supabase as never)
+    const response = await POST(request(), { params: Promise.resolve({ id: REVIEW_ID }) })
+    expect(response.status).toBe(409)
+    expect((await response.json()).error).toContain('Review the current training setup again')
+    expect(supabase.rpc).not.toHaveBeenCalled()
+    expect(captureSetupMemoryBindings).not.toHaveBeenCalled()
   })
 
   it('rejects a safety review before proposal storage', async () => {
@@ -248,6 +278,7 @@ function client(action = 'continue', ...revision: [number | undefined] | []) {
         presentation_class: presentationClass,
         evidence_status: evidenceStatus,
         rationale: {
+          setupMemoryBindings: { schemaVersion: 1, memories: { primary_goal: null, training_schedule: null, available_equipment: null, training_constraints: null } },
           contextRevision: revision.length ? revision[0] : 7,
           messages: ['Stored compatible evidence remains stable.'],
           planningDecision: {
@@ -278,6 +309,7 @@ function client(action = 'continue', ...revision: [number | undefined] | []) {
     }]
   }
   return {
+    storedReview: (results.coach_weekly_reviews[0].data as Array<Record<string, any>>)[0],
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null })
     },

@@ -38,6 +38,21 @@ describe('/api/coach/trust', () => {
     expect(other.rpc).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['training_schedule','schedule',{schemaVersion:2,experience:'consistent',sessionAvailability:[{day:'monday',minutes:60},{day:'saturday',minutes:75}]}],
+    ['available_equipment','equipment',{schemaVersion:2,equipment:'My rack, barbell and bench',resolvedEquipmentIds:['barbell','rack','bench'],unresolvedAthleteDescription:null}]
+  ])('accepts owned reviewed v2 %s corrections and denies unknown versions before SQL', async (memory_key,kind,content) => {
+    const id='51111111-1111-4111-8111-111111111111'
+    const db=client({tables:{coach_memories:[{id,user_id:userId,memory_key,kind,status:'confirmed'}]}})
+    vi.mocked(createServerClient).mockResolvedValue(db as never)
+    const body={action:'correct_memory',resourceId:id,content,idempotencyKey:'reviewed-setup-correction'}
+    expect((await POST(request(body))).status).toBe(200)
+    expect(db.rpc).toHaveBeenCalledWith('correct_coach_memory_with_review',expect.objectContaining({p_content:content}))
+    db.rpc.mockClear()
+    expect((await POST(request({...body,content:{...content,schemaVersion:3}}))).status).toBe(422)
+    expect(db.rpc).not.toHaveBeenCalled()
+  })
+
   it('returns the user-scoped trust read model without caching', async () => {
     const supabase = client()
     vi.mocked(createServerClient).mockResolvedValue(supabase as never)

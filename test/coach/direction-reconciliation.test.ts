@@ -44,6 +44,14 @@ function db(memories: Partial<Record<DirectionMemoryKey, DirectionMemoryRow | nu
 }
 afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers() })
 
+it('does not silently flatten even a uniform versioned reviewed setup into automatic intake', () => {
+  const result=run({training_schedule:row('training_schedule',{schemaVersion:2,experience:'consistent',
+    trainingDays:['monday','wednesday'],sessionMinutes:60,
+    sessionAvailability:[{day:'monday',minutes:60},{day:'wednesday',minutes:60}]})})
+  expect(result.status).toBe('unsupported')
+  expect(result.replacementPlanningInput).toBeUndefined()
+})
+
 describe('current confirmed direction reconciliation', () => {
   it('keeps legacy accepted setup when memories are absent without confirming a new form', () => {
     const accepted = week(), before = structuredClone(accepted)

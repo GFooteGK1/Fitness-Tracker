@@ -1,3 +1,4 @@
+import { setupMemoryBindingsCurrent } from './setup-memory-bindings'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { projectAcceptedCoachingDecisionOrigin, projectCoachingDecisionContext, type CoachingDecisionContext } from './coaching-decision-context'
 
@@ -45,7 +46,7 @@ async function fetchCurrentCoachingDecisionContext(
       : typeof rawRevision === 'string' && /^\d+$/.test(rawRevision) ? Number(rawRevision) : null
     return projectCoachingDecisionContext({ ...scope, review, proposal: proposals.data?.[0] ?? null,
       currentContextRevision,
-      sourceInvalidated: Boolean(invalidations.data?.length), superseded: Boolean(successors.data?.length) || !active.data?.length })
+      sourceInvalidated: Boolean(invalidations.data?.length) || !await setupMemoryBindingsCurrent(supabase, userId, review.rationale?.setupMemoryBindings), superseded: Boolean(successors.data?.length) || !active.data?.length })
   } catch { return unavailable() }
 }
 

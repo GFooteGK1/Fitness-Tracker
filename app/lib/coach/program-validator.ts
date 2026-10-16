@@ -14,6 +14,9 @@ import {
 } from './movement-catalog'
 import { COMPLETE_PROGRAMMING_POLICY, COMPLETE_PROGRAMMING_POLICY_VERSION } from './programming-policy'
 import { COMPLETE_PROGRAMMING_REFERENCE } from './programming-reference'
+import { doseContentHash, evaluateInitialDoseCandidate } from './initial-dose-policy'
+import type { OfflineReviewedSession, OfflineReviewedSessionContext } from './offline-reviewed-session'
+import { reviewedPreparationMovementId, validateReviewedMovementEligibility } from './reviewed-movement-eligibility'
 import {
   PROGRAMMING_KERNEL_VERSION,
   PROGRAMMING_SCHEMA_VERSION,
@@ -473,7 +476,7 @@ function validateExercise(
 
 function validateDose(
   label: string,
-  exercise: CompleteProgrammingExercisePrescription,
+  exercise: Pick<CompleteProgrammingExercisePrescription, 'dose'>,
   errors: string[]
 ): void {
   const dose = exercise.dose
@@ -553,9 +556,76 @@ function validateLoad(
         }
       }
     }
-  } else if (!exercise.loadAnchor.priorSessionId || !validRange(exercise.loadAnchor.loadRange)) {
-    errors.push(`${label} accepted-program load is missing immutable prior-session provenance`)
+  } else if (exercise.loadAnchor.source === 'accepted_program') {
+    if (!exercise.loadAnchor.priorSessionId || !validRange(exercise.loadAnchor.loadRange)) {
+      errors.push(`${label} accepted-program load is missing immutable prior-session provenance`)
+    }
+  } else {
+    errors.push(`${label} load source is not permitted in live programming`)
   }
+}
+
+/** Explicit offline path; hashes bind local review data, not authentication or fresh evidence. */
+export function validateOfflineReviewedSession(
+  value: unknown,
+  context: OfflineReviewedSessionContext,
+): CompleteProgrammingPlanValidation {
+  const errors: string[] = []
+  const warnings = ['Offline source bindings only; authenticated evidence and whole-week timing remain unverified']
+  try {
+    const candidate = evaluateInitialDoseCandidate(context.input, context.registry)
+    if (candidate.kind !== 'candidate') return { ok: false, errors: candidate.reasons, warnings }
+    const option = candidate.option
+    const entries = context.recipes.filter(entry => entry.recipe.optionId === option.id)
+    if (entries.length !== 1) return { ok: false, errors: ['Unique reviewed session recipe required'], warnings }
+    const { recipe, contentHash } = entries[0]
+    const same = (a: unknown, b: unknown) => doseContentHash(a) === doseContentHash(b)
+    if (doseContentHash(recipe) !== contentHash || recipe.optionHash !== doseContentHash(option)
+      || !same(recipe.review, option.review)) errors.push('Reviewed recipe binding changed')
+    const profileValidation = validateProgrammingProfile(context.profile)
+    errors.push(...profileValidation.errors)
+    if (!validateReviewedMovementEligibility(option.after.movementId, context.profile).ok) {
+      errors.push('Reviewed working movement violates catalog, equipment, experience or constraint eligibility')
+    }
+    if (!recipe.preparation.length || !recipe.workingInstructions.length
+      || recipe.workingInstructions.some(line => !line.trim())
+      || new Set(recipe.preparation.map(step => step.id)).size !== recipe.preparation.length) {
+      errors.push('Reviewed preparation and working instructions must be complete')
+    }
+    for (const step of recipe.preparation) {
+      const preparationId = reviewedPreparationMovementId(step.movement, option.after.movementId)
+      if (!preparationId || !validateReviewedMovementEligibility(preparationId, context.profile).ok) errors.push(`Reviewed preparation is ineligible: ${step.id}`)
+      if (!step.id.trim() || !step.movement.trim()
+        || (step.dose.kind === 'duration' ? !positiveNumber(step.dose.seconds)
+          : step.dose.kind !== 'repetitions' || !Number.isInteger(step.dose.repetitions) || step.dose.repetitions < 1)
+        || (step.restAfterSeconds !== null && !validRange(step.restAfterSeconds))
+        || (step.load !== null && (!validRange(step.load) || !['lb', 'kg'].includes(step.load.unit)))
+        || (step.effort.kind === 'rpe' ? !validRange(step.effort.range) || step.effort.range.min < 1 || step.effort.range.max > 10
+          : step.effort.kind !== 'quality' || !step.effort.cue.trim())) errors.push('Malformed reviewed preparation step')
+    }
+    const session = value as OfflineReviewedSession
+    if (session.format !== 'offline_reviewed_session_v1' || session.numericRuntimeEligible !== false
+      || session.persistable !== false || session.requiresAthleteAcceptance !== true
+      || !same(session.timing, { estimatedMinutes: null, wholeWeekFitVerified: false })) errors.push('Offline session boundary changed')
+    if (session.recipeHash !== contentHash || !same(session.preparation, recipe.preparation)
+      || !same(session.workingInstructions, recipe.workingInstructions)) errors.push('Reviewed preparation or instructions changed')
+    const { after } = option
+    const working = session.working
+    validateDose('Reviewed working prescription', working, errors)
+    if (working.movementId !== after.movementId
+      || !same(working.dose, { kind: 'sets_reps', sets: { min: after.sets, max: after.sets }, repetitions: after.repetitions })
+      || !same(working.executionTarget, { kind: 'rpe', range: after.targetRpe })
+      || !same(working.restSeconds, after.restSeconds)) errors.push('Reviewed working dose changed')
+    if (!same(working.loadAnchor, {
+      source: 'reviewed_option', optionId: option.id, optionHash: doseContentHash(option),
+      review: option.review, sources: option.sources, policyVersion: option.policyVersion,
+      protocolId: after.protocolId, equipmentId: after.equipmentId,
+      loadConvention: after.loadConvention, repetitionsPerSide: after.repetitionsPerSide, loadRange: after.load,
+    })) errors.push('Reviewed working provenance or load changed')
+  } catch {
+    errors.push('Malformed offline reviewed session or context')
+  }
+  return { ok: errors.length === 0, errors: unique(errors), warnings }
 }
 
 function eligibilityForProfile(profile: ProgrammingProfile): MovementEligibilityContext {

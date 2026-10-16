@@ -77,3 +77,7 @@ scripts/eval/manifest.*.json
 /output/playwright/photo-review/
 /output/playwright/photo-screening/
 /output/photo-review-drafts/
+# Sealed evaluation inputs and separate local key custody; never commit.
+/output/programming-quality-holdout/
+/output/programming-quality-holdout-custody/
+/output/programming-quality-review/

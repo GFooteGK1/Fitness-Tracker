@@ -9,6 +9,9 @@ export function isCoachContextConflict(error: { code?: string }): boolean {
 
 export function coachContextConflictMessage(error: { code?: string; message?: string }): string {
   if (error.code === '55P03') return BUSY_COACH_CONTEXT_MESSAGE
+  if (error.message?.startsWith('Confirmed training setup changed or needs review;') || error.message?.startsWith('Planning setup is unverified;')) {
+    return 'Your saved training setup needs review. Confirm the current setup and create a fresh review and proposal.'
+  }
   return error.message?.startsWith('Confirmed training intent changed or needs review;')
     ? 'Your confirmed goals or event need review. Confirm your training direction before creating a replacement week; refreshing the old review is not enough.'
     : STALE_COACH_CONTEXT_MESSAGE
