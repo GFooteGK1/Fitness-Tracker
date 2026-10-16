@@ -1,0 +1,8 @@
+.beads/
+output/
+node_modules/
+.git/
+.worktrees/
+.env
+.env*.local
+.vercel/

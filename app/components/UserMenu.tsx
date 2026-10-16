@@ -35,7 +35,7 @@ export default function UserMenu() {
       router.push('/')
     } catch (error) {
       console.error('Sign out error:', error)
-      setSignOutError('Failed to sign out. Please try again.')
+      setSignOutError(error instanceof Error ? error.message : 'Failed to sign out. Please try again.')
       setSigningOut(false)
     }
   }

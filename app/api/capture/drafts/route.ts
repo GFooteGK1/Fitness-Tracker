@@ -29,7 +29,13 @@ export async function POST(request: Request) {
     const { data, error: mutationError } = input.action === 'commit'
       ? await supabase.rpc('commit_activity_draft', { p_draft_id: input.draftId, p_expected_revision: input.expectedRevision, p_request_id: claim.id, ...(input.recommendationId?{p_recommendation_id:input.recommendationId}:{}) })
       : await supabase.rpc('save_activity_draft', { p_draft_id: input.draftId, p_expected_revision: input.expectedRevision, p_request_id: claim.id, p_operation: null, p_discard: true })
-    if (mutationError) return NextResponse.json({ error: 'The draft action could not be confirmed. Retry the same request.', state: 'save_unconfirmed' }, { status: 503, headers })
+    if (mutationError) {
+      // These database exceptions abort the entire RPC. Transport failures remain uncertain.
+      if (['22023','40001','42501','55000'].includes(mutationError.code ?? '')) return finishRequest(supabase, claim.id!, NextResponse.json({
+        error: 'The draft changed or is unavailable. Refresh drafts before choosing another action.', retrySafe: true,
+      }, { status: 409, headers }))
+      return NextResponse.json({ error: 'The draft action could not be confirmed. Retry the same request.', state: 'save_unconfirmed' }, { status: 503, headers })
+    }
     if (input.action === 'commit') loggingContext.getStore()!.receipts = [data]
     return finishRequest(supabase, claim.id!, NextResponse.json({ success: true, ...(input.action === 'commit' ? { receipt: data } : { draft: data }) }, { headers }))
   })

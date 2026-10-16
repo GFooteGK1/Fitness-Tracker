@@ -1,0 +1,176 @@
+{
+  "files": [
+    {
+      "workspace": "web",
+      "path": "app/api/auth/signout/route.ts",
+      "sha256": "6f7ef5851f9df88029cd56166b04290e41fcc504d08e7b289680586c2315cb28"
+    },
+    {
+      "workspace": "web",
+      "path": "app/components/UserMenu.tsx",
+      "sha256": "7fad63f25cd8b3f747b2e821aea4eb0e142102cef0ae0c61e1bb71655c9c94da"
+    },
+    {
+      "workspace": "web",
+      "path": "app/lib/auth/AuthContext.tsx",
+      "sha256": "9930087a7d6b0f2e1b6a2a4cd0f02199756228d6a04338be2075d630ca4f3807"
+    },
+    {
+      "workspace": "web",
+      "path": "app/capture/photos/page.tsx",
+      "sha256": "7b289eedf6cbf95baff5084d2f54d629fe3d806d4d4db864a1007e406232b55d"
+    },
+    {
+      "workspace": "web",
+      "path": "app/api/capture/camera/route.ts",
+      "sha256": "c650ebb0ec51d0290b7594be8bb3e39a7a6637552c00d7367378d8086b6ac9e5"
+    },
+    {
+      "workspace": "web",
+      "path": "app/api/capture/camera/photos/route.ts",
+      "sha256": "56e9b3850480fccc416ef4f018fd159ed0b5e2f624971d04b5849c2f56c5fce2"
+    },
+    {
+      "workspace": "web",
+      "path": "app/api/capture/camera/status/route.ts",
+      "sha256": "3d7cf936bc87a3abc1bec34ade9ca053c6a7d21bf2b999539578d7a03be7a747"
+    },
+    {
+      "workspace": "web",
+      "path": "app/api/capture/devices/route.ts",
+      "sha256": "af9e133032100de260a3e28fa69fa87bcddca02a71feefb5bd4e5bba63606d2a"
+    },
+    {
+      "workspace": "web",
+      "path": "app/capture/camera/page.tsx",
+      "sha256": "a15d881de22c9d3fb8cfaf4be8631fa2388965ff337ffc1ef654af5b2ed4db38"
+    },
+    {
+      "workspace": "web",
+      "path": "app/components/capture/CameraPhotoSetup.tsx",
+      "sha256": "b00570cae783ad2b109f3207d0c8d5f7242d5d3767ab2cf96a587ec28e88bf66"
+    },
+    {
+      "workspace": "web",
+      "path": "app/lib/capture/camera-device.ts",
+      "sha256": "4e969ea0db469c26c4b7e0767d35bab9c7e6ad7aab39735f737abc7888b41cbb"
+    },
+    {
+      "workspace": "web",
+      "path": "app/lib/capture/revoke-camera-devices.ts",
+      "sha256": "e5b033142c220546950493f1e3a3183149b9f6adf191408d9c49b3346c587e78"
+    },
+    {
+      "workspace": "web",
+      "path": "docs/migrations/camera-photo-bridge.sql",
+      "sha256": "944e999b9728c4a30d5d140299e7ff304ab5b83ec0aebfb10426174c589e80de"
+    },
+    {
+      "workspace": "web",
+      "path": "package.json",
+      "sha256": "c8e60373e4b723ae0c8726a58490ccb8534111365d902458710c0a882d5f80ec"
+    },
+    {
+      "workspace": "web",
+      "path": "package-lock.json",
+      "sha256": "8f93db79636ee8837da2ce6c77d252b705b5cf5c6ae25b8a502c159eb0093453"
+    },
+    {
+      "workspace": "web",
+      "path": "test/api/camera-photo-bridge.integration.test.ts",
+      "sha256": "78f8ade46c7f58a2e8a046abccb4ffca19c93d107a4495bf8d6ec99a97b210c1"
+    },
+    {
+      "workspace": "web",
+      "path": "test/api/camera-signout.test.ts",
+      "sha256": "bef989f55581832d6269ee404cba41e8276281a8972e1ad482aaa261c44c0a6f"
+    },
+    {
+      "workspace": "web",
+      "path": "test/components/camera-photo-setup.test.tsx",
+      "sha256": "92772c726d65e5ef2b8a55f1c6e6bc08054985179a7a1ac6bd3f0e4560de3f40"
+    },
+    {
+      "workspace": "web",
+      "path": "test/auth/auth-context.test.tsx",
+      "sha256": "4f4af1f4b30f417690fd2a733b870832730760ec9bc23046354c80a7d1663d10"
+    },
+    {
+      "workspace": "web",
+      "path": "docs/decisions/ADR-0032-camera-close-cloud-photo-bridge.md",
+      "sha256": "d5846512624f89fc9bb8da4a571f89931a15af69f9f9104f646cc94bd421bf89"
+    },
+    {
+      "workspace": "web",
+      "path": "docs/architecture/ARCHITECTURE-MAP.md",
+      "sha256": "d23658b952e93fe1bf2834d85df2a59cec4cafb198c4fb00ebd9d688c4d3f058"
+    },
+    {
+      "workspace": "web",
+      "path": "docs/verification/photo-review-drafts/2026-10-10-camera-bridge-local.md",
+      "sha256": "c207fb7a0527104c698a32cbae10f519668e2f7bc516fdb0f4747206dc974d6a"
+    },
+    {
+      "workspace": "native",
+      "path": "ios/App/CameraCloseProbeView.swift",
+      "sha256": "307bdf1816ae387bec4ee5defd5855c757764372eb8e6e3549e74b9d7014ead9"
+    },
+    {
+      "workspace": "native",
+      "path": "ios/App/DiscoverNewPhotosIntent.swift",
+      "sha256": "996962428b12fa94166bc02c3321b2ac832c42d0beb5d8bfe7ca82048cee7b5a"
+    },
+    {
+      "workspace": "native",
+      "path": "ios/App/CloudPhotoRuntime.swift",
+      "sha256": "0e0367bcc7a84583fc640384ea2dab12d13cfb1b7a7e37d8e8ec31be03c5270a"
+    },
+    {
+      "workspace": "native",
+      "path": "ios/App/CloudPhotoSetupView.swift",
+      "sha256": "ae08f40edaa588bacbcb2ebf44b1a36e073aff7bdf8051cc9fa94a0722130fbe"
+    },
+    {
+      "workspace": "native",
+      "path": "ios/Shared/CloudPhotoQueue.swift",
+      "sha256": "6692be2a42d1ef6965a5abefd6886ee05f706f1882285143a7f460df8c08a618"
+    },
+    {
+      "workspace": "native",
+      "path": "ios/Shared/CloudPhotoControl.swift",
+      "sha256": "b65ac8888be2a12283dc567e961780d2064c40e0e06bf1331a4b1b7e027511e2"
+    },
+    {
+      "workspace": "native",
+      "path": "ios/Shared/CloudPhotoJPEG.swift",
+      "sha256": "0d2f8c7c33f91f9cc329e91b7c942cb2de1e72ff804f5c0bc548838124635303"
+    },
+    {
+      "workspace": "native",
+      "path": "ios/Tests/CloudPhotoQueueTests.swift",
+      "sha256": "7cf53294d1ccec807f9aa63a13bade3b17d258abf292057a65ac13f65ca35ff2"
+    },
+    {
+      "workspace": "native",
+      "path": "ios/Supporting/App/PrivacyInfo.xcprivacy",
+      "sha256": "f1cd9fcd2120d8baa1b7998a3aef79ef51d9b411a56afc5e86d291a79b2d4b2b"
+    },
+    {
+      "workspace": "native",
+      "path": "docs/decisions/ADR-0032-camera-close-cloud-photo-bridge.md",
+      "sha256": "d5846512624f89fc9bb8da4a571f89931a15af69f9f9104f646cc94bd421bf89"
+    },
+    {
+      "workspace": "native",
+      "path": "docs/architecture/ARCHITECTURE-MAP.md",
+      "sha256": "e0574bb790de499de36c683e58f349a0e93249c491008158c93197e7eb7ebe67"
+    },
+    {
+      "workspace": "web",
+      "path": "app/lib/capture/camera-jpeg.ts",
+      "sha256": "504cefdd4847d046abedaeeafc576f51707494bc49b7ab473e75bcde78be44fc"
+    }
+  ],
+  "webBase": "d3db5fb316f0f48fc8b61df9250997c20dc12d04",
+  "nativeBase": "d36f85311a77a01b1ca2afe9cab43c4b2cb9e257"
+}

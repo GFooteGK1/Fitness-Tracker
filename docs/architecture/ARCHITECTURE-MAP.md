@@ -25,6 +25,30 @@
 
 ## 🔐 **Authentication System**
 
+### Selected photo review
+
+`/capture/photos` sends an explicitly approved image to
+`/api/meals/photo-drafts`, which first uses GPT Decisions screening with explicit
+OpenAI consent. Food candidates continue through the Socius vision analyzer to an
+owned `activity_drafts` record; non-food and uncertain results stop in the request
+ledger without a draft. Corrections use the photo-draft revision boundary;
+acceptance or dismissal uses `/api/capture/drafts`. Only atomic acceptance writes
+canonical nutrition. Photo bytes are transient; no storage upload is enabled.
+The existing capture-v2 pause applies. See ADR-0030 and ADR-0031 for recovery,
+screening thresholds, consent and release scope.
+
+### Opt-in Camera-close bridge
+
+`/capture/camera` pairs a revocable native capability. The companion's separate
+fresh Photos checkpoint and durable queue call `/api/capture/camera/photos` and
+status with stable request identities. `camera_photo_request` derives the owner
+from the hashed capability, admits one provider attempt and atomically creates
+only a review draft. GPT screening and Socius analysis reuse the selected-photo
+seams. Explicit web acceptance remains the canonical nutrition boundary.
+`camera_photo_device_control` handles owner setup/revocation; sign-out revokes
+before session cleanup. No photo persistence is enabled. This bridge is off by
+default and is not released. See ADR-0032 for limits and native/host qualification.
+
 ### **Core Components:**
 - **AuthContext** (`app/lib/auth/AuthContext.tsx`) - Central auth state management
 - **Supabase Clients** (`app/lib/auth/supabase-*.ts`) - Database connections

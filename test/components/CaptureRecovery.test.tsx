@@ -14,6 +14,23 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 beforeEach(() => { sessionStorage.clear(); auth.user = { id: 'athlete-a' } })
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
+it.each(['non_food','review_required'])('recovers %s screening without a false saved-meal claim or upload retry', async outcome => {
+  const key = 'socius-pending:athlete-a:/api/meals/photo-drafts'
+  sessionStorage.setItem(key, JSON.stringify({ requestId: 'screened-photo' }))
+  const fetch = vi.fn(async (url: string) => url === '/api/capture/drafts'
+    ? json({ userId: 'athlete-a', drafts: [] })
+    : json({ state: 'screened', outcome, requestResolved: true, retryAllowed: false, canonicalChanged: false, receipts: [] }))
+  vi.stubGlobal('fetch', fetch)
+  render(<CaptureRecovery />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Check save' }))
+  await screen.findByText(outcome === 'non_food' ? 'Screening found no food. No meal estimate was created.' : 'Screening needs review. No meal estimate was created. Use a clearer food photo or enter the meal manually.')
+  expect(screen.queryByRole('button', { name: 'Retry original save' })).toBeNull()
+  expect(screen.queryByText('Meal saved', { exact: true })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Log another occurrence' }))
+  expect(sessionStorage.getItem(key)).toBeNull()
+  expect(fetch.mock.calls.filter(call => call[0] !== '/api/capture/drafts')).toHaveLength(1)
+})
+
 it('explains confirmed-unsaved workout recovery before explicitly releasing the old request', async () => {
   const key = 'socius-pending:athlete-a:/api/parse-workout'
   sessionStorage.setItem(key, JSON.stringify({ requestId: 'failed-workout', json: JSON.stringify({ text: 'APEX RPE 5.5', date: '2026-09-25' }) }))

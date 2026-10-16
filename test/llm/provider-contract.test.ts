@@ -42,6 +42,17 @@ beforeEach(() => {
 })
 
 describe('provider contract parity', () => {
+  it('forwards bounded per-request options and propagates failure without a second adapter call', async () => {
+    anthropicCreate.mockRejectedValue(new Error('offline'))
+    openaiCreate.mockRejectedValue(new Error('offline'))
+    const bounded = { ...req, timeoutMs: 45000, maxRetries: 0 }
+    await expect(anthropicProvider.chat(bounded, 'claude-x')).rejects.toThrow('offline')
+    await expect(openaiProvider.chat(bounded, 'gpt-x')).rejects.toThrow('offline')
+    for (const create of [anthropicCreate,openaiCreate]) {
+      expect(create).toHaveBeenCalledTimes(1)
+      expect(create.mock.calls[0][1]).toEqual({ maxRetries: 0, signal: expect.any(AbortSignal) })
+    }
+  })
   it('normalizes a plain text response identically', async () => {
     anthropicCreate.mockResolvedValue({
       content: [{ type: 'text', text: 'hello' }],
