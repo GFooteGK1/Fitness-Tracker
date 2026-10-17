@@ -1,5 +1,6 @@
 'use client'
 
+import { ProgrammingNavigation } from './programming-navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { recommendationOrigin, refreshAfterCanonicalSave } from '@/app/lib/client/recommendations'
 import { sendCaptureCorrection } from '@/app/lib/client/logging-request'
@@ -489,7 +490,7 @@ export default function RollingProgramPage() {
         <header className="py-2">
           <p className="app-eyebrow">Made for your week</p>
           <h1 className="app-title">Your training plan</h1>
-          <a href="/program/supervised" className="inline-flex min-h-11 items-center underline">Supervised programming</a>
+          <ProgrammingNavigation state={weeklyState} />
           <p className="app-muted mt-2 max-w-2xl text-sm leading-6">
             Your current plan stays active until you approve a change.
           </p>

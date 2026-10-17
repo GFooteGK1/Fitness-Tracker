@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from 'react'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ReviewedSessionCard } from '@/app/program/reviewed-session-card'
@@ -22,7 +22,7 @@ describe('reviewed week in actual program view', () => {
     expect(screen.getAllByText(/repetitions to about 2 RIR each set/)).toHaveLength(2)
     expect(screen.getAllByText(/no fixed repetition cap/)).toHaveLength(2)
     expect(screen.getByText('Rest 30 seconds between sides')).toBeVisible()
-    expect(screen.getByText('Time estimate allows 1000 seconds per set per side; this is not a set duration limit.')).toBeVisible()
+    expect(screen.getByText('Time estimate allows 1000 seconds per set per side; this is not a set duration limit.')).not.toBeVisible()
     expect(screen.getByText('logging: 120 seconds')).toBeVisible()
     expect(screen.getByText('logging: 120 seconds').closest('li')).not.toHaveTextContent('Optional')
   })
@@ -77,5 +77,35 @@ describe('reviewed week in actual program view', () => {
     session.protocols[0].instructions.push('Keep the recorded grip width for this series.')
     render(<ReviewedSessionCard prescription={session} />)
     expect(screen.getByText('Keep the recorded grip width for this series.')).toBeInTheDocument()
+    expect(screen.getByText('Keep the recorded grip width for this series.')).not.toBeVisible()
+    const details = screen.getByText('Keep the recorded grip width for this series.').closest('details')!
+    expect(details).not.toHaveAttribute('open')
+    details.open = true
+    expect(screen.getByText('Keep the recorded grip width for this series.')).toBeVisible()
+  })
+
+  it('shows a complete warm-up once and retains nested cardio detail collapsed', () => {
+    const session = reviewedRollingWeek().plan.scheduledSessions[0].prescription
+    const preparation = session.content.steps[0]
+    if (preparation.kind !== 'preparation_window') throw Error('Fixture preparation missing')
+    preparation.activities = [preparation.activities[0]]
+    preparation.instructions = ['Easy bike 4 minutes; sled 2×20 m; A-march and A-skip 2×15 m.']
+    render(<ReviewedSessionCard prescription={session} />)
+    expect(screen.getByText(preparation.instructions[0])).toBeVisible()
+    const bike = screen.getByRole('heading', { name: /bike.*preparation/i, hidden: true })
+    expect(bike).not.toBeVisible()
+    expect(bike.closest('details')).not.toHaveAttribute('open')
+  })
+
+  it('shows named movement, dose, load and effort before collapsed notes without changing the prescription', () => {
+    const session = reviewedRollingWeek().plan.scheduledSessions[4].prescription
+    const before = structuredClone(session)
+    const { container } = render(<ReviewedSessionCard prescription={session} />)
+    const bench = screen.getAllByRole('heading', { name: 'Barbell bench press' })[0].parentElement!
+    expect(within(bench).getByText('4 × 2 reps')).toBeVisible()
+    expect(within(bench).getByText('205 lb total')).toBeVisible()
+    expect(within(bench).getByText('Target RPE 7–8 each set')).toBeVisible()
+    expect(container.querySelectorAll('details[open]')).toHaveLength(0)
+    expect(session).toEqual(before)
   })
 })

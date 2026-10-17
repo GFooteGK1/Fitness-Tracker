@@ -41,7 +41,8 @@ function buildBoundedPerformedWork(input: PlanningHistorySnapshot, recordBudget:
       completionId: exposure.completionId, sessionId: exposure.sessionId, date: exposure.date,
       capturedAt: exposure.capturedAt, revision: exposure.revision, snapshotId: exposure.snapshotId,
       movementId: exposure.movementId,
-      recordedName: typeof exposure.raw.name === 'string' ? exposure.raw.name : null,
+      recordedName: typeof exposure.raw.name === 'string' ? exposure.raw.name : typeof exposure.raw.movement_name === 'string' ? exposure.raw.movement_name : null,
+      ...(exposure.recordedEvent ? { recordedEvent: structuredClone(exposure.recordedEvent) } : {}),
       role: exposure.role, basis: exposure.basis, origin: exposure.origin, reviewState: exposure.reviewState,
       completionState: exposure.raw.completed === false ? 'explicitly_not_completed' as const
         : exposure.raw.workStatus === 'unsure' ? 'uncertain' as const : 'not_independently_verified' as const,

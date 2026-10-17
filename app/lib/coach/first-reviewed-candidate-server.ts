@@ -72,7 +72,7 @@ export async function prepareFirstReviewedCandidate(db: SupabaseClient, input: u
       basePlanVersionId: draft.basePlanVersionId, baseSessions: base.plan.scheduledSessions,
       sourceSlots: source.binding.executionSlots, target: compiled.plan, transition: target.transition })
     if (continuity.kind !== 'continuity') return continuity
-    if (source.performed.records.length > 64) throw new Error('Explicit narrower history needed; no evidence was truncated')
+    if (source.performed.records.length > 64) return { kind: 'evidence_window_required' as const }
     const week = compiled.plan
     const reviewPacket = parseFirstReviewedReviewPacket({ schemaVersion: 1, reviewMode: 'manual_first_reviewed_week',
       week, legacyBase: legacyReviewBase(base.plan), rationale: draft.rationale,
