@@ -152,14 +152,20 @@ describe('first reviewed root identity and recovery (component transport, not re
     expect(savedWeeks.compareDocumentPosition(screen.getByRole('region',{name:'1 Confirm current setup'})) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     await screen.findByRole('link',{name:'Go to the selected week and next step'})
     expect(screen.getByRole('link',{name:'Go to the selected week and next step'}).getAttribute('href')).toBe('#saved-week-review')
+    const savedReview=screen.getByRole('region',{name:'4 Designated reviewer decision'})
+    expect(savedReview.compareDocumentPosition(screen.getByRole('region',{name:'1 Confirm current setup'})) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const rationale=screen.getByText('Synthetic complete-week UI identity check, not athlete suitability.')
     if(selfReview){
       expect(screen.getByText('Awaiting coach approval')).toBeTruthy()
       const approve=await screen.findByRole('button',{name:'Approve this exact week'}) as HTMLButtonElement
       expect(approve.disabled).toBe(true);expect(screen.queryByRole('button',{name:'Accept this exact week'})).toBeNull()
+      expect(approve.compareDocumentPosition(rationale) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       fireEvent.click(screen.getByRole('checkbox',{name:'I reviewed the complete week, previous plan, facts and limitations.'}))
       fireEvent.click(approve)
-      const issue=await screen.findByRole('button',{name:'Create the athlete proposal'})
-      expect(screen.getByText('Coach approved — create athlete proposal')).toBeTruthy()
+      const issue=await screen.findByRole('button',{name:'Continue to athlete acceptance'})
+      expect(screen.getByText('Coach approved — not active yet')).toBeTruthy()
+      expect(screen.getByText('Coach approval saved. Separate athlete acceptance is still required before this week becomes active.')).toBeTruthy()
+      expect(issue.compareDocumentPosition(rationale) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(decisions).toHaveLength(1);expect(requests).toEqual([])
       expect(decisions[0]).toMatchObject({userId:owner,operation:'decide',body:{expectedUserId:owner,candidateId,designationId:candidate.designationId,decision:'approve'}})
       fireEvent.click(issue)
@@ -167,6 +173,7 @@ describe('first reviewed root identity and recovery (component transport, not re
     const accept=await screen.findByRole('button',{name:'Accept this exact week'}) as HTMLButtonElement
     expect(screen.getByText('Awaiting your acceptance')).toBeTruthy()
     expect(accept.disabled).toBe(true);expect(requests).toEqual([])
+    expect(accept.compareDocumentPosition(rationale) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByText('Synthetic complete-week UI identity check, not athlete suitability.')).toBeTruthy()
     fireEvent.click(screen.getByRole('checkbox',{name:'I reviewed this complete proposed week and want to accept it.'}))
     expect(accept.disabled).toBe(false);fireEvent.click(accept)
@@ -175,6 +182,9 @@ describe('first reviewed root identity and recovery (component transport, not re
       proposalId,planVersionId,requestId:summary.proposalRequestId,contentHash:candidate.contentHash,sourceHash:candidate.sourceHash}})
     await screen.findByText(/This exact week is accepted on your existing program/)
     await screen.findByText('This exact week is accepted. Your prior program history remains preserved.')
+    const planLink=screen.getByRole('link',{name:'Open my active plan'})
+    expect(planLink.getAttribute('href')).toBe('/program')
+    expect(planLink.compareDocumentPosition(rationale) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(readFirstReviewedPending(localStorage,owner,programId)).toBeNull()
   })
   it.each([
@@ -202,10 +212,10 @@ describe('first reviewed root identity and recovery (component transport, not re
       expect(screen.queryByRole('button',{name:'Approve this exact week'})).toBeNull()
     }else{
       expect(screen.queryByText('Awaiting your acceptance')).toBeNull()
-      expect(screen.queryByRole('button',{name:'Create the athlete proposal'})).toBeNull()
+      expect(screen.queryByRole('button',{name:'Continue to athlete acceptance'})).toBeNull()
       expect(screen.queryByRole('button',{name:'Accept this exact week'})).toBeNull()
       if(state==='pending')expect(screen.getByRole('button',{name:'Approve this exact week'})).toBeTruthy()
-      else expect(screen.getByText(state==='proposed'?'Awaiting athlete acceptance':'Coach approved — awaiting athlete proposal')).toBeTruthy()
+      else expect(screen.getByText(state==='proposed'?'Awaiting athlete acceptance':'Coach approved — awaiting athlete acceptance')).toBeTruthy()
     }
     expect(fetcher.mock.calls.every(([,init])=>!init?.method||init.method==='GET')).toBe(true)
   })

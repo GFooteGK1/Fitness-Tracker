@@ -29,8 +29,16 @@ function savedWeekStatus(c:FirstReviewCandidateSummary,owner:boolean){
   if(c.proposalStatus==='rejected'||c.proposalStatus==='expired')return 'Proposal '+c.proposalStatus
   if(c.decision==='reject')return 'Review rejected'
   if(c.proposalStatus==='proposed')return owner?'Awaiting your acceptance':'Awaiting athlete acceptance'
-  if(c.decision==='approve')return owner?'Coach approved — create athlete proposal':'Coach approved — awaiting athlete proposal'
+  if(c.decision==='approve')return owner?'Coach approved — not active yet':'Coach approved — awaiting athlete acceptance'
   return 'Awaiting coach approval'
+}
+function savedResultNotice(request:FirstReviewedPending){
+  if(request.operation==='accept')return 'This exact week is accepted on your existing program. Previous history is preserved.'
+  if(request.operation==='decide')return request.body.decision==='approve'
+    ?'Coach approval saved. Separate athlete acceptance is still required before this week becomes active.'
+    :'The review rejection was saved. This week is not active.'
+  if(request.operation==='issue')return 'The athlete proposal is ready. Separately accept this exact week to make it active.'
+  return 'The exact result was verified and retained.'
 }
 /** Structured attributed facts and legacy prescriptions; never raw JSON or inferred performance. */
 function ContextFacts({value}:{value:unknown}){
@@ -201,7 +209,7 @@ function FirstReviewedActorWorkspace({userId}:{userId:string}){
           if(!current(program,token))return
           setConfirmation(value)}
         if(request.operation==='submit'){const value=parseFirstReviewedCandidateReview(resolution.result);if(!value)throw Error('Saved candidate could not be read.');setCandidate(value);setReviewed(false);setAcceptReviewed(false)}
-        setNotice(request.operation==='accept'?'This exact week is accepted on your existing program. Previous history is preserved.':'The exact result was verified and retained.')
+        setNotice(savedResultNotice(request))
       }else{setNotice('The original request is permanently closed without a write. You can prepare a new action.');setPreview(null)}
       await readWorkspace(program)
       if(workspace?.program.role==='athlete')await readSnapshots(program)
@@ -239,9 +247,9 @@ function FirstReviewedActorWorkspace({userId}:{userId:string}){
   const boundCandidate=!!(candidate&&d&&candidate.designationId===d.designationId&&candidate.designationVersion===d.version&&candidate.basePlanVersionId===d.basePlanVersionId)
   return <section className="mx-auto max-w-5xl space-y-6 p-4 text-base">
     <a href="/program" className="inline-flex min-h-11 items-center underline">Back to your plan</a>
-    <h1 className="text-2xl font-bold">Review your next week</h1>
+    <h1 className="text-2xl font-bold">Your programming</h1>
     <p>Confirm current context, review the complete week, then separately accept it. A gap between weeks does not establish completed or skipped training.</p>
-    {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
+    {!candidate&&error&&<p role="alert">{error}</p>}{!candidate&&notice&&<p role="status">{notice}</p>}
     {!programs&&!error&&<p role="status">Loading your programs…</p>}
     {(programs||recoveryPrograms.length>0)&&<label className="block">Program<select className="min-h-11 w-full rounded border p-2 text-base" disabled={busy} value={selected??''} onChange={e=>select(e.target.value)}>
       <option value="">Choose a program</option>{programs?.programs.map(v=><option key={v.programId} value={v.programId}>{v.title} · {v.role}</option>)}
@@ -270,6 +278,35 @@ function FirstReviewedActorWorkspace({userId}:{userId:string}){
       {candidate&&<a className="inline-flex min-h-11 items-center underline" href="#saved-week-review">Go to the selected week and next step</a>}
       {!workspace.candidates.length&&<p>No reviewed candidate has been saved.</p>}
       {workspace.nextAfterCandidateId&&<button className={action} disabled={busy} onClick={()=>void perform(async()=>{await readWorkspace(workspace.program.programId,workspace.nextAfterCandidateId)})}>More candidates</button>}
+    </section>}
+    {candidate&&<section id="saved-week-review" aria-label="4 Designated reviewer decision" className="scroll-mt-4 space-y-3"><h2 className="text-xl font-bold">Your saved week</h2>
+      {summary&&<p role="status">{candidate.reviewPacket.week.windowStart}–{candidate.reviewPacket.week.windowEnd}: {savedWeekStatus(summary,owner)}.</p>}
+      {summary?.decision==='pending'&&<p>{candidate.reviewerId===userId&&d?.reviewerId===userId
+        ?'Review the complete week below, then check the confirmation and select “Approve this exact week.” Until that result is saved, this week remains pending.'
+        :'The designated reviewer must save approval before an athlete proposal can be created.'}</p>}
+      {summary?.decision==='approve'&&!summary.proposalId&&<p>{owner?'Coach approval is saved. Continue to athlete acceptance, then accept this exact week to make it active in Plan.':'Coach approval is saved. The athlete can prepare their separate acceptance.'}</p>}
+      {summary?.proposalStatus==='proposed'&&<p>{owner?'The proposal is ready. Accept this exact week to make it active in Plan.':'The proposal is ready for the athlete’s separate acceptance.'}</p>}
+      {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
+      {candidate.reviewerId===userId&&d?.reviewerId===userId&&summary?.decision==='pending'&&boundCandidate&&<>
+        <p>Coach approval saves the review. It does not make this your active plan.</p>
+        <label className="flex min-h-11 items-center gap-2"><input type="checkbox" disabled={unavailable} checked={reviewed} onChange={e=>setReviewed(e.target.checked)}/>I reviewed the complete week, previous plan, facts and limitations.</label>
+        {!reviewed&&<p className="app-muted">Check the review confirmation to enable approval.</p>}
+        {(['approve','reject'] as const).map(decision=><button className={action} key={decision} disabled={unavailable||!reviewed} onClick={()=>void perform(()=>send({schemaVersion:1,userId,programId:candidate.programId,operation:'decide',body:{expectedUserId:userId,
+          candidateId:candidate.candidateId,designationId:candidate.designationId,requestId:crypto.randomUUID(),decision,contentHash:candidate.contentHash,sourceHash:candidate.sourceHash}},'send'))}>{decision==='approve'?'Approve this exact week':'Reject this candidate'}</button>)}
+      </>}
+      {owner&&summary?.decision==='approve'&&boundCandidate&&(summary.proposalId===null||summary.proposalStatus==='proposed')&&<section aria-label="5 Issue athlete proposal" className="space-y-3"><h2 className="text-xl font-bold">Prepare your acceptance</h2>
+        {!summary.proposalId&&<button className={action} disabled={unavailable} onClick={()=>void perform(()=>send({schemaVersion:1,userId,programId:candidate.programId,operation:'issue',body:{expectedUserId:userId,programId:candidate.programId,candidateId:candidate.candidateId,requestId:crypto.randomUUID()}},'send'))}>Continue to athlete acceptance</button>}
+        {summary.proposalStatus==='proposed'&&summary.proposalId&&summary.planVersionId&&summary.proposalRequestId&&<section aria-label="6 Separate athlete acceptance" className="space-y-3"><h2 className="text-xl font-bold">Accept and use this week</h2>
+          <p>The complete week below is the exact proposal. Reviewer approval does not accept it for you.</p>
+          <label className="flex min-h-11 items-center gap-2"><input type="checkbox" disabled={unavailable} checked={acceptReviewed} onChange={e=>setAcceptReviewed(e.target.checked)}/>I reviewed this complete proposed week and want to accept it.</label>
+          <button className={action} disabled={unavailable||!acceptReviewed} onClick={()=>void perform(()=>send({schemaVersion:1,userId,programId:candidate.programId,operation:'accept',body:{expectedUserId:userId,programId:candidate.programId,candidateId:candidate.candidateId,
+            proposalId:summary.proposalId!,planVersionId:summary.planVersionId!,requestId:summary.proposalRequestId!,contentHash:candidate.contentHash,sourceHash:candidate.sourceHash}},'send'))}>Accept this exact week</button>
+        </section>}
+      </section>}
+      {summary?.proposalStatus==='accepted'&&<div className="space-y-2"><p role="status">This exact week is accepted. Your prior program history remains preserved.</p><a href="/program" className="app-primary inline-flex min-h-11 items-center px-4 py-3">Open my active plan</a></div>}
+      <p>{candidate.reviewPacket.rationale}</p><details><summary className="min-h-11 cursor-pointer py-3">Previous accepted legacy week</summary><ContextFacts value={candidate.reviewPacket.legacyBase}/></details>
+      <ReviewedWeekView value={candidate.reviewPacket.week} showLogging={false}/>
+      <details><summary className="min-h-11 cursor-pointer py-3">Current facts, evidence and uncertainty</summary><ContextFacts value={{facts:candidate.reviewPacket.profileFacts,evidence:candidate.reviewPacket.evidence,limitations:candidate.reviewPacket.limitations}}/></details>
     </section>}
     {owner&&<section aria-label="1 Confirm current setup" className="space-y-3"><h2 className="text-xl font-bold">1. Confirm current setup</h2>
       <label className="block">Training history lookback (days)<input className="ml-2 min-h-11 rounded border p-2 text-base" type="number" min={1} max={180} step={1}
@@ -312,32 +349,6 @@ function FirstReviewedActorWorkspace({userId}:{userId:string}){
         <button className={action} disabled={unavailable} onClick={()=>void perform(previewDraft)}>Compile and preview the complete week</button></>}
       {preview&&<><ReviewedWeekView value={preview.packet.week} showLogging={false}/><p>Preview does not establish reviewer approval or athlete acceptance.</p>
         <button className={action} disabled={unavailable} onClick={()=>void perform(()=>send({schemaVersion:1,userId,programId:preview.draft.programId,operation:'submit',body:{expectedUserId:userId,draft:preview.draft}},'send'))}>Save this exact candidate for review</button></>}
-    </section>}
-    {candidate&&<section id="saved-week-review" aria-label="4 Designated reviewer decision" className="scroll-mt-4 space-y-3"><h2 className="text-xl font-bold">4. Designated reviewer decision</h2>
-      {summary&&<p role="status">{candidate.reviewPacket.week.windowStart}–{candidate.reviewPacket.week.windowEnd}: {savedWeekStatus(summary,owner)}.</p>}
-      {summary?.decision==='pending'&&<p>{candidate.reviewerId===userId&&d?.reviewerId===userId
-        ?'Review the complete week below, then check the review confirmation and select “Approve this exact week.” Until that result is saved, this week remains pending.'
-        :'The designated reviewer must save approval before an athlete proposal can be created.'}</p>}
-      {summary?.decision==='approve'&&!summary.proposalId&&<p>{owner?'Coach approval is saved. Create the athlete proposal below to continue to your separate acceptance.':'Coach approval is saved. The athlete can create the proposal and separately accept it.'}</p>}
-      {summary?.proposalStatus==='proposed'&&<p>{owner?'The proposal is ready. Accept this exact week below to make it active in Plan.':'The proposal is ready for the athlete’s separate acceptance.'}</p>}
-      <p>{candidate.reviewPacket.rationale}</p><details><summary className="min-h-11 cursor-pointer py-3">Previous accepted legacy week</summary><ContextFacts value={candidate.reviewPacket.legacyBase}/></details>
-      <ReviewedWeekView value={candidate.reviewPacket.week} showLogging={false}/>
-      <details><summary className="min-h-11 cursor-pointer py-3">Current facts, evidence and uncertainty</summary><ContextFacts value={{facts:candidate.reviewPacket.profileFacts,evidence:candidate.reviewPacket.evidence,limitations:candidate.reviewPacket.limitations}}/></details>
-      {candidate.reviewerId===userId&&d?.reviewerId===userId&&summary?.decision==='pending'&&boundCandidate&&<>
-        <label className="flex min-h-11 items-center gap-2"><input type="checkbox" disabled={unavailable} checked={reviewed} onChange={e=>setReviewed(e.target.checked)}/>I reviewed the complete week, previous plan, facts and limitations.</label>
-        {(['approve','reject'] as const).map(decision=><button className={action} key={decision} disabled={unavailable||!reviewed} onClick={()=>void perform(()=>send({schemaVersion:1,userId,programId:candidate.programId,operation:'decide',body:{expectedUserId:userId,
-          candidateId:candidate.candidateId,designationId:candidate.designationId,requestId:crypto.randomUUID(),decision,contentHash:candidate.contentHash,sourceHash:candidate.sourceHash}},'send'))}>{decision==='approve'?'Approve this exact week':'Reject this candidate'}</button>)}
-      </>}
-      {owner&&summary?.decision==='approve'&&boundCandidate&&<section aria-label="5 Issue athlete proposal" className="space-y-3"><h2 className="text-xl font-bold">5. Issue athlete proposal</h2>
-        {!summary.proposalId&&<button className={action} disabled={unavailable} onClick={()=>void perform(()=>send({schemaVersion:1,userId,programId:candidate.programId,operation:'issue',body:{expectedUserId:userId,programId:candidate.programId,candidateId:candidate.candidateId,requestId:crypto.randomUUID()}},'send'))}>Create the athlete proposal</button>}
-        {summary.proposalStatus==='proposed'&&summary.proposalId&&summary.planVersionId&&summary.proposalRequestId&&<section aria-label="6 Separate athlete acceptance" className="space-y-3"><h2 className="text-xl font-bold">6. Separate athlete acceptance</h2>
-          <p>The complete week above is the exact proposal. Reviewer approval does not accept it for you.</p>
-          <label className="flex min-h-11 items-center gap-2"><input type="checkbox" disabled={unavailable} checked={acceptReviewed} onChange={e=>setAcceptReviewed(e.target.checked)}/>I reviewed this complete proposed week and want to accept it.</label>
-          <button className={action} disabled={unavailable||!acceptReviewed} onClick={()=>void perform(()=>send({schemaVersion:1,userId,programId:candidate.programId,operation:'accept',body:{expectedUserId:userId,programId:candidate.programId,candidateId:candidate.candidateId,
-            proposalId:summary.proposalId!,planVersionId:summary.planVersionId!,requestId:summary.proposalRequestId!,contentHash:candidate.contentHash,sourceHash:candidate.sourceHash}},'send'))}>Accept this exact week</button>
-        </section>}
-      </section>}
-      {summary?.proposalStatus==='accepted'&&<p role="status">This exact week is accepted. Your prior program history remains preserved.</p>}
     </section>}
   </section>
 }

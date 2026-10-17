@@ -9,7 +9,8 @@ afterEach(cleanup)
 describe('athlete programming entry', () => {
   it.each([null, { currentWeek: { intent: { weekly_plan: {} } }, program: { id: 'program-1' } }])('offers legacy review from Plan', state => {
     render(<ProgrammingNavigation state={state as WeeklyCoachState | null} />)
-    expect(screen.getByRole('link', { name: 'Review your next week' })).toHaveAttribute('href', '/program/first-reviewed')
+    expect(screen.getByRole('link', { name: 'Open saved programming' })).toHaveAttribute('href', '/program/first-reviewed')
+    expect(screen.getByText(/Coach approval alone does not make a week active/)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Coach workspace' })).toHaveAttribute('href', '/program/supervised')
   })
   it('keeps already reviewed programs on their existing proposal flow', () => {
