@@ -54,9 +54,24 @@ describe('frozen cutover smoke preparation', () => {
     expect(serializeRollingSessions(plan).map(s => s.scheduled_date)).toEqual(contract.expected.sessionDates)
     expect(serializeRollingSessions(plan)).toHaveLength(3)
     expect(profile.assessments).toEqual([])
-    expect(fingerprint).toBe('78029d250d42d4a520d59a19cb26e78afb1f3f5698df8f7fbd30e513b2d3a2ab')
+    expect(fingerprint).toBe('2c19c7a3c00be1ffc19a1a7b26e3f6a609408ebae223079d6da65c5836cea24b')
     const frozen = JSON.parse(readFileSync('docs/verification/programming-quality/production-cutover-smoke-input-2026-09-23.json', 'utf8'))
     expect(frozen).toEqual(cutoverSmokeContract(frozen.runId))
+  })
+
+  it('preserves the historical cutover fingerprint when projecting only the reviewed reference-version change', () => {
+    // Current proposals carry the new qualitative evidence reference. The
+    // historical smoke input and its original hash remain immutable; prove
+    // that no dose, schedule, instruction or other fingerprint input drifted.
+    expect(plan.evidenceReferenceVersion).toBe('complete-programming-0.1.1')
+    expect(plan.sessions.every(session => session.evidenceReferenceVersion === 'complete-programming-0.1.1')).toBe(true)
+    expect(plan.scheduledSessions.every(session => session.prescription.evidenceReferenceVersion === 'complete-programming-0.1.1')).toBe(true)
+    const historicalIntent = structuredClone(intent)
+    historicalIntent.weekly_plan.evidenceReferenceVersion = 'complete-programming-0.1.0'
+    for (const session of historicalIntent.weekly_plan.sessions) session.evidenceReferenceVersion = 'complete-programming-0.1.0'
+    for (const session of historicalIntent.weekly_plan.scheduledSessions) session.prescription.evidenceReferenceVersion = 'complete-programming-0.1.0'
+    expect(rollingFingerprint({ intent: historicalIntent, sourceSnapshot: snapshot }))
+      .toBe('78029d250d42d4a520d59a19cb26e78afb1f3f5698df8f7fbd30e513b2d3a2ab')
   })
 
   it('executes paused rejection, resume/create/accept, re-pause and exact immutable same-key replay', async () => {
