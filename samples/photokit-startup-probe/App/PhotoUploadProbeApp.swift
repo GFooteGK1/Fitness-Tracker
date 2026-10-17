@@ -1,6 +1,7 @@
 import Foundation
 import Photos
 import SwiftUI
+import UIKit
 
 @main
 struct PhotoUploadProbeApp: App {
@@ -12,6 +13,8 @@ struct SetupView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var granted = false
     @State private var enabled = false
+    @State private var backgroundRefresh = "Not checked"
+    @State private var lowPowerMode = "Not checked"
     @State private var initialized = 0.0
     @State private var calls = 0
     @State private var checkedAt = Date()
@@ -22,6 +25,8 @@ struct SetupView: View {
             Form {
                 LabeledContent("Full Photos access", value: granted ? "Yes" : "No")
                 LabeledContent("Extension enabled", value: enabled ? "Yes" : "No")
+                LabeledContent("Background App Refresh", value: backgroundRefresh)
+                LabeledContent("Low Power Mode", value: lowPowerMode)
                 LabeledContent("App Group", value: ProbeState.defaults() == nil ? "Unavailable" : "Available")
                 LabeledContent("Initialized", value: initialized > 0 ? Date(timeIntervalSince1970: initialized).formatted() : "Not recorded")
                 LabeledContent("Process calls", value: String(calls))
@@ -35,6 +40,7 @@ struct SetupView: View {
                 }
                 Text("Refresh reads saved markers; it does not launch the extension.")
                 Text("This sample does not read image resources or create upload jobs.")
+                Text("Available is iOS's app refresh status. It does not prove that the PhotoKit extension ran.")
                 if !problem.isEmpty { Text(problem) }
             }
             .navigationTitle("Photo Upload Probe")
@@ -58,6 +64,13 @@ struct SetupView: View {
     private func refresh() {
         granted = PHPhotoLibrary.authorizationStatus(for: .readWrite) == .authorized
         enabled = PHPhotoLibrary.shared().uploadJobExtensionEnabled
+        backgroundRefresh = switch UIApplication.shared.backgroundRefreshStatus {
+        case .available: "Available"
+        case .denied: "Denied"
+        case .restricted: "Restricted"
+        @unknown default: "Unknown"
+        }
+        lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled ? "On" : "Off"
         initialized = ProbeState.defaults()?.double(forKey: "initialized") ?? 0
         calls = ProbeState.defaults()?.integer(forKey: "calls") ?? 0
         checkedAt = Date()

@@ -16,6 +16,9 @@ struct AutoMealPhotoSetupView: View {
                 }
 
                 Section("Probe diagnostics") {
+                    LabeledContent("Background App Refresh", value: controller.backgroundRefreshDescription)
+                    LabeledContent("Low Power Mode", value: controller.lowPowerModeEnabled ? "On" : "Off")
+                    Text("Available is iOS's app refresh status. It does not prove that the PhotoKit extension ran.")
                     LabeledContent(
                         "App Group access",
                         value: controller.sharedContainerAvailable ? "Available" : "Unavailable"

@@ -2,11 +2,14 @@ import Combine
 import Foundation
 import OSLog
 import Photos
+import UIKit
 
 @MainActor
 final class PhotoLibraryAuthorizationController: ObservableObject {
     @Published private(set) var authorizationStatus: PHAuthorizationStatus
     @Published private(set) var extensionEnabled: Bool
+    @Published private(set) var backgroundRefreshStatus: UIBackgroundRefreshStatus
+    @Published private(set) var lowPowerModeEnabled: Bool
     @Published private(set) var diagnosticsRead: ProtocolProbeDiagnosticsRead
     @Published private(set) var lifecycleReads: [ProtocolProbeLifecycleEvent: ProtocolProbeLifecycleRead]
     @Published private(set) var isPreparingCanary = false
@@ -26,10 +29,21 @@ final class PhotoLibraryAuthorizationController: ObservableObject {
         self.sharedStore = sharedStore
         authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         extensionEnabled = PHPhotoLibrary.shared().uploadJobExtensionEnabled
+        backgroundRefreshStatus = UIApplication.shared.backgroundRefreshStatus
+        lowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
         diagnosticsRead = sharedStore?.readDiagnostics() ?? .unavailable
     }
 
     var diagnostics: ProtocolProbeDiagnostics? { diagnosticsRead.snapshot }
+
+    var backgroundRefreshDescription: String {
+        switch backgroundRefreshStatus {
+        case .available: "Available"
+        case .denied: "Denied"
+        case .restricted: "Restricted"
+        @unknown default: "Unknown"
+        }
+    }
 
     var statusDescription: String {
         switch authorizationStatus {
@@ -113,6 +127,8 @@ final class PhotoLibraryAuthorizationController: ObservableObject {
     func refreshDiagnostics() {
         authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         extensionEnabled = PHPhotoLibrary.shared().uploadJobExtensionEnabled
+        backgroundRefreshStatus = UIApplication.shared.backgroundRefreshStatus
+        lowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
         diagnosticsRead = sharedStore?.readDiagnostics() ?? .unavailable
         lifecycleReads = Dictionary(uniqueKeysWithValues: ProtocolProbeLifecycleEvent.allCases.map { ($0, lifecycleStore.read($0)) })
         lastCheckedAt = Date()

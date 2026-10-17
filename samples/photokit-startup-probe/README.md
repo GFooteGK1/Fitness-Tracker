@@ -70,6 +70,13 @@ Refresh only reads markers; it cannot launch the extension. Host App Group acces
 does not prove extension access. Missing markers and zero counters cannot by
 themselves establish that the system never attempted launch.
 
+The current source also displays the host's effective Background App Refresh
+status (Available, Denied, Restricted or Unknown) and Low Power Mode. These are
+read again on Refresh Diagnostics and when the app becomes active. Available
+does not prove that PhotoKit scheduled or launched the extension. A missing
+per-app Settings entry is not used to infer any status. This observation does
+not add background modes, enable the extension or reset its markers.
+
 ## Deliberate reductions
 
 The extension records initializer/process entry, then `process()` returns
