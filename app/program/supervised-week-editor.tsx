@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import type { ReviewedRest, ReviewedWeekActivity, ReviewedWeekStep } from '@/app/lib/coach/offline-reviewed-week'
 import { REVIEWED_SESSION_DAYS as REVIEWED_WEEK_DAYS, reviewedSessionSchema } from '@/app/lib/coach/reviewed-session-contract'
 import { MOVEMENT_CATALOG, MOVEMENT_EQUIPMENT_IDS } from '@/app/lib/coach/movement-catalog'
 import { copySupervisedSession, removeSupervisedSession, editSupervisedStep, moveSupervisedSession, type EditableReviewedWeekSeed } from '@/app/lib/coach/supervised-draft-editor'
 import { addFirstReviewedSession,addFirstReviewedStep } from '@/app/lib/coach/first-reviewed-draft-editor'
+import { ISOMETRIC_GUIDANCE, ISOMETRIC_HOLD_CUES, proposeIsometricHold, requestsIsometrics } from '@/app/lib/coach/isometric-guidance'
+import type { ExercisePreferences } from '@/app/lib/coach/exercise-preferences'
 
 const inputClass = 'block min-h-11 w-full rounded border p-2 text-base text-gray-950'
 function NumberField({ label, value, change, minimum = 0 }: { label: string; value: number; change: (n: number) => void; minimum?: number }) {
@@ -38,6 +40,10 @@ export function SupervisedActivityEditor({ activity, onChange, preparationOnly =
       {MOVEMENT_CATALOG.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
     </select></label>
     <p>After changing a movement, review its preparation, equipment, work, effort and any monitoring protocol before submitting.</p>
+    {Object.hasOwn(ISOMETRIC_HOLD_CUES, activity.movementId) && !activity.protocolId && ['preparation', 'working'].includes(activity.role) && <div>
+      <button type="button" className="min-h-11 underline" onClick={() => onChange(proposeIsometricHold(activity))}>Use an isometric hold</button>
+      <p>This replaces proposed work and movement instructions with a held position. Enter hold seconds and review sets, effort, recovery and placement. Accessories use the working role after priority work.</p>
+    </div>}
     <label className="block">Session role<select className={inputClass} value={activity.role} onChange={e => patch({ role: e.target.value as ReviewedWeekActivity['role'] })}>
       {(preparationOnly ? ['preparation'] : activity.protocolId ? ['monitoring'] : ['preparation', 'working', 'cooldown']).map(role => <option key={role}>{role}</option>)}
     </select></label>
@@ -126,8 +132,8 @@ export function SupervisedActivityEditor({ activity, onChange, preparationOnly =
   </fieldset>
 }
 
-export function SupervisedWeekEditor<T extends EditableReviewedWeekSeed>({ value, onChange, disabled = false }: {
-  value: T; onChange: (next: T) => void; disabled?: boolean
+export function SupervisedWeekEditor<T extends EditableReviewedWeekSeed>({ value, onChange, disabled = false, exercisePreferences }: {
+  value: T; onChange: (next: T) => void; disabled?: boolean; exercisePreferences?: ExercisePreferences
 }) {
   const [structureError, setStructureError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
@@ -154,6 +160,16 @@ export function SupervisedWeekEditor<T extends EditableReviewedWeekSeed>({ value
   return <fieldset disabled={disabled} className="space-y-5 text-base">
     <legend className="text-xl font-bold">Edit the proposed week</legend>
     <p>Week starting {value.windowStart}. Changes need coach review and athlete acceptance. RPE and RIR are separate targets.</p>
+    {requestsIsometrics(exercisePreferences) && <p role="status">Your confirmed context requests isometrics in warm-ups or accessories. Account for existing holds and review their placement in this proposed week.</p>}
+    <details className="rounded border p-3">
+      <summary className="min-h-11 cursor-pointer py-3 font-semibold">{ISOMETRIC_GUIDANCE.title}</summary>
+      <div className="space-y-3">
+        <p>{ISOMETRIC_GUIDANCE.preparation}</p><p>{ISOMETRIC_GUIDANCE.accessories}</p>
+        <p>{ISOMETRIC_GUIDANCE.continuity}</p><p>{ISOMETRIC_GUIDANCE.prescription}</p>
+        <p>For a reviewed split squat, bent-knee calf raise, single-leg hip bridge or side plank, use the isometric hold action and enter the complete prescription. Choose the supported variation that matches your intended position.</p>
+        <p>{ISOMETRIC_GUIDANCE.progression}</p><p>{ISOMETRIC_GUIDANCE.boundary}</p>
+      </div>
+    </details>
     {value.transition==='first_reviewed'?<p>Build the complete week from the reviewed prescription. Blank fields are unfinished work. Earlier weeks are preserved; this draft does not record performed training.</p>
       :<p>Replacing the current week may be unavailable after training has begun. Next-week proposals require unfinished sessions to be resolved first.</p>}
     {structureError && <p role="alert">{structureError}</p>}

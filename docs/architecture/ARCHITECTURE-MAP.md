@@ -881,6 +881,7 @@ System Tests:
 Adaptive Coach:
 |- Machine-readable doctrine (`app/lib/coach/reference.ts`)
 |- Complete-programming evidence and composition contract (`app/lib/coach/programming-reference.ts`)
+|- Shared qualitative isometric guidance and explicit reviewed hold editing (`app/lib/coach/isometric-guidance.ts`)
 |- Generic adaptive goal, quality, assessment, protocol, observation, evidence,
 |  hypothesis, unit, and comparability contracts
 |  (`app/lib/coach/adaptive-programming-contracts.ts`)

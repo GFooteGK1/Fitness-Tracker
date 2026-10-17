@@ -280,7 +280,7 @@ function FirstReviewedActorWorkspace({userId}:{userId:string}){
     </section>}
     {owner&&contextCurrent&&p&&<section aria-label="3 Prepare complete week" className="space-y-3"><h2 className="text-xl font-bold">3. Prepare the complete week</h2>
       {!draft&&<button className={action} disabled={unavailable} onClick={()=>{setDraft(seedFirstReviewedWeek(p,userId));setPreview(null);setRationale('')}}>Start a blank reviewed week</button>}
-      {draft&&<><SupervisedWeekEditor value={draft} disabled={unavailable} onChange={value=>{setDraft(value);setPreview(null)}}/>
+      {draft&&<><SupervisedWeekEditor value={draft} exercisePreferences={snapshot?.projection.profile.exercisePreferences} disabled={unavailable} onChange={value=>{setDraft(value);setPreview(null)}}/>
         <label className="block">Why this week fits the goal and current evidence<textarea className="min-h-11 w-full rounded border p-2 text-base" maxLength={4000} disabled={unavailable} value={rationale} onChange={e=>{setRationale(e.target.value);setPreview(null)}}/></label>
         <button className={action} disabled={unavailable} onClick={()=>void perform(previewDraft)}>Compile and preview the complete week</button></>}
       {preview&&<><ReviewedWeekView value={preview.packet.week} showLogging={false}/><p>Preview does not establish reviewer approval or athlete acceptance.</p>

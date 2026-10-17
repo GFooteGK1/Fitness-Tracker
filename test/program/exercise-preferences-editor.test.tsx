@@ -10,6 +10,15 @@ const response = (value: unknown) => ({ ok: true, json: async () => value })
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 describe('exercise preference collection', () => {
+  it('offers isometrics as an explicit interest while preserving the athlete-selected role', () => {
+    const changed = vi.fn()
+    render(<ExercisePreferencesEditor onChange={changed} />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'isometric' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Isometrics in warm-ups or accessories' }))
+    expect(changed).toHaveBeenLastCalledWith({ schemaVersion: 1, state: 'specified', entries: [
+      { athleteWording: 'Isometrics in warm-ups or accessories', target: { kind: 'interest', id: 'isometric_training' } }
+    ] })
+  })
   it('keeps own wording unresolved and distinguishes none from skip', () => {
     const changed = vi.fn()
     const skipped = vi.fn()

@@ -5,8 +5,8 @@ describe('complete programming evidence reference', () => {
   it('publishes a versioned reference for the intended healthy-adult population', () => {
     expect(COMPLETE_PROGRAMMING_REFERENCE).toMatchObject({
       schemaVersion: 1,
-      referenceVersion: 'complete-programming-0.1.0',
-      evidenceReviewDate: '2026-07-28'
+      referenceVersion: 'complete-programming-0.1.1',
+      evidenceReviewDate: '2026-10-17'
     })
     expect(COMPLETE_PROGRAMMING_REFERENCE.intendedPopulation)
       .toContain('Generally healthy adults')
