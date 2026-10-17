@@ -5,13 +5,16 @@ import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest'
 import { act,cleanup,fireEvent,render,screen,waitFor } from '@testing-library/react'
 import { FirstReviewedWorkspace } from '@/app/program/first-reviewed-workspace'
 import { saveFirstReviewedPending,readFirstReviewedPending } from '@/app/lib/coach/first-reviewed-pending'
-import { parseFirstReviewedCandidateReview,legacyReviewBase } from '@/app/lib/coach/first-reviewed-contract'
+import { parseFirstReviewedCandidateReview,legacyReviewBase,type FirstReviewedCandidateReview } from '@/app/lib/coach/first-reviewed-contract'
 import type { FirstReviewedPending } from '@/app/lib/coach/first-reviewed-request-resolution'
-import { buildRollingWeeklyPlan } from '@/app/lib/coach/rolling-weekly-plan'
+import { buildRollingWeeklyPlan,buildReviewedRollingWeeklyPlan } from '@/app/lib/coach/rolling-weekly-plan'
 import { buildRollingTrainingDirection } from '@/app/lib/coach/rolling-weekly-contracts'
 import { firstReviewedProgram } from '../fixtures/first-reviewed-program'
-import { effortWorkPlan } from '../fixtures/reviewed-effort-work'
+import { effortWorkInput } from '../fixtures/reviewed-effort-work'
+import { doseContentHash } from '@/app/lib/coach/initial-dose-policy'
 import { reviewedRollingWeek } from '../fixtures/reviewed-rolling-week'
+import { candidateSnapshotMatches,copyFirstReviewedCandidate } from '@/app/lib/coach/first-reviewed-candidate-refresh'
+import { parseFirstReviewedProfileSnapshot,type FirstReviewedProfileSnapshot } from '@/app/lib/coach/first-reviewed-profile-contract'
 
 const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`
 const owner=id(2),programId=id(1),candidateId=id(10),proposalId=id(11),planVersionId=id(12)
@@ -22,12 +25,20 @@ function coordinate(){
   Object.defineProperty(navigator,'locks',{configurable:true,value:{request:async(name:string,_options:LockOptions,run:(lock:Lock)=>Promise<unknown>)=>run({name,mode:'exclusive'} as Lock)}})
 }
 function candidateFixture(selfReview=false){
-  const p=firstReviewedProgram(),week=effortWorkPlan(),profile={...reviewedRollingWeek().plan.profileSnapshot,startDate:'2026-09-14'}
+  const p=firstReviewedProgram(),fixture=effortWorkInput(),profile={...reviewedRollingWeek().plan.profileSnapshot,startDate:'2026-09-14'}
+  fixture.input.context.profile.startDate=p.latestDesignation!.targetWindowStart
+  fixture.input.windowStart=p.latestDesignation!.targetWindowStart;fixture.input.sequenceNumber=p.legacyBase.sequenceNumber+1
+  fixture.input.direction=buildRollingTrainingDirection(fixture.input.context.profile,{hypothesis:'Synthetic first-window UI reference.'})
+  fixture.registry[0].recipe.profileHash=doseContentHash(fixture.input.context.profile)
+  fixture.registry[0].contentHash=doseContentHash(fixture.registry[0].recipe)
+  const compiled=buildReviewedRollingWeeklyPlan(fixture.input,fixture.registry)
+  if(compiled.kind!=='reviewed_candidate')throw Error(compiled.reasons.join('; '))
+  const week=compiled.plan
   if(selfReview)p.latestDesignation!.reviewerId=owner
   const legacy=buildRollingWeeklyPlan({source:'initial',profile,windowStart:profile.startDate,
     direction:buildRollingTrainingDirection(profile,{hypothesis:'Synthetic legacy UI fixture.'})})
   if(legacy.kind!=='weekly_plan')throw Error('Expected complete legacy fixture')
-  const candidate={candidateId,designationId:p.latestDesignation!.designationId,designationVersion:1,programId,userId:owner,
+  const candidate:FirstReviewedCandidateReview={candidateId,designationId:p.latestDesignation!.designationId,designationVersion:1,programId,userId:owner,
     reviewerId:p.latestDesignation!.reviewerId,basePlanVersionId:p.legacyBase.planVersionId,contentHash:'a'.repeat(64),sourceHash:'b'.repeat(64),createdAt:'2026-10-05T19:00:00Z',
     reviewPacket:{schemaVersion:1,reviewMode:'manual_first_reviewed_week',week,legacyBase:legacyReviewBase(legacy),
       profileFacts:{snapshotId:id(20),confirmationRequestId:id(21),projectionAsOf:'2026-10-05T19:00:00Z',factsHash:'c'.repeat(64),assessments:[],baselines:[]},
@@ -36,8 +47,19 @@ function candidateFixture(selfReview=false){
   expect(parseFirstReviewedCandidateReview(candidate)).not.toBeNull()
   return {p,candidate}
 }
+function candidateSnapshot(candidate:ReturnType<typeof candidateFixture>['candidate'],validBefore=new Date(Date.now()+3600000).toISOString()):FirstReviewedProfileSnapshot{
+  const value={snapshotId:candidate.reviewPacket.profileFacts.snapshotId,designationId:candidate.designationId,userId:candidate.userId,
+    programId:candidate.programId,basePlanVersionId:candidate.basePlanVersionId,requestHash:'d'.repeat(64),profileHash:'e'.repeat(64),
+    contentHash:'f'.repeat(64),sourceHash:candidate.sourceHash,historyDays:90,historyThrough:'2026-10-04',tzOffset:300,revision:1,validBefore,
+    projection:{schemaVersion:'first-reviewed-profile-facts-1',projectionAsOf:candidate.reviewPacket.profileFacts.projectionAsOf,
+      sourceHash:candidate.sourceHash,profile:candidate.reviewPacket.week.profileSnapshot,baselines:[],assessments:[],
+      factsHash:candidate.reviewPacket.profileFacts.factsHash,numericRuntimeEligible:false}}
+  const parsed=parseFirstReviewedProfileSnapshot(value)
+  if(!parsed)throw Error('Invalid synthetic candidate snapshot')
+  return parsed
+}
 beforeEach(()=>{localStorage.clear();vi.stubGlobal('crypto',webcrypto);coordinate()})
-afterEach(()=>{cleanup();vi.unstubAllGlobals();Object.defineProperty(navigator,'locks',{configurable:true,value:undefined})})
+afterEach(()=>{cleanup();vi.restoreAllMocks();vi.useRealTimers();vi.unstubAllGlobals();Object.defineProperty(navigator,'locks',{configurable:true,value:undefined})})
 
 function discoveryFailure(mode:'not_found'|'no_write'='not_found'){
   const posts:{path:string;request:FirstReviewedPending}[]=[]
@@ -142,6 +164,7 @@ describe('first reviewed root identity and recovery (component transport, not re
       if(path==='/api/coach/first-reviewed/programs')return Response.json({kind:'programs',page:{schemaVersion:1,actorId:owner,programs:[p],nextAfterProgramId:null},writesEnabled:true})
       if(path.endsWith('/profiles'))return Response.json({kind:'snapshots',page:{schemaVersion:1,actorId:owner,programId,snapshots:[],nextAfterSnapshotId:null},writesEnabled:true})
       if(path.endsWith(`/candidates/${candidateId}`))return Response.json({kind:'candidate',candidate})
+      if(path.endsWith(`/profiles/${candidate.reviewPacket.profileFacts.snapshotId}`))return Response.json({kind:'snapshot',snapshot:candidateSnapshot(candidate)})
       return Response.json({kind:'workspace',page:{schemaVersion:1,actorId:owner,program:accepted?{...p,reviewAvailable:false,activePlanVersionId:planVersionId}:p,
         candidates:[{...summary,decision:reviewSaved?'approve':summary.decision,proposalId:issued?proposalId:null,
           planVersionId:issued?planVersionId:null,proposalStatus:accepted?'accepted':issued?'proposed':null}],nextAfterCandidateId:null},writesEnabled:true})
@@ -201,6 +224,7 @@ describe('first reviewed root identity and recovery (component transport, not re
       if(path==='/api/coach/first-reviewed/programs')return Response.json({kind:'programs',page:{schemaVersion:1,actorId:actor,programs:[p],nextAfterProgramId:null},writesEnabled:true})
       if(path.endsWith('/profiles'))return Response.json({kind:'snapshots',page:{schemaVersion:1,actorId:actor,programId,snapshots:[],nextAfterSnapshotId:null},writesEnabled:true})
       if(path.endsWith(`/candidates/${candidateId}`))return Response.json({kind:'candidate',candidate})
+      if(path.endsWith(`/profiles/${candidate.reviewPacket.profileFacts.snapshotId}`))return Response.json({kind:'snapshot',snapshot:candidateSnapshot(candidate)})
       return Response.json({kind:'workspace',page:{schemaVersion:1,actorId:actor,program:p,candidates:[summary],nextAfterCandidateId:null},writesEnabled:true})
     })
     vi.stubGlobal('fetch',fetcher)
@@ -218,5 +242,92 @@ describe('first reviewed root identity and recovery (component transport, not re
       else expect(screen.getByText(state==='proposed'?'Awaiting athlete acceptance':'Coach approved — awaiting athlete acceptance')).toBeTruthy()
     }
     expect(fetcher.mock.calls.every(([,init])=>!init?.method||init.method==='GET')).toBe(true)
+  })
+})
+
+describe('saved candidate expiry and explicit refresh',()=>{
+  function readOnly(candidate:ReturnType<typeof candidateFixture>['candidate'],snapshot:unknown){
+    const {p}=candidateFixture(true),posts:unknown[]=[]
+    const fetcher=vi.fn(async(url:string|URL|Request,init?:RequestInit)=>{
+      const path=String(url)
+      if(init?.method==='POST'){posts.push(JSON.parse(String(init.body)));throw Error('Unexpected mutation')}
+      if(path==='/api/coach/first-reviewed/programs')return Response.json({kind:'programs',page:{schemaVersion:1,actorId:owner,programs:[p],nextAfterProgramId:null},writesEnabled:true})
+      if(path.endsWith('/profiles'))return Response.json({kind:'snapshots',page:{schemaVersion:1,actorId:owner,programId,snapshots:[],nextAfterSnapshotId:null}})
+      if(path.endsWith(`/candidates/${candidateId}`))return Response.json({kind:'candidate',candidate})
+      if(path.endsWith(`/profiles/${candidate.reviewPacket.profileFacts.snapshotId}`))return Response.json({kind:'snapshot',snapshot})
+      return Response.json({kind:'workspace',page:{schemaVersion:1,actorId:owner,program:p,candidates:[{candidateId,designationId:candidate.designationId,
+        designationVersion:1,reviewerId:owner,createdAt:candidate.createdAt,decision:'pending',proposalId:null,proposalStatus:null,planVersionId:null,proposalRequestId:null}],nextAfterCandidateId:null},writesEnabled:true})
+    })
+    vi.stubGlobal('fetch',fetcher);return {posts,fetcher,p}
+  }
+  it.each(['expired','boundary','missing','wrong_source','wrong_owner','wrong_facts','wrong_program','wrong_base','wrong_designation','wrong_snapshot'] as const)('blocks approval for %s owner context without sending',async state=>{
+    const {candidate}=candidateFixture(true),now=Date.now(),snapshot=candidateSnapshot(candidate)
+    if(state==='expired'||state==='boundary')snapshot.validBefore=new Date(now-(state==='expired'?1000:0)).toISOString()
+    if(state==='wrong_source'){snapshot.sourceHash='9'.repeat(64);snapshot.projection.sourceHash=snapshot.sourceHash}
+    if(state==='wrong_owner')snapshot.userId=id(99)
+    if(state==='wrong_facts')snapshot.projection.factsHash='9'.repeat(64)
+    if(state==='wrong_program')snapshot.programId=id(99)
+    if(state==='wrong_base')snapshot.basePlanVersionId=id(99)
+    if(state==='wrong_designation')snapshot.designationId=id(99)
+    if(state==='wrong_snapshot')snapshot.snapshotId=id(99)
+    const h=readOnly(candidate,state==='missing'?null:snapshot)
+    render(<FirstReviewedWorkspace userId={owner}/> )
+    fireEvent.click(await screen.findByRole('button',{name:/Review complete week from/}))
+    await screen.findByText(state==='expired'||state==='boundary'?/context has expired/:/context could not be verified/)
+    const approve=screen.getByRole('button',{name:'Approve this exact week'}) as HTMLButtonElement
+    fireEvent.click(screen.getByRole('checkbox',{name:'I reviewed the complete week, previous plan, facts and limitations.'}))
+    fireEvent.click(approve)
+    expect(approve.disabled).toBe(true);expect(h.posts).toEqual([])
+    expect(readFirstReviewedPending(localStorage,owner,programId)).toBeNull()
+  })
+  it('expires an already checked review while the page remains open',async()=>{
+    const {candidate}=candidateFixture(true),snapshot=candidateSnapshot(candidate,new Date(Date.now()+60000).toISOString()),h=readOnly(candidate,snapshot)
+    render(<FirstReviewedWorkspace userId={owner}/> )
+    fireEvent.click(await screen.findByRole('button',{name:/Review complete week from/}))
+    await screen.findByText(/has not reached its expiry time/)
+    fireEvent.click(screen.getByRole('checkbox',{name:'I reviewed the complete week, previous plan, facts and limitations.'}))
+    const approve=screen.getByRole('button',{name:'Approve this exact week'}) as HTMLButtonElement
+    expect(approve.disabled).toBe(false)
+    // Wall clock can cross the boundary before a suspended timer is delivered.
+    vi.spyOn(Date,'now').mockReturnValue(Date.parse(snapshot.validBefore))
+    fireEvent.click(approve)
+    await screen.findByText(/Refresh this saved week’s training facts/)
+    expect(h.posts).toEqual([]);expect(readFirstReviewedPending(localStorage,owner,programId)).toBeNull()
+    expect(approve.disabled).toBe(true)
+  })
+  it('updates the disabled state when the expiry timer elapses without another user action',async()=>{
+    vi.useFakeTimers({shouldAdvanceTime:true})
+    const {candidate}=candidateFixture(true),snapshot=candidateSnapshot(candidate,new Date(Date.now()+1000).toISOString()),h=readOnly(candidate,snapshot)
+    render(<FirstReviewedWorkspace userId={owner}/> )
+    fireEvent.click(await screen.findByRole('button',{name:/Review complete week from/}))
+    await screen.findByText(/has not reached its expiry time/)
+    fireEvent.click(screen.getByRole('checkbox',{name:'I reviewed the complete week, previous plan, facts and limitations.'}))
+    const approve=screen.getByRole('button',{name:'Approve this exact week'}) as HTMLButtonElement
+    expect(approve.disabled).toBe(false)
+    await act(async()=>{await vi.advanceTimersByTimeAsync(1001)})
+    expect(screen.getByText(/context has expired/)).toBeTruthy();expect(approve.disabled).toBe(true)
+    expect(h.posts).toEqual([])
+  })
+  it('copies only editable prescribed work and both known schedules, with no old authority',()=>{
+    const {p,candidate}=candidateFixture(true),before=structuredClone(candidate)
+    const next=copyFirstReviewedCandidate(p,owner,candidate)!
+    expect(next).not.toBeNull();expect(next.transition).toBe('first_reviewed')
+    expect(next.recipe.sessions).toEqual(candidate.reviewPacket.week.scheduledSessions.map(s=>s.prescription.content))
+    expect(next.recipe.baseSchedule).toEqual(candidate.reviewPacket.week.baseSchedule)
+    expect(next.recipe.schedules[0].id).toBe(candidate.reviewPacket.week.basis.scheduleId)
+    // The reviewed fixture moves bench volume from its original baseline day
+    // and includes fixed bench/pull monitoring. Both differences must survive.
+    expect(next.recipe.baseSchedule).not.toEqual(next.recipe.schedules[0].days)
+    expect(next.recipe.protocols.length).toBeGreaterThan(0)
+    for(const slot of candidate.reviewPacket.week.scheduledSessions)expect(next.recipe.schedules[0].days[slot.prescription.day]).toBe(slot.prescription.sessionId)
+    expect(next.recipe.protocols).toEqual(candidate.reviewPacket.week.scheduledSessions.flatMap(s=>s.prescription.protocols))
+    expect(next.recipe.instructions).toEqual(candidate.reviewPacket.week.instructions)
+    expect(next.recipe.limitations).toEqual(candidate.reviewPacket.week.limitations)
+    expect(next).not.toHaveProperty('sourceHash');expect(next).not.toHaveProperty('profileSnapshotId')
+    expect(next).not.toHaveProperty('profileConfirmationRequestId');expect(next).not.toHaveProperty('candidateId')
+    expect(candidate).toEqual(before)
+    expect(copyFirstReviewedCandidate(p,id(99),candidate)).toBeNull()
+    expect(copyFirstReviewedCandidate(p,owner,{...candidate,designationVersion:2})).toBeNull()
+    expect(candidateSnapshotMatches(candidate,candidateSnapshot(candidate))).toBe(true)
   })
 })
