@@ -144,7 +144,7 @@ describe('Socius retrieval tools', () => {
 
     expect(result.success).toBe(true)
     expect(result.data?.reference).toMatchObject({
-      doctrineVersion: '0.1.0',
+      doctrineVersion: '0.1.1',
       domains: [
         { id: 'strength' },
         { id: 'recovery' }

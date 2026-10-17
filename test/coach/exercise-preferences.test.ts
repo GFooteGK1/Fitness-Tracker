@@ -112,4 +112,20 @@ describe('exercise preferences', () => {
     const result = apply(input)
     expect(result.preferences).toEqual([])
   })
+  it('carries an isometric request into new-week context without inventing an automatic dose', () => {
+    const preference: ExercisePreferences = { schemaVersion: 1, state: 'specified', entries: [
+      { athleteWording: 'Isometrics as warm-up or accessories', target: { kind: 'interest', id: 'isometric_training' } }
+    ] }
+    const baseline = compose(fixture([]))
+    const requested = compose(fixture([row(preference)]))
+    expect(requested.profile.exercisePreferences).toEqual(preference)
+    expect(requested.plan.profileSnapshot.exercisePreferences).toEqual(preference)
+    expect(requested.plan.profileSnapshot.preferenceNotes?.join(' ')).toContain('Isometrics requested')
+    expect(requested.plan.schedule.ledger.map(e => e.plannedDose)).toEqual(baseline.plan.schedule.ledger.map(e => e.plannedDose))
+    expect(movements(requested)).toEqual(movements(baseline))
+    for (const latest of [row(none), row(preference, { status: 'withdrawn' })]) {
+      const removed = compose(fixture([row(preference, { id: 'old-iso', version: 1, status: 'superseded' }), latest]))
+      expect(removed.profile.preferenceNotes?.join(' ') ?? '').not.toContain('Isometrics requested')
+    }
+  })
 })

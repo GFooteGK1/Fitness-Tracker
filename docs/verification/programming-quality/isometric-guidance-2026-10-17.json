@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "task": "Fitness-Tracker-i40.23",
+  "updatedAt": "2026-10-17T12:56:52.028Z",
+  "status": "local_implementation_verified_release_pending",
+  "workspace": "C:/Dev/Personal/repos/Fitness-Tracker/.worktrees/isometric-guidance",
+  "branch": "codex/isometric-guidance",
+  "baseRevision": "c7068c288d0d141ad3951851d57b2f67df379ca7",
+  "objective": "Carry an athlete-requested isometric warm-up/accessory preference into sourced coaching guidance and explicit reviewed-week authoring.",
+  "plan": {
+    "complexity": 2,
+    "selectedApproach": "Existing confirmed exercise-interest contract plus shared qualitative reference and deliberate reviewed hold editing.",
+    "rejectedApproaches": [
+      "Documentation alone does not reach runtime or authoring.",
+      "Automatic insertion or loading of holds would introduce unvalidated numerical policy."
+    ],
+    "boundaries": [
+      "No new database schema, movement identity, substitution family, initial dose policy, clinical clearance or activation authority.",
+      "Preserve accepted plans and explicit reviewer approval plus separate athlete acceptance.",
+      "Synthetic hold doses are test inputs, not Greg's prescribed or completed training."
+    ]
+  },
+  "implemented": [
+    "Local project coaching request saved as Beads key greg-isometric-programming and read back.",
+    "isometric_training interest uses the existing preference schema; request/removal/withdrawal and unchanged automatic dose are tested.",
+    "Versioned isometric-guidance-0.1.0 is shared by coach reference and first/same/next reviewed editor.",
+    "First-review editor receives the saved factual profile preference and displays the request only when present.",
+    "Deliberate hold conversion clears duration and replaces conflicting repetition instructions; monitoring, unsupported and cooldown work are excluded.",
+    "Complete synthetic week compiles and renders preparation and accessory holds with exact effort, per-side time, switching and rest.",
+    "Changed synthetic monitoring preparation uses a separate protocol, without claiming comparability to the original series."
+  ],
+  "verification": {
+    "broaderRegression": {
+      "passed": 1726,
+      "failed": 0,
+      "files": 111,
+      "receipt": "output/programming-quality-review/isometric-guidance/regression-final.json"
+    },
+    "finalTargetedRegression": {
+      "passed": 84,
+      "failed": 0,
+      "files": 6,
+      "receipt": "output/programming-quality-review/isometric-guidance/targeted-final.json",
+      "reason": "Final qualitative comparability clarification and separate synthetic monitoring protocol."
+    },
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit --incremental false",
+    "scopedLint": "Changed application and test TypeScript/TSX files; exit 0.",
+    "build": "node node_modules/next/dist/bin/next build; inert public configuration; exit 0, 96 static pages.",
+    "checksReceipt": "output/programming-quality-review/isometric-guidance/checks-final.json",
+    "output": "output/programming-quality-review/isometric-guidance/synthetic-week.json",
+    "renderedOutput": "output/programming-quality-review/isometric-guidance/synthetic-week.html",
+    "mobileReadback": {
+      "viewportWidth": 390,
+      "documentWidth": 375,
+      "overflow": false,
+      "screenshot": "output/programming-quality-review/isometric-guidance/mobile-guidance.png",
+      "scope": "Actual component markup rendered in a standalone synthetic readback with document styles, not authenticated hosted UI or production CSS qualification. Viewport reset and local server stopped."
+    },
+    "sourceManifest": [
+      {
+        "path": ".gitattributes",
+        "sha256": "e5d2c95bb61ae2cbd34584084dfeea90f769403e11891e97f10ab7b67efebee9"
+      },
+      {
+        "path": "app/lib/coach/exercise-preferences.ts",
+        "sha256": "d2207da665d75803d6ba8656213d6df535e584bba0e5600ce43b1f3bad193b00"
+      },
+      {
+        "path": "app/lib/coach/isometric-guidance.ts",
+        "sha256": "6461f988209f3fad1d3d1f1ad5ce39a6cb1c70c026345ced5f86ef637cb74ee7"
+      },
+      {
+        "path": "app/lib/coach/programming-reference.ts",
+        "sha256": "3bb0729fda72cd40143e206f668c3a18a6256480fd7040a5fd0c60e5b65491eb"
+      },
+      {
+        "path": "app/lib/coach/reference.ts",
+        "sha256": "b1de80141cee2f829489e0bb1ea8515198729e99f46810b9cc0273d6affb857d"
+      },
+      {
+        "path": "app/program/first-reviewed-workspace.tsx",
+        "sha256": "89dfd0f206663ea70101344e460f40058cbd0c1d94a05c97efeaf0d4f35fb264"
+      },
+      {
+        "path": "app/program/supervised-week-editor.tsx",
+        "sha256": "8a41fc46973f603d69604eb63c3a621d358ab2df5160fdb3b354e3e94fb8071a"
+      },
+      {
+        "path": "docs/architecture/ARCHITECTURE-MAP.md",
+        "sha256": "fe786760b0423255ec0ba606f6102c9caea5b587081239c3c51f690001fbdad9"
+      },
+      {
+        "path": "docs/coach/training-doctrine.md",
+        "sha256": "79930f3f1b434679e6c2e750f30716ced3cd27fec6ad016fe4145479021564c5"
+      },
+      {
+        "path": "test/agents/socius-prompt.test.ts",
+        "sha256": "e44d07c4b89ffcb53158df8396a4c62fca9df7906fea0cbf19424a870ead1269"
+      },
+      {
+        "path": "test/agents/socius-tools.test.ts",
+        "sha256": "cfbca35ebc8a70ff4737676803b9983fbe4c81909b8197c074edbf6019ac3d93"
+      },
+      {
+        "path": "test/coach/exercise-preferences.test.ts",
+        "sha256": "301f1fb6c4ac51d27abbedd862e3d05d72867e9446db5aa624ba44c0794b1fd8"
+      },
+      {
+        "path": "test/coach/isometric-guidance.test.ts",
+        "sha256": "374d994340e6c953ce54945b55bb38271bcaac8f1774b64925fd3d6ef0a8b4b0"
+      },
+      {
+        "path": "test/coach/planner.test.ts",
+        "sha256": "17f0195575a3d93c31558e2dcd18c11fa7ea5380a2059f4466d26428765db73e"
+      },
+      {
+        "path": "test/coach/programming-reference.test.ts",
+        "sha256": "9903d144a2bee683ea53c96a12109406ecd8d23b4491ca5b0d7c578c8ff97d97"
+      },
+      {
+        "path": "test/coach/reference.test.ts",
+        "sha256": "b5460342644ff9cfa78090875d2cfdd596fc6e3fff12671173311112245333ae"
+      },
+      {
+        "path": "test/fixtures/isometric-reviewed-week.ts",
+        "sha256": "252571f2b5e6d3bd29b30d860ae85b2f5db2dbf05704925b18d9892f11b3f795"
+      },
+      {
+        "path": "test/program/exercise-preferences-editor.test.tsx",
+        "sha256": "470a6bf9cffe60a02751710036a2699d34ad08579f63cfebf4f7b785eb8f96d4"
+      },
+      {
+        "path": "test/program/isometric-programming-output.test.tsx",
+        "sha256": "202c3a7233cdae18d1fe5b05e14d2993795001f7dda774637fb44b19d2008c7a"
+      },
+      {
+        "path": "test/program/supervised-week-editor.test.tsx",
+        "sha256": "5884ec15f7c5c7eb012060000da6d6dfcac8521163a502e0aada6a90cc28ee0e"
+      }
+    ],
+    "receiptHashes": [
+      {
+        "path": "output/programming-quality-review/isometric-guidance/regression-final.json",
+        "sha256": "77201645301bb6ec45afa97b8ac17fe64e0a43f3a931079b7c7121e90d54be91"
+      },
+      {
+        "path": "output/programming-quality-review/isometric-guidance/targeted-final.json",
+        "sha256": "254453290d76e0f099f5b6a8496bb9aa5472a836d420c9284e19c4fca64d60d9"
+      },
+      {
+        "path": "output/programming-quality-review/isometric-guidance/checks-final.json",
+        "sha256": "9b72b4c3ce7a19dc4fd7bd2e34d0ba808e45fe72b6fd6779934e53bd01bd207d"
+      },
+      {
+        "path": "output/programming-quality-review/isometric-guidance/synthetic-week.json",
+        "sha256": "df428ed8f6bb269ada319079dcbd09b30cb9d893a599d56b143542a0bf95a083"
+      },
+      {
+        "path": "output/programming-quality-review/isometric-guidance/synthetic-week.html",
+        "sha256": "e14b433d3e0fd834678081ab0af0a8101b727d369e2e92db6a840c6cb9a4f711"
+      },
+      {
+        "path": "output/programming-quality-review/isometric-guidance/mobile-guidance.png",
+        "sha256": "df654a0bf27a5944ba1dfa2cd5d2e1fdda66b15be8a604b7890b3754b7c56af3"
+      }
+    ]
+  },
+  "review": {
+    "risk": "Standard bounded guidance and deliberate draft editing; existing persistence/auth contracts unchanged.",
+    "method": "Main-thread code, authority, regression and React quality review. Not independent review.",
+    "checks": [
+      "No hardcoded athlete identity, auto-save, API request, deployment, numerical default or accepted-history mutation.",
+      "Optional factual preference props add no fetch, global state or new hooks; interactive controls retain 44px targets and 16px input fonts.",
+      "Type-only imports prevent a runtime cycle between guidance and preference definitions.",
+      "Static exact hold cues do not create assessment or protocol equivalence; current reviewed eligibility and validation remain authoritative."
+    ]
+  },
+  "investigation": [
+    "Sandbox denied junction creation and Vitest temporary-file rename. No tests loaded in the sandboxed run; preserved task-created cache directory under ignored output.",
+    "Old root dependencies lacked Playwright/PGlite and used Vite 7. Reused photo-review-drafts/node_modules after matching exact package-lock SHA256 8f93db79636ee8837da2ce6c77d252b705b5cf5c6ae25b8a502c159eb0093453; no packages installed or changed.",
+    "Initial focused run exposed a stale reference expectation and a classic-JSX React import issue; corrected in the changed editor/test expectations, then 73 checks passed.",
+    "Initial broad run: 1645 passing, 57 failing assertions plus a failed suite import. One stale prompt-version expectation was corrected. Other failures were the immutable C2-R review byte guard after Windows checkout conversion.",
+    "Restored the clean Git blob only after checking its expected SHA256 f724905f21c2f05b21c99ddc365b8ba12fabba643251cfbeb69cd5341c03a107. Its content and test hash were not changed. Added a narrow -text Git attribute to preserve those bytes on future checkout.",
+    "A later index refresh was denied repository-object write permission. It was not retried; the staged diff remained empty and the frozen review has no Git content diff.",
+    "Sandboxed loopback preview was unreachable; normal loopback-only artifact server was used and stopped. No live application mutation.",
+    "Build retains existing multiple-lockfile, PhotoMealReview img and v2 hook warnings. Vite retains its existing config-loader warning."
+  ],
+  "release": {
+    "committed": false,
+    "pushed": false,
+    "deployed": false,
+    "livePreferenceSaved": false,
+    "acceptedPlanChanged": false,
+    "next": "Complete approved commit/push/draft PR and verify exact remote/PR revision; release target and live owner preference merge/readback remain separate authority.",
+    "followupTask": "Fitness-Tracker-i40.24",
+    "publicationApproval": {
+      "date": "2026-10-17",
+      "scope": "User approved commit, normal push and draft PR to GFooteGK1/Fitness-Tracker; no production deployment or live preference mutation."
+    }
+  },
+  "board": {
+    "planNoteId": "isometric-guidance-plan-note-20261017",
+    "originalRunEventId": "isometric-guidance-run-20261017",
+    "originalRunEventStatus": "queued_after_409_conflict_not_retried",
+    "resultNoteId": "isometric-guidance-result-note-20261017",
+    "resultNoteStatus": "delivered_and_read_back_at_version_418",
+    "planNoteStatus": "delivered_and_read_back"
+  }
+}

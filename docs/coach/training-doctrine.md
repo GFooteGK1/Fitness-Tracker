@@ -1,7 +1,7 @@
 # Adaptive Coach Training Doctrine
 
-> Doctrine version: 0.1.0
-> Evidence review date: 2026-07-27
+> Doctrine version: 0.1.1
+> Evidence review date: 2026-10-17 (isometric supplement; other sections retain their earlier evidence review)
 > Intended population: generally healthy adult athletes
 > Full research: [Evidence-Based Training Doctrine Center of Gravity](../../center-of-gravity-report-evidence-based-training-doctrine.md)
 
@@ -181,6 +181,43 @@ The common 80/20 pattern describes many successful endurance programs but is not
 - **Language:** prefer resilience and capacity over claims that a routine will prevent injury.
 
 Exercise-based prevention programs often combine strength and neuromuscular work, while stretching alone does not consistently reduce injuries [Lauersen and colleagues](https://bjsm.bmj.com/content/48/11/871). Workload trends can inform discussion but an acute:chronic ratio must not be presented as an injury-risk detector [Franco Impellizzeri](https://pubmed.ncbi.nlm.nih.gov/32502973/).
+
+### Isometrics in preparation and accessories
+
+Qualitative supplement: `isometric-guidance-0.1.0`, maintained in
+`app/lib/coach/isometric-guidance.ts` and consumed by the runtime coach reference
+and the first/same/next reviewed week editor. This is not numerical dose policy.
+
+- Give each hold a purpose. Brief, low-fatigue preparation follows general
+  warm-up and precedes progressive drills or priority work. Longer or harder
+  accessory holds follow priority work or fit on a suitable easier day.
+- Specify the held position, sets, hold seconds per side, effort, load, recovery,
+  stop condition, and total session time. Duration by itself does not mean
+  isometric work. Do not convert repetitions, monitoring protocols, or
+  assessment results into equivalent hold benchmarks.
+- Count existing PIMA and other isometrics before adding work. Preserve sprint,
+  jump, and lifting quality; review current symptoms and next-day response.
+  Progress one variable when the response supports it.
+- Keep athlete preference separate from this shared method. The optional
+  `isometric_training` exercise interest uses existing confirmed-preference
+  storage. An absent, removed, or withdrawn preference is not a request for
+  holds. The ordinary generator does not automatically insert isometric doses.
+- In reviewed authoring, supported split squats, bent-knee calf raises,
+  single-leg hip bridges, and side planks can use explicit duration work plus
+  held-position instructions. Changing work still requires complete review and
+  separate athlete acceptance. A new variation needs its own supported identity;
+  do not silently substitute an adductor or hip-flexor exercise.
+- Stop for pain or loss of position. Do not promise injury prevention or require
+  an isometric mastery test before all explosive training.
+
+Training responses depend on position, effort and intent
+[Oranchuk et al.](https://doi.org/10.1111/sms.13375). Comparative evidence does not
+establish a consistent jump advantage, and acute performance enhancement is
+separate from long-term adaptation
+[Miao et al.](https://doi.org/10.1186/s13102-026-02079-9).
+The supplied [Jason Posner reel](https://www.instagram.com/reel/DcCd1W0x0Rr/)
+prompted the review; it does not validate a dose or an athlete outcome. Earlier
+chat dose suggestions remain unvalidated starting proposals.
 
 ### Recovery and fatigue management
 

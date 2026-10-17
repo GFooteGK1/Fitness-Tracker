@@ -9,3 +9,5 @@ docs/verification/programming-quality/production-cutover-* text eol=lf
 test/fixtures/frozen-whole-week-development-v1/*.json -text
 # The reviewed metadata proof binds the exact query built from this LF source.
 docs/verification/programming-quality/release-catalog-fingerprints.sql text eol=lf
+# This immutable review has hash-bound mixed line endings. Preserve its Git bytes.
+docs/verification/programming-quality/c2r-week-context-review-1.md -text

@@ -22,7 +22,7 @@ describe('deterministic eight-week coach planner', () => {
       goalSummary: input.goal,
       startDate: '2026-08-03',
       endDate: '2026-09-27',
-      referenceVersion: '0.1.0',
+      referenceVersion: '0.1.1',
       policyVersion: '0.2.0'
     })
     expect(proposal.weeks).toHaveLength(8)
@@ -66,7 +66,7 @@ describe('deterministic eight-week coach planner', () => {
           next_week: expect.any(String)
         }),
         evidence: {
-          doctrineVersion: '0.1.0',
+          doctrineVersion: '0.1.1',
           policyVersion: '0.2.0'
         }
       })

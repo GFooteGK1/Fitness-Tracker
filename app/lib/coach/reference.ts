@@ -4,13 +4,14 @@ import {
   type CoachReferenceManifest,
   type CoachReferenceSnapshot
 } from './types'
+import { ISOMETRIC_GUIDANCE, ISOMETRIC_REFERENCE_GUIDANCE } from './isometric-guidance'
 
 const MAX_DETAILED_DOMAINS = 4
 
 export const COACH_REFERENCE_MANIFEST: CoachReferenceManifest = {
   schemaVersion: 1,
-  doctrineVersion: '0.1.0',
-  evidenceReviewDate: '2026-07-27',
+  doctrineVersion: '0.1.1',
+  evidenceReviewDate: '2026-10-17',
   intendedPopulation: 'Generally healthy adult athletes',
   corePrinciples: [
     'Start with goals, training age, capacity, schedule, equipment, preferences, and constraints.',
@@ -76,7 +77,8 @@ export const COACH_REFERENCE_MANIFEST: CoachReferenceManifest = {
       feel: 'Fast, crisp, and aggressive without strain or grinding.',
       guidance: [
         'Use skill-appropriate jumps, throws, sprints, Olympic-lift derivatives, or validated resistance work.',
-        'Rest long enough for the next effort to remain fast; high intent does not mean high accumulated fatigue.'
+        'Rest long enough for the next effort to remain fast; high intent does not mean high accumulated fatigue.',
+        ISOMETRIC_GUIDANCE.preparation
       ],
       stopConditions: ['Visible slowing, reduced output, poor landing, or technical breakdown; never chase muscular failure.'],
       sourceIds: ['acsm-resistance-training-2026', 'nsca-weightlifting-position'],
@@ -141,10 +143,11 @@ export const COACH_REFERENCE_MANIFEST: CoachReferenceManifest = {
       feel: 'Progressive, controlled, and confidence-building.',
       guidance: [
         'Use task-specific strength, balance, landing, deceleration, plyometric, trunk, and range work.',
-        'Describe capacity and resilience rather than promising injury prevention.'
+        'Describe capacity and resilience rather than promising injury prevention.',
+        ...ISOMETRIC_REFERENCE_GUIDANCE
       ],
       stopConditions: ['Sharp or escalating pain, swelling, loss of function, neurological symptoms, or clinician restrictions.'],
-      sourceIds: ['lauersen-prevention-2014', 'impellizzeri-workload-2020'],
+      sourceIds: ['lauersen-prevention-2014', 'impellizzeri-workload-2020', ...ISOMETRIC_GUIDANCE.sources.map(source => source.id)],
       confidence: 'moderate'
     },
     {

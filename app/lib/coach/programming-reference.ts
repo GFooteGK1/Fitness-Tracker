@@ -1,3 +1,5 @@
+import { ISOMETRIC_GUIDANCE } from './isometric-guidance'
+
 export type ProgrammingEvidenceConfidence = 'high' | 'moderate' | 'emerging'
 export type ProgrammingTemporalStatus = 'stable' | 'shifting' | 'emerging'
 export type ProgrammingSourceKind =
@@ -62,6 +64,7 @@ export interface CompleteProgrammingReference {
 }
 
 const SOURCES: readonly ProgrammingEvidenceSource[] = [
+  ...ISOMETRIC_GUIDANCE.sources,
   {
     id: 'acsm-resistance-training-2026',
     title: 'Resistance Training Prescription for Muscle Function, Hypertrophy, and Physical Performance in Healthy Adults',
@@ -185,6 +188,14 @@ const SOURCES: readonly ProgrammingEvidenceSource[] = [
 ]
 
 const EVIDENCE_RULES: readonly ProgrammingEvidenceRule[] = [
+  {
+    id: 'isometric.intent-and-placement',
+    claim: ISOMETRIC_GUIDANCE.evidence,
+    programmingImplication: `${ISOMETRIC_GUIDANCE.preparation} ${ISOMETRIC_GUIDANCE.accessories} ${ISOMETRIC_GUIDANCE.continuity}`,
+    confidence: 'moderate',
+    temporalStatus: 'emerging',
+    sourceIds: ISOMETRIC_GUIDANCE.sources.map(source => source.id)
+  },
   {
     id: 'session.complete-by-role',
     claim: 'Evidence supports matching training variables to the intended adaptation and covering the relevant musculature or performance quality; it does not establish one universally correct exercise count per session.',
@@ -340,8 +351,8 @@ const SESSION_BLOCK_ROLES: readonly ProgrammingSessionBlockRole[] = [
 
 export const COMPLETE_PROGRAMMING_REFERENCE: CompleteProgrammingReference = {
   schemaVersion: 1,
-  referenceVersion: 'complete-programming-0.1.0',
-  evidenceReviewDate: '2026-07-28',
+  referenceVersion: 'complete-programming-0.1.1',
+  evidenceReviewDate: '2026-10-17',
   intendedPopulation: 'Generally healthy adults training two to six days per week for strength, hypertrophy, power, speed, conditioning, resilience, or a mixed goal.',
   outOfScope: [
     'Medical diagnosis, rehabilitation, return-to-play clearance, and injury prediction.',

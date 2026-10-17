@@ -6,7 +6,7 @@ import {
 
 describe('coach reference manifest', () => {
   it('publishes the complete versioned twelve-domain doctrine', () => {
-    expect(COACH_REFERENCE_MANIFEST.doctrineVersion).toBe('0.1.0')
+    expect(COACH_REFERENCE_MANIFEST.doctrineVersion).toBe('0.1.1')
     expect(COACH_REFERENCE_MANIFEST.schemaVersion).toBe(1)
     expect(COACH_REFERENCE_MANIFEST.domains).toHaveLength(12)
     expect(new Set(COACH_REFERENCE_MANIFEST.domains.map(domain => domain.id)).size).toBe(12)

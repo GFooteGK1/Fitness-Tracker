@@ -1,9 +1,11 @@
 import { MOVEMENT_CATALOG, getMovementsByAssessmentAlias } from './movement-catalog'
+import { ISOMETRIC_GUIDANCE } from './isometric-guidance'
 import type { ProgrammingProfile, CompleteProgrammingSessionPrescription, ProgrammingMovementPreference } from './programming-schema'
 
 export const EXERCISE_PREFERENCES_KEY = 'exercise_preferences'
-export const EXERCISE_INTEREST_MAPPING_VERSION = '1.0.0'
+export const EXERCISE_INTEREST_MAPPING_VERSION = '1.1.0'
 export const EXERCISE_INTERESTS: Array<{ id: string; label: string; movementIds: string[] }> = [
+  { id: ISOMETRIC_GUIDANCE.interestId, label: ISOMETRIC_GUIDANCE.title, movementIds: [] },
   { id: 'olympic_lifting', label: 'Olympic lifting', movementIds: [] },
   { id: 'gymnastics', label: 'Gymnastics', movementIds: [] },
   { id: 'handstand_movements', label: 'Handstand movements', movementIds: [] },
@@ -54,6 +56,9 @@ export function preferenceSummary(value: ExercisePreferences): string {
 
 export function preferenceSupportNotes(value: ExercisePreferences): string[] {
   return value.entries.flatMap(entry => {
+    if (entry.target.kind === 'interest' && entry.target.id === ISOMETRIC_GUIDANCE.interestId) {
+      return ['Isometrics requested in warm-ups or accessories. Count existing PIMA; preserve priority-work quality. Holds need explicit reviewed position, duration, effort and recovery. Automatic programming does not insert isometric doses.']
+    }
     if (entry.target.kind === 'unresolved') return [`${entry.athleteWording}: saved as an interest; a supported movement has not been identified.`]
     if (entry.target.kind === 'interest' && !EXERCISE_INTERESTS.find(item => item.id === entry.target.id)!.movementIds.length) {
       return [`${entry.athleteWording}: saved as an interest; specialist prescriptions are not supported yet.`]

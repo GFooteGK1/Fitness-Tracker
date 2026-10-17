@@ -12,6 +12,7 @@ import { doseContentHash } from '@/app/lib/coach/initial-dose-policy'
 import { reviewedSessionActivities } from '@/app/lib/coach/reviewed-session-contract'
 import { effortWorkPlan } from '../fixtures/reviewed-effort-work'
 import type { ReviewedWeekActivity } from '@/app/lib/coach/offline-reviewed-week'
+import { isometricReviewedWeek } from '../fixtures/isometric-reviewed-week'
 
 afterEach(cleanup)
 function activityHarness(activity: ReviewedWeekActivity) {
@@ -26,6 +27,32 @@ function activityHarness(activity: ReviewedWeekActivity) {
 function working() { return reviewedSessionActivities(effortWorkPlan().scheduledSessions[0].prescription.content).find(a => a.id === 'required-work')! }
 
 describe('proposed complete-week editing', () => {
+  it('shows the shared method and confirmed isometric request without changing the proposed week', () => {
+    const p = firstReviewedProgram(), seed = seedFirstReviewedWeek(p, p.athleteId)!, changed: unknown[] = []
+    const preferences = { schemaVersion: 1 as const, state: 'specified' as const, entries: [
+      { athleteWording: 'Isometrics in sessions', target: { kind: 'interest' as const, id: 'isometric_training' } }
+    ] }
+    const view = render(<SupervisedWeekEditor value={seed} onChange={value => changed.push(value)} exercisePreferences={preferences} />)
+    expect(screen.getByRole('status').textContent).toContain('confirmed context requests isometrics')
+    expect(screen.getByText(/Count existing PIMA/)).toBeTruthy()
+    expect(changed).toEqual([])
+    view.rerender(<SupervisedWeekEditor value={seed} onChange={value => changed.push(value)} exercisePreferences={{ schemaVersion: 1, state: 'none', entries: [] }} />)
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+  it('deliberately authors a held position with blank duration and preserves entered effort and recovery', () => {
+    const { accessory } = isometricReviewedWeek()
+    const original = structuredClone(accessory), current = activityHarness(accessory)
+    fireEvent.click(screen.getByRole('button', { name: 'Use an isometric hold' }))
+    expect((screen.getByLabelText('Work seconds') as HTMLInputElement).value).toBe('')
+    expect(current().work).toMatchObject({ kind: 'duration', seconds: NaN, sides: 2 })
+    fireEvent.change(screen.getByLabelText('Work seconds'), { target: { value: '20' } })
+    fireEvent.change(screen.getByLabelText('Side-switch seconds'), { target: { value: '5' } })
+    expect(current().work).toEqual(original.work)
+    expect(current().effort).toEqual(original.effort)
+    expect(current().restBetweenSeconds).toBe(30)
+    expect(screen.getByLabelText('Movement instructions').textContent).toContain('Hold the explicitly reviewed split-squat')
+    expect(accessory).toEqual(original)
+  })
   it('builds an initial week from explicit blank sessions with effort/rest and monitoring entry',()=>{
     const p=firstReviewedProgram(),seed=seedFirstReviewedWeek(p,p.athleteId)!;let last=seed
     function Editor(){const [value,setValue]=useState(seed);return <SupervisedWeekEditor value={value} onChange={next=>{last=next;setValue(next)}} />}
