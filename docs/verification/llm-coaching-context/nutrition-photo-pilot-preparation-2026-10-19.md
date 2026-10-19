@@ -73,6 +73,13 @@ attachment require separate runtime proof.
   occurrence. No arbitrary SQL, host-tool dispatcher or service-role fallback is
   added.
 
+## Later approved bounds
+
+Greg approved the key/model/budget decisions on 2026-10-19 after this initial
+packet was written. See [the budget controls and exact remaining release gates](nutrition-photo-budget-controls-2026-10-19.md). The pending-decision text below
+is historical; it does not override that approval. Production activation and
+migration remain separately gated.
+
 ## Exact activation gates and release changes
 
 1. **Private retention; no unattended permanent deletion.** Retain the normalized

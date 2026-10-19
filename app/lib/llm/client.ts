@@ -135,9 +135,9 @@ export function getProvider(name: LlmProviderName = getActiveProviderName()): Ll
  * per-purpose model, runs the call, and emits one structured usage line
  * (the A/B instrument for comparing providers/models during the migration).
  */
-export async function complete(req: LlmRequest, routing?: { provider: LlmProviderName }): Promise<LlmResult> {
+export async function complete(req: LlmRequest, routing?: { provider: LlmProviderName; model?: string }): Promise<LlmResult> {
   const providerName = routing?.provider ?? getProviderForPurpose(req.purpose)
-  const model = getModel(req.purpose, providerName)
+  const model = routing?.model ?? getModel(req.purpose, providerName)
   const start = Date.now()
   const result = await PROVIDERS[providerName].chat(req, model)
   console.log(

@@ -67,6 +67,9 @@ export interface LlmUsage {
 }
 
 export interface LlmRequest {
+  /** Server-side synchronous final dispatch guard; never supplied by HTTP callers. */
+  beforeDispatch?: () => void
+  serviceTier?: 'default'
   purpose: ModelPurpose
   system?: string
   messages: LlmMessage[]

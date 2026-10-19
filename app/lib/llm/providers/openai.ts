@@ -31,10 +31,22 @@ import type {
 
 let client: OpenAI | null = null
 
-function getClient(): OpenAI {
+function getClient(beforeDispatch?: () => void): OpenAI {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY is not configured')
+  }
+  if (beforeDispatch) {
+    // Request-local closure: the SDK awaits preparation before invoking fetch.
+    // Never cache a grant/callback across requests or consume it at SDK.create.
+    return new OpenAI({ apiKey, baseURL: 'https://api.openai.com/v1', maxRetries: 0,
+      fetch: (input, init) => {
+        const url = input instanceof Request ? input.url : String(input)
+        if (url !== 'https://api.openai.com/v1/responses') throw new Error('Unexpected pilot endpoint')
+        beforeDispatch()
+        return fetch(input, { ...init, redirect: 'error' })
+      },
+    })
   }
   if (!client) {
     client = new OpenAI({ apiKey })
@@ -141,6 +153,7 @@ export const openaiProvider: LlmProvider = {
   async chat(req: LlmRequest, model: string): Promise<LlmResult> {
     const params: ResponseCreateParamsNonStreaming = {
       model,
+      ...(req.serviceTier ? { service_tier: req.serviceTier } : {}),
       input: toResponseInput(req.messages),
       max_output_tokens: req.maxTokens,
       ...(req.store === false ? { store: false } : {}),
@@ -176,12 +189,13 @@ export const openaiProvider: LlmProvider = {
         : {}),
     }
 
+    const providerClient = getClient(req.beforeDispatch)
     const response = req.timeoutMs !== undefined || req.maxRetries !== undefined
-      ? await getClient().responses.create(params, {
+      ? await providerClient.responses.create(params, {
           ...(req.timeoutMs !== undefined ? { signal: AbortSignal.timeout(req.timeoutMs) } : {}),
           ...(req.maxRetries !== undefined ? { maxRetries: req.maxRetries } : {}),
         })
-      : await getClient().responses.create(params)
+      : await providerClient.responses.create(params)
 
     if (req.requireComplete && (response.status !== 'completed' || hasRefusal(response))) {
       throw new Error('Incomplete or refused OpenAI response')

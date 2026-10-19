@@ -19,7 +19,7 @@ let db:PGlite,owner:string|null,client:ReturnType<typeof nutritionPilotClient>,b
 let screening:ReturnType<typeof vi.fn>
 const food={food:'Synthetic food',portion:'Estimated serving',protein:30,carbs:40,fat:10,calories:370}
 const analysis={items:[food],total_protein:499,total_carbs:999,total_fat:299,total_calories:4999,confidence:0,notes:'Portions uncertain; not a measurement.'}
-const result={text:JSON.stringify(analysis),provider:'openai' as const,model:'synthetic-openai-model',toolCalls:[],stopReason:'stop' as const,usage:{input:200,output:100}}
+const result={text:JSON.stringify(analysis),provider:'openai' as const,model:'gpt-5.6-luna',toolCalls:[],stopReason:'stop' as const,usage:{input:200,output:100}}
 const decision=(choice='food')=>({model:'gpt-6-luna',answers:[{name:'food_screen',type:'choice',choice,confidence:1,probabilities:['food','non_food','uncertain'].map(value=>({value,probability:value===choice?1:0}))}]})
 const typed=()=>client as never
 const input=(overrides:object={})=>({requestId:randomUUID(),expectedOwner:pilotTestOwner,capturedAt:'2026-10-19T12:30:00-05:00',context:'Ingredients unknown',consent:'selected-photo-openai-autolog-v1',bytes,mediaType:'image/png',...overrides})
@@ -27,13 +27,13 @@ const window={start:'2026-10-19T00:00:00-05:00',end:'2026-10-20T00:00:00-05:00'}
 beforeAll(async()=>{db=await nutritionPilotDatabase();await db.query('INSERT INTO auth.users(id) VALUES($1)',[pilotTestOwner])},30000)
 beforeEach(async()=>{
   vi.clearAllMocks();vi.mocked(nutritionPhotoPilotEnabled).mockReturnValue(true)
-  owner=pilotTestOwner;await db.exec('RESET ROLE');await db.exec('TRUNCATE nutrition_photo_captures,logging_requests,activity_drafts,activity_revisions,activity_mutations,meals CASCADE');await photoDraftActor(db,owner)
+  owner=pilotTestOwner;await db.exec('RESET ROLE');await db.exec('TRUNCATE nutrition_photo_exposure,nutrition_photo_captures,logging_requests,activity_drafts,activity_revisions,activity_mutations,meals CASCADE');await photoDraftActor(db,owner)
   client=nutritionPilotClient(db,()=>owner)
   vi.mocked(createServerClient).mockResolvedValue(client as never)
   bytes=await sharp(randomBytes(32*32*3),{raw:{width:32,height:32,channels:3}}).png().toBuffer()
   vi.stubEnv('OPENAI_API_KEY','synthetic-key');vi.stubEnv('LLM_VISION_PROVIDER','anthropic')
   screening=vi.fn(async()=>new Response(JSON.stringify(decision())));vi.stubGlobal('fetch',screening)
-  vi.mocked(complete).mockResolvedValue(result)
+  vi.mocked(complete).mockImplementation(async req=>{req.beforeDispatch?.();return result})
 })
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs()})
 afterAll(async()=>{await db?.close()})
@@ -63,9 +63,9 @@ describe('inactive prepared selected-photo pilot: real PostgreSQL, synthetic byt
     expect((meal.capture_provenance as any).occurrence).toMatchObject({origin:'model_estimated',reviewState:'unreviewed'})
     expect((meal.capture_provenance as any).fields.macros).toMatchObject({origin:'model_estimated',reviewState:'unreviewed'})
     const stored=(await db.query<Record<string,any>>('SELECT * FROM nutrition_photo_captures')).rows[0]
-    expect(stored.original_estimate).toMatchObject({provider:'openai',model:'synthetic-openai-model',analysis:{confidence:0,total_calories:370}})
+    expect(stored.original_estimate).toMatchObject({provider:'openai',model:'gpt-5.6-luna',analysis:{confidence:0,total_calories:370}})
     expect(stored.prompt_hash).toMatch(/^[a-f0-9]{64}$/);expect(stored.photo_stored_at).toBeTruthy();expect(stored.estimated_at).toBeTruthy()
-    expect(vi.mocked(complete).mock.calls[0][1]).toEqual({provider:'openai'})
+    expect(vi.mocked(complete).mock.calls[0][1]).toEqual({provider:'openai',model:'gpt-5.6-luna'})
     expect(vi.mocked(complete).mock.calls[0][0]).toMatchObject({maxTokens:1024,maxRetries:0,timeoutMs:45000})
     expect((await capturePilotPhoto(typed(),request)).meal_id).toBe(saved.meal_id)
     expect(screening).toHaveBeenCalledTimes(1);expect(complete).toHaveBeenCalledTimes(1)
@@ -157,6 +157,29 @@ describe('inactive prepared selected-photo pilot: real PostgreSQL, synthetic byt
   it('rechecks authorization after screening before any estimation',async()=>{
     screening.mockImplementation(async()=>{vi.mocked(nutritionPhotoPilotEnabled).mockReturnValue(false);return new Response(JSON.stringify(decision()))})
     await capturePilotPhoto(typed(),input());expect(complete).not.toHaveBeenCalled()
+  })
+  it.each(['screen_start','estimate_start'])('does not dispatch after a committed but lost %s acknowledgement',async action=>{
+    const original=client.rpc;let lost=false
+    vi.spyOn(client,'rpc').mockImplementation(async(name,args)=>{
+      const value=await original(name,args)
+      if(args.p_action===action&&!lost){lost=true;return {data:null,error:{code:'transport',message:'lost synthetic acknowledgement'}}}
+      return value
+    })
+    const request=input();expect((await capturePilotPhoto(typed(),request)).state).toBe('uncertain')
+    await capturePilotPhoto(typed(),request)
+    expect(screening).toHaveBeenCalledTimes(action==='screen_start'?0:1);expect(complete).not.toHaveBeenCalled()
+    const ledger=(await db.query<{stage:string;settled_at:string|null}>('SELECT stage,settled_at FROM nutrition_photo_exposure')).rows
+    expect(ledger.find(row=>row.stage===(action==='screen_start'?'screen':'estimate'))?.settled_at).toBeNull()
+  })
+  it('refuses a malformed paid grant before either paid transport',async()=>{
+    const original=client.rpc
+    vi.spyOn(client,'rpc').mockImplementation(async(name,args)=>{
+      const value=await original(name,args)
+      if(args.p_action==='screen_start'&&value.data)return {data:{...value.data as object,dispatch_grant:{}},error:null}
+      return value
+    })
+    expect((await capturePilotPhoto(typed(),input())).state).toBe('uncertain')
+    expect(screening).not.toHaveBeenCalled();expect(complete).not.toHaveBeenCalled()
   })
   it('keeps default-off routes inert regardless of existing feature flags',async()=>{
     vi.mocked(nutritionPhotoPilotEnabled).mockReturnValue(false);vi.stubEnv('CAPTURE_RECEIPTS_V2_ENABLED','true')

@@ -28,3 +28,20 @@ Extending the native camera capability would turn a draft-only device permission
 Reusing transient review drafts alone preserves established behavior but cannot retain a photo or automatically create an explicitly unreviewed estimated meal.
 
 Handing every photo into the chosen LLM avoids automatic provider spending but does not deliver the approved take-a-photo-and-move-on workflow. The model API performs bounded extraction only; it does not become the programmer or coach.
+
+## Approved bounds and inactive controls, 2026-10-19
+
+Greg approved existing hosted OpenAI key reuse in place, fixed GPT-6 Luna
+screening/GPT-5.6 Luna estimation without fallback, private retention without
+unattended permanent deletion, and application-only $1 rolling24h/$5 initial30d
+limits. The isolated follow-up prepares a fixed 720-hour policy and append-only
+per-stage exposure ledger alongside captures, using the same owner transaction
+lock. No owner-facing reset/refund/delete or recurring job is added. The two
+literal false activation gates and unapplied SQL are retained.
+
+Full-context reservations make the initial no-refund implementation too restrictive
+for daily food tracking: one full estimate/day, five total. It is an inactive
+control foundation, not an activation recommendation. A trusted server-only
+settlement path for confirmed actual usage is proposed separately; owner-supplied
+RPC result payloads must never authorize a financial refund. See the dated
+[nutrition budget controls and capacity analysis](../verification/llm-coaching-context/nutrition-photo-budget-controls-2026-10-19.md).

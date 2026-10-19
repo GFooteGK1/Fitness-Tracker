@@ -17,3 +17,10 @@ it('never falls back to another provider on explicit OpenAI failure',async()=>{
   await expect(complete(request,{provider:'openai'})).rejects.toThrow('unavailable')
   expect(openai).toHaveBeenCalledTimes(1);expect(anthropic).not.toHaveBeenCalled()
 })
+
+it('pins the approved model despite provider-wide and purpose overrides',async()=>{
+  vi.stubEnv('LLM_OPENAI_VISION_MODEL','other-model');vi.stubEnv('LLM_OPENAI_MODEL','other-model')
+  openai.mockResolvedValue({provider:'openai',model:'gpt-5.6-luna',usage:{input:1,output:1}})
+  await complete(request,{provider:'openai',model:'gpt-5.6-luna'})
+  expect(openai.mock.calls[0][1]).toBe('gpt-5.6-luna');expect(anthropic).not.toHaveBeenCalled()
+})
