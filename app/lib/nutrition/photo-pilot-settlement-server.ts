@@ -2,11 +2,15 @@ import { createServiceRoleClient } from '@/app/lib/auth/supabase-server'
 import { nutritionPhotoPilotEnabled, nutritionPhotoPilotOwner } from './photo-pilot-policy'
 import { photoUsageMicroUsd, type PhotoUsageEvidence } from './photo-pilot-usage'
 import type { PhotoPaidStage } from './photo-pilot-budget'
+import { fixedPhotoCanary, isPhotoCanaryId, nutritionPhotoCanaryEnabled, nutritionPhotoCanaryDispatchEnabled, type PhotoCanaryTuple } from './photo-pilot-canary-policy'
 
 /** Internal server composition only. No HTTP/MCP argument can invoke settlement.
  * Caller has just reverified owner auth and obtained a valid provider response. */
-export async function settlePhotoUsage(owner: string, captureId: string, stage: PhotoPaidStage, evidence: PhotoUsageEvidence) {
-  if (!nutritionPhotoPilotEnabled() || !nutritionPhotoPilotOwner(owner)) throw new Error('Pilot settlement disabled')
+export async function settlePhotoUsage(owner: string, captureId: string, stage: PhotoPaidStage, evidence: PhotoUsageEvidence, canary?: PhotoCanaryTuple) {
+  const allowed = canary ? nutritionPhotoCanaryEnabled() && nutritionPhotoCanaryDispatchEnabled()
+    && fixedPhotoCanary(canary) && canary.captureId === captureId
+    : nutritionPhotoPilotEnabled() && !isPhotoCanaryId(captureId)
+  if (!allowed || !nutritionPhotoPilotOwner(owner)) throw new Error('Pilot settlement disabled')
   const { data, error } = await createServiceRoleClient().rpc('settle_nutrition_photo_usage', {
     p_capture_id: captureId, p_owner: owner, p_stage: stage, p_evidence: evidence,
   })

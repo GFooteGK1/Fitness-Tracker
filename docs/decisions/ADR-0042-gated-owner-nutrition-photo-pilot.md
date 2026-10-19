@@ -62,3 +62,25 @@ transactions/day and300 across a simulated720h initial period are the acceptance
 fixture, not a measured cost or guarantee for arbitrary photos. Real hosted
 credentials/prices/data controls and multi-session/Storage proof remain separate.
 The SQL remains unapplied and adds a third literalfalse gate on settlement.
+
+## Approved conditional canary isolation, 2026-10-19
+
+Greg approved the bounded conditional rollout, with account evidence required
+before any live SQL or paid call. A separate fixed-fixture owner route reuses the
+capture/normalization/financial path while stopping before canonical commit.
+Generic capture/resume and the frozen SQL permanently veto the canary ID.
+Its GET returns minimal server HTML rather than mounting the application layout,
+whose AuthProvider can create profile/WHOOP side effects.
+
+Separate code gates control canary staging and paid dispatch; both defaultfalse,
+as does the normal pilot. Staging-only POST uploads/readbacks the same frozen
+private image with zero financial admissions. Actual owner/anonymous/foreign
+Storage proof precedes reviewed dispatch activation. Only photo_stored may
+advance; provider-start states are never reclaimed and estimated replay never
+commits the canary. Missing trusted screening usage blocks estimation.
+
+This stricter storage-then-dispatch ordering changes no approved SQL/image bytes,
+endpoint, allowance, credentials, permissions, attempt count or saved-record scope.
+The previously approved one-request metadata diagnostic is now closed. The exact
+bundle and operational gates are in
+[the frozen canary proposal](../proposals/nutrition-photo-canary/README.md).
