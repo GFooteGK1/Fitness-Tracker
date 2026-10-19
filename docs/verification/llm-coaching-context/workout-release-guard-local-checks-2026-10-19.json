@@ -1,0 +1,8 @@
+{
+  "tests": 2,
+  "passed": 2,
+  "liveCalls": false,
+  "failedBuildReceiptBlocksPromotion": true,
+  "forbiddenDryFilesBlockSubmission": true,
+  "helperSha256": "d907b63e71fa01a516dbe155d74de5bcf45b20184921acb053c92621cae1d9c2"
+}

@@ -1,5 +1,11 @@
 # Local workout-history context candidate
 
+## Subsequent release checkpoint
+
+The candidate narrative below is the historical local-preparation receipt. Greg subsequently approved deployment and scoped normal PR/CI/merge. The exact reader commit `de3c5efc0395fbf68b2372b830dcfc84aadf97e8` was promoted on October19 at01:25UTC as `dpl_2Z5b2poGbDtsStUFAHrSBaBWJHh5`. Build, seven staged and six canonical route checks passed. Actual hosted workout coverage remains pending the parent conversation's tool read. Merge is paused on an unexpected Git auto-deployment configuration effect. See `workout-release-receipt-2026-10-19.md` for current release evidence and the exact blocker.
+
+## Historical local preparation
+
 This is a local-only candidate on GregPC. No production deployment, hosted record, shared planning flag, permission, schema, credential, grant, WHOOP connection or background job was changed in this slice. Existing production remains the separately approved native-relay release recorded in `native-relay-release-and-connection-checkpoint.json`.
 
 ## Source and exact boundary

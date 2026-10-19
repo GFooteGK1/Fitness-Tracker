@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-10-19T01:15:08.775820+00:00",
+  "approvalAt": "2026-10-19T01:09:37Z",
+  "production": {
+    "id": "dpl_2t5ciggevHsJUaS7jyDKowZqy4aG",
+    "url": "fitness-tracker-csndcwnco-gregs-projects-98860c8b.vercel.app",
+    "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+    "readyState": "READY",
+    "target": "production",
+    "createdAt": 1792368316910,
+    "buildingAt": 1792368317841,
+    "ready": 1792368391364,
+    "meta": {
+      "sociusBaseCommit": "107a570339d8c53f7db44dfbc8d77c4c585cff68",
+      "sociusOverlayDigest": "359eb4805106dd282cafa8adff46b62dfbdb1ddcc2116cfd038fbc1054dbd376",
+      "sociusConnectionState": "configured"
+    }
+  },
+  "project": {
+    "id": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+    "name": "fitness-tracker",
+    "accountId": "team_zjdKVgrSBNAYC9gql0Raiocm"
+  },
+  "environmentMetadataDigest": "882f5f2cd0a4b4050b6deabfc1a6d776e885ea1eecdeffe90cbe89f836879da9"
+}

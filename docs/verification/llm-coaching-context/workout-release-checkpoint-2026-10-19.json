@@ -1,0 +1,68 @@
+{
+  "recordedAt": "2026-10-19T01:27:36.600915+00:00",
+  "sourceCommit": "de3c5efc0395fbf68b2372b830dcfc84aadf97e8",
+  "deployed": {
+    "id": "dpl_2Z5b2poGbDtsStUFAHrSBaBWJHh5",
+    "url": "fitness-tracker-kemghd2d1-gregs-projects-98860c8b.vercel.app",
+    "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+    "readyState": "READY",
+    "target": "production",
+    "createdAt": 1792372835852,
+    "buildingAt": 1792372836766,
+    "ready": 1792372916021,
+    "meta": {
+      "sociusBaseCommit": "107a570339d8c53f7db44dfbc8d77c4c585cff68",
+      "sociusSourceCommit": "de3c5efc0395fbf68b2372b830dcfc84aadf97e8",
+      "sociusOverlayDigest": "69068fcfa496087834008e72361a035e3075232509d7a79170fd850d374ff406",
+      "sociusConnectionState": "configured",
+      "sociusSlice": "workout-history-readonly"
+    }
+  },
+  "overlayDigest": "69068fcfa496087834008e72361a035e3075232509d7a79170fd850d374ff406",
+  "software": {
+    "testsAndReviewPassed": true,
+    "committed": true,
+    "merged": false,
+    "githubCi": "pending"
+  },
+  "deployment": {
+    "approvedAt": "2026-10-19T01:09:37Z",
+    "buildPassed": true,
+    "stagedChecksPassed": 7,
+    "canonicalChecksPassed": 6,
+    "canonicalMetadataCheck": "Excluded under earlier denial; no retry or changed User-Agent",
+    "rollbackReference": "dpl_2t5ciggevHsJUaS7jyDKowZqy4aG",
+    "ownerDataRequested": false
+  },
+  "realDataVerification": {
+    "state": "pending",
+    "responsibleConversation": "parent",
+    "duplicatedHere": false
+  },
+  "merge": {
+    "authorizationAt": "2026-10-19T01:16:18Z",
+    "state": "paused; unexpected deployment effect",
+    "reason": "Git main auto-deploys, but project settings lack the four connection overrides in the guarded release. Normal Git deployment would default MCP disabled.",
+    "settingsChanged": false,
+    "mergeAttempted": false,
+    "branchProtectionBypassed": false
+  },
+  "ciChange": {
+    "onlyExistingBrowserInstallMovedBeforeTests": true,
+    "checksRemoved": false
+  },
+  "releaseHelperSha256": "be1173a1b375ac7950345a0f147e6afd594756836efac7ac47803253011fd066",
+  "transportCorrection": "CLI 56.4.1 forwards --scope to curl regardless of position. Pre-HTTP rejection resolved using the established verified link and exact org/project environment IDs, without credential/header/endpoint changes. Release gates and package unchanged.",
+  "independentPreflightHelperSha256": "d907b63e71fa01a516dbe155d74de5bcf45b20184921acb053c92621cae1d9c2",
+  "laterHelperChangeReviewedIndependently": false,
+  "preserved": [
+    "shared planning flags",
+    "auth and owner checks",
+    "writers",
+    "saved plans and records",
+    "WHOOP connection",
+    "cron",
+    "prior task artifacts",
+    "denied access boundaries"
+  ]
+}
