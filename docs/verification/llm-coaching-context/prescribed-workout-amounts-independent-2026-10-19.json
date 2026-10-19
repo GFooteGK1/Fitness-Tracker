@@ -1,0 +1,59 @@
+{
+  "verdict": "no_blocking_finding_for_frozen_local_correction",
+  "base": "065672b8210faeabbd17eac318ac95e6a2883e33",
+  "branch": "codex/workout-prescribed-aliases",
+  "manifestSha256": "DACF4817440CBE9141865F590102EADD4E001FD138D260A5391D22B3003EB708",
+  "candidateFiles": [
+    {
+      "path": "app/lib/coach/external-performed-work-context.ts",
+      "sha256": "DB03E20FDC7E9E445955B04A1BA12FA245B79AEF5D6A87AC192BABF3ECB2C4F2"
+    },
+    {
+      "path": "test/coach/prescribed-workout-amounts.test.ts",
+      "sha256": "A0AC2540BDF03EB7C98D5CBD17A3E80B007C543A16F00A7424D74D5A14112D82"
+    },
+    {
+      "path": "docs/plans/workout-prescribed-alias-correction-2026-10-19.md",
+      "sha256": "869365D6425E506EA82F92E3124AA8896F2D721174073788F136FF88D6674057"
+    }
+  ],
+  "candidateHashesMatchedBeforeAndAfter": true,
+  "reproduced": {
+    "independentPassed": 59,
+    "recordBudgetCharacters": 64000,
+    "independentTests": 59,
+    "focusedFiles": 9,
+    "sourceWrappers": 2,
+    "focusedPassed": 173,
+    "newLeafProvenancePaths": 5,
+    "knownBadMutationTests": 1,
+    "knownBadMutationDetectedFailures": 1,
+    "outerContextBudgetCharacters": 128000,
+    "concurrentSourceChangeStatus": 409,
+    "focusedTests": 173,
+    "literalAmounts": [
+      "prescribed.duration30s",
+      "prescribed.duration20s",
+      "prescribed.reps_per_side10",
+      "prescribed.duration_per_side30s"
+    ],
+    "integrationWritesRpcFetches": 0
+  },
+  "inspected": [
+    "prescribed-only whitelist expansion",
+    "tight nested value/unit filtering",
+    "performed whitelist and derived quantities unchanged",
+    "raw finite/unfamiliar-unit behavior is not physical validation",
+    "unchanged auth/query topology/internal dose/planning/writers/reference",
+    "no schema/settings/grant/dependency/workflow change"
+  ],
+  "candidateSourceOrBuilderTestsAuthored": false,
+  "candidateMutatedByReviewer": false,
+  "liveCallsByReviewer": 0,
+  "remainingGates": [
+    "normal required CI/protected merge",
+    "verified Git deployment",
+    "authenticated source/revision/window-bound live context acceptance"
+  ],
+  "blocker": null
+}

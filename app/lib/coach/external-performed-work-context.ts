@@ -35,7 +35,7 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
     if (value === undefined || value === null) return null
     if (!object(value)) { omit(id, path, 'invalid_recorded_object'); return null }
     for (const key of Object.keys(value)) if (!allowed.includes(key)) omit(id, `${path}.${key}`, 'unsupported_recorded_field')
-    const nested = ['segments', 'events', 'performed', 'prescribed', 'load', 'distance', 'subreps', 'rep_range', 'set_details', 'score_model', 'block_score']
+    const nested = ['segments', 'events', 'performed', 'prescribed', 'load', 'distance', 'subreps', 'rep_range', 'set_details', 'score_model', 'block_score', 'duration', 'duration_per_side']
     const strings = ['movement_name', 'title', 'block_type', 'scoring', 'unit', 'rx_status']
     return Object.fromEntries(allowed.filter(key => {
       if (!has(value, key) || skip.includes(key)) return false
@@ -61,10 +61,13 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
     visit(value, sourcePath)
     return { scope: 'retained_scalar_leaves' as const, default: defaultValue, overrides }
   }
-  const amounts = (value: unknown, path: string, id: string) => {
-    const result = fields(value, ['reps', 'sets', 'load', 'distance', 'time_s', 'rep_range', 'subreps', 'set_details'], path, id)
+  const amounts = (value: unknown, path: string, id: string, kind: 'performed' | 'prescribed') => {
+    // These aliases preserve recorded prescription intent only. They never
+    // enter performed quantities or imply totals, completion or recognized units.
+    const prescribedFields = kind === 'prescribed' ? ['duration', 'reps_per_side', 'duration_per_side'] : []
+    const result = fields(value, ['reps', 'sets', 'load', 'distance', 'time_s', 'rep_range', 'subreps', 'set_details', ...prescribedFields], path, id)
     if (!result) return null
-    for (const key of ['load', 'distance', 'subreps', 'rep_range']) if (has(result, key)) {
+    for (const key of ['load', 'distance', 'subreps', 'rep_range', 'duration', 'duration_per_side']) if (has(result, key)) {
       result[key] = fields(result[key], key === 'rep_range' ? ['min', 'max'] : ['value', 'unit'], `${path}.${key}`, id)
     }
     if (has(result, 'set_details')) {
@@ -157,8 +160,8 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
           if (!projected || typeof projected.movement_name !== 'string' || !projected.movement_name.trim()) { omit(row.id, path, 'invalid_recorded_event_name'); continue }
           const eventProvenance = historyFieldProvenance(row.capture_provenance, path)
           if (['copied_template', 'imported_unverified'].includes(eventProvenance.origin) && eventProvenance.reviewState === 'unreviewed') { omit(row.id, path, 'unreviewed_template_or_import'); continue }
-          const performed = amounts(projected.performed, `${path}.performed`, row.id)
-          const prescribed = amounts(projected.prescribed, `${path}.prescribed`, row.id)
+          const performed = amounts(projected.performed, `${path}.performed`, row.id, 'performed')
+          const prescribed = amounts(projected.prescribed, `${path}.prescribed`, row.id, 'prescribed')
           if (!performed || !Object.values(performed).some(value => value !== null && value !== undefined)) { omit(row.id, path, 'no_reported_performance'); continue }
           const load = object(performed.load) ? performed.load : null
           const reps = performed.reps == null && object(performed.rep_range) ? performed.rep_range : performed.reps
@@ -200,7 +203,8 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
     segmentedEventLimitations: ['Stored event amounts are unverified reports/estimates, not independently confirmed execution.',
       'Rounds, set details, per-leg counts and block scores are not multiplied, summed or assigned to individual events.',
       'Block is_pr is an unverified stored claim. Time and distance retain recorded units; movement identity is unresolved.',
-      'Recorded field provenance defaults apply only to retained scalar leaves; exact source-path overrides take precedence.'],
+      'Recorded field provenance defaults apply only to retained scalar leaves; exact source-path overrides take precedence.',
+      'Prescribed values are recorded intent, not confirmation of performed work. Per-side and coexisting amount forms are retained without totals, reconciliation or unit conversions.'],
     status: !input.available ? 'unavailable' as const : !complete ? 'partial' as const : records.length ? 'available' as const : 'no_records' as const,
     coverage: { ...base.coverage, complete, selectedRecords: base.coverage.selectedRecords + selectedEvents,
       includedRecords: records.length, recordBudgetCharacters: BUDGET, usedRecordCharacters: used,
