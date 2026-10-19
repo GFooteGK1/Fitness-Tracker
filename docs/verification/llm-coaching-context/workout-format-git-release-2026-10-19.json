@@ -1,0 +1,110 @@
+{
+  "checkedAt": "2026-10-19T02:21:25.182953+00:00",
+  "pr": {
+    "headRefOid": "214aaaa8c2021c1abd286d66fc3d1f15147c6070",
+    "mergeCommit": {
+      "oid": "c3fe3f7ba0220f8ae9fed23a8688d5a0e41450c3"
+    },
+    "mergedAt": "2026-10-19T02:18:45Z",
+    "state": "MERGED",
+    "url": "https://github.com/GFooteGK1/Fitness-Tracker/pull/91"
+  },
+  "project": {
+    "id": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+    "teamId": "team_zjdKVgrSBNAYC9gql0Raiocm"
+  },
+  "deployment": {
+    "id": "dpl_DwSSEtJukp4jJdX4ZaQiekba18mp",
+    "url": "fitness-tracker-4knanyhmy-gregs-projects-98860c8b.vercel.app",
+    "readyState": "READY",
+    "target": "production",
+    "createdAt": 1792376329164,
+    "buildingAt": 1792376330093,
+    "ready": 1792376442640,
+    "alias": [
+      "www.sociusfit.com",
+      "sociusfit.com",
+      "sociusai.vercel.app",
+      "fitness-tracker-gregs-projects-98860c8b.vercel.app",
+      "fitness-tracker-git-main-gregs-projects-98860c8b.vercel.app"
+    ]
+  },
+  "git": {
+    "githubCommitSha": "c3fe3f7ba0220f8ae9fed23a8688d5a0e41450c3",
+    "githubCommitRef": "main",
+    "githubRepo": "Fitness-Tracker",
+    "githubOrg": "GFooteGK1"
+  },
+  "manualDeployment": false,
+  "settingsMutations": false,
+  "ownerDataRequested": false,
+  "parentActualOwnerDataAcceptance": "pending",
+  "canonicalMetadataProbe": "Excluded under prior access denial; no changed identity or alternate path retry",
+  "expectedMergeCommit": "c3fe3f7ba0220f8ae9fed23a8688d5a0e41450c3",
+  "exactSourceServing": true,
+  "build": {
+    "returnCode": 0,
+    "compiledSuccessfully": true,
+    "typeValidationPresent": true,
+    "buildCompleted": true,
+    "rawLogsRetained": false
+  },
+  "canonicalChecks": [
+    {
+      "path": "/api/mcp",
+      "method": "GET",
+      "status": 405,
+      "expected": 405,
+      "passed": true,
+      "cacheControl": "private, no-store",
+      "referrerPolicy": "no-referrer"
+    },
+    {
+      "path": "/api/mcp",
+      "method": "POST",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "cacheControl": "private, no-store",
+      "referrerPolicy": "no-referrer"
+    },
+    {
+      "path": "/oauth/consent?authorization_id=abcdefghijklmnopqrstuvwxyz234567",
+      "method": "GET",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "cacheControl": "private, no-store",
+      "referrerPolicy": "no-referrer"
+    },
+    {
+      "path": "/api/coach/context?tzOffset=0",
+      "method": "GET",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "cacheControl": "private, no-store",
+      "referrerPolicy": null
+    },
+    {
+      "path": "/auth/signin",
+      "method": "GET",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "referrerPolicy": null
+    },
+    {
+      "path": "/oauth/consent",
+      "method": "POST",
+      "status": 400,
+      "expected": 400,
+      "passed": true,
+      "cacheControl": "private, no-store",
+      "referrerPolicy": "no-referrer"
+    }
+  ],
+  "passed": true,
+  "completedAt": "2026-10-19T02:21:41.684274+00:00"
+}
