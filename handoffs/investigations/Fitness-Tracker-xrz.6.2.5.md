@@ -24,3 +24,19 @@ Each blocker has one failed attempt; no exhausted retry allowance.
   The exact placeholder-config, inactive production build is requested elevated
   to distinguish sandbox filesystem enforcement from a compiler failure. No
   provider requests or secret configuration are needed for this check.
+
+- Build attempt2 succeeded with the same inert placeholder configuration. Its
+  production trace includes the exact approved fixture. An initial trace assertion
+  expected one path string but Windows emitted slash and backslash variants;
+  resolving both proved they name the same single file with the approved hash.
+  No application/fixture changes were needed for either verification resolution.
+- Optional local HTTP runtime check attempt1: sandbox loopback socket denied with
+  WinError10013, no request dispatched. Attempt2 from the approved elevated client
+  timed out connecting to the sandbox-hosted server despite server readiness.
+  Reassessment: this is a local sandbox/host reachability gap, not an API result.
+  Stopped this optional probe after2 attempts and stopped the owned server. Do not
+  infer paused runtime behavior from it. Required hosted preview/CI checks remain
+  the relevant separate path; no firewall/network setting or access bypass.
+- Freeze portability: Git autocrlf warned about future SQL conversion. A narrow
+  .gitattributes rule pins only the approved SQL toLF and preserves the original
+  migration-manifest raw bytes. SQL/image contents and application code unchanged.
