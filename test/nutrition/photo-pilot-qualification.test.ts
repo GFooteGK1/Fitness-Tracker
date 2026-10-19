@@ -22,10 +22,12 @@ beforeEach(()=>{
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs()})
 const request=(suffix='')=>new Request('https://socius.example/api/meals/photo-pilot/qualification'+suffix)
 const active=()=>vi.mocked(nutritionPhotoQualificationEnabled).mockReturnValue(true)
-it('ships the actual separate policy literally false despite invented environment overrides',async()=>{
-  vi.stubEnv('NUTRITION_PHOTO_QUALIFICATION_ACTIVE','true')
+it('enables only approved metadata policy and preserves the separate disabled pilot',async()=>{
+  vi.stubEnv('NUTRITION_PHOTO_QUALIFICATION_ACTIVE','false')
   const policy=await vi.importActual<typeof import('@/app/lib/nutrition/photo-pilot-qualification-policy')>('@/app/lib/nutrition/photo-pilot-qualification-policy')
-  expect(policy.NUTRITION_PHOTO_QUALIFICATION_ACTIVE).toBe(false);expect(policy.nutritionPhotoQualificationEnabled()).toBe(false)
+  expect(policy.NUTRITION_PHOTO_QUALIFICATION_ACTIVE).toBe(true);expect(policy.nutritionPhotoQualificationEnabled()).toBe(true)
+  const pilot=await vi.importActual<typeof import('@/app/lib/nutrition/photo-pilot-policy')>('@/app/lib/nutrition/photo-pilot-policy')
+  expect(pilot.NUTRITION_PHOTO_PILOT_ACTIVE).toBe(false);expect(pilot.nutritionPhotoPilotEnabled()).toBe(false)
   const response=await GET(request());expect(response.status).toBe(409);expect(response.headers.get('Cache-Control')).toBe('private, no-store')
   expect(createServerClient).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled()
 })
