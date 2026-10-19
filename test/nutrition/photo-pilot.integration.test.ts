@@ -2,12 +2,12 @@ import { afterAll,afterEach,beforeAll,beforeEach,describe,expect,it,vi } from 'v
 import { randomBytes,randomUUID } from 'node:crypto'
 import sharp from 'sharp'
 import type { PGlite } from '@electric-sql/pglite'
-import { nutritionPilotClient,nutritionPilotDatabase,pilotTestOwner } from '../helpers/nutrition-pilot-database'
+import { nutritionPilotClient,nutritionPilotDatabase,nutritionPilotSettlementClient,pilotTestOwner } from '../helpers/nutrition-pilot-database'
 import { photoDraftActor } from '../helpers/photo-draft-database'
 vi.mock('@/app/lib/nutrition/photo-pilot-policy',()=>({nutritionPhotoPilotEnabled:vi.fn(()=>true),nutritionPhotoPilotOwner:vi.fn((id:string)=>id==='11111111-1111-4111-8111-111111111111')}))
 vi.mock('@/app/lib/llm/client',()=>({complete:vi.fn()}))
-vi.mock('@/app/lib/auth/supabase-server',()=>({createServerClient:vi.fn()}))
-import { createServerClient } from '@/app/lib/auth/supabase-server'
+vi.mock('@/app/lib/auth/supabase-server',()=>({createServerClient:vi.fn(),createServiceRoleClient:vi.fn()}))
+import { createServerClient,createServiceRoleClient } from '@/app/lib/auth/supabase-server'
 import { complete } from '@/app/lib/llm/client'
 import { nutritionPhotoPilotEnabled } from '@/app/lib/nutrition/photo-pilot-policy'
 import { capturePilotPhoto } from '@/app/lib/nutrition/photo-pilot'
@@ -30,6 +30,7 @@ beforeEach(async()=>{
   owner=pilotTestOwner;await db.exec('RESET ROLE');await db.exec('TRUNCATE nutrition_photo_exposure,nutrition_photo_captures,logging_requests,activity_drafts,activity_revisions,activity_mutations,meals CASCADE');await photoDraftActor(db,owner)
   client=nutritionPilotClient(db,()=>owner)
   vi.mocked(createServerClient).mockResolvedValue(client as never)
+  vi.mocked(createServiceRoleClient).mockReturnValue(nutritionPilotSettlementClient(db) as never)
   bytes=await sharp(randomBytes(32*32*3),{raw:{width:32,height:32,channels:3}}).png().toBuffer()
   vi.stubEnv('OPENAI_API_KEY','synthetic-key');vi.stubEnv('LLM_VISION_PROVIDER','anthropic')
   screening=vi.fn(async()=>new Response(JSON.stringify(decision())));vi.stubGlobal('fetch',screening)

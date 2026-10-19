@@ -28,7 +28,7 @@ GRANT SELECT ON public.nutrition_photo_captures TO authenticated;
 CREATE TABLE public.nutrition_photo_budget (
  policy TEXT PRIMARY KEY CHECK(policy='openai-owner-30d-v1'),
  started_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
- ends_at TIMESTAMPTZ NOT NULL,
+ ends_at TIMESTAMPTZ NOT NULL, halted BOOLEAN NOT NULL DEFAULT false,
  CHECK(ends_at=started_at+interval '720 hours')
 );
 WITH period AS (SELECT clock_timestamp() start)
@@ -37,8 +37,12 @@ INSERT INTO public.nutrition_photo_budget(policy,started_at,ends_at)
 CREATE TABLE public.nutrition_photo_exposure (
  capture_id UUID NOT NULL, user_id UUID NOT NULL, stage TEXT NOT NULL CHECK(stage IN ('screen','estimate')),
  policy TEXT NOT NULL REFERENCES public.nutrition_photo_budget(policy),
- reserved_micro_usd BIGINT NOT NULL CHECK(reserved_micro_usd=CASE stage WHEN 'screen' THEN 250000 ELSE 600000 END),
+ reserved_micro_usd BIGINT NOT NULL CONSTRAINT nutrition_photo_exposure_stage_reserve CHECK(reserved_micro_usd=CASE stage WHEN 'screen' THEN 250000 ELSE 600000 END),
  admitted_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(), settled_at TIMESTAMPTZ,
+ confirmed_micro_usd BIGINT, usage_evidence JSONB, provider_receipt_id TEXT UNIQUE,
+ CHECK(confirmed_micro_usd IS NULL OR confirmed_micro_usd BETWEEN 0 AND reserved_micro_usd),
+ CHECK((settled_at IS NULL AND confirmed_micro_usd IS NULL AND usage_evidence IS NULL AND provider_receipt_id IS NULL)
+   OR (settled_at IS NOT NULL AND confirmed_micro_usd IS NOT NULL AND usage_evidence IS NOT NULL AND provider_receipt_id IS NOT NULL)),
  PRIMARY KEY(capture_id,stage), CHECK(settled_at IS NULL OR settled_at>=admitted_at)
  -- Deliberately no capture/user cascade: deleting source records cannot restore money.
 );
@@ -65,12 +69,12 @@ BEGIN
  IF p_action IN ('screen_start','estimate_start') THEN
    SELECT * INTO budget FROM public.nutrition_photo_budget WHERE policy='openai-owner-30d-v1' FOR UPDATE;
    admission:=clock_timestamp();
-   IF NOT FOUND OR admission<budget.started_at OR admission+interval '60 seconds'>=budget.ends_at
+   IF NOT FOUND OR budget.halted OR admission<budget.started_at OR admission+interval '60 seconds'>=budget.ends_at
    THEN RAISE EXCEPTION 'Initial pilot period unavailable or ended' USING ERRCODE='54000'; END IF;
    paid_stage:=CASE p_action WHEN 'screen_start' THEN 'screen' ELSE 'estimate' END;
    amount:=CASE paid_stage WHEN 'screen' THEN 250000 ELSE 600000 END;
-   IF (SELECT coalesce(sum(reserved_micro_usd),0) FROM public.nutrition_photo_exposure WHERE policy=budget.policy)+amount>5000000
-     OR (SELECT coalesce(sum(reserved_micro_usd),0) FROM public.nutrition_photo_exposure WHERE policy=budget.policy
+   IF (SELECT coalesce(sum(coalesce(confirmed_micro_usd,reserved_micro_usd)),0) FROM public.nutrition_photo_exposure WHERE policy=budget.policy)+amount>5000000
+     OR (SELECT coalesce(sum(coalesce(confirmed_micro_usd,reserved_micro_usd)),0) FROM public.nutrition_photo_exposure WHERE policy=budget.policy
        AND (settled_at IS NULL OR settled_at>=admission-interval '24 hours 60 seconds'))+amount>1000000
    THEN RAISE EXCEPTION 'Pilot spending ceiling reached' USING ERRCODE='54000'; END IF;
    INSERT INTO public.nutrition_photo_exposure(capture_id,user_id,stage,policy,reserved_micro_usd,admitted_at)
@@ -145,16 +149,64 @@ BEGIN
    estimation_started_at=c.estimation_started_at,screening=c.screening,original_estimate=c.original_estimate,operation=c.operation,
    prompt_hash=c.prompt_hash,parser_version=c.parser_version,estimated_at=c.estimated_at,saved_at=c.saved_at,meal_id=c.meal_id,receipt=c.receipt,
    updated_at=clock_timestamp() WHERE id=c.id AND user_id=auth.uid() RETURNING * INTO c;
- -- Successful stage acknowledgement anchors rolling exposure after completion.
- -- Errors, missing usage, lost acknowledgements and crashes remain unresolved;
- -- they never age out and never refund the $5 initial-period ceiling.
- IF p_action IN ('screen_result','estimate_result') THEN
-   UPDATE public.nutrition_photo_exposure SET settled_at=clock_timestamp()
-     WHERE capture_id=c.id AND user_id=auth.uid() AND stage=CASE p_action WHEN 'screen_result' THEN 'screen' ELSE 'estimate' END
-       AND settled_at IS NULL;
-   IF NOT FOUND THEN RAISE EXCEPTION 'Missing paid exposure' USING ERRCODE='40001'; END IF;
- END IF;
+ -- Owner-submitted result JSON confers NO financial completion/refund authority.
  RETURN to_jsonb(c)||CASE WHEN dispatch_receipt IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('dispatch_grant',dispatch_receipt) END;
 END $$;
 REVOKE ALL ON FUNCTION public.nutrition_photo_pilot(UUID,TEXT,JSONB) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.nutrition_photo_pilot(UUID,TEXT,JSONB) TO authenticated;
+
+-- Trusted server response path only. No authenticated owner may attest usage or
+-- completion time, including through the owner-facing result transitions above.
+CREATE FUNCTION public.settle_nutrition_photo_usage(p_capture_id UUID,p_owner UUID,p_stage TEXT,p_evidence JSONB) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE exposure public.nutrition_photo_exposure; capture public.nutrition_photo_captures; budget public.nutrition_photo_budget;
+ input_count BIGINT; output_count BIGINT; total_count BIGINT; charge BIGINT;
+BEGIN
+ IF NOT false THEN RAISE EXCEPTION 'Pilot not activated' USING ERRCODE='42501'; END IF;
+ IF current_setting('role',true) IS DISTINCT FROM 'service_role' OR p_owner IS NULL
+   OR encode(sha256(convert_to(p_owner::text,'UTF8')),'hex')<>'2bf29505900fa586ff4ff34b6f049944c0f44fcc7786ffb5ac6acb1d66b76543'
+ THEN RAISE EXCEPTION 'Trusted pilot server required' USING ERRCODE='42501'; END IF;
+ IF p_stage IS NULL OR p_stage NOT IN ('screen','estimate') OR p_evidence IS NULL OR jsonb_typeof(p_evidence)<>'object'
+   OR length(p_evidence::text)>2048
+   OR EXISTS(SELECT 1 FROM jsonb_object_keys(p_evidence) k WHERE k NOT IN
+     ('provider','endpoint','model','receiptId','inputTokens','outputTokens','totalTokens','serviceTier','ratePolicy'))
+   OR p_evidence->>'provider' IS DISTINCT FROM 'openai'
+   OR p_evidence->>'ratePolicy' IS DISTINCT FROM 'openai-usage-ceiling-2026-10-19-v1'
+   OR p_evidence->>'model' IS DISTINCT FROM (CASE p_stage WHEN 'screen' THEN 'gpt-6-luna' ELSE 'gpt-5.6-luna' END)
+   OR p_evidence->>'endpoint' IS DISTINCT FROM (CASE p_stage WHEN 'screen' THEN 'decisions' ELSE 'responses' END)
+   OR p_evidence->>'serviceTier' IS DISTINCT FROM (CASE p_stage WHEN 'screen' THEN 'fixed-decisions' ELSE 'default' END)
+   OR p_evidence->>'receiptId' IS NULL OR p_evidence->>'receiptId' !~ (CASE p_stage WHEN 'screen' THEN '^decisions:[A-Za-z0-9_-]{1,160}$' ELSE '^responses:[A-Za-z0-9_-]{1,160}$' END)
+   OR jsonb_typeof(p_evidence->'inputTokens') IS DISTINCT FROM 'number' OR p_evidence->>'inputTokens' !~ '^[0-9]{1,7}$'
+   OR jsonb_typeof(p_evidence->'outputTokens') IS DISTINCT FROM 'number' OR p_evidence->>'outputTokens' !~ '^[0-9]{1,4}$'
+   OR jsonb_typeof(p_evidence->'totalTokens') IS DISTINCT FROM 'number' OR p_evidence->>'totalTokens' !~ '^[0-9]{1,7}$'
+ THEN RAISE EXCEPTION 'Incomplete or invalid provider usage' USING ERRCODE='22023'; END IF;
+ input_count:=(p_evidence->>'inputTokens')::bigint; output_count:=(p_evidence->>'outputTokens')::bigint; total_count:=(p_evidence->>'totalTokens')::bigint;
+ IF input_count NOT BETWEEN 1 AND 1050000 OR total_count<>input_count+output_count
+   OR (p_stage='screen' AND output_count<>0) OR (p_stage='estimate' AND output_count NOT BETWEEN 1 AND 1024)
+ THEN RAISE EXCEPTION 'Usage outside qualified request envelope' USING ERRCODE='22023'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('nutrition-photo:'||p_owner::text,0));
+ SELECT * INTO budget FROM public.nutrition_photo_budget WHERE policy='openai-owner-30d-v1' FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Original pilot period unavailable' USING ERRCODE='40001'; END IF;
+ SELECT * INTO exposure FROM public.nutrition_photo_exposure WHERE capture_id=p_capture_id AND user_id=p_owner AND stage=p_stage FOR UPDATE;
+ IF NOT FOUND OR exposure.policy<>budget.policy OR exposure.admitted_at<budget.started_at OR exposure.admitted_at>=budget.ends_at
+ THEN RAISE EXCEPTION 'Unknown original reservation' USING ERRCODE='42501'; END IF;
+ SELECT * INTO capture FROM public.nutrition_photo_captures WHERE id=p_capture_id AND user_id=p_owner;
+ IF NOT FOUND OR (p_stage='screen' AND capture.screening IS NULL) OR (p_stage='estimate' AND capture.original_estimate IS NULL)
+ THEN RAISE EXCEPTION 'Provider result was not durably acknowledged' USING ERRCODE='40001'; END IF;
+ IF exposure.usage_evidence IS NOT NULL THEN
+   IF exposure.usage_evidence IS DISTINCT FROM p_evidence THEN RAISE EXCEPTION 'Settlement evidence conflicts' USING ERRCODE='22023'; END IF;
+ ELSE
+   charge:=CASE p_stage WHEN 'screen' THEN (input_count*22+99)/100 ELSE (input_count*55+output_count*198+99)/100 END;
+   IF charge>exposure.reserved_micro_usd THEN
+     UPDATE public.nutrition_photo_budget SET halted=true WHERE policy=budget.policy;
+     RETURN jsonb_build_object('state','bound_violation','captureId',p_capture_id,'stage',p_stage);
+   END IF;
+   UPDATE public.nutrition_photo_exposure SET confirmed_micro_usd=charge,usage_evidence=p_evidence,
+     provider_receipt_id=p_evidence->>'receiptId',settled_at=clock_timestamp()
+     WHERE capture_id=p_capture_id AND user_id=p_owner AND stage=p_stage RETURNING * INTO exposure;
+ END IF;
+ RETURN jsonb_build_object('state','settled','captureId',p_capture_id,'owner',p_owner,'stage',p_stage,
+   'confirmedMicroUsd',exposure.confirmed_micro_usd,'reservedMicroUsd',exposure.reserved_micro_usd,'settledAt',exposure.settled_at);
+END $$;
+REVOKE ALL ON FUNCTION public.settle_nutrition_photo_usage(UUID,UUID,TEXT,JSONB) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.settle_nutrition_photo_usage(UUID,UUID,TEXT,JSONB) TO service_role;
