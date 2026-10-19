@@ -1,3 +1,4 @@
+import { photoUsageEvidence } from './photo-pilot-usage'
 import type { MealPhotoMediaType } from './meal-photo-analysis'
 
 export const PHOTO_SCREENING_MODEL = 'gpt-6-luna'
@@ -56,7 +57,7 @@ export function parsePhotoScreening(data: unknown): PhotoScreening {
 }
 
 /** Server-only caller. One fixed endpoint, one attempt, no redirects or fallback. */
-export async function screenMealPhoto(input: { base64Image: string; mediaType: MealPhotoMediaType; beforeDispatch?: () => void }): Promise<PhotoScreening> {
+export async function screenMealPhotoWithUsage(input: { base64Image: string; mediaType: MealPhotoMediaType; beforeDispatch?: () => void }) {
   const key = process.env.OPENAI_API_KEY?.trim()
   if (!key) throw new PhotoScreeningError()
   try {
@@ -79,6 +80,16 @@ export async function screenMealPhoto(input: { base64Image: string; mediaType: M
         chunks.push(value)
       }
     } finally { reader.releaseLock() }
-    return parsePhotoScreening(JSON.parse(Buffer.concat(chunks).toString('utf8')))
+    const data = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    const screening = parsePhotoScreening(data)
+    const billing = photoUsageEvidence('screen', data.model, { receiptId: response.headers.get('x-request-id'),
+      inputTokens: data.usage?.input_tokens, outputTokens: data.usage?.output_tokens,
+      totalTokens: data.usage?.total_tokens, serviceTier: 'fixed-decisions' })
+    return { screening, billing }
   } catch { throw new PhotoScreeningError() }
+}
+
+/** Preserve the review-queue contract without exposing billing authority. */
+export async function screenMealPhoto(input: { base64Image: string; mediaType: MealPhotoMediaType; beforeDispatch?: () => void }): Promise<PhotoScreening> {
+  return (await screenMealPhotoWithUsage(input)).screening
 }

@@ -198,3 +198,12 @@ it('refuses final fetch after asynchronous SDK preparation outlives the grant',a
   await expect(openaiProvider.chat({purpose:'vision',messages:[],maxTokens:1024,maxRetries:0,beforeDispatch:photoDispatchGuard(grant,'estimate','synthetic',0)},'gpt-5.6-luna')).rejects.toThrow('expired')
   expect(transport).not.toHaveBeenCalled()
 })
+
+it('retains raw complete provider counts separately from legacy zero defaults',async()=>{
+  mockCreate.mockResolvedValue(baseResponse({id:'resp_synthetic',model:'gpt-5.6-luna',service_tier:'default',usage:{input_tokens:5000,output_tokens:1024,total_tokens:6024}}))
+  const request:LlmRequest={purpose:'vision',messages:[],maxTokens:1024,maxRetries:0,store:false,requireComplete:true,beforeDispatch:()=>{},serviceTier:'default'}
+  expect((await openaiProvider.chat(request,'gpt-5.6-luna')).billing).toEqual({receiptId:'resp_synthetic',inputTokens:5000,outputTokens:1024,totalTokens:6024,serviceTier:'default'})
+  mockCreate.mockResolvedValue(baseResponse({id:'resp_missing',model:'gpt-5.6-luna',service_tier:'default',usage:undefined}))
+  const absent=await openaiProvider.chat(request,'gpt-5.6-luna')
+  expect(absent.usage).toEqual({input:0,output:0});expect(absent.billing).toBeUndefined()
+})

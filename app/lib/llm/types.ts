@@ -99,6 +99,9 @@ export interface LlmRequest {
 }
 
 export interface LlmResult {
+  /** Original complete provider counts, never the legacy missing-usage defaults. */
+  billing?: { receiptId: string; inputTokens: number; outputTokens: number; totalTokens: number; serviceTier: string }
+
   text: string
   toolCalls: LlmToolCall[]
   usage: LlmUsage
