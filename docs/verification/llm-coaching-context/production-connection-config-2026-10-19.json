@@ -1,0 +1,76 @@
+{
+  "approvedAt": "2026-10-19T01:57:24Z",
+  "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+  "teamId": "team_zjdKVgrSBNAYC9gql0Raiocm",
+  "target": [
+    "production"
+  ],
+  "beforeUnrelatedFingerprint": "d86aacc699801dbe8230ed2b972265937f0549e7ef536a0aa6274ffcfd8cdd2b",
+  "beforeUnrelatedCount": 36,
+  "productionBefore": "dpl_2Z5b2poGbDtsStUFAHrSBaBWJHh5",
+  "actions": [
+    {
+      "key": "SOCIUS_MCP_ENABLED",
+      "target": [
+        "production"
+      ],
+      "submittedAt": "2026-10-19T02:00:49.232179+00:00",
+      "state": "created_and_exact_readback_verified",
+      "cliReturnCode": 0,
+      "type": "encrypted",
+      "visibility": null,
+      "valueMatchesApproval": true
+    },
+    {
+      "key": "SOCIUS_MCP_ORIGIN",
+      "target": [
+        "production"
+      ],
+      "submittedAt": "2026-10-19T02:00:58.756177+00:00",
+      "state": "created_and_exact_readback_verified",
+      "cliReturnCode": 0,
+      "type": "encrypted",
+      "visibility": null,
+      "valueMatchesApproval": true
+    },
+    {
+      "key": "SOCIUS_MCP_CLIENT_ID",
+      "target": [
+        "production"
+      ],
+      "submittedAt": "2026-10-19T02:01:07.816800+00:00",
+      "state": "created_and_exact_readback_verified",
+      "cliReturnCode": 0,
+      "type": "encrypted",
+      "visibility": null,
+      "valueMatchesApproval": true
+    },
+    {
+      "key": "SOCIUS_MCP_REDIRECT_URI",
+      "target": [
+        "production"
+      ],
+      "submittedAt": "2026-10-19T02:01:17.046869+00:00",
+      "state": "created_and_exact_readback_verified",
+      "cliReturnCode": 0,
+      "type": "encrypted",
+      "visibility": null,
+      "valueMatchesApproval": true
+    }
+  ],
+  "otherValuesDecrypted": false,
+  "rawOutputRetained": false,
+  "credentialsCreated": false,
+  "grantOrPermissionChanges": false,
+  "deploymentSubmitted": false,
+  "completedAt": "2026-10-19T02:01:26.416523+00:00",
+  "afterUnrelatedFingerprint": "d86aacc699801dbe8230ed2b972265937f0549e7ef536a0aa6274ffcfd8cdd2b",
+  "afterUnrelatedCount": 36,
+  "unrelatedValuesAndTargetsUnchanged": true,
+  "previewDevelopmentUnchanged": true,
+  "planningFlagsUnchanged": true,
+  "productionAfter": "dpl_2Z5b2poGbDtsStUFAHrSBaBWJHh5",
+  "productionDeploymentUnchanged": true,
+  "allFourExactValuesVerified": true,
+  "apiReadbackReference": "https://vercel.com/docs/rest-api/projects/retrieve-the-decrypted-value-of-an-environment-variable-of-a-project-by-id"
+}

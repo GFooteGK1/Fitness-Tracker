@@ -3,7 +3,7 @@ import { formatUTCAsLocalDateWithOffset } from '../timezone-utils'
 import { fetchCoachEvidenceContext } from './evidence-context'
 import { projectEvidenceReasoningContext } from './evidence-reasoning-context'
 import { fetchPlanningHistorySnapshot, type PlanningHistorySnapshot } from './planning-context'
-import { buildPerformedWorkContext } from './performed-work-context'
+import { buildExternalPerformedWorkContext } from './external-performed-work-context'
 import { decodeCoachWeeklyIntent } from './rolling-weekly-api'
 import { fetchReviewedExecutionSlots } from './reviewed-execution-context-server'
 import { stableStringify } from './rolling-weekly-contracts'
@@ -181,8 +181,8 @@ export async function readCoachingContext(client: SupabaseClient, params: URLSea
     throw new CoachingContextError(409, 'Training sources changed during retrieval; retry')
   }
   const programming = programmingRead.value
-  let performedWork: ReturnType<typeof buildPerformedWorkContext> | null = null
-  try { performedWork = history ? buildPerformedWorkContext(history) : null } catch { /* Preserve unavailable evidence as an explicit gap. */ }
+  let performedWork: ReturnType<typeof buildExternalPerformedWorkContext> | null = null
+  try { performedWork = history ? buildExternalPerformedWorkContext(history) : null } catch { /* Preserve unavailable evidence as an explicit gap. */ }
   const readCompletedAt = new Date().toISOString()
   if (formatUTCAsLocalDateWithOffset(readCompletedAt, tzOffset) !== localDate
     || (evidence && (evidence.scope.activeProgramId !== (program?.id ?? null)

@@ -1,0 +1,55 @@
+{
+  "recordedAt": "2026-10-19T02:02:57.425380+00:00",
+  "baseHead": "51079271bcc823ab936aade0575fdc746a6aa85b",
+  "candidateSha256": {
+    "app/lib/coach/external-performed-work-context.ts": "da0825de9daf4c71ae469f9d7c3677e041fc2a7b9ea7aba9d704f6fdb634cc99",
+    "app/lib/coach/coaching-context-server.ts": "d9ba6f5999ea6e7718837a9ce46cd69d1bf4e6627986885c785e420f186fa267",
+    "test/fixtures/segmented-workouts.ts": "d6d8ff7c6c3d18d7d1b2660eafabd66fddf2739d9c71d993f514f538ba42c27c",
+    "test/coach/external-performed-work-context.test.ts": "6a6d0db742dc2584f20b4a7ab682e5b76d96c4371eb8a701d46f73550f6bdb86",
+    "test/coach/coaching-context-history.test.ts": "990435217b541e1fff39fc22b32615873d16cefec22a3c3d821e34cb43c8ff3c"
+  },
+  "regressionTestsPassed": 374,
+  "regressionFiles": 17,
+  "typeCheckPassed": true,
+  "focusedLintPassed": true,
+  "localBuildPassed": true,
+  "independentVerification": {
+    "candidateTestsPassed": 49,
+    "separateProbesPassed": 12,
+    "outerBudgetProbePassed": 1,
+    "findings": []
+  },
+  "representativeSyntheticProjection": {
+    "sources": 5,
+    "blocks": 8,
+    "eventsSelected": 31,
+    "eventsIncluded": 31,
+    "usedRecordCharacters": 55459,
+    "recordBudgetCharacters": 64000,
+    "complete": true,
+    "omissions": 0,
+    "issues": 0,
+    "source": "Checked-in sanitized representative fixture; no owner identities, source IDs, actual names or actual quantities accessed by this reviewer"
+  },
+  "unchangedSharedPaths": [
+    "app/lib/coach/performed-dose-evidence.ts",
+    "app/lib/coach/performed-work-context.ts",
+    "app/lib/coach/planning-context.ts",
+    "app/lib/coach/planning-history.ts",
+    "app/lib/personalized-coaching-capabilities.ts",
+    "vercel.json"
+  ],
+  "externalBudgetCharacters": 64000,
+  "outerBudgetCharacters": 128000,
+  "numericPolicyEligible": false,
+  "productionConfigApproval": "2026-10-19T01:57:24Z",
+  "productionConfigAppliedAndVerified": true,
+  "unrelatedEnvironmentValuesAndTargetsUnchanged": true,
+  "currentServingDeployment": "dpl_2Z5b2poGbDtsStUFAHrSBaBWJHh5",
+  "adapterDeployed": false,
+  "merged": false,
+  "actualAdapterOwnerDataAcceptance": "pending",
+  "priorDeployedReaderAcceptance": "failed_format_compatibility",
+  "newManualDeploymentApproval": false,
+  "nextGate": "Scoped commit, normal PR/CI/branch protection, authorized merge and resulting Git deployment verification; parent actual owner read after release."
+}

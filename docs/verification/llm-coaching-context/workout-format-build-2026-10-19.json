@@ -1,0 +1,16 @@
+{
+  "recordedAt": "2026-10-19T01:59:41.962410+00:00",
+  "command": "npm run build",
+  "exitCode": 0,
+  "compiledSuccessfully": true,
+  "typeValidationPresent": true,
+  "staticPages96": true,
+  "providerVariables": "synthetic placeholders",
+  "supabaseUrl": "loopback",
+  "rawLogsRetained": false,
+  "deployed": false,
+  "knownUnrelatedWarningPresence": {
+    "PhotoMealReviewImg": true,
+    "v2HookDependency": true
+  }
+}

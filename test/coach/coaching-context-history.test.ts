@@ -4,6 +4,7 @@ import { personalizedCoachingCapabilities } from '@/app/lib/personalized-coachin
 import { fetchPerformedWorkContextForCoaching } from '@/app/lib/coach/performed-work-context'
 import { contextClient, contextOwner, contextRows } from '../fixtures/coaching-context'
 import { workSnapshot } from '../fixtures/coach-performed-work'
+import { segmentedSnapshot } from '../fixtures/segmented-workouts'
 
 const now = '2026-10-19T00:13:53.447Z'
 const params = () => new URLSearchParams({ days: '7', tzOffset: '300' })
@@ -16,6 +17,35 @@ function workout(id = 'logged-one', date = '2026-10-18') {
 describe('authenticated context workout evidence with planning history disabled', () => {
   beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(now); vi.stubEnv('COACH_HISTORY_CONTEXT_ENABLED', 'false') })
   afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.restoreAllMocks() })
+
+  it('includes all representative segmented events through the owned external reader with zero writes', async () => {
+    const rows = contextRows()
+    rows.workouts = segmentedSnapshot().workouts.map(row => ({ ...row, user_id: contextOwner }))
+    const saved = structuredClone(rows), { db, writes, traces } = contextClient(rows)
+    const result = await readCoachingContext(db, params())
+    expect(result.performedWork).toMatchObject({ authority: 'factual_context_only', numericPolicyEligible: false,
+      coverage: { selectedRecords: 31, includedRecords: 31, complete: true, retrievalComplete: true, omitted: [], issues: [] } })
+    expect(result.performedWork?.blockContexts).toHaveLength(8)
+    expect(rows).toEqual(saved)
+    expect(result.acceptedProgramming?.todaySessions[0].prescription).toEqual(saved.prescribed_sessions[0].prescription)
+    expect(writes).not.toHaveBeenCalled()
+    expect(personalizedCoachingCapabilities().historyContext).toBe(false)
+    expect(traces.filter(trace => ['workouts', 'coach_checkins'].includes(trace.table)).every(trace =>
+      trace.filters.some(([key, value]) => key === 'user_id' && value === contextOwner))).toBe(true)
+  })
+
+  it('keeps the existing outer response budget even when segmented events fit their own budget', async () => {
+    const rows = contextRows()
+    rows.workouts = segmentedSnapshot().workouts.map(row => ({ ...row, user_id: contextOwner }))
+    const first = await readCoachingContext(contextClient(rows).db, params())
+    const size = JSON.stringify(first).length
+    expect(size).toBeLessThan(128_000)
+    // This extra profile fits alone but would exceed the combined packet bound.
+    rows.user_profiles[0].fitness_goals = 'x'.repeat(128_100 - size)
+    const { db, writes } = contextClient(rows)
+    await expect(readCoachingContext(db, params())).rejects.toMatchObject({ status: 503, message: 'Coaching context exceeds the bounded response budget' })
+    expect(writes).not.toHaveBeenCalled()
+  })
 
   it('reads exactly seven inclusive local dates, preserving source facts and excluding narrative', async () => {
     const rows = contextRows()

@@ -1,0 +1,47 @@
+{
+  "recordedAt": "2026-10-19T02:02:57.425380+00:00",
+  "project": "auolnfwetmfcwhtvakzy",
+  "authority": "Explicit parent-provided owner UUID and five source UUIDs from authenticated tool packet",
+  "queryMode": "SELECT only; exact owner AND exact IDs AND October12-18 window; no credentials/session stores",
+  "ownedSources": 5,
+  "blocks": 8,
+  "segments": 8,
+  "events": 31,
+  "rootType": "array",
+  "executionSource": "manual_text",
+  "executionStatus": "completed",
+  "captureRevision": 1,
+  "allCreatedAndUpdatedBeforeParentCutoff": true,
+  "parentCutoff": "2026-10-19T01:39:44.491Z",
+  "provenanceCoverage": {
+    "modelEstimatedUnreviewed": 2,
+    "noBlocksFieldProvenance": 3
+  },
+  "blockKeys": [
+    "title",
+    "segments",
+    "block_type",
+    "time_cap_s",
+    "block_score",
+    "score_model"
+  ],
+  "eventKeys": [
+    "movement_name",
+    "performed",
+    "prescribed"
+  ],
+  "amountShapes": {
+    "reps": "number or null",
+    "load": "value:number/unit:string",
+    "distance": "value:number/unit:string",
+    "time_s": "number",
+    "sets": "number",
+    "rep_range": "min:number/max:number",
+    "subreps": "value:number/unit:string",
+    "set_details": "array of reps/load or legs/reps_per_leg/load"
+  },
+  "privateIdentifiersStored": false,
+  "actualNamesOrAmountsRead": false,
+  "notesOrRawInputRead": false,
+  "sourceRecordsChanged": false
+}
