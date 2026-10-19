@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import * as whoopClient from './api-client';
 import * as tokenService from './token-service';
 import { validateWhoopIdentifier, assertValidWhoopIdentifier } from './validation';
+import { upsertWhoopTiming } from './timing-upsert';
 import type {
   WhoopRecovery,
   WhoopSleep,
@@ -224,11 +225,7 @@ async function storeRecoveryData(
 ): Promise<number> {
   const records = recoveryData.map(item => transformRecoveryData(userId, item));
 
-  const { error } = await supabase
-    .from('whoop_recovery')
-    .upsert(records, {
-      onConflict: 'user_id,cycle_id',
-    });
+  const { error } = await upsertWhoopTiming(supabase, 'recovery', userId, records, recoveryData);
 
   if (error) {
     console.error('[WHOOP Sync] Failed to store recovery data:', error);
@@ -276,11 +273,7 @@ async function storeSleepData(
 ): Promise<number> {
   const records = sleepData.map(item => transformSleepData(userId, item));
 
-  const { error } = await supabase
-    .from('whoop_sleep')
-    .upsert(records, {
-      onConflict: 'user_id,sleep_id',
-    });
+  const { error } = await upsertWhoopTiming(supabase, 'sleep', userId, records, sleepData);
 
   if (error) {
     console.error('[WHOOP Sync] Failed to store sleep data:', error);
@@ -329,11 +322,7 @@ async function storeCycleData(
 ): Promise<number> {
   const records = cycleData.map(item => transformCycleData(userId, item));
 
-  const { error } = await supabase
-    .from('whoop_cycles')
-    .upsert(records, {
-      onConflict: 'user_id,cycle_id',
-    });
+  const { error } = await upsertWhoopTiming(supabase, 'cycle', userId, records, cycleData);
 
   if (error) {
     console.error('[WHOOP Sync] Failed to store cycle data:', error);

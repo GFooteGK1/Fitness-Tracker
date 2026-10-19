@@ -1,5 +1,11 @@
 # Pending decision: retain WHOOP provider timing on future ingestion
 
+Follow-on preparation resolves the exact single-owner scope in
+`../proposals/recovery-timing-owner/approval-scope.md` and ADR-0040. It keeps
+legacy date/health behavior, uses `timing_ingested_at` for valid timing snapshots,
+and preserves incomplete rows' previous metadata through homogeneous upserts.
+That draft remains unmerged, unapplied and unapproved for production.
+
 This document proposes future work; no migration, writer change, live sync or backfill is included in the recovery read child. Parent `Fitness-Tracker-xrz.5` cannot close on date-only legacy rows.
 
 The [official WHOOP API](https://developer.whoop.com/api/) exposes sleep/cycle `start`, `end`, `timezone_offset`, provider-created/updated times and score state. Recovery has cycle/sleep links and provider-created/updated times, not an independent measurement interval. Recovery collection ordering uses the related sleep start. Provider creation is not observation time. Correct recovery attribution requires exact linked sleep/cycle identity; never infer the interval from record creation or nearest date.
