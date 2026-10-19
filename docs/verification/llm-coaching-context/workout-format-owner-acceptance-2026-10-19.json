@@ -1,0 +1,56 @@
+{
+  "recordedAt": "2026-10-19T02:25:19.167704+00:00",
+  "evidenceSource": "Parent-provided ordinary authenticated owner tool result; no duplicate read by this agent",
+  "slice": "Fitness-Tracker-xrz.1",
+  "scope": "Bounded workout-history retrieval only",
+  "verdict": "passed",
+  "tool": "get_coaching_context",
+  "arguments": {
+    "days": 7,
+    "tzOffset": 300
+  },
+  "readStartedAt": "2026-10-19T02:23:27.644Z",
+  "readCompletedAt": "2026-10-19T02:23:29.346Z",
+  "stableRevision": 60,
+  "window": {
+    "startDate": "2026-10-12",
+    "endDate": "2026-10-18"
+  },
+  "performedWork": {
+    "status": "available",
+    "retrievalComplete": true,
+    "complete": true,
+    "selectedRecords": 31,
+    "includedRecords": 31,
+    "workoutIdCount": 5,
+    "omitted": [],
+    "missing": [],
+    "issues": [],
+    "additionalOmissions": 0,
+    "authority": "factual_context_only",
+    "numericPolicyEligible": false,
+    "athleteCoverage": "unknown"
+  },
+  "preservedEvidenceStates": [
+    "model estimates",
+    "unreviewed source fields",
+    "legacy unknown provenance"
+  ],
+  "originalFormatErrorsResolved": true,
+  "originalFailedReadRetainedAsHistoricalEvidence": true,
+  "deployment": "dpl_DwSSEtJukp4jJdX4ZaQiekba18mp",
+  "mergeCommit": "c3fe3f7ba0220f8ae9fed23a8688d5a0e41450c3",
+  "overallContextStatus": "partial",
+  "remainingUnrelatedGaps": [
+    "structured training intent",
+    "today session",
+    "proposal eligibility",
+    "WHOOP freshness and local-day alignment"
+  ],
+  "overallCoachingAcceptanceComplete": false,
+  "improvedAthleticOutcomesEstablished": false,
+  "sourceDataWrites": false,
+  "settingsChanges": false,
+  "broaderRoadmapWorkStarted": false,
+  "privacy": "Counts and tool metadata only; no owner/source identifiers, workout names, quantities, notes or raw packet retained"
+}
