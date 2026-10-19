@@ -1,0 +1,35 @@
+-- PROPOSAL ONLY. Not a migration and not applied to any hosted database.
+-- Before approval/application, bind this marker to the one registered public
+-- Socius pilot client UUID, after re-reading the exact ChatGPT callback.
+-- Auth v2.197.0 supplies client_id inside claims, including refresh issuance.
+create function public.socius_mcp_audience_hook(event jsonb)
+returns jsonb
+language sql
+immutable
+security invoker
+set search_path = pg_catalog
+as $$
+  with original as (
+    select case jsonb_typeof($1 #> '{claims,aud}')
+      when 'string' then jsonb_build_array($1 #> '{claims,aud}')
+      when 'array' then $1 #> '{claims,aud}'
+      else null
+    end as audience
+  )
+  select case
+    when $1 #>> '{claims,client_id}' = '__SOCIUS_REGISTERED_CLIENT_UUID__'
+      and $1 #>> '{claims,scope}' = 'email'
+      and audience is not null
+    then jsonb_set($1, '{claims,aud}',
+      case when audience @> '["https://www.sociusfit.com/api/mcp"]'::jsonb
+        then audience
+        else audience || '["https://www.sociusfit.com/api/mcp"]'::jsonb
+      end, false)
+    else $1
+  end
+  from original;
+$$;
+
+-- Existing standard Supabase roles only. No new identity or database role.
+revoke execute on function public.socius_mcp_audience_hook(jsonb) from public, anon, authenticated;
+grant execute on function public.socius_mcp_audience_hook(jsonb) to supabase_auth_admin;

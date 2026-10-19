@@ -1,5 +1,15 @@
 # SociusFit Architecture Map
 
+A single `get_coaching_context` tool exposes factual owner context through MCP;
+the cookie context route shares that reader. The owner-pilot connection was
+separately deployed and an actual partial read verified on October19. Request-local
+signature, issuer, audience, client, owner and active-grant checks remain required.
+Native consent uses the provider's saved-consent relay. ADR-0038 retains the
+broader-rights owner credential and unattested original-resource limitations.
+Refresh lifecycle and a usable fresh-browser answer are not yet qualified.
+The current connection checkpoint is documented in
+`docs/verification/llm-coaching-context/connection-commit-checkpoint-2026-10-19.md`.
+
 > **Purpose**: This document provides a comprehensive map of how features, components, and systems are interconnected in the SociusFit application. Use this to understand the impact of changes before making modifications.
 
 ## 🏗️ **High-Level Architecture Overview**

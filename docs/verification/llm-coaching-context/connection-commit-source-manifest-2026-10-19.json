@@ -1,0 +1,173 @@
+{
+  "recordedAt": "2026-10-19T00:51:08.7779693Z",
+  "kind": "Present-day local checkpoint of exact prior release; this commit is not deployed",
+  "baseCommit": "107a570339d8c53f7db44dfbc8d77c4c585cff68",
+  "priorOverlayDigest": "359eb4805106dd282cafa8adff46b62dfbdb1ddcc2116cfd038fbc1054dbd376",
+  "runtimeSources": [
+    {
+      "path": "app/.well-known/oauth-protected-resource/api/mcp/route.ts",
+      "sha256": "d7e453bb6a3b4b9dac35eaf830c6764efab7fa31d5649f0042c1075a7b7f8543",
+      "source": "working tree, matches released package",
+      "stagedSha256": "d7e453bb6a3b4b9dac35eaf830c6764efab7fa31d5649f0042c1075a7b7f8543",
+      "exactBytesMatch": true,
+      "onlyLineEndingNormalization": false
+    },
+    {
+      "path": "app/api/coach/context/route.ts",
+      "sha256": "709c35b717382a8c515e2ce2653eedf1738b3b9ad9263003ba95b36bbb228996",
+      "source": "working tree, matches released package",
+      "stagedSha256": "709c35b717382a8c515e2ce2653eedf1738b3b9ad9263003ba95b36bbb228996",
+      "exactBytesMatch": true,
+      "onlyLineEndingNormalization": false
+    },
+    {
+      "path": "app/api/mcp/route.ts",
+      "sha256": "f45754d6acf2be4cd138bc1d0b8ca1517397dbfb3461707210b2b9fc8c3dd6e8",
+      "source": "working tree, matches released package",
+      "stagedSha256": "f45754d6acf2be4cd138bc1d0b8ca1517397dbfb3461707210b2b9fc8c3dd6e8",
+      "exactBytesMatch": true,
+      "onlyLineEndingNormalization": false
+    },
+    {
+      "path": "app/lib/auth/coaching-consent.ts",
+      "sha256": "a0ec556947ce307f7c5c345b42caab03f3118d8ae697ac3cea82e98d48e14030",
+      "source": "working tree, matches released package",
+      "stagedSha256": "a0ec556947ce307f7c5c345b42caab03f3118d8ae697ac3cea82e98d48e14030",
+      "exactBytesMatch": true,
+      "onlyLineEndingNormalization": false
+    },
+    {
+      "path": "app/lib/auth/coaching-oauth.ts",
+      "sha256": "90e57df6ab7e459a8dc4e987cb90e5fd6fe274fb32882b8522e6960ccaea0651",
+      "source": "working tree, matches released package",
+      "stagedSha256": "90e57df6ab7e459a8dc4e987cb90e5fd6fe274fb32882b8522e6960ccaea0651",
+      "exactBytesMatch": true,
+      "onlyLineEndingNormalization": false
+    },
+    {
+      "path": "app/lib/coach/coaching-context-mcp.ts",
+      "sha256": "516a39adde1aac09c8890db368fb110e9fce6948c9c5371a43cd252cfa18ccd3",
+      "source": "working tree, matches released package",
+      "stagedSha256": "516a39adde1aac09c8890db368fb110e9fce6948c9c5371a43cd252cfa18ccd3",
+      "exactBytesMatch": true,
+      "onlyLineEndingNormalization": false
+    },
+    {
+      "path": "app/lib/coach/coaching-context-server.ts",
+      "sha256": "61f30878cdb805abaa915025fd646d72b38fcfd987dfe53117092b966017363b",
+      "source": "immutable released package, index only",
+      "stagedSha256": "61f30878cdb805abaa915025fd646d72b38fcfd987dfe53117092b966017363b",
+      "exactBytesMatch": true,
+      "onlyLineEndingNormalization": false
+    },
+    {
+      "path": "app/lib/coach/coaching-context-tool.ts",
+      "sha256": "eb65cc79c2545a0738cbcc23e14e478b8208a94bddb86b378bc41cb4624deef1",
+      "source": "working tree, matches released package",
+      "stagedSha256": "733f9b8839acd889e8bba2942ff00cbe4aae5c6d80f2ad07b0cbc17e6bea1edc",
+      "exactBytesMatch": false,
+      "onlyLineEndingNormalization": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context.ts",
+      "sha256": "046e8336d8d03f48bace3f185a82db7a8ed00010c4ae2588e2a693da8024f2ba",
+      "source": "working tree, matches released package",
+      "stagedSha256": "046e8336d8d03f48bace3f185a82db7a8ed00010c4ae2588e2a693da8024f2ba",
+      "exactBytesMatch": true,
+      "onlyLineEndingNormalization": false
+    },
+    {
+      "path": "app/lib/coach/coaching-mcp-http.ts",
+      "sha256": "53040e28876ffbd73fd749ebccdd264c9c1c35514a9690dbb6accc91442d17b7",
+      "source": "working tree, matches released package",
+      "stagedSha256": "53040e28876ffbd73fd749ebccdd264c9c1c35514a9690dbb6accc91442d17b7",
+      "exactBytesMatch": true,
+      "onlyLineEndingNormalization": false
+    },
+    {
+      "path": "app/oauth/consent/route.ts",
+      "sha256": "7c6fe11261db1abdba0731818f20347d8e2ba8960bed128e4dd53223bab02944",
+      "source": "working tree, matches released package",
+      "stagedSha256": "7c6fe11261db1abdba0731818f20347d8e2ba8960bed128e4dd53223bab02944",
+      "exactBytesMatch": true,
+      "onlyLineEndingNormalization": false
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "b37d1f11f8c26b5cea76934cfd1b428378793bb79e449e9c7f68957c5b7eaf6e",
+      "source": "working tree, matches released package",
+      "stagedSha256": "059c820b9d1cab1eeb0d5782fb40d54474ad0ca9ecbb2f15b3bd20271c0e13d3",
+      "exactBytesMatch": false,
+      "onlyLineEndingNormalization": true
+    },
+    {
+      "path": "package.json",
+      "sha256": "b715927d9e8ca6866bc87b63edad994ea38d2f1b80b4ee5ed82827ba87258eee",
+      "source": "working tree, matches released package",
+      "stagedSha256": "7d4c6f15da60981e6637bbb3feee5cf691ec6c1235d0c6b34671484d98e1131c",
+      "exactBytesMatch": false,
+      "onlyLineEndingNormalization": true
+    }
+  ],
+  "packages": [
+    {
+      "path": "package.json",
+      "sha256": "b715927d9e8ca6866bc87b63edad994ea38d2f1b80b4ee5ed82827ba87258eee",
+      "stagedSha256": "7d4c6f15da60981e6637bbb3feee5cf691ec6c1235d0c6b34671484d98e1131c",
+      "exactBytesMatch": false,
+      "onlyLineEndingNormalization": true
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "b37d1f11f8c26b5cea76934cfd1b428378793bb79e449e9c7f68957c5b7eaf6e",
+      "stagedSha256": "059c820b9d1cab1eeb0d5782fb40d54474ad0ca9ecbb2f15b3bd20271c0e13d3",
+      "exactBytesMatch": false,
+      "onlyLineEndingNormalization": true
+    }
+  ],
+  "workingHistoryCandidateSha256": "de3d3bbb6408d3364bab0f8ad0c38b720c37f18ad01f8a83224b6579da3b2a39",
+  "connectionAllowlist": [
+    "package.json",
+    "package-lock.json",
+    "app/.well-known/oauth-protected-resource/api/mcp/route.ts",
+    "app/api/coach/context/route.ts",
+    "app/api/mcp/route.ts",
+    "app/lib/auth/coaching-consent.ts",
+    "app/lib/auth/coaching-oauth.ts",
+    "app/lib/coach/coaching-context-mcp.ts",
+    "app/lib/coach/coaching-context-tool.ts",
+    "app/lib/coach/coaching-context.ts",
+    "app/lib/coach/coaching-mcp-http.ts",
+    "app/oauth/consent/route.ts",
+    "test/auth/coaching-oauth.test.ts",
+    "test/auth/coaching-consent-provider.test.ts",
+    "test/api/coaching-oauth-routes.test.ts",
+    "test/coach/coaching-context-mcp.test.ts",
+    "test/database/coaching-context-owner-boundary.test.ts",
+    "test/database/coaching-oauth-audience-proposal.test.ts",
+    "test/fixtures/coaching-context.ts",
+    "test/fixtures/coaching-consent-tls/README.txt",
+    "test/fixtures/coaching-consent-tls/synthetic-cert.pem",
+    "test/fixtures/coaching-consent-tls/synthetic-key.pem",
+    "test/browser/coaching-consent-browser.test.ts",
+    "docs/plans/socius-mcp-audience-hook.sql.template",
+    "docs/decisions/ADR-0038-external-context-authorization.md",
+    "docs/decisions/README.md",
+    "docs/architecture/ARCHITECTURE-MAP.md",
+    "docs/verification/llm-coaching-context/connection-commit-checkpoint-2026-10-19.md"
+  ],
+  "credentialLiteralScan": "No recognized live-secret prefixes detected; synthetic TLS pair explicitly documented",
+  "leftUnstaged": "Beads, mixed historical/superseded evidence, other plans/handoffs, browser output/screenshots and future workout tests",
+  "verification": {
+    "stagedExport": "connection-index-verified-20261019",
+    "tests": 222,
+    "passed": 222,
+    "files": 7,
+    "browserCases": 24,
+    "typecheck": "passed",
+    "productionCalls": false,
+    "newSoftwareInstalled": false,
+    "initialEnvironmentFailure": "Sandbox loopback EACCES and installed browser cache hidden; reviewed local synthetic retry passed"
+  },
+  "sourceComparison": "All 13 release overlays match staged source; three artifact files normalize CRLF to LF in Git. Original artifact hashes and staged hashes both recorded; no semantic changes."
+}
