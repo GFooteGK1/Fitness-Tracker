@@ -6,11 +6,13 @@
  * (output_text, function_call extraction, usage, stop-reason incl. length).
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const mockCreate = vi.fn()
+const clientOptions: Array<{fetch?: typeof fetch; baseURL?:string; maxRetries?:number}> = []
 vi.mock('openai', () => ({
   default: class {
+    constructor(options:typeof clientOptions[number]){clientOptions.push(options)}
     responses = { create: mockCreate }
   },
 }))
@@ -32,7 +34,10 @@ function baseResponse(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.stubEnv('OPENAI_API_KEY', 'test-key')
+  clientOptions.length=0
 })
+
+afterEach(()=>{vi.unstubAllGlobals();vi.restoreAllMocks()})
 
 describe('openaiProvider.chat', () => {
   it.each([
@@ -169,4 +174,27 @@ describe('openaiProvider.chat', () => {
     )
     expect(result.stopReason).toBe('max_tokens')
   })
+})
+
+it('checks the request-local guard at final fetch and pins endpoint/tier/retries',async()=>{
+  const transport=vi.fn(async(_input:RequestInfo | URL,_init?:RequestInit)=>new Response('{}'));vi.stubGlobal('fetch',transport)
+  mockCreate.mockImplementation(async()=>{await clientOptions.at(-1)!.fetch!('https://api.openai.com/v1/responses',{method:'POST'});return baseResponse()})
+  const req:LlmRequest={purpose:'vision',messages:[],maxTokens:1024,maxRetries:0,serviceTier:'default',beforeDispatch:()=>{throw new Error('expired')}}
+  await expect(openaiProvider.chat(req,'gpt-5.6-luna')).rejects.toThrow('expired');expect(transport).not.toHaveBeenCalled()
+  req.beforeDispatch=vi.fn();await openaiProvider.chat(req,'gpt-5.6-luna')
+  expect(req.beforeDispatch).toHaveBeenCalledOnce();expect(transport).toHaveBeenCalledOnce()
+  expect(transport.mock.calls[0][1]).toMatchObject({redirect:'error'})
+  expect(clientOptions.at(-1)).toMatchObject({baseURL:'https://api.openai.com/v1',maxRetries:0})
+  expect(mockCreate.mock.calls.at(-1)![0]).toMatchObject({model:'gpt-5.6-luna',service_tier:'default',max_output_tokens:1024})
+  expect(mockCreate.mock.calls.at(-1)![1].maxRetries).toBe(0)
+})
+
+it('refuses final fetch after asynchronous SDK preparation outlives the grant',async()=>{
+  const {photoDispatchGuard}=await import('@/app/lib/nutrition/photo-pilot-budget')
+  const transport=vi.fn(async(_input:RequestInfo | URL,_init?:RequestInit)=>new Response('{}'));vi.stubGlobal('fetch',transport)
+  let now=0;vi.spyOn(performance,'now').mockImplementation(()=>now)
+  mockCreate.mockImplementation(async()=>{await Promise.resolve();now=11000;await clientOptions.at(-1)!.fetch!('https://api.openai.com/v1/responses',{method:'POST'});return baseResponse()})
+  const grant={policy:'openai-owner-30d-v1',stage:'estimate',captureId:'synthetic',model:'gpt-5.6-luna',reservedMicroUsd:600000,remainingMs:60001}
+  await expect(openaiProvider.chat({purpose:'vision',messages:[],maxTokens:1024,maxRetries:0,beforeDispatch:photoDispatchGuard(grant,'estimate','synthetic',0)},'gpt-5.6-luna')).rejects.toThrow('expired')
+  expect(transport).not.toHaveBeenCalled()
 })

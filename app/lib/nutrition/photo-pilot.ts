@@ -3,13 +3,14 @@ import { MEAL_PHOTO_ANALYSIS_PROMPT, analyzeMealPhotoWithEvidence } from './meal
 import { screenMealPhoto } from './photo-screening'
 import { photoDraftOperation } from './photo-draft'
 import { nutritionPhotoPilotEnabled, nutritionPhotoPilotOwner } from './photo-pilot-policy'
+import { PHOTO_ESTIMATION_MODEL, photoDispatchGuard } from './photo-pilot-budget'
 import { photoHash, preparePilotPhoto } from './photo-pilot-image'
 
 export class PhotoPilotError extends Error {
   constructor(readonly status: number, message: string) { super(message) }
 }
 export interface PilotCapture {
-  id: string; state: string; claimed?: boolean; object_path: string; meal_id?: string | null
+  id: string; state: string; claimed?: boolean; dispatch_grant?: unknown; object_path: string; meal_id?: string | null
   captured_at: string; received_at: string; updated_at: string; receipt?: unknown
 }
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v)
@@ -59,15 +60,19 @@ export async function capturePilotPhoto(db: SupabaseClient, input: {
     if (uploaded.error) throw new Error('Upload unconfirmed')
     capture = await transition(db, capture.id, 'photo_stored')
     await pilotIdentity(db, owner)
+    const screenAdmissionStart = performance.now()
     capture = await transition(db, capture.id, 'screen_start')
+    const screenDispatch = photoDispatchGuard(capture.dispatch_grant, 'screen', capture.id, screenAdmissionStart)
     const image = { base64Image: photo.bytes.toString('base64'), mediaType: 'image/jpeg' as const }
-    const screening = await screenMealPhoto(image)
+    const screening = await screenMealPhoto({ ...image, beforeDispatch: screenDispatch })
     capture = await transition(db, capture.id, 'screen_result', { screening })
     if (screening.route !== 'food_candidate') return capture
     await pilotIdentity(db, owner)
+    const estimateAdmissionStart = performance.now()
     capture = await transition(db, capture.id, 'estimate_start')
-    const estimate = await analyzeMealPhotoWithEvidence({ ...image, provider: 'openai', timeoutMs: 45_000, maxRetries: 0, store: false, context: input.context })
-    if (estimate.provider !== 'openai') throw new Error('Unexpected provider')
+    const estimateDispatch = photoDispatchGuard(capture.dispatch_grant, 'estimate', capture.id, estimateAdmissionStart)
+    const estimate = await analyzeMealPhotoWithEvidence({ ...image, provider: 'openai', model: PHOTO_ESTIMATION_MODEL, beforeDispatch: estimateDispatch, timeoutMs: 45_000, maxRetries: 0, store: false, context: input.context })
+    if (estimate.provider !== 'openai' || estimate.model !== PHOTO_ESTIMATION_MODEL) throw new Error('Unexpected provider')
     const operation = photoDraftOperation(estimate.analysis, input.capturedAt)
     operation.sourceItemId = 'nutrition-photo:' + capture.id
     for (const field of [operation.provenance.occurrence, ...Object.values(operation.provenance.fields)]) {

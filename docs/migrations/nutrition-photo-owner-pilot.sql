@@ -23,9 +23,36 @@ CREATE POLICY nutrition_photo_owner_read ON public.nutrition_photo_captures FOR 
 REVOKE ALL ON public.nutrition_photo_captures FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.nutrition_photo_captures TO authenticated;
 
+-- One immutable initial period, started by the explicitly approved migration.
+-- No upsert, rollover, refund, cascade, client-supplied price or reset API.
+CREATE TABLE public.nutrition_photo_budget (
+ policy TEXT PRIMARY KEY CHECK(policy='openai-owner-30d-v1'),
+ started_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+ ends_at TIMESTAMPTZ NOT NULL,
+ CHECK(ends_at=started_at+interval '720 hours')
+);
+WITH period AS (SELECT clock_timestamp() start)
+INSERT INTO public.nutrition_photo_budget(policy,started_at,ends_at)
+ SELECT 'openai-owner-30d-v1',start,start+interval '720 hours' FROM period;
+CREATE TABLE public.nutrition_photo_exposure (
+ capture_id UUID NOT NULL, user_id UUID NOT NULL, stage TEXT NOT NULL CHECK(stage IN ('screen','estimate')),
+ policy TEXT NOT NULL REFERENCES public.nutrition_photo_budget(policy),
+ reserved_micro_usd BIGINT NOT NULL CHECK(reserved_micro_usd=CASE stage WHEN 'screen' THEN 250000 ELSE 600000 END),
+ admitted_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(), settled_at TIMESTAMPTZ,
+ PRIMARY KEY(capture_id,stage), CHECK(settled_at IS NULL OR settled_at>=admitted_at)
+ -- Deliberately no capture/user cascade: deleting source records cannot restore money.
+);
+ALTER TABLE public.nutrition_photo_budget ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.nutrition_photo_budget FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.nutrition_photo_exposure ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.nutrition_photo_exposure FORCE ROW LEVEL SECURITY;
+CREATE POLICY nutrition_exposure_owner_read ON public.nutrition_photo_exposure FOR SELECT TO authenticated USING(user_id=auth.uid());
+REVOKE ALL ON public.nutrition_photo_budget,public.nutrition_photo_exposure FROM PUBLIC,anon,authenticated;
+GRANT SELECT ON public.nutrition_photo_exposure TO authenticated;
+
 CREATE FUNCTION public.nutrition_photo_pilot(p_id UUID,p_action TEXT,p_payload JSONB DEFAULT '{}') RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE c public.nutrition_photo_captures; l JSONB; items JSONB; r JSONB; inserted UUID; f JSONB;
+DECLARE c public.nutrition_photo_captures; l JSONB; items JSONB; r JSONB; inserted UUID; f JSONB; budget public.nutrition_photo_budget; paid_stage TEXT; amount BIGINT; dispatch_receipt JSONB; admission TIMESTAMPTZ;
 BEGIN
  -- Literal gate cannot be activated by an environment variable or request.
  IF NOT false THEN RAISE EXCEPTION 'Pilot not activated' USING ERRCODE='42501'; END IF;
@@ -34,6 +61,24 @@ BEGIN
  IF p_id IS NULL OR p_payload IS NULL OR jsonb_typeof(p_payload)<>'object' OR length(p_payload::text)>40000
  THEN RAISE EXCEPTION 'Invalid capture' USING ERRCODE='22023'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('nutrition-photo:'||auth.uid()::text,0));
+ -- The same transaction lock serializes every stage's entire budget decision.
+ IF p_action IN ('screen_start','estimate_start') THEN
+   SELECT * INTO budget FROM public.nutrition_photo_budget WHERE policy='openai-owner-30d-v1' FOR UPDATE;
+   admission:=clock_timestamp();
+   IF NOT FOUND OR admission<budget.started_at OR admission+interval '60 seconds'>=budget.ends_at
+   THEN RAISE EXCEPTION 'Initial pilot period unavailable or ended' USING ERRCODE='54000'; END IF;
+   paid_stage:=CASE p_action WHEN 'screen_start' THEN 'screen' ELSE 'estimate' END;
+   amount:=CASE paid_stage WHEN 'screen' THEN 250000 ELSE 600000 END;
+   IF (SELECT coalesce(sum(reserved_micro_usd),0) FROM public.nutrition_photo_exposure WHERE policy=budget.policy)+amount>5000000
+     OR (SELECT coalesce(sum(reserved_micro_usd),0) FROM public.nutrition_photo_exposure WHERE policy=budget.policy
+       AND (settled_at IS NULL OR settled_at>=admission-interval '24 hours 60 seconds'))+amount>1000000
+   THEN RAISE EXCEPTION 'Pilot spending ceiling reached' USING ERRCODE='54000'; END IF;
+   INSERT INTO public.nutrition_photo_exposure(capture_id,user_id,stage,policy,reserved_micro_usd,admitted_at)
+     VALUES(p_id,auth.uid(),paid_stage,budget.policy,amount,admission);
+   dispatch_receipt:=jsonb_build_object('policy',budget.policy,'stage',paid_stage,'captureId',p_id,'reservedMicroUsd',amount,
+     'model',CASE paid_stage WHEN 'screen' THEN 'gpt-6-luna' ELSE 'gpt-5.6-luna' END,
+     'remainingMs',floor(extract(epoch FROM budget.ends_at-clock_timestamp())*1000));
+ END IF;
  IF p_action='reserve' THEN
    SELECT * INTO c FROM public.nutrition_photo_captures WHERE id=p_id AND user_id=auth.uid() FOR UPDATE;
    IF FOUND THEN
@@ -73,7 +118,7 @@ BEGIN
    c.screening:=p_payload->'screening'; c.state:=CASE WHEN c.screening->>'route'='food_candidate' THEN 'screened' ELSE 'rejected' END;
  ELSIF p_action='estimate_start' AND c.state='screened' THEN c.state:='estimating'; c.estimation_started_at:=clock_timestamp();
  ELSIF p_action='estimate_result' AND c.state='estimating' THEN
-   IF p_payload#>>'{estimate,provider}' IS DISTINCT FROM 'openai' OR length(coalesce(p_payload#>>'{estimate,model}','')) NOT BETWEEN 1 AND 120
+   IF p_payload#>>'{estimate,provider}' IS DISTINCT FROM 'openai' OR p_payload#>>'{estimate,model}' IS DISTINCT FROM 'gpt-5.6-luna'
       OR p_payload->>'parserVersion' IS DISTINCT FROM 'meal-photo-v1' OR p_payload->>'promptHash' IS NULL OR p_payload->>'promptHash' !~ '^[a-f0-9]{64}$'
       OR p_payload#>>'{operation,kind}' IS DISTINCT FROM 'meal' OR p_payload#>>'{operation,inputMethod}' IS DISTINCT FROM 'photo'
       OR p_payload#>>'{operation,record,needs_review}' IS DISTINCT FROM 'true'
@@ -100,7 +145,16 @@ BEGIN
    estimation_started_at=c.estimation_started_at,screening=c.screening,original_estimate=c.original_estimate,operation=c.operation,
    prompt_hash=c.prompt_hash,parser_version=c.parser_version,estimated_at=c.estimated_at,saved_at=c.saved_at,meal_id=c.meal_id,receipt=c.receipt,
    updated_at=clock_timestamp() WHERE id=c.id AND user_id=auth.uid() RETURNING * INTO c;
- RETURN to_jsonb(c);
+ -- Successful stage acknowledgement anchors rolling exposure after completion.
+ -- Errors, missing usage, lost acknowledgements and crashes remain unresolved;
+ -- they never age out and never refund the $5 initial-period ceiling.
+ IF p_action IN ('screen_result','estimate_result') THEN
+   UPDATE public.nutrition_photo_exposure SET settled_at=clock_timestamp()
+     WHERE capture_id=c.id AND user_id=auth.uid() AND stage=CASE p_action WHEN 'screen_result' THEN 'screen' ELSE 'estimate' END
+       AND settled_at IS NULL;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Missing paid exposure' USING ERRCODE='40001'; END IF;
+ END IF;
+ RETURN to_jsonb(c)||CASE WHEN dispatch_receipt IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('dispatch_grant',dispatch_receipt) END;
 END $$;
 REVOKE ALL ON FUNCTION public.nutrition_photo_pilot(UUID,TEXT,JSONB) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.nutrition_photo_pilot(UUID,TEXT,JSONB) TO authenticated;

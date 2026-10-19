@@ -56,13 +56,15 @@ export function parsePhotoScreening(data: unknown): PhotoScreening {
 }
 
 /** Server-only caller. One fixed endpoint, one attempt, no redirects or fallback. */
-export async function screenMealPhoto(input: { base64Image: string; mediaType: MealPhotoMediaType }): Promise<PhotoScreening> {
+export async function screenMealPhoto(input: { base64Image: string; mediaType: MealPhotoMediaType; beforeDispatch?: () => void }): Promise<PhotoScreening> {
   const key = process.env.OPENAI_API_KEY?.trim()
   if (!key) throw new PhotoScreeningError()
   try {
+    const body = JSON.stringify(photoScreeningRequest(input.base64Image, input.mediaType))
+    input.beforeDispatch?.()
     const response = await fetch('https://api.openai.com/v1/decisions', {
       method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(photoScreeningRequest(input.base64Image, input.mediaType)),
+      body,
       redirect: 'error', signal: AbortSignal.timeout(45_000),
     })
     if (!response.ok || !response.body) { await response.body?.cancel(); throw new PhotoScreeningError() }
