@@ -1,11 +1,18 @@
 # SociusFit Architecture Map
 
-Preparation-only ADR-0040 proposes nullable WHOOP provider timing and a fixed
-single-owner filter at the existing sync upsert seam. Other owners keep legacy
-payloads/queries; scheduled job selection and all authorization remain unchanged.
-The unapplied SQL and exact approval/rollback boundary are in
-`docs/proposals/recovery-timing-owner/`. Current PR97 external recovery remains
-conservative; no migration, deployment, sync or production timing write is approved.
+ADR-0040 records the original nullable WHOOP timing preparation and fixed owner
+filter at existing sync upserts. Separately approved migration20261019154246 was
+applied with old owner records and access preserved; PR98's exact candidate was
+merged normally as de0b171. Its production deployment/runtime proof is tracked
+separately. Other owners retain legacy mapper behavior; external recovery stays
+conservative. Original SQL/scope artifacts are in `docs/proposals/recovery-timing-owner/`.
+
+ADR-0041 adds the separately approved owner-only cron GET: the existing bearer
+secret is checked before privileged work; only an existing fixed-owner connection
+can reach incremental sync. GET is no-store, POST behavior and daily10:30UTC
+schedule remain unchanged. No new credentials, permissions, provider window,
+health/date mappings or manual sync. Code release and actual scheduled retention
+have distinct acceptance gates; neither follows merely from synthetic tests.
 
 `get_coaching_context` exposes factual owner context through MCP; the cookie
 context route shares that reader. `get_coaching_reference` adds a versioned,

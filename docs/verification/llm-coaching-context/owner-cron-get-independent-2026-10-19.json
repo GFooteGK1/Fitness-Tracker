@@ -1,0 +1,370 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-19",
+  "role": "Independent pre-candidate oracle designer, read-only source/test reviewer and synthetic verifier; no candidate code/test authorship",
+  "verdict": "No blocking finding for the frozen owner-only authenticated cron GET correction",
+  "blocker": null,
+  "findings": [],
+  "critiqueCycles": 1,
+  "baseline": "93485e78dc7712eec48eb1604198d0b527620a19",
+  "head": "de0b1710707f322b756155876fbb073143fa6f73",
+  "baseAndMergeTreesIdentical": true,
+  "oracle": {
+    "path": "whoop-cron-get-independent-oracle-2026-10-19.md",
+    "sha256": "9099B7D9E2AA6DF4832D22A8FDD6E166CF1A0B0547C6B4539EEF0775E60D4964",
+    "recordedBeforeCandidate": true
+  },
+  "initialAssessment": {
+    "path": "initial-assessment.md",
+    "sha256": "99B9EC77012E3C5B324C486DEA6A342D0D18D908E6A73B36FE39617D34F7D0BB",
+    "beforeBuilderSuccessNarrative": true
+  },
+  "contextContamination": "Prior WHOOP ingestion reviews and oracle baseline constraints known. Candidate first inspected only after frozen packet; initial assessment recorded before parent supplied builder results. Parent later reported124/37 tests/type/lint; these were not independently credited. Handoff success summary read after assessment; no live identity was obtained.",
+  "candidateManifest": {
+    "path": "owner-cron-get-candidate-hashes-2026-10-19.json",
+    "sha256": "185978CC3ECB6DE08B5B80045CBADD26CF87D2543ECB722C749168B1109F232F"
+  },
+  "candidateFiles": [
+    {
+      "path": "app/api/whoop/sync-all/route.ts",
+      "sha256": "AACB748BB0D2FCF54F0BFCD1A9378748A5BB91978118E3C9CD752E99E9B00A96"
+    },
+    {
+      "path": "test/api/whoop-owner-cron-get.test.ts",
+      "sha256": "B96E0108231DEC2C5C2782ADB3002247D478258E7B3D2B6CFB23C8A53AE29EE0"
+    },
+    {
+      "path": "test/fixtures/whoop-sync-all-pre-get.ts",
+      "sha256": "EDAA37B16E74498194E0D712627E2B807C642122ECE7F866863EF2A9B3FE6637"
+    },
+    {
+      "path": "docs/decisions/ADR-0041-owner-authenticated-whoop-cron-get.md",
+      "sha256": "20E8AA1EDD71E68061E3AE23643DE009CC2F0443B03408B962B8E9B6D2857C01"
+    },
+    {
+      "path": "docs/decisions/README.md",
+      "sha256": "0D2D0E5438DE81AB77215E7248F3C55879782E5F8A4EB0D631E98FC3FD919BD7"
+    },
+    {
+      "path": "docs/architecture/ARCHITECTURE-MAP.md",
+      "sha256": "0DDC8D5C027B537CE3450EE1075AF093AC930D866E22C84DA9A626DEC204BFD0"
+    },
+    {
+      "path": "docs/plans/whoop-owner-cron-get-2026-10-19.md",
+      "sha256": "352D499CC7E106E4FB4885F0022BF79D334A07A1B9CB040868EF5D8B6F38B401"
+    },
+    {
+      "path": "handoffs/investigations/Fitness-Tracker-xrz.5.4.md",
+      "sha256": "F6E46088FFB52E6F76AC4BD80F1B15DD537C1696EAF309B11980E92CC67850BA"
+    }
+  ],
+  "candidatePosthash": [
+    {
+      "path": "app/api/whoop/sync-all/route.ts",
+      "sha256": "AACB748BB0D2FCF54F0BFCD1A9378748A5BB91978118E3C9CD752E99E9B00A96",
+      "match": true
+    },
+    {
+      "path": "test/api/whoop-owner-cron-get.test.ts",
+      "sha256": "B96E0108231DEC2C5C2782ADB3002247D478258E7B3D2B6CFB23C8A53AE29EE0",
+      "match": true
+    },
+    {
+      "path": "test/fixtures/whoop-sync-all-pre-get.ts",
+      "sha256": "EDAA37B16E74498194E0D712627E2B807C642122ECE7F866863EF2A9B3FE6637",
+      "match": true
+    },
+    {
+      "path": "docs/decisions/ADR-0041-owner-authenticated-whoop-cron-get.md",
+      "sha256": "20E8AA1EDD71E68061E3AE23643DE009CC2F0443B03408B962B8E9B6D2857C01",
+      "match": true
+    },
+    {
+      "path": "docs/decisions/README.md",
+      "sha256": "0D2D0E5438DE81AB77215E7248F3C55879782E5F8A4EB0D631E98FC3FD919BD7",
+      "match": true
+    },
+    {
+      "path": "docs/architecture/ARCHITECTURE-MAP.md",
+      "sha256": "0DDC8D5C027B537CE3450EE1075AF093AC930D866E22C84DA9A626DEC204BFD0",
+      "match": true
+    },
+    {
+      "path": "docs/plans/whoop-owner-cron-get-2026-10-19.md",
+      "sha256": "352D499CC7E106E4FB4885F0022BF79D334A07A1B9CB040868EF5D8B6F38B401",
+      "match": true
+    },
+    {
+      "path": "handoffs/investigations/Fitness-Tracker-xrz.5.4.md",
+      "sha256": "F6E46088FFB52E6F76AC4BD80F1B15DD537C1696EAF309B11980E92CC67850BA",
+      "match": true
+    }
+  ],
+  "all8PrePostHashesMatch": true,
+  "summaries": {
+    "independent-results.json": {
+      "sha256": "1744AFFC27BB6C801092ECD7019EFC5875008EDF3CFDA1BFA37AB8A31670CB58",
+      "suites": 3,
+      "tests": 57,
+      "passed": 57,
+      "failed": 0,
+      "skipped": 0,
+      "files": [
+        {
+          "path": "gate.spec.ts",
+          "tests": 15,
+          "status": "passed"
+        },
+        {
+          "path": "real-gate-route.spec.ts",
+          "tests": 1,
+          "status": "passed"
+        },
+        {
+          "path": "route.spec.ts",
+          "tests": 41,
+          "status": "passed"
+        }
+      ]
+    },
+    "focused-results.json": {
+      "sha256": "A16E76DCE3F193FD7943111742A5D85EEFA3B3DA32D0FB5109414ECEF11E2060",
+      "suites": 8,
+      "tests": 151,
+      "passed": 151,
+      "failed": 0,
+      "skipped": 0,
+      "files": [
+        {
+          "path": "../Fitness-Tracker-cron-get/test/api/whoop-owner-cron-get.test.ts",
+          "tests": 34,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-cron-get/test/api/whoop-sync-all.test.ts",
+          "tests": 3,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-cron-get/test/whoop/extract-date-timestamp.test.ts",
+          "tests": 9,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-cron-get/test/whoop/provider-timing.test.ts",
+          "tests": 69,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-cron-get/test/whoop/sync-date-range.property.test.ts",
+          "tests": 11,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-cron-get/test/whoop/timing-sync-integration.test.ts",
+          "tests": 6,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-cron-get/test/whoop/timing-upsert.test.ts",
+          "tests": 12,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-cron-get/test/whoop/upsert-behavior.property.test.ts",
+          "tests": 7,
+          "status": "passed"
+        }
+      ]
+    },
+    "mutation-results.json": {
+      "sha256": "DEAB5068E43980481F33E1A028124CC3E3F402EEDED2890B20C1AE6317433794",
+      "suites": 1,
+      "tests": 1,
+      "passed": 0,
+      "failed": 1,
+      "skipped": 0,
+      "files": [
+        {
+          "path": "mutation.spec.ts",
+          "tests": 1,
+          "status": "failed"
+        }
+      ]
+    }
+  },
+  "reproduced": [
+    "57 independently authored checks across3files:10 invalid-header GET no-effect cases,2 missing-secret cases, nonproduction GET authentication, owner first/middle/last/duplicate, null/empty/nonowner/malformed rows, caller-selector rejection, lookup/client/selected-owner failures,12 exact baseline POST characterizations,15 public/synthetic gate checks and actual-gate route no-match check.",
+    "No unauthorized/missing-secret client construction/lookup/sync; configured valid GET only synthetic owner; POST all-connected identities/order/errors/response/headers/client/lookup exactly match separately copied baseline.",
+    "151 candidate/legacy route and mapper/grouping/orchestration/date/provider-window/upsert regression tests across8files passed; providers, tokens and DB were mocked. Counts are test cases, not individual assertions.",
+    "Supplied baseline fixture bytes equal exact Git object; reviewer independently copied its own baseline from Git rather than importing builder fixture.",
+    "One output-only route mutation removes the owner predicate while retaining first-row slicing. One negative oracle fails specifically on nonowner666... dispatched instead of owner555..., with HTTP200 and one actual stub call; not an import/setup failure.",
+    "All8candidate pre/post hashes and protected source checks match; baseline and PR98 merge trees identical; git diff --check passes."
+  ],
+  "inspected": [
+    "GET/POST implementation, candidate tests/fixture, ADR/scope/handoff/architecture/index diff; no speculative finding retained.",
+    "Authentication uses existing exact bearer secret before service-role construction; GET always authenticates, scopes via unchanged fixed predicate and sets no-store; POST retains its prior production/nonproduction policy.",
+    "No new credentials/account/environment/permission/schema/schedule/provider window/timing/health/date behavior or manual sync capability introduced.",
+    "Prior root-private binding receipt matches the unchanged helper after LF normalization; current CRLF raw bytes differ only by checkout line endings. actualVerifiedOwnerAccepted is root-observed, not independently reproduced by reviewer."
+  ],
+  "privateOwnerBinding": {
+    "path": "recovery-owner-gate-private-binding-2026-10-19.json",
+    "sha256": "8990DD4F93AB2B5442FEE07EDC17BB2F156FF6603A0AA027B078BBBF86CA97A1",
+    "sourceSha256": "62E8997CE261DE49D81F250282AC87420B168800E625D5E9F1CAFE77F02322DA",
+    "sourceMatchesNormalizedLF": true,
+    "sourceMatchesCurrentRawBytes": false,
+    "evidenceClass": "inspected root private positive only",
+    "reviewerActualOwnerLookup": false,
+    "bindingLineEndingCheck": {
+      "receiptSourceSha256": "62E8997CE261DE49D81F250282AC87420B168800E625D5E9F1CAFE77F02322DA",
+      "currentRawSha256": "DB7FB5DA8F4108118769E2DF65473B6AEE346EC2065DB0F4F396F6C7F47B979F",
+      "currentNormalizedLfSha256": "62E8997CE261DE49D81F250282AC87420B168800E625D5E9F1CAFE77F02322DA",
+      "rawEqual": false,
+      "normalizedLfEqual": true,
+      "correction": "Initial report generation compared prior LF receipt hash to current CRLF checkout bytes and stopped. Independent LF/CRLF hashes proved only checkout line endings differ. No candidate or tests changed; binding is claimed for identical LF-normalized source, not exact current raw bytes."
+    }
+  },
+  "preservation": [
+    {
+      "path": "vercel.json",
+      "sha256": "1D999BE9F54A50B17FE34836434A5D02D8EF7E3B97B7FAB18EE900850D42331B",
+      "baseNormalizedSha256": "FD39AC7AA7E6687F1655CBFB739D259322EE16A591BF92D8352D8E3DD793CAA9",
+      "currentNormalizedSha256": "FD39AC7AA7E6687F1655CBFB739D259322EE16A591BF92D8352D8E3DD793CAA9",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/whoop/timing-owner.ts",
+      "sha256": "DB7FB5DA8F4108118769E2DF65473B6AEE346EC2065DB0F4F396F6C7F47B979F",
+      "baseNormalizedSha256": "62E8997CE261DE49D81F250282AC87420B168800E625D5E9F1CAFE77F02322DA",
+      "currentNormalizedSha256": "62E8997CE261DE49D81F250282AC87420B168800E625D5E9F1CAFE77F02322DA",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/whoop/provider-timing.ts",
+      "sha256": "874713AD5FB98260FC9359DB0DE41879127BB5FC65E94AC974F114AD50203455",
+      "baseNormalizedSha256": "9A67206447B0CC44BAA2127EE1F26928F9C703B8298E6C47EF0098BBDFC6F422",
+      "currentNormalizedSha256": "9A67206447B0CC44BAA2127EE1F26928F9C703B8298E6C47EF0098BBDFC6F422",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/whoop/timing-upsert.ts",
+      "sha256": "3B09BC575A71BEB010FFFE8A44F4BD9D5597C867FAEE91F39E4D34DCE31CAB09",
+      "baseNormalizedSha256": "2475D373CCA4C95242A7E4D910C92C0631317566B4C05BE43D9C6289D8BC77BB",
+      "currentNormalizedSha256": "2475D373CCA4C95242A7E4D910C92C0631317566B4C05BE43D9C6289D8BC77BB",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/whoop/sync-service.ts",
+      "sha256": "EC5782E527E933263FE92F19142B3B8647A0876B338D6660130C14A3AC6DAC4A",
+      "baseNormalizedSha256": "CD964D5D045DF4B65D4B08E8BC916671AD23575732A6AA669E346B7161C4D6C1",
+      "currentNormalizedSha256": "CD964D5D045DF4B65D4B08E8BC916671AD23575732A6AA669E346B7161C4D6C1",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/whoop/api-client.ts",
+      "sha256": "3DC5868FE7141F84700A0B00D459BEEB503E7FEF447B2A74300149E137C16A2E",
+      "baseNormalizedSha256": "9CBE0C8AC3A93BBA41154194E704875107FFD28473FFC468DDE8073F191F17B0",
+      "currentNormalizedSha256": "9CBE0C8AC3A93BBA41154194E704875107FFD28473FFC468DDE8073F191F17B0",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/whoop/token-service.ts",
+      "sha256": "51CA9D0BC30F6DD7A77548BCE31AEC4596A1CD4D4C959FC240DBD2C4A78768E9",
+      "baseNormalizedSha256": "E4DA46CC0D1DCF1A8A4F970DA356583181943C9278EB14C435492FB64C27C084",
+      "currentNormalizedSha256": "E4DA46CC0D1DCF1A8A4F970DA356583181943C9278EB14C435492FB64C27C084",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/whoop/validation.ts",
+      "sha256": "5F527C84C2E275017548FEF34B837672514B2A0E25FE48F74AD2AED3850CE95D",
+      "baseNormalizedSha256": "E7B3F5D4435BAD34442F9E6B556AEE18BF5D01BF4208F84DE52F924B7ADEDD44",
+      "currentNormalizedSha256": "E7B3F5D4435BAD34442F9E6B556AEE18BF5D01BF4208F84DE52F924B7ADEDD44",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/coach/external-recovery-context.ts",
+      "sha256": "061F61250CC1F722B7A1A52F2794826984827357E79C639901C84E5F5AC2A30B",
+      "baseNormalizedSha256": "C7EB93C526DC72D0A8647FF56F329C33F4C8206FF769BA50E70A9ED6883927E3",
+      "currentNormalizedSha256": "C7EB93C526DC72D0A8647FF56F329C33F4C8206FF769BA50E70A9ED6883927E3",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/agents/whoop-context-eligibility.ts",
+      "sha256": "38F22705689E41E6F0C1567A528E7D8496376CADDD820F0D72DDAC4B85DB13BA",
+      "baseNormalizedSha256": "8027E7FE6323A122E6563D59DEE46118EC5BC85229C6C2ED0790EFCA0E639A83",
+      "currentNormalizedSha256": "8027E7FE6323A122E6563D59DEE46118EC5BC85229C6C2ED0790EFCA0E639A83",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/auth/supabase-server.ts",
+      "sha256": "BCB45D49600DF2E48D8AC38BBF720CCDC8D59E565980E014545F107FB315F13F",
+      "baseNormalizedSha256": "3FE9C611BBA5D4644AF821E4CE68EDC92EC0B0FC1F6F9A5AE9CFD916FA3518E6",
+      "currentNormalizedSha256": "3FE9C611BBA5D4644AF821E4CE68EDC92EC0B0FC1F6F9A5AE9CFD916FA3518E6",
+      "unchanged": true
+    },
+    {
+      "path": "test/api/whoop-sync-all.test.ts",
+      "sha256": "D69477D28E23FAD957713324C71D331F0FF273155A96D9713814089D3C1E7572",
+      "baseNormalizedSha256": "4D93C0E36F6A615CC634B8EE68EFA9414161863E4BD4F9DEE53AAF060B325590",
+      "currentNormalizedSha256": "4D93C0E36F6A615CC634B8EE68EFA9414161863E4BD4F9DEE53AAF060B325590",
+      "unchanged": true
+    }
+  ],
+  "mutation": {
+    "attempted": 1,
+    "detected": 1,
+    "sharedCandidateModified": false,
+    "source": "mutant-route.ts",
+    "sha256": "A5764741CD4435AD939D4A73E73BA2735F41D032FAFEE11718517E13C5476E0A",
+    "change": "tokens?.filter(token => isWhoopTimingOwner(token?.user_id)).slice(0, 1) -> tokens?.slice(0, 1)",
+    "receipt": "mutation-results.json"
+  },
+  "limits": [
+    "Synthetic auth/dispatch and regression checks are reproduced; actual owner identity positive remains an inspected private receipt, not a live account lookup.",
+    "No CI/build/deployment/configuration/real secret/scheduler delivery/ordinary runtime/retention/health freshness proof performed by reviewer. Parent owns normal protected release and code/config verification.",
+    "No successful authenticated manual live sync, provider/token call, retained DB access, account/job/setting/security change, deployment, Git mutation or candidate edit performed.",
+    "Architecture note about prior migration/PR98 release progress is parent-provided context; no hosted migration/deployment claim was independently verified here.",
+    "Actual ordinary scheduled retention remains a separate runtime gate; fixed daily UTC schedule is not proof of successful execution or a four-hour cadence."
+  ],
+  "releaseState": "local frozen review passed; normal CI/protected merge/deployment are separate parent gates",
+  "runtimeState": "unverified; observe next ordinary scheduled run without authenticated manual trigger",
+  "deniedOrPendingExecutionBlockers": [],
+  "sourceReportSha256": "930f7cff91211cd71c4919dca977ef2c66b453bb8046038fee23bd613147225f",
+  "commandReceipts": [
+    {
+      "exitCode": 0,
+      "purpose": "Prepare exact baseline and output-only copied mutation/synthetic digest; verify supplied baseline bytes"
+    },
+    {
+      "exitCode": 0,
+      "receipt": "independent-results.json"
+    },
+    {
+      "exitCode": 0,
+      "receipt": "focused-results.json"
+    },
+    {
+      "exitCode": 1,
+      "receipt": "mutation-results.json"
+    },
+    {
+      "exitCode": 0
+    },
+    {
+      "exitCode": 0,
+      "purpose": "Final exact hash/evidence validation and report generation"
+    }
+  ],
+  "builderStagedWhitespaceNote": {
+    "fixture": "test/fixtures/whoop-sync-all-pre-get.ts",
+    "literalBaselineBytesMatch": true,
+    "inheritedWhitespaceLines": [
+      84,
+      86,
+      120
+    ],
+    "fullStagedDiffCheck": "reports these three original baseline whitespace lines only",
+    "allOtherStagedPathsDiffCheck": "passed",
+    "independentPreStageDiffCheck": "passed for the tracked diff at review time; no claim that untracked fixture was included then"
+  }
+}
