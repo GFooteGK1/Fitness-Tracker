@@ -1,0 +1,587 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-19",
+  "reviewRole": "Independent oracle author, code/test reviewer and synthetic verifier; no candidate implementation/test authorship",
+  "verdict": "No remaining blocking finding for preparation-only frozen candidate; not approval to apply, merge or release",
+  "blocker": null,
+  "critiqueCycles": 1,
+  "baseline": "4929966916a286dbf8e4d867a9c836071c4e94fd",
+  "branch": "codex/recovery-timing-owner-prep",
+  "oracle": {
+    "path": "recovery-owner-ingest-independent-oracle-2026-10-19.md",
+    "sha256": "A407B9DB8B354A5C91EAABFC1461A62ABDA9B6DAABA9FB764DC28B9BB66E83F5",
+    "origin": "Requirements recorded before candidate; provider_score_state identifier-only clarification before candidate inspection"
+  },
+  "initialAssessment": {
+    "path": "initial-assessment.md",
+    "sha256": "97C78CB1701C12C3500496743956170D7C3274AAFD421F869CBD07C170D1536E",
+    "beforeBuilderSuccessResults": true,
+    "beforePrivateBinding": true
+  },
+  "candidateManifest": {
+    "path": "recovery-owner-ingest-candidate-hashes-2026-10-19.json",
+    "sha256": "01C7E4C6B0AB92342D3D5288AEC1342638BA3847AAD5C31AF14D26AB1096EA12"
+  },
+  "candidateFiles": [
+    {
+      "path": "app/lib/whoop/timing-owner.ts",
+      "sha256": "62E8997CE261DE49D81F250282AC87420B168800E625D5E9F1CAFE77F02322DA"
+    },
+    {
+      "path": "app/lib/whoop/provider-timing.ts",
+      "sha256": "9A67206447B0CC44BAA2127EE1F26928F9C703B8298E6C47EF0098BBDFC6F422"
+    },
+    {
+      "path": "app/lib/whoop/timing-upsert.ts",
+      "sha256": "2475D373CCA4C95242A7E4D910C92C0631317566B4C05BE43D9C6289D8BC77BB"
+    },
+    {
+      "path": "app/lib/whoop/sync-service.ts",
+      "sha256": "EC5782E527E933263FE92F19142B3B8647A0876B338D6660130C14A3AC6DAC4A"
+    },
+    {
+      "path": "test/fixtures/whoop-provider-timing.ts",
+      "sha256": "E12A16BDA539EB816BC2F2067B71166FBA1A06D535300658ACF7E4A3B3693CB8"
+    },
+    {
+      "path": "test/whoop/provider-timing.test.ts",
+      "sha256": "371A344CB123DD080A51C188672E5F35ADEEF0503919DF18A11B4E173D361569"
+    },
+    {
+      "path": "test/whoop/timing-upsert.test.ts",
+      "sha256": "062845DBE21B2C62ED3B44703115C762694DF2ACD40C09B81F05E6008780DB2C"
+    },
+    {
+      "path": "test/whoop/timing-sync-integration.test.ts",
+      "sha256": "BB0A72BD87253B498102B7B2F05A883B68B7DE55BDE38B6EE55BEE5D7FFA63D9"
+    },
+    {
+      "path": "test/database/whoop-owner-timing-proposal.test.ts",
+      "sha256": "3DFDE30E01C7FDA93EB47F76BB30A0035873AACDC9643F11902515FCB8069913"
+    },
+    {
+      "path": "docs/proposals/recovery-timing-owner/add-provider-timing.sql",
+      "sha256": "CEC239C78D4FD5136252C086A3780C44787D490DA1D0B9046ED8FA665B35C080"
+    },
+    {
+      "path": "docs/proposals/recovery-timing-owner/approval-scope.md",
+      "sha256": "00433202966C10EA4A6E4FAAD97AE673FEE8AB8E5974E99AA5DC871CFD408FF8"
+    },
+    {
+      "path": "docs/decisions/ADR-0040-owner-pilot-whoop-timing.md",
+      "sha256": "D9E492494F8195AB809F27A709ABD9428C23914DECBC5CF3B5C96B21E0C471BD"
+    },
+    {
+      "path": "docs/decisions/README.md",
+      "sha256": "480B9A09B83F52F801E46C1BABB8F72B395F13D4E307B852417574F112A87714"
+    },
+    {
+      "path": "docs/architecture/ARCHITECTURE-MAP.md",
+      "sha256": "7F3A018821DB6D0C4A17A157E1F9067830261CC9DAA165941EFFA16373417507"
+    },
+    {
+      "path": "docs/plans/socius-recovery-provider-timing-decision-2026-10-19.md",
+      "sha256": "915A60C6885B2A5A8EE30FB931A8F80DBD41910EFF7BD5CB89DFA42EF7D04B4F"
+    },
+    {
+      "path": "handoffs/investigations/Fitness-Tracker-xrz.5.2.md",
+      "sha256": "9B1F4D60E3DA24781D5095FBC32FCC36FA6650DEDE4F72C6B3642A7FD2E80628"
+    }
+  ],
+  "candidatePosthash": [
+    {
+      "path": "app/lib/whoop/timing-owner.ts",
+      "sha256": "62E8997CE261DE49D81F250282AC87420B168800E625D5E9F1CAFE77F02322DA",
+      "match": true
+    },
+    {
+      "path": "app/lib/whoop/provider-timing.ts",
+      "sha256": "9A67206447B0CC44BAA2127EE1F26928F9C703B8298E6C47EF0098BBDFC6F422",
+      "match": true
+    },
+    {
+      "path": "app/lib/whoop/timing-upsert.ts",
+      "sha256": "2475D373CCA4C95242A7E4D910C92C0631317566B4C05BE43D9C6289D8BC77BB",
+      "match": true
+    },
+    {
+      "path": "app/lib/whoop/sync-service.ts",
+      "sha256": "EC5782E527E933263FE92F19142B3B8647A0876B338D6660130C14A3AC6DAC4A",
+      "match": true
+    },
+    {
+      "path": "test/fixtures/whoop-provider-timing.ts",
+      "sha256": "E12A16BDA539EB816BC2F2067B71166FBA1A06D535300658ACF7E4A3B3693CB8",
+      "match": true
+    },
+    {
+      "path": "test/whoop/provider-timing.test.ts",
+      "sha256": "371A344CB123DD080A51C188672E5F35ADEEF0503919DF18A11B4E173D361569",
+      "match": true
+    },
+    {
+      "path": "test/whoop/timing-upsert.test.ts",
+      "sha256": "062845DBE21B2C62ED3B44703115C762694DF2ACD40C09B81F05E6008780DB2C",
+      "match": true
+    },
+    {
+      "path": "test/whoop/timing-sync-integration.test.ts",
+      "sha256": "BB0A72BD87253B498102B7B2F05A883B68B7DE55BDE38B6EE55BEE5D7FFA63D9",
+      "match": true
+    },
+    {
+      "path": "test/database/whoop-owner-timing-proposal.test.ts",
+      "sha256": "3DFDE30E01C7FDA93EB47F76BB30A0035873AACDC9643F11902515FCB8069913",
+      "match": true
+    },
+    {
+      "path": "docs/proposals/recovery-timing-owner/add-provider-timing.sql",
+      "sha256": "CEC239C78D4FD5136252C086A3780C44787D490DA1D0B9046ED8FA665B35C080",
+      "match": true
+    },
+    {
+      "path": "docs/proposals/recovery-timing-owner/approval-scope.md",
+      "sha256": "00433202966C10EA4A6E4FAAD97AE673FEE8AB8E5974E99AA5DC871CFD408FF8",
+      "match": true
+    },
+    {
+      "path": "docs/decisions/ADR-0040-owner-pilot-whoop-timing.md",
+      "sha256": "D9E492494F8195AB809F27A709ABD9428C23914DECBC5CF3B5C96B21E0C471BD",
+      "match": true
+    },
+    {
+      "path": "docs/decisions/README.md",
+      "sha256": "480B9A09B83F52F801E46C1BABB8F72B395F13D4E307B852417574F112A87714",
+      "match": true
+    },
+    {
+      "path": "docs/architecture/ARCHITECTURE-MAP.md",
+      "sha256": "7F3A018821DB6D0C4A17A157E1F9067830261CC9DAA165941EFFA16373417507",
+      "match": true
+    },
+    {
+      "path": "docs/plans/socius-recovery-provider-timing-decision-2026-10-19.md",
+      "sha256": "915A60C6885B2A5A8EE30FB931A8F80DBD41910EFF7BD5CB89DFA42EF7D04B4F",
+      "match": true
+    },
+    {
+      "path": "handoffs/investigations/Fitness-Tracker-xrz.5.2.md",
+      "sha256": "9B1F4D60E3DA24781D5095FBC32FCC36FA6650DEDE4F72C6B3642A7FD2E80628",
+      "match": true
+    }
+  ],
+  "all16PrePostHashesMatch": true,
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "P2/important",
+      "status": "resolved_in_cycle_1",
+      "title": "ISO year0000 accepted by JS but rejected by PostgreSQL",
+      "initialLocation": "app/lib/whoop/provider-timing.ts:13-17",
+      "initialSourceSha256": "883A83FA84716E7C6562AC7418B1AC90B103DF977571CFAD4E5B82FC91A25F78",
+      "consequence": "Otherwise valid sleep metadata containing a year0000 interval was returned as complete, causing a newly failing owner health upsert rather than legacy-only persistence.",
+      "reproduced": "PGlite rejects year0000::timestamptz; initial mapper nevertheless returned metadata (failed oracle). Final mapper returns null.",
+      "finalLocation": "app/lib/whoop/provider-timing.ts:16",
+      "receipt": "initial-findings-results.json; independent-results.json/findings.spec.ts"
+    },
+    {
+      "id": "R2",
+      "severity": "P2/important",
+      "status": "resolved_in_cycle_1",
+      "title": "Partitioning duplicate conflict identities changed legacy atomic failure semantics",
+      "initialLocation": "app/lib/whoop/timing-upsert.ts:25-33",
+      "initialSourceSha256": "CEF5B4540712627B0DD8A2B6E77E5A9CC075FF7827F9F8CC62CFF6177D575D90",
+      "consequence": "A valid/malformed duplicate pair became two successful writes, whereas the original bulk failed atomically. Initially observed requestcount2 and strain99->1.",
+      "reproduced": "Final duplicate path delegates the exact original rows to one legacy bulk; PGlite error is surfaced and strain remains99. Final duplicate-mechanism.json records one request, rejected=true.",
+      "finalLocation": "app/lib/whoop/timing-upsert.ts:25-30",
+      "receipt": "initial-findings-results.json; independent-results.json/findings.spec.ts; duplicate-mechanism.json"
+    }
+  ],
+  "summaries": {
+    "initial-findings-results.json": {
+      "suites": 1,
+      "tests": 2,
+      "passed": 0,
+      "failed": 2,
+      "skipped": 0,
+      "sha256": "50F68631CE963D65B72CF219F0DC2306A81B40018D115EC7E772A9D52E7F214A",
+      "files": [
+        {
+          "path": "findings.spec.ts",
+          "tests": 2,
+          "status": "failed"
+        }
+      ]
+    },
+    "independent-initial-run-results.json": {
+      "suites": 6,
+      "tests": 105,
+      "passed": 104,
+      "failed": 1,
+      "skipped": 0,
+      "sha256": "714BC6DAAD03E458C3AA02C7F2EE127D6B81885A3CD6937733AD366384C258A4",
+      "files": [
+        {
+          "path": "disposable.spec.ts",
+          "tests": 5,
+          "status": "failed"
+        },
+        {
+          "path": "findings.spec.ts",
+          "tests": 2,
+          "status": "passed"
+        },
+        {
+          "path": "gate.spec.ts",
+          "tests": 15,
+          "status": "passed"
+        },
+        {
+          "path": "group-sdk.spec.ts",
+          "tests": 18,
+          "status": "passed"
+        },
+        {
+          "path": "legacy-baseline.spec.ts",
+          "tests": 3,
+          "status": "passed"
+        },
+        {
+          "path": "mapper.spec.ts",
+          "tests": 62,
+          "status": "passed"
+        }
+      ]
+    },
+    "independent-results.json": {
+      "suites": 6,
+      "tests": 105,
+      "passed": 105,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "2E8143FF38BA8CAF6C70022918A902D2588D89DB55936DE549850480056EB8E5",
+      "files": [
+        {
+          "path": "disposable.spec.ts",
+          "tests": 5,
+          "status": "passed"
+        },
+        {
+          "path": "findings.spec.ts",
+          "tests": 2,
+          "status": "passed"
+        },
+        {
+          "path": "gate.spec.ts",
+          "tests": 15,
+          "status": "passed"
+        },
+        {
+          "path": "group-sdk.spec.ts",
+          "tests": 18,
+          "status": "passed"
+        },
+        {
+          "path": "legacy-baseline.spec.ts",
+          "tests": 3,
+          "status": "passed"
+        },
+        {
+          "path": "mapper.spec.ts",
+          "tests": 62,
+          "status": "passed"
+        }
+      ]
+    },
+    "focused-results.json": {
+      "suites": 11,
+      "tests": 275,
+      "passed": 275,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "8C755917651BA7567F50A930C3E68445A908A88B1C0F088F487C0D29F59681EB",
+      "files": [
+        {
+          "path": "../Fitness-Tracker-context/test/coach/coaching-context.test.ts",
+          "tests": 35,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-context/test/coach/external-metrics-context.test.ts",
+          "tests": 42,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-context/test/coach/external-recovery-context.test.ts",
+          "tests": 57,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-context/test/coach/prescribed-workout-amounts.test.ts",
+          "tests": 20,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-context/test/database/whoop-owner-timing-proposal.test.ts",
+          "tests": 7,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-context/test/whoop/extract-date-timestamp.test.ts",
+          "tests": 9,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-context/test/whoop/provider-timing.test.ts",
+          "tests": 69,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-context/test/whoop/sync-date-range.property.test.ts",
+          "tests": 11,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-context/test/whoop/timing-sync-integration.test.ts",
+          "tests": 6,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-context/test/whoop/timing-upsert.test.ts",
+          "tests": 12,
+          "status": "passed"
+        },
+        {
+          "path": "../Fitness-Tracker-context/test/whoop/upsert-behavior.property.test.ts",
+          "tests": 7,
+          "status": "passed"
+        }
+      ]
+    },
+    "mutation-results.json": {
+      "suites": 1,
+      "tests": 1,
+      "passed": 0,
+      "failed": 1,
+      "skipped": 0,
+      "sha256": "C076507A8DD8DD9F56E29D3A84EA8088DD6E1BFD7E2647C3E7BE67646CD0CF37",
+      "files": [
+        {
+          "path": "mutation.spec.ts",
+          "tests": 1,
+          "status": "failed"
+        }
+      ]
+    }
+  },
+  "commands": [
+    {
+      "purpose": "Final independent literal/SDK/PGlite/baseline probes",
+      "cwd": "C:\\Users\\foote\\Documents\\Codex\\2026-10-18\\task\\Fitness-Tracker-context",
+      "command": ".\\node_modules\\.bin\\vitest.cmd run --config ..\\recovery-owner-ingest-independent-output\\vitest.config.mjs findings.spec.ts gate.spec.ts mapper.spec.ts group-sdk.spec.ts legacy-baseline.spec.ts disposable.spec.ts --reporter=json --outputFile=..\\recovery-owner-ingest-independent-output\\independent-results.json",
+      "exitCode": 0,
+      "receipt": "independent-results.json"
+    },
+    {
+      "purpose": "Candidate and accepted preservation regressions",
+      "cwd": "C:\\Users\\foote\\Documents\\Codex\\2026-10-18\\task\\Fitness-Tracker-context",
+      "command": ".\\node_modules\\.bin\\vitest.cmd run test/whoop/provider-timing.test.ts test/whoop/timing-upsert.test.ts test/whoop/timing-sync-integration.test.ts test/database/whoop-owner-timing-proposal.test.ts test/whoop/upsert-behavior.property.test.ts test/whoop/extract-date-timestamp.test.ts test/whoop/sync-date-range.property.test.ts test/coach/external-recovery-context.test.ts test/coach/coaching-context.test.ts test/coach/external-metrics-context.test.ts test/coach/prescribed-workout-amounts.test.ts --reporter=json --outputFile=..\\recovery-owner-ingest-independent-output\\focused-results.json",
+      "exitCode": 0,
+      "receipt": "focused-results.json"
+    },
+    {
+      "purpose": "Output-only fixed-gate bypass mutation",
+      "cwd": "C:\\Users\\foote\\Documents\\Codex\\2026-10-18\\task\\Fitness-Tracker-context",
+      "command": ".\\node_modules\\.bin\\vitest.cmd run --config ..\\recovery-owner-ingest-independent-output\\vitest.config.mjs mutation.spec.ts --reporter=json --outputFile=..\\recovery-owner-ingest-independent-output\\mutation-results.json",
+      "exitCode": 1,
+      "expectedFailure": true,
+      "receipt": "mutation-results.json"
+    },
+    {
+      "purpose": "Read-only whitespace validation",
+      "cwd": "C:\\Users\\foote\\Documents\\Codex\\2026-10-18\\task\\Fitness-Tracker-context",
+      "command": "git diff --check",
+      "exitCode": 0,
+      "note": "Only existing LF/CRLF warnings; unrelated tracked Beads dirt preserved."
+    },
+    {
+      "purpose": "Reproducible final receipt/hash generation",
+      "cwd": "C:\\Users\\foote\\Documents\\Codex\\2026-10-18\\task",
+      "command": "& \"C:\\Program Files\\nodejs\\node.exe\" recovery-owner-ingest-independent-output/finalize-review.cjs",
+      "exitCode": 0
+    }
+  ],
+  "harnessCorrection": {
+    "receipt": "independent-initial-run-results.json",
+    "tests": 105,
+    "passed": 104,
+    "failed": 1,
+    "location": "disposable.spec.ts:105",
+    "cause": "Reviewer compared PostgreSQL rendered clock text to UTC clock text. 2026-10-19 06:01:00-06 is the same instant as 2026-10-19T12:01:00Z.",
+    "correction": "Output-only harness now compares Date.toISOString() to the expected instant. No candidate changed; final suite105/105. Initial receipt preserved."
+  },
+  "reproduced": [
+    "62 independently authored literal mapper checks: exact fields/nulls/provenance, source immutability, privacy, score enums, identity, explicit-offset microseconds, leap/calendar/year0, future/order, UTC rollover and spring/fall fixed-offset examples; no IANA inference.",
+    "15 gate checks: actual fixed production gate rejects public synthetic negatives; isolated synthetic-digest copy accepts its synthetic positive. Actual verified owner identity was not obtained or reproduced.",
+    "18 grouping/installed-SDK request checks: exact non-owner body/columns/conflict/count equivalence; owner homogeneous mixed grouping, empty/all-valid/all-invalid, error/identity/no state leak, bounded request counts.",
+    "3 old-HEAD orchestration comparisons: two synthetic nonowners byte-equivalent legacy full-sync writes/provider/token call counts, and owner unchanged old health/date/batch fields. Provider/token/network fully mocked.",
+    "5 independent disposable SQL checks: six legacy rows across three tables retain counts/digests/security catalog;29 nullable/no-default columns and six-digit precision; RLS isolation; SDK-shaped supplied-column metadata preservation/update/legacy rollback; partial-group failure marker safety; repeat-DDL rollback.",
+    "2 discriminating original-finding checks now pass; initial2/2 failed on initial freeze. Candidate database tests additionally reproduce rollback of earlier ALTER when later table has conflicting column.",
+    "275 focused candidate/accepted context, metrics, prescribed-work and WHOOP legacy regression checks passed. Not the full repository suite.",
+    "One output-only copied fixed-gate comparator mutation === to !== detected by one expected failed negative check. Shared candidate untouched."
+  ],
+  "inspected": [
+    "Production gate/mapper/upsert/sync seams, candidate tests, exact proposal SQL, ADR/scope/plan/architecture/handoff; initial assessment before success receipts.",
+    "Legacy transform/date/calculation/workout functions unchanged in sync diff; only helper import and three upsert call seams changed.",
+    "Fixed digest is a rollout filter, not a security permission; no account registry/env/grant/RLS/job change. SQL outside automatic migration directories, no defaults/backfill/functions/triggers/indexes/security change.",
+    "Root-private positive binding receipt inspected after initial assessment and source hash matched; root assertion actualVerifiedOwnerAccepted=true, liveReadsOrWrites0. Reviewer did not reproduce actual identity."
+  ],
+  "privateOwnerBinding": {
+    "path": "recovery-owner-gate-private-binding-2026-10-19.json",
+    "sha256": "8990DD4F93AB2B5442FEE07EDC17BB2F156FF6603A0AA027B078BBBF86CA97A1",
+    "sourceSha256": "62E8997CE261DE49D81F250282AC87420B168800E625D5E9F1CAFE77F02322DA",
+    "sourceMatchesCandidate": true,
+    "evidence": "Inspected root private positive only; no reviewer actual-owner positive/live read"
+  },
+  "preservation": [
+    {
+      "path": "app/api/whoop/sync-all/route.ts",
+      "sha256": "061FCB2C035FB6E102697D6D63BE890076C253D9313A0A3186B986C9E1D77A21",
+      "baseNormalizedSha256": "EDAA37B16E74498194E0D712627E2B807C642122ECE7F866863EF2A9B3FE6637",
+      "currentNormalizedSha256": "EDAA37B16E74498194E0D712627E2B807C642122ECE7F866863EF2A9B3FE6637",
+      "unchanged": true
+    },
+    {
+      "path": "vercel.json",
+      "sha256": "1D999BE9F54A50B17FE34836434A5D02D8EF7E3B97B7FAB18EE900850D42331B",
+      "baseNormalizedSha256": "FD39AC7AA7E6687F1655CBFB739D259322EE16A591BF92D8352D8E3DD793CAA9",
+      "currentNormalizedSha256": "FD39AC7AA7E6687F1655CBFB739D259322EE16A591BF92D8352D8E3DD793CAA9",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/coach/external-recovery-context.ts",
+      "sha256": "C7EB93C526DC72D0A8647FF56F329C33F4C8206FF769BA50E70A9ED6883927E3",
+      "baseNormalizedSha256": "C7EB93C526DC72D0A8647FF56F329C33F4C8206FF769BA50E70A9ED6883927E3",
+      "currentNormalizedSha256": "C7EB93C526DC72D0A8647FF56F329C33F4C8206FF769BA50E70A9ED6883927E3",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/agents/whoop-context-eligibility.ts",
+      "sha256": "38F22705689E41E6F0C1567A528E7D8496376CADDD820F0D72DDAC4B85DB13BA",
+      "baseNormalizedSha256": "8027E7FE6323A122E6563D59DEE46118EC5BC85229C6C2ED0790EFCA0E639A83",
+      "currentNormalizedSha256": "8027E7FE6323A122E6563D59DEE46118EC5BC85229C6C2ED0790EFCA0E639A83",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/whoop/api-client.ts",
+      "sha256": "3DC5868FE7141F84700A0B00D459BEEB503E7FEF447B2A74300149E137C16A2E",
+      "baseNormalizedSha256": "9CBE0C8AC3A93BBA41154194E704875107FFD28473FFC468DDE8073F191F17B0",
+      "currentNormalizedSha256": "9CBE0C8AC3A93BBA41154194E704875107FFD28473FFC468DDE8073F191F17B0",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/whoop/token-service.ts",
+      "sha256": "51CA9D0BC30F6DD7A77548BCE31AEC4596A1CD4D4C959FC240DBD2C4A78768E9",
+      "baseNormalizedSha256": "E4DA46CC0D1DCF1A8A4F970DA356583181943C9278EB14C435492FB64C27C084",
+      "currentNormalizedSha256": "E4DA46CC0D1DCF1A8A4F970DA356583181943C9278EB14C435492FB64C27C084",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/whoop/validation.ts",
+      "sha256": "5F527C84C2E275017548FEF34B837672514B2A0E25FE48F74AD2AED3850CE95D",
+      "baseNormalizedSha256": "E7B3F5D4435BAD34442F9E6B556AEE18BF5D01BF4208F84DE52F924B7ADEDD44",
+      "currentNormalizedSha256": "E7B3F5D4435BAD34442F9E6B556AEE18BF5D01BF4208F84DE52F924B7ADEDD44",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context-server.ts",
+      "sha256": "89F5AB5C0C40CF4A0EB405DC3328D54D2125406B1A033BC8D28D1E8EBC7BF63B",
+      "baseNormalizedSha256": "89F5AB5C0C40CF4A0EB405DC3328D54D2125406B1A033BC8D28D1E8EBC7BF63B",
+      "currentNormalizedSha256": "89F5AB5C0C40CF4A0EB405DC3328D54D2125406B1A033BC8D28D1E8EBC7BF63B",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/coach/external-metrics-context.ts",
+      "sha256": "A2F1CB80E6E8CDDF09E45FC625C02DF1022A083F656806C12844BB2B2376EAFC",
+      "baseNormalizedSha256": "A2F1CB80E6E8CDDF09E45FC625C02DF1022A083F656806C12844BB2B2376EAFC",
+      "currentNormalizedSha256": "A2F1CB80E6E8CDDF09E45FC625C02DF1022A083F656806C12844BB2B2376EAFC",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/coach/external-performed-work-context.ts",
+      "sha256": "DB03E20FDC7E9E445955B04A1BA12FA245B79AEF5D6A87AC192BABF3ECB2C4F2",
+      "baseNormalizedSha256": "DB03E20FDC7E9E445955B04A1BA12FA245B79AEF5D6A87AC192BABF3ECB2C4F2",
+      "currentNormalizedSha256": "DB03E20FDC7E9E445955B04A1BA12FA245B79AEF5D6A87AC192BABF3ECB2C4F2",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/coach/external-coaching-reference.ts",
+      "sha256": "31DF772AD2A6F941196CB25BE156ACEA0F68B76B5E31709650D7C5BFEBADE479",
+      "baseNormalizedSha256": "31DF772AD2A6F941196CB25BE156ACEA0F68B76B5E31709650D7C5BFEBADE479",
+      "currentNormalizedSha256": "31DF772AD2A6F941196CB25BE156ACEA0F68B76B5E31709650D7C5BFEBADE479",
+      "unchanged": true
+    }
+  ],
+  "sqlProof": {
+    "oldRowCounts": [
+      {
+        "table": "whoop_recovery",
+        "count": 2
+      },
+      {
+        "table": "whoop_sleep",
+        "count": 2
+      },
+      {
+        "table": "whoop_cycles",
+        "count": 2
+      }
+    ],
+    "beforeLegacyDigest": "4f71964cd9dff09bb4e89430cc93c60bf6da1408f3c0e2d463ad4487f04b83f7",
+    "afterLegacyDigest": "4f71964cd9dff09bb4e89430cc93c60bf6da1408f3c0e2d463ad4487f04b83f7",
+    "beforeCatalogDigest": "8b85d6538956fb0054ac159ea120af7910e8f530e3ec6953da16ac9314e18660",
+    "afterCatalogDigest": "8b85d6538956fb0054ac159ea120af7910e8f530e3ec6953da16ac9314e18660",
+    "addedNullableColumns": 29
+  },
+  "mutation": {
+    "attempted": 1,
+    "detected": 1,
+    "candidateModified": false,
+    "mutationFile": "mutant-owner-gate.ts",
+    "sha256": "91A59136A6101AC32A0E1AD16E4CA62C28882074ABBE9E1DB337A29608090DC1",
+    "receipt": "mutation-results.json",
+    "exactChange": "=== ownerDigest to !== ownerDigest"
+  },
+  "residualLimits": [
+    "PGlite plus installed SDK body capture models supplied-column SQL, not hosted PostgREST/schema-cache/real lock-latency proof.",
+    "Application validation adds no column-level authorization or provider signature. Concurrent ordinary valid snapshots can commit out of order; no newest arbitration, revision history or whole-batch transaction claim.",
+    "Existing sync-all still selects all connected token owners without an activity filter. Actual inactive connections/execution unknown and not queried.",
+    "Current conservative PR97 reader/eligibility helper remain unchanged; no new readiness/observation time/athletic outcome is established.",
+    "Root later mentioned633 scope/type/lint receipts exist, but no result contents were consulted or credited by this review; only reviewer-executed counts above are claimed."
+  ],
+  "productionGates": {
+    "migration": "not attempted; separate exact approval required",
+    "mergePushPR": "not attempted; preparation explicitly not authorized for these actions",
+    "deployment": "not attempted; separate approval and normal protected flow required",
+    "ordinaryOwnerSyncPersistence": "not attempted; separate authorization and actual proof required",
+    "otherUserRecordsAccounts": "not accessed",
+    "parentXrz5": "must remain open"
+  },
+  "deniedOrPendingExecutionBlockers": [],
+  "sourceOrGitEditsByReviewer": false,
+  "evidenceFiles": [
+    "initial-assessment.md",
+    "initial-findings-results.json",
+    "candidate-prehash-initial.json",
+    "candidate-prehash.json",
+    "candidate-posthash.json",
+    "independent-initial-run-results.json",
+    "harness-correction.json",
+    "independent-results.json",
+    "focused-results.json",
+    "mutation-results.json",
+    "duplicate-mechanism.json",
+    "sql-proof.json",
+    "preservation.json"
+  ]
+}

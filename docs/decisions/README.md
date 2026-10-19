@@ -1,5 +1,7 @@
 # Architecture decisions
 
+- [ADR-0040: Owner-pilot WHOOP timing](ADR-0040-owner-pilot-whoop-timing.md) - proposed preparation only; nullable provider snapshots, simple fixed owner filter and unchanged jobs/authorization/legacy dates. No production migration or release authority.
+
 - [ADR-0039: Chosen LLM programming and durable Socius context](ADR-0039-chosen-llm-and-durable-context.md) - accepted target with incremental release gates; embedded authoring remains legacy behavior until separately retired, with historical records preserved.
 
 - [ADR-0038: External context authorization](ADR-0038-external-context-authorization.md) - deployed owner pilot with one factual read tool, broader credential rights and bounded verification; refresh/browser qualification remains open.
