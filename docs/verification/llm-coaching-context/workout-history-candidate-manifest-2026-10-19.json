@@ -1,0 +1,90 @@
+{
+  "state": "LOCAL ONLY; not deployed or approved for deployment",
+  "baseCommit": "107a570339d8c53f7db44dfbc8d77c4c585cff68",
+  "branch": "codex/llm-context-inventory",
+  "priorReleaseOverlayDigest": "359eb4805106dd282cafa8adff46b62dfbdb1ddcc2116cfd038fbc1054dbd376",
+  "runtimeOverlayComparison": [
+    {
+      "path": "app/.well-known/oauth-protected-resource/api/mcp/route.ts",
+      "releasedSha256": "d7e453bb6a3b4b9dac35eaf830c6764efab7fa31d5649f0042c1075a7b7f8543",
+      "currentSha256": "d7e453bb6a3b4b9dac35eaf830c6764efab7fa31d5649f0042c1075a7b7f8543",
+      "changed": false
+    },
+    {
+      "path": "app/api/coach/context/route.ts",
+      "releasedSha256": "709c35b717382a8c515e2ce2653eedf1738b3b9ad9263003ba95b36bbb228996",
+      "currentSha256": "709c35b717382a8c515e2ce2653eedf1738b3b9ad9263003ba95b36bbb228996",
+      "changed": false
+    },
+    {
+      "path": "app/api/mcp/route.ts",
+      "releasedSha256": "f45754d6acf2be4cd138bc1d0b8ca1517397dbfb3461707210b2b9fc8c3dd6e8",
+      "currentSha256": "f45754d6acf2be4cd138bc1d0b8ca1517397dbfb3461707210b2b9fc8c3dd6e8",
+      "changed": false
+    },
+    {
+      "path": "app/lib/auth/coaching-consent.ts",
+      "releasedSha256": "a0ec556947ce307f7c5c345b42caab03f3118d8ae697ac3cea82e98d48e14030",
+      "currentSha256": "a0ec556947ce307f7c5c345b42caab03f3118d8ae697ac3cea82e98d48e14030",
+      "changed": false
+    },
+    {
+      "path": "app/lib/auth/coaching-oauth.ts",
+      "releasedSha256": "90e57df6ab7e459a8dc4e987cb90e5fd6fe274fb32882b8522e6960ccaea0651",
+      "currentSha256": "90e57df6ab7e459a8dc4e987cb90e5fd6fe274fb32882b8522e6960ccaea0651",
+      "changed": false
+    },
+    {
+      "path": "app/lib/coach/coaching-context-mcp.ts",
+      "releasedSha256": "516a39adde1aac09c8890db368fb110e9fce6948c9c5371a43cd252cfa18ccd3",
+      "currentSha256": "516a39adde1aac09c8890db368fb110e9fce6948c9c5371a43cd252cfa18ccd3",
+      "changed": false
+    },
+    {
+      "path": "app/lib/coach/coaching-context-server.ts",
+      "releasedSha256": "61f30878cdb805abaa915025fd646d72b38fcfd987dfe53117092b966017363b",
+      "currentSha256": "de3d3bbb6408d3364bab0f8ad0c38b720c37f18ad01f8a83224b6579da3b2a39",
+      "changed": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context-tool.ts",
+      "releasedSha256": "eb65cc79c2545a0738cbcc23e14e478b8208a94bddb86b378bc41cb4624deef1",
+      "currentSha256": "eb65cc79c2545a0738cbcc23e14e478b8208a94bddb86b378bc41cb4624deef1",
+      "changed": false
+    },
+    {
+      "path": "app/lib/coach/coaching-context.ts",
+      "releasedSha256": "046e8336d8d03f48bace3f185a82db7a8ed00010c4ae2588e2a693da8024f2ba",
+      "currentSha256": "046e8336d8d03f48bace3f185a82db7a8ed00010c4ae2588e2a693da8024f2ba",
+      "changed": false
+    },
+    {
+      "path": "app/lib/coach/coaching-mcp-http.ts",
+      "releasedSha256": "53040e28876ffbd73fd749ebccdd264c9c1c35514a9690dbb6accc91442d17b7",
+      "currentSha256": "53040e28876ffbd73fd749ebccdd264c9c1c35514a9690dbb6accc91442d17b7",
+      "changed": false
+    },
+    {
+      "path": "app/oauth/consent/route.ts",
+      "releasedSha256": "7c6fe11261db1abdba0731818f20347d8e2ba8960bed128e4dd53223bab02944",
+      "currentSha256": "7c6fe11261db1abdba0731818f20347d8e2ba8960bed128e4dd53223bab02944",
+      "changed": false
+    },
+    {
+      "path": "package-lock.json",
+      "releasedSha256": "b37d1f11f8c26b5cea76934cfd1b428378793bb79e449e9c7f68957c5b7eaf6e",
+      "currentSha256": "b37d1f11f8c26b5cea76934cfd1b428378793bb79e449e9c7f68957c5b7eaf6e",
+      "changed": false
+    },
+    {
+      "path": "package.json",
+      "releasedSha256": "b715927d9e8ca6866bc87b63edad994ea38d2f1b80b4ee5ed82827ba87258eee",
+      "currentSha256": "b715927d9e8ca6866bc87b63edad994ea38d2f1b80b4ee5ed82827ba87258eee",
+      "changed": false
+    }
+  ],
+  "unchangedPlanningFiles": [],
+  "changedRuntimeCount": 1,
+  "connectionCheckpointCommit": "23149a040486780546d20506773394e0af72ed90",
+  "commitSeparation": "Only reader runtime delta and its context-surface regression tests/evidence; other released overlays preserved. Future-history tests deferred from connection checkpoint to this slice."
+}

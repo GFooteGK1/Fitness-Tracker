@@ -1,0 +1,18 @@
+{
+  "command": "npm run build",
+  "execution": "local-only reviewed sandbox retry",
+  "exitCode": 0,
+  "framework": "Next.js 15.5.25",
+  "compilation": "passed",
+  "types": "passed",
+  "staticPages": 96,
+  "providerVariables": "synthetic placeholders",
+  "supabaseUrl": "loopback",
+  "warnings": [
+    "existing PhotoMealReview.tsx:124 next/no-img-element",
+    "existing app/v2/page.tsx:266 react-hooks/exhaustive-deps"
+  ],
+  "firstAttempt": "sandbox EPERM creating .next/server/app/api/coach; compilation did not complete",
+  "deployed": false,
+  "productionClaims": "none"
+}

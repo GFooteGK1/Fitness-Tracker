@@ -1,9 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatUTCAsLocalDateWithOffset } from '../timezone-utils'
-import { personalizedCoachingCapabilities } from '../personalized-coaching-capabilities'
 import { fetchCoachEvidenceContext } from './evidence-context'
 import { projectEvidenceReasoningContext } from './evidence-reasoning-context'
-import { fetchPlanningHistorySnapshot } from './planning-context'
+import { fetchPlanningHistorySnapshot, type PlanningHistorySnapshot } from './planning-context'
 import { buildPerformedWorkContext } from './performed-work-context'
 import { decodeCoachWeeklyIntent } from './rolling-weekly-api'
 import { fetchReviewedExecutionSlots } from './reviewed-execution-context-server'
@@ -44,6 +43,11 @@ interface ReadQuery extends PromiseLike<QueryResult> {
 }
 const unavailable = (): ContextSource => ({ status: 'unavailable', rows: [], count: null })
 const fail = () => new CoachingContextError(503, 'Coaching context is unavailable')
+
+function assertHistoryOwner(history: PlanningHistorySnapshot | null, owner: string) {
+  if (history && [...history.workouts, ...(history.completions ?? []), ...(history.revisions ?? [])]
+    .some(row => !contextObject(row) || row.user_id !== owner)) throw fail()
+}
 
 async function readRows(db: SupabaseClient, owner: string, table: string, columns: string,
   configure: (query: ReadQuery) => ReadQuery = query => query, cap = 1, latest = false): Promise<ContextSource> {
@@ -153,24 +157,32 @@ export async function readCoachingContext(client: SupabaseClient, params: URLSea
   const sources = await readSources(db, user.id)
   const revision = sources.revision.rows[0]?.revision
   const program = sources.program.rows.length === 1 && sources.program.status === 'available' ? sources.program.rows[0] : undefined
-  const [programmingRead, proposals, evidence, performedWork] = await Promise.all([
+  // Authenticated factual reads have no planning/writer rollout authority. Keep
+  // the shared history-planning flag unchanged; both context read surfaces use
+  // the existing owner-bound SELECT-only reader with exact coverage counts.
+  const readHistory = () => fetchPlanningHistorySnapshot(db, user.id, {
+    startDate: localDate, asOf: readStartedAt, tzOffset, windowDays: days, requireExactCounts: true,
+  }).catch(() => null)
+  const [programmingRead, proposals, evidence, history] = await Promise.all([
     readProgramming(db, user.id, sources.program),
     readProposals(db, user.id, program, revision),
     fetchCoachEvidenceContext(db, user.id, { purpose: 'general_coaching', asOf: readStartedAt, windowDays: days })
       .then(packet => projectEvidenceReasoningContext(packet, user.id)).catch(() => null),
-    personalizedCoachingCapabilities().historyContext
-      ? fetchPlanningHistorySnapshot(db, user.id, { startDate: localDate, asOf: readStartedAt, tzOffset, windowDays: days, requireExactCounts: true })
-        .then(buildPerformedWorkContext).catch(() => null) : Promise.resolve(null),
+    readHistory(),
   ])
+  assertHistoryOwner(history, user.id)
   // Separate source generations: coach revisions alone do not cover WHOOP or plan activation.
-  const [afterSources, afterProgramming, afterProposals] = await Promise.all([
-    readSources(db, user.id), readProgramming(db, user.id, sources.program), readProposals(db, user.id, program, revision)
+  const [afterSources, afterProgramming, afterProposals, afterHistory] = await Promise.all([
+    readSources(db, user.id), readProgramming(db, user.id, sources.program), readProposals(db, user.id, program, revision), readHistory(),
   ])
+  assertHistoryOwner(afterHistory, user.id)
   if (stableStringify(sources) !== stableStringify(afterSources) || stableStringify(programmingRead) !== stableStringify(afterProgramming)
-    || stableStringify(proposals) !== stableStringify(afterProposals)) {
+    || stableStringify(proposals) !== stableStringify(afterProposals) || stableStringify(history) !== stableStringify(afterHistory)) {
     throw new CoachingContextError(409, 'Training sources changed during retrieval; retry')
   }
   const programming = programmingRead.value
+  let performedWork: ReturnType<typeof buildPerformedWorkContext> | null = null
+  try { performedWork = history ? buildPerformedWorkContext(history) : null } catch { /* Preserve unavailable evidence as an explicit gap. */ }
   const readCompletedAt = new Date().toISOString()
   if (formatUTCAsLocalDateWithOffset(readCompletedAt, tzOffset) !== localDate
     || (evidence && (evidence.scope.activeProgramId !== (program?.id ?? null)
@@ -201,8 +213,7 @@ export async function readCoachingContext(client: SupabaseClient, params: URLSea
   if (programming && !todaySessions.length) gaps.push('no_saved_session_for_local_date')
   if (programming && !programming.savedRationale) gaps.push('saved_plan_rationale_missing_or_unavailable')
   if (!evidence || !evidence.coverage.complete) gaps.push('evidence_incomplete_or_unavailable')
-  if (!personalizedCoachingCapabilities().historyContext) gaps.push('performed_work_disabled')
-  else if (!performedWork || !performedWork.coverage.complete) gaps.push('performed_work_incomplete_or_unavailable')
+  if (!performedWork || !performedWork.coverage.complete) gaps.push('performed_work_incomplete_or_unavailable')
   if (proposals.status === 'unavailable' || proposals.status === 'truncated') gaps.push(`proposals_${proposals.status}`)
   if (proposals.items.length) gaps.push('proposal_acceptance_eligibility_not_evaluated')
   const recovery = projectContextRecovery(sources, readStartedAt, localDate)
