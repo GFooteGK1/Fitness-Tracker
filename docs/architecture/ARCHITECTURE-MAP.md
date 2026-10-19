@@ -1,7 +1,12 @@
 # SociusFit Architecture Map
 
-A single `get_coaching_context` tool exposes factual owner context through MCP;
-the cookie context route shares that reader. The owner-pilot connection was
+`get_coaching_context` exposes factual owner context through MCP; the cookie
+context route shares that reader. `get_coaching_reference` adds a versioned,
+repository-backed qualitative playbook and a small pointer in factual context.
+The selected LLM authors programming. Reference creates no athlete requirements;
+it reuses the existing authorization and performs no domain queries or writes.
+See `docs/plans/socius-coaching-reference-read-2026-10-19.md` for the bounded
+publication/hash contract. The owner-pilot connection was
 separately deployed and an actual partial read verified on October19. Request-local
 signature, issuer, audience, client, owner and active-grant checks remain required.
 Native consent uses the provider's saved-consent relay. ADR-0038 retains the
@@ -16,8 +21,9 @@ Existing embedded programming is legacy behavior to retire through separate
 reviewed releases while preserving historical plans and completion links. No
 production authoring behavior is disabled by the goal record. ADR-0039 and
 `docs/plans/socius-durable-context-goal-2026-10-19.md` record the boundary and ordered
-acceptance gates. Recent-workout context is locally committed in `de3c5ef`, not
-deployed; other domains' storage, exposure and populated-record evidence differ.
+acceptance gates. The external workout adapter was merged in PR91 and its
+actual owner read accepted on October19; PR92 records that acceptance.
+Other domains' storage, exposure and populated-record evidence differ.
 
 > **Purpose**: This document provides a comprehensive map of how features, components, and systems are interconnected in the SociusFit application. Use this to understand the impact of changes before making modifications.
 

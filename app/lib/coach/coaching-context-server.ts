@@ -4,6 +4,7 @@ import { fetchCoachEvidenceContext } from './evidence-context'
 import { projectEvidenceReasoningContext } from './evidence-reasoning-context'
 import { fetchPlanningHistorySnapshot, type PlanningHistorySnapshot } from './planning-context'
 import { buildExternalPerformedWorkContext } from './external-performed-work-context'
+import { coachingReferencePointer } from './external-coaching-reference'
 import { decodeCoachWeeklyIntent } from './rolling-weekly-api'
 import { fetchReviewedExecutionSlots } from './reviewed-execution-context-server'
 import { stableStringify } from './rolling-weekly-contracts'
@@ -190,6 +191,8 @@ export async function readCoachingContext(client: SupabaseClient, params: URLSea
     throw new CoachingContextError(409, 'Training sources changed during retrieval; retry')
   }
   const gaps: string[] = []
+  const coachingReference = coachingReferencePointer()
+  if (coachingReference.status !== 'available') gaps.push('coaching_reference_unpublished')
   const requirements = Object.fromEntries(REQUIREMENT_KEYS.map(key => {
     const value = projectRequirement(sources[key], key, readStartedAt)
     if (value.status !== 'current') gaps.push(`${key}_${value.status}`)
@@ -223,7 +226,7 @@ export async function readCoachingContext(client: SupabaseClient, params: URLSea
   const plan = programming ? projectCoachingPlan(programming.plan) : null
   const result = {
     schemaVersion: COACHING_CONTEXT_VERSION, purpose: 'today_training' as const, authority: 'factual_context_only' as const,
-    readStartedAt, readCompletedAt, localDate, timezoneOffset: tzOffset, historyDays: days,
+    readStartedAt, readCompletedAt, localDate, timezoneOffset: tzOffset, historyDays: days, coachingReference,
     status: gaps.length ? 'partial' as const : 'complete' as const,
     consistency: { stable: true, semantics: 'application_double_read_not_transaction_snapshot' as const,
       revision: Number.isSafeInteger(revision) && Number(revision) >= 0 ? revision : null },
