@@ -103,7 +103,7 @@ async function readSources(db: SupabaseClient, owner: string, asOf: string, loca
     readRows(db, owner, 'training_programs', 'id,user_id,title,goal_summary,start_date,end_date,status,program_mode,active_plan_version_id,direction,updated_at,created_at',
       query => query.eq('status', 'active').order('start_date', { ascending: false }), 2).then(value => ['program', value] as const),
     readRows(db, owner, 'whoop_tokens', 'user_id,id').then(value => ['connection', value] as const),
-    readRows(db, owner, 'whoop_sync_status', 'user_id,status,last_sync_at,error_message,updated_at').then(value => ['sync', value] as const),
+    readRows(db, owner, 'whoop_sync_status', 'user_id,status,last_sync_at,next_sync_at,records_synced,error_message,created_at,updated_at').then(value => ['sync', value] as const),
     readRows(db, owner, 'whoop_recovery', 'id,user_id,cycle_id,date,recovery_score,resting_heart_rate,hrv_rmssd_milli,created_at',
       query => query.order('date', { ascending: false }).order('id', { ascending: false }), 1, true).then(value => ['recovery', value] as const),
     readRows(db, owner, 'whoop_sleep', 'id,user_id,sleep_id,date,sleep_performance_percentage,sleep_efficiency_percentage,total_sleep_duration_ms,is_nap,created_at',

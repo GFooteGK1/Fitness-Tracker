@@ -1,6 +1,6 @@
-import { formatUTCAsLocalDateWithOffset, isValidTimezoneOffset } from '../timezone-utils'
+import { isValidTimezoneOffset } from '../timezone-utils'
 import { validatePlanningIntent } from './planning-intent'
-import { isWhoopSyncEligible } from '../agents/whoop-context-eligibility'
+export { projectContextRecovery } from './external-recovery-context'
 
 export const COACHING_CONTEXT_VERSION = 1 as const
 export const REQUIREMENT_KEYS = ['training_intent', 'primary_goal', 'training_schedule', 'available_equipment', 'training_constraints', 'exercise_preferences'] as const
@@ -96,26 +96,3 @@ export function projectRequirement(source: ContextSource, key: typeof REQUIREMEN
       reviewAfter: row.review_after ?? null, provenance: row.provenance } : null }
 }
 
-export function projectContextRecovery(sources: Record<string, ContextSource>, asOf: string, localDate: string) {
-  const sync = sources.sync.rows[0] ?? null
-  const connected = sources.connection.status === 'available'
-  const eligible = sources.sync.status === 'available' && isWhoopSyncEligible(connected, sync, Date.parse(asOf))
-  const utcDate = formatUTCAsLocalDateWithOffset(asOf, 0)
-  const metric = (key: string) => {
-    const source = sources[key], row = source.rows[0] ?? null
-    const dateValid = typeof row?.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.date)
-      && Number.isFinite(Date.parse(row.date)) && new Date(row.date).toISOString().startsWith(row.date)
-    const value = row?.[key === 'recovery' ? 'recovery_score' : key === 'sleep' ? 'sleep_performance_percentage' : 'strain']
-    const status = source.status !== 'available' ? source.status : !dateValid ? 'invalid'
-      : (validTime(row?.created_at) && Date.parse(row.created_at) > Date.parse(asOf)) || String(row!.date) > utcDate ? 'future'
-        : String(row!.date) < utcDate ? 'stale' : value == null ? 'missing_metric'
-          : typeof value !== 'number' || !Number.isFinite(value) ? 'invalid' : !eligible ? 'sync_ineligible' : 'current'
-    return { status, usableAsCurrent: status === 'current' && utcDate === localDate, sourceDateBasis: 'UTC' as const,
-      observedAt: null, capturedAt: validTime(row?.created_at) ? row.created_at : null,
-      timestampPrecision: 'date_only' as const, record: row }
-  }
-  return { connected, syncEligible: eligible, lastSyncAt: sync?.last_sync_at ?? null,
-    syncStatus: sync?.status ?? null, syncSourceStatus: sources.sync.status,
-    localDayAlignment: utcDate === localDate ? 'aligned_calendar_date' as const : 'unverified' as const,
-    metrics: { recovery: metric('recovery'), sleep: metric('sleep'), strain: metric('strain') } }
-}
