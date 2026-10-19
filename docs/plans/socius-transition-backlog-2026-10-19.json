@@ -1,0 +1,72 @@
+[
+  {
+    "id": "Fitness-Tracker-xrz.1",
+    "title": "01 Release and verify recent workout context",
+    "acceptance": "Exact reviewed reader committed; separately approved deployment; fresh chosen-harness seven-day owner read reports dates, provenance, gaps and zero writes; foreign-owner and stale/truncated negatives pass."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.2",
+    "title": "02 Verify owner context coverage",
+    "acceptance": "Owned goals, requirements, equipment, schedule, constraints and domain source counts have dated populated/missing/unavailable status; no assumptions are silently saved."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.3",
+    "title": "03 Publish a versioned coaching playbook read",
+    "acceptance": "Selected LLM retrieves reviewed current guidance with source version/hash, review date and supersession; Fitness Project material reconciled explicitly; no app-generated prescription authority."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.4",
+    "title": "04 Expose metrics and assessments",
+    "acceptance": "Fresh harness retrieves source sets and observations with date, units, protocol, confidence, derivation and comparability; unknown goals or estimates do not become measured outcomes."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.5",
+    "title": "05 Preserve WHOOP event timing",
+    "acceptance": "Authorized ingestion retains event intervals/timezone and source timing; local-day recovery attribution verified near UTC rollover/DST; legacy dates remain unverified; no reconnect/job changes bundled."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.6",
+    "title": "06 Expose meals and nutrition context",
+    "acceptance": "Fresh harness retrieves dated owned meals, targets, estimate/review status, provenance and incomplete coverage; source outage differs from no meals; no changes made."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.7",
+    "title": "07 Qualify controlled write operations",
+    "acceptance": "Narrow owner-bound operations reject identity overrides, stale versions and invalid input; idempotent retry causes one canonical change; uncertain outcomes reconcile; every write has a receipt and history."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.8",
+    "title": "08 Confirm current athlete requirements",
+    "acceptance": "User-approved goals, constraints, equipment, training days and preferences round-trip through validated writes and a fresh read; uncertain numeric targets remain explicit; no APEX hard coding."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.9",
+    "title": "09 Save selected LLM plans and rationale",
+    "acceptance": "User approves an LLM-authored proposal; Socius validates/persists versions and rationale without generating programming; a fresh conversation distinguishes proposed/accepted/history and exact context references."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.10",
+    "title": "10 Log workout photos through chosen LLM",
+    "acceptance": "Photo extraction is reviewed then saved with source/provenance and a receipt in the same user plane; retry is idempotent; corrections preserve history and next conversation retrieves actual work."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.11",
+    "title": "11 Automatically log estimated meal photos",
+    "acceptance": "Explicitly authorized photo creates one estimated meal log with provenance/confidence; optional refinement amends it with history; no mandatory second coach chat; ambiguous/error cases and duplicate retry are tested."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.12",
+    "title": "12 Verify portability and owner pilot lifecycle",
+    "acceptance": "Second approved harness retrieves equivalent versioned context without manual copying; reconnect, expiry, refresh, account mismatch and revocation behave as specified; no broad multi-user security claim."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.13",
+    "title": "13 Retire embedded programming safely",
+    "acceptance": "After replacement end-to-end proof and explicit release approval, embedded authoring is retired while historical plans, rationale, IDs, completed-work links and logging remain readable and intact."
+  },
+  {
+    "id": "Fitness-Tracker-xrz.14",
+    "title": "14 Add optional daily nutrition review",
+    "acceptance": "Only after separate scheduling approval and local IANA timezone confirmation, one 7:30 PM local review per day arrives in chosen user plane with DST/deduplication behavior; no reminder created by this plan."
+  }
+]

@@ -1,5 +1,7 @@
 # Architecture decisions
 
+- [ADR-0039: Chosen LLM programming and durable Socius context](ADR-0039-chosen-llm-and-durable-context.md) - accepted target with incremental release gates; embedded authoring remains legacy behavior until separately retired, with historical records preserved.
+
 - [ADR-0038: External context authorization](ADR-0038-external-context-authorization.md) - deployed owner pilot with one factual read tool, broader credential rights and bounded verification; refresh/browser qualification remains open.
 
 - [ADR-0034: Independent set RIR](ADR-0034-independent-set-rir.md) — nullable actual RIR alongside RPE, exact legacy requests and compatible completion; local authenticated storage verified, browser/hosted gates remain.
