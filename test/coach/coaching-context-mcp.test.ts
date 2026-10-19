@@ -47,7 +47,7 @@ describe('official SDK MCP over loopback Streamable HTTP, synthetic owner only',
   beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(contextNow) })
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
 
-  it.each([true, false])('initializes, lists one read-only tool and retrieves exact saved context (JSON response=%s)', async json => {
+  it.each([true, false])('initializes, lists two read-only tools and retrieves exact saved context (JSON response=%s)', async json => {
     const { db, writes, traces } = contextClient()
     const host = await localMcp(async () => ({ principal: principal(), db }), json)
     try {
@@ -55,7 +55,7 @@ describe('official SDK MCP over loopback Streamable HTTP, synthetic owner only',
       expect(host.client.getServerVersion()).toMatchObject({ name: 'socius-coaching-context', version: '1.0.0' })
       expect(host.clientTransport.sessionId).toBe('synthetic-session')
       const tools = await host.client.listTools()
-      expect(tools.tools.map(tool => tool.name)).toEqual(['get_coaching_context'])
+      expect(tools.tools.map(tool => tool.name)).toEqual(['get_coaching_context', 'get_coaching_reference'])
       expect(tools.tools[0].annotations?.readOnlyHint).toBe(true)
       // The standard SDK strips host-specific top-level extensions; its
       // preserved metadata mirror still carries the OAuth declaration.
@@ -69,6 +69,18 @@ describe('official SDK MCP over loopback Streamable HTTP, synthetic owner only',
       expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === contextOwner))).toBe(true)
       expect(host.wire.map(row => row.method)).toEqual(expect.arrayContaining(['initialize', 'notifications/initialized', 'tools/list', 'tools/call']))
       expect(host.wire.find(row => row.method === 'tools/call')?.contentType).toContain(json ? 'application/json' : 'text/event-stream')
+      expect(result.structuredContent).toMatchObject({ context: { coachingReference: { status: 'available', tool: 'get_coaching_reference' } } })
+      const priorReads = traces.length
+      const reference = await host.client.callTool({ name: 'get_coaching_reference', arguments: { domains: ['isometrics', 'strength'] } })
+      expect(reference.isError).toBe(false)
+      expect(reference.structuredContent).toMatchObject({ reference: { version: 'external-coaching-0.1.0', selectedDomains: ['strength', 'isometrics'], reference: { authority: 'general_reference_not_athlete_records' } } })
+      expect(traces).toHaveLength(priorReads)
+      expect(writes).not.toHaveBeenCalled()
+      expect(tools.tools[1]._meta?.securitySchemes).toEqual([{ type: 'oauth2', scopes: ['email'] }])
+      for (const arguments_ of [{ version: 'unknown' }, { domains: ['strength', 'power', 'recovery', 'assessment', 'isometrics'] }, { user_id: 'foreign' }]) {
+        expect((await host.client.callTool({ name: 'get_coaching_reference', arguments: arguments_ })).isError).toBe(true)
+      }
+      expect(traces).toHaveLength(priorReads)
     } finally { await host.close() }
   })
 

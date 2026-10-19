@@ -1,0 +1,83 @@
+{
+  "verdict": "no_blocking_finding_in_test_only_addendum",
+  "parentHead": "4f7c3e126094958fe2b9f19c883e94b479af789e",
+  "candidate": {
+    "matchedBeforeAndAfter": true,
+    "sha256": "58F5C99F2328B6568121C3AAFF3B8E1B992892AFA35B3945A5C0CBCD3B4589AD",
+    "path": "test/auth/coaching-oauth.test.ts"
+  },
+  "originalTenCandidateHashes": [
+    {
+      "path": "app/lib/coach/external-coaching-reference.ts",
+      "match": true
+    },
+    {
+      "path": "app/lib/coach/coaching-reference-tool.ts",
+      "match": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context-mcp.ts",
+      "match": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context-server.ts",
+      "match": true
+    },
+    {
+      "path": "test/coach/coaching-reference.test.ts",
+      "match": true
+    },
+    {
+      "path": "test/coach/coaching-context.test.ts",
+      "match": true
+    },
+    {
+      "path": "test/coach/coaching-context-mcp.test.ts",
+      "match": true
+    },
+    {
+      "path": "docs/plans/socius-coaching-reference-read-2026-10-19.md",
+      "match": true
+    },
+    {
+      "path": "docs/decisions/ADR-0039-chosen-llm-and-durable-context.md",
+      "match": true
+    },
+    {
+      "path": "docs/architecture/ARCHITECTURE-MAP.md",
+      "match": true
+    }
+  ],
+  "reproduced": {
+    "files": {
+      "oauth": 110,
+      "mcp": 5,
+      "reference": 27
+    },
+    "passed": 142,
+    "additionalDomainQueries": 0,
+    "tests": 142,
+    "failed": 0,
+    "signedSyntheticHttpReferenceRead": "passed",
+    "referenceGrantRevocation": "rejected",
+    "writes": 0
+  },
+  "runtimeUnchanged": true,
+  "priorIndependent129AndMutationNotRepeated": true,
+  "priorReportsUnchanged": {
+    "md": "67AA2AD600DBFE634BFB884D883FC5FD96D69A7F4B7247D7247B1C8EA81E0140",
+    "json": "EB880A0C7DAA68007FD6240E7868695B56A2D9E7FDE719F786AA886AF4571DE4"
+  },
+  "inspected": [
+    "narrow test-only diff",
+    "exact two-tool registry",
+    "real stateless handler and SDK with synthetic signed bearer",
+    "no additional domain queries or writes",
+    "both calls refused following grant revocation"
+  ],
+  "notReproduced": [
+    "parent-reported full CI result",
+    "hosted Auth/RLS/client acceptance"
+  ],
+  "blocker": null
+}

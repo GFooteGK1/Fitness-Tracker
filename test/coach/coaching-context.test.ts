@@ -2,12 +2,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readCoachingContext, selectOnlyClient } from '@/app/lib/coach/coaching-context-server'
 import { contextClient, contextNow, contextOwner, contextRows } from '../fixtures/coaching-context'
 import { reviewedRollingWeek } from '../fixtures/reviewed-rolling-week'
+import * as referencePublication from '../../app/lib/coach/external-coaching-reference'
 
 const params = () => new URLSearchParams({ tzOffset: '0', days: '28' })
 
 describe('authenticated coaching context: requirements established before implementation', () => {
   beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(contextNow); vi.stubEnv('COACH_HISTORY_CONTEXT_ENABLED', 'true') })
   afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.restoreAllMocks() })
+
+  it('reports an unpublished reference explicitly without dropping the saved plan or creating requirements', async () => {
+    vi.spyOn(referencePublication, 'coachingReferencePointer').mockReturnValue({ status: 'unpublished', tool: 'get_coaching_reference', requestedVersion: 'unpublished-fixture', reference: null })
+    const { db, writes } = contextClient()
+    const result = await readCoachingContext(db, params())
+    expect(result.coachingReference).toMatchObject({ status: 'unpublished', reference: null })
+    expect(result.gaps).toContain('coaching_reference_unpublished')
+    expect(result.status).toBe('partial')
+    expect(result.acceptedProgramming?.todaySessions[0].prescription).toEqual(contextRows().prescribed_sessions[0].prescription)
+    expect(writes).not.toHaveBeenCalled()
+  })
 
   it('returns exact saved programming, dated recovery and goal provenance without writes', async () => {
     const { db, traces, writes } = contextClient()

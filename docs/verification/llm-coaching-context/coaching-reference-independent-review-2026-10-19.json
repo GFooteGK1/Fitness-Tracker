@@ -1,0 +1,82 @@
+{
+  "verdict": "no_remaining_blocking_finding_for_frozen_local_candidate",
+  "base": "10ff5a2819010fdb4b9589e222bb462f076ab32a",
+  "manifestSha256": "75AE3D3BBDDD43F05CF94A5A224AD9F7B9C596E00D592E2CA4E601AEA6BACE5B",
+  "candidateFiles": [
+    {
+      "path": "app/lib/coach/external-coaching-reference.ts",
+      "sha256": "31DF772AD2A6F941196CB25BE156ACEA0F68B76B5E31709650D7C5BFEBADE479"
+    },
+    {
+      "path": "app/lib/coach/coaching-reference-tool.ts",
+      "sha256": "43C66118C88F9C8F6E5E9D96024013299928235C4C3A9936ECD6F27CABEF9363"
+    },
+    {
+      "path": "app/lib/coach/coaching-context-mcp.ts",
+      "sha256": "3C132848F26B01B2CD02F9BEC83EA5AB892A1410BCFEC89A6A9085D67AF2E5AA"
+    },
+    {
+      "path": "app/lib/coach/coaching-context-server.ts",
+      "sha256": "80D6B0C76F446E6BA750CF05729F54C8E464AAFE84F997249FA3EB7E5596B940"
+    },
+    {
+      "path": "test/coach/coaching-reference.test.ts",
+      "sha256": "86A425AD88D61C0F2B311637BFD2BE89D989500B053015E96E55E6770BF93412"
+    },
+    {
+      "path": "test/coach/coaching-context.test.ts",
+      "sha256": "D3D31F4E9B7F043D39A81E6ABA92E3F86BBFFCB5B1562D3CA711A517212A1A87"
+    },
+    {
+      "path": "test/coach/coaching-context-mcp.test.ts",
+      "sha256": "52EDDAA585A45D825BD467BDB25378F918B70CB51AC4F5983151F551601FBD81"
+    },
+    {
+      "path": "docs/plans/socius-coaching-reference-read-2026-10-19.md",
+      "sha256": "27C56187780639AE2959E1CF864847D6354EEC2264AB2EEC1B2F3BF039FA3138"
+    },
+    {
+      "path": "docs/decisions/ADR-0039-chosen-llm-and-durable-context.md",
+      "sha256": "8B49817588E1DE5F1D5C75D2381D75BC5B8C399D2BB16C9E8208F85153FC57B1"
+    },
+    {
+      "path": "docs/architecture/ARCHITECTURE-MAP.md",
+      "sha256": "B7401A61FBAC365945B22F12E10B05B93B5034DF95DA6181A89AAB1297E368B3"
+    }
+  ],
+  "fixedFinding": {
+    "verification": "Amended source inspected; independent core-only probe passed",
+    "priority": "P2",
+    "description": "Initial external core omitted inherited population and safety boundaries"
+  },
+  "reproduced": {
+    "maximumResponseBytes": 12418,
+    "focusedFiles": 9,
+    "knownBadMutationDetectedFailures": 1,
+    "focusedTests": 132,
+    "responseByteLimit": 32768,
+    "knownBadMutationTests": 1,
+    "validDomainSelections": 57,
+    "domainEffectAccesses": 0,
+    "focusedPassed": 132,
+    "fullPublicationHash": "585d5ce41d96cbe34e1b8cc47dd605983ba39d4d982002a109cbd787b4bde5ae",
+    "independentPassed": 129,
+    "independentProbes": 129
+  },
+  "inspected": [
+    "two-tool registry and unchanged OAuth declaration",
+    "same verified principal checks plus db identity binding",
+    "general selected-LLM authority and accurately limited inherited evidence review",
+    "unchanged legacy reference/programming/isometric/context-auth source",
+    "no model/provider/host dispatch in reference handler"
+  ],
+  "limitations": [
+    "local synthetic checks only",
+    "unpublished consumer tested with mocked pointer; real producer tested with copied draft-status source",
+    "no fresh sports-science review",
+    "no hosted Auth/RLS/client or fresh-harness qualification"
+  ],
+  "candidateSourceOrBuilderTestsAuthored": false,
+  "candidateFilesMutatedByReviewer": false,
+  "blocker": null
+}

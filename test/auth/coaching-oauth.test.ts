@@ -126,12 +126,18 @@ describe('owner OAuth bearer verification with real SDK JWT signatures and synth
     const client = new Client({ name: 'synthetic-owner', version: '1.0.0' })
     try {
       await client.connect(transport)
-      expect((await client.listTools()).tools.map(tool => tool.name)).toEqual(['get_coaching_context'])
+      expect((await client.listTools()).tools.map(tool => tool.name)).toEqual(['get_coaching_context', 'get_coaching_reference'])
       const result = await client.callTool({ name: 'get_coaching_context', arguments: { tzOffset: 0 } })
       expect(result.isError, JSON.stringify(result)).toBe(false)
       expect(result.structuredContent).toHaveProperty('context')
+      const reads = vi.mocked(fixture.query.db.from).mock.calls.length
+      const reference = await client.callTool({ name: 'get_coaching_reference', arguments: { domains: ['strength'] } })
+      expect(reference.isError, JSON.stringify(reference)).toBe(false)
+      expect(reference.structuredContent).toMatchObject({ reference: { version: 'external-coaching-0.1.0' } })
+      expect(fixture.query.db.from).toHaveBeenCalledTimes(reads)
       fixture.state.active = false
       await expect(client.callTool({ name: 'get_coaching_context', arguments: { tzOffset: 0 } })).rejects.toThrow()
+      await expect(client.callTool({ name: 'get_coaching_reference', arguments: {} })).rejects.toThrow()
       expect(fixture.query.writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
