@@ -1,0 +1,142 @@
+{
+  "verdict": "no_blocking_finding_for_frozen_read_only_child_5_1",
+  "base": "c0febbc717aa404f8872a201350af3d2d7c58eb9",
+  "branch": "codex/recovery-timing-read",
+  "oracleSha256": "B61DF9B48C291604984326689AD0451CF1D0A368CF2A3FE00A497C7094DE1409",
+  "manifestSha256": "C0D55D56A923789AC66C838656367925DD625F01187893DE9D1F3588498DC99F",
+  "candidateFiles": [
+    {
+      "path": "app/lib/coach/coaching-context.ts",
+      "sha256": "B37D465FB2EAE952C0B46E9C05D9392EBED1E4A00B4C39D554395A1B59C7B178"
+    },
+    {
+      "path": "app/lib/coach/coaching-context-server.ts",
+      "sha256": "89F5AB5C0C40CF4A0EB405DC3328D54D2125406B1A033BC8D28D1E8EBC7BF63B"
+    },
+    {
+      "path": "app/lib/coach/external-recovery-context.ts",
+      "sha256": "C7EB93C526DC72D0A8647FF56F329C33F4C8206FF769BA50E70A9ED6883927E3"
+    },
+    {
+      "path": "test/coach/coaching-context.test.ts",
+      "sha256": "4910190BC845E82284CFDE7673C57F097A48DE10CA91B5B1A670D65518670CC8"
+    },
+    {
+      "path": "test/coach/external-recovery-context.test.ts",
+      "sha256": "FF36D73185FF427FFB9C9D6DDF7FC1B45507F60372936F2786B91F2F3E51D507"
+    },
+    {
+      "path": "docs/plans/socius-recovery-timing-read-2026-10-19.md",
+      "sha256": "3D91C9105FD4D4A214E747E43E783E4E5F432521F8763F7EDDE6B4D90C7868C5"
+    },
+    {
+      "path": "docs/plans/socius-recovery-provider-timing-decision-2026-10-19.md",
+      "sha256": "FC3D9EAE7C93FD15164F4D76BA8284A0017DF82CBFC19A961BC930FE85252471"
+    },
+    {
+      "path": "handoffs/investigations/Fitness-Tracker-xrz.5.1.md",
+      "sha256": "2F307657B42AF2A81989E4EF89E367EB5F013407CC047EB4B156F2F7889B1942"
+    }
+  ],
+  "candidatePosthash": [
+    {
+      "path": "app/lib/coach/coaching-context.ts",
+      "sha256": "B37D465FB2EAE952C0B46E9C05D9392EBED1E4A00B4C39D554395A1B59C7B178",
+      "match": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context-server.ts",
+      "sha256": "89F5AB5C0C40CF4A0EB405DC3328D54D2125406B1A033BC8D28D1E8EBC7BF63B",
+      "match": true
+    },
+    {
+      "path": "app/lib/coach/external-recovery-context.ts",
+      "sha256": "C7EB93C526DC72D0A8647FF56F329C33F4C8206FF769BA50E70A9ED6883927E3",
+      "match": true
+    },
+    {
+      "path": "test/coach/coaching-context.test.ts",
+      "sha256": "4910190BC845E82284CFDE7673C57F097A48DE10CA91B5B1A670D65518670CC8",
+      "match": true
+    },
+    {
+      "path": "test/coach/external-recovery-context.test.ts",
+      "sha256": "FF36D73185FF427FFB9C9D6DDF7FC1B45507F60372936F2786B91F2F3E51D507",
+      "match": true
+    },
+    {
+      "path": "docs/plans/socius-recovery-timing-read-2026-10-19.md",
+      "sha256": "3D91C9105FD4D4A214E747E43E783E4E5F432521F8763F7EDDE6B4D90C7868C5",
+      "match": true
+    },
+    {
+      "path": "docs/plans/socius-recovery-provider-timing-decision-2026-10-19.md",
+      "sha256": "FC3D9EAE7C93FD15164F4D76BA8284A0017DF82CBFC19A961BC930FE85252471",
+      "match": true
+    },
+    {
+      "path": "handoffs/investigations/Fitness-Tracker-xrz.5.1.md",
+      "sha256": "2F307657B42AF2A81989E4EF89E367EB5F013407CC047EB4B156F2F7889B1942",
+      "match": true
+    }
+  ],
+  "critiqueCycles": 1,
+  "blockingFindings": [],
+  "nonblockingNotes": [
+    "git diff --check reports new blank line at coaching-context.ts:98; parent retains exact freeze"
+  ],
+  "reproduced": {
+    "changedBatchFields": 7,
+    "outerBudgetCharacters": 128000,
+    "knownBadMutationTests": 1,
+    "focusedPassed": 316,
+    "independentTests": 72,
+    "foreignSourceTypes": 5,
+    "knownBadMutationDetectedFailures": 1,
+    "independentPassed": 72,
+    "mutation": "DB storage creation falsely used as legacy capturedAt",
+    "focusedFiles": 8,
+    "focusedTests": 316,
+    "changedMetricFields": 4,
+    "stableChangeStatus": 409,
+    "forbiddenEffects": 0
+  },
+  "commands": [
+    {
+      "receipt": "focused-results.json",
+      "command": "node_modules/.bin/vitest.cmd run test/coach/external-recovery-context.test.ts test/coach/coaching-context.test.ts test/coach/external-metrics-context.test.ts test/coach/prescribed-workout-amounts.test.ts test/coach/coaching-context-history.test.ts test/coach/coaching-context-tool.test.ts test/coach/coaching-context-mcp.test.ts test/auth/coaching-oauth.test.ts --reporter=json"
+    },
+    {
+      "receipt": "independent-results.json",
+      "command": "node_modules/.bin/vitest.cmd run --config ../recovery-timing-independent-output/vitest.config.mjs independent.spec.ts --reporter=json"
+    },
+    {
+      "receipt": "mutation-results.json",
+      "command": "node_modules/.bin/vitest.cmd run --config ../recovery-timing-independent-output/vitest.config.mjs mutation.spec.ts --reporter=json"
+    }
+  ],
+  "inspected": [
+    "null unknown provider observation/capture/interval/timezone/per-record ingestion",
+    "batch eligibility separate from readiness and label alignment",
+    "safe bounded diagnostics and truthful connection unknown",
+    "unchanged helper/writer/scheduler/metrics/reference/workout sources",
+    "future provider-retention proposal is non-executable and gated"
+  ],
+  "parentReportedNotReproduced": [
+    "official public WHOOP API consultation"
+  ],
+  "notVerified": [
+    "hosted schema/provider/scheduler execution",
+    "actual owner recovery context acceptance"
+  ],
+  "candidateAuthoredOrMutatedByReviewer": false,
+  "reviewerLiveCalls": 0,
+  "parentXrz5CanClose": false,
+  "remainingGates": [
+    "full required CI/protected merge",
+    "exact Git deployment verification",
+    "actual authenticated child context acceptance",
+    "parent schema/ingestion decision remains separately gated"
+  ],
+  "blocker": null
+}

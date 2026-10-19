@@ -28,7 +28,8 @@ describe('authenticated coaching context: requirements established before implem
       localDate: '2026-10-18', acceptedProgramming: { plan: { id: 'accepted-one', status: 'accepted' },
         todaySessions: [{ id: 'session-one', prescription: { exactSavedLoad: 17.5 } }] },
       requirements: { training_intent: { status: 'current', source: { id: 'memory-training_intent', version: 1 } } },
-      recovery: { metrics: { recovery: { status: 'current', sourceDateBasis: 'UTC', record: { recovery_score: 71 } } } } })
+      recovery: { metrics: { recovery: { status: 'timing_unverified', usableAsCurrent: false, capturedAt: null,
+        sourceDateBasis: 'UTC', record: { recovery_score: 71 } } } } })
     expect(result.performedWork?.coverage.athleteCoverage).toBe('unknown')
     expect(writes).not.toHaveBeenCalled()
     for (const trace of traces) expect(trace.filters).toContainEqual(['user_id', contextOwner])
