@@ -1,0 +1,44 @@
+{
+  "slice": "Fitness-Tracker-xrz.3",
+  "acceptance": "passed",
+  "tool": "get_coaching_reference",
+  "verificationSource": "Parent executed the actual authenticated tool call and reported the result to the delivery task; no duplicate live call performed here.",
+  "observedStartedAt": "2026-10-19T12:15:56Z",
+  "observedCompletedAt": "2026-10-19T12:15:59Z",
+  "input": {
+    "version": "external-coaching-0.1.0",
+    "domains": [
+      "assessment",
+      "strength",
+      "power",
+      "isometrics"
+    ]
+  },
+  "status": "available",
+  "isError": false,
+  "contentHash": "585d5ce41d96cbe34e1b8cc47dd605983ba39d4d982002a109cbd787b4bde5ae",
+  "selectedContentHash": "e7e33b7c2ceb467be141b00a76c684ced72efc1527868f462cbe1ae9fb36289f",
+  "returnedDomains": [
+    "assessment",
+    "strength",
+    "power",
+    "isometrics"
+  ],
+  "returnedCorePrinciples": true,
+  "returnedProvenanceReviewAndSupersession": true,
+  "authority": "general_reference_not_athlete_records",
+  "reportedHashesIndependentlyMatchedStaticPublication": true,
+  "functionalCommit": "68f71dd6ddb492d8ec8615a91a17b1aeeaf80e21",
+  "functionalPr": "https://github.com/GFooteGK1/Fitness-Tracker/pull/93",
+  "requiredCi": "https://github.com/GFooteGK1/Fitness-Tracker/actions/runs/39247687827",
+  "verifiedFunctionalDeployment": "dpl_AxLid62UgaKQvMGbc7qCb8BUod4G",
+  "metadataRefresh": "Existing ChatGPT Refresh tools action completed; UI listed both read tools; no reconnect/removal/grant/permission change.",
+  "athleteDataWritten": false,
+  "additionalSliceImplemented": false,
+  "athleticOutcomeEstablished": false,
+  "remainingSeparateWork": [
+    "Personal requirement saving",
+    "Four unsupported prescribed aliases on new October19 workout",
+    "Other broader coaching-context gaps"
+  ]
+}
