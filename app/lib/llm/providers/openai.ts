@@ -143,6 +143,7 @@ export const openaiProvider: LlmProvider = {
       model,
       input: toResponseInput(req.messages),
       max_output_tokens: req.maxTokens,
+      ...(req.store === false ? { store: false } : {}),
       ...(req.system ? { instructions: req.system } : {}),
       // NOTE: GPT-5.x reasoning models reject `temperature` (400 Unsupported
       // parameter). Determinism on this family comes from reasoning effort, so
@@ -182,6 +183,9 @@ export const openaiProvider: LlmProvider = {
         })
       : await getClient().responses.create(params)
 
+    if (req.requireComplete && (response.status !== 'completed' || hasRefusal(response))) {
+      throw new Error('Incomplete or refused OpenAI response')
+    }
     const toolCalls = extractToolCalls(response)
 
     return {
@@ -192,7 +196,7 @@ export const openaiProvider: LlmProvider = {
         output: response.usage?.output_tokens ?? 0,
       },
       stopReason: mapStopReason(response, toolCalls),
-      model,
+      model: response.model ?? model,
       provider: 'openai',
     }
   },

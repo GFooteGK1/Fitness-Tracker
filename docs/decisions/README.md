@@ -1,5 +1,7 @@
 # Architecture decisions
 
+- [ADR-0042: Gated owner nutrition photo pilot](ADR-0042-gated-owner-nutrition-photo-pilot.md) - local preparation with private derivative, one provider attempt and unreviewed canonical estimate; activation remains blocked.
+
 - [ADR-0041: Authenticated owner WHOOP cron GET](ADR-0041-owner-authenticated-whoop-cron-get.md) - approved owner-only GET correction; existing bearer secret before privileged work, unchanged POST and daily UTC schedule; release/runtime evidence separate.
 
 - [ADR-0040: Owner-pilot WHOOP timing](ADR-0040-owner-pilot-whoop-timing.md) - proposed preparation only; nullable provider snapshots, simple fixed owner filter and unchanged jobs/authorization/legacy dates. No production migration or release authority.

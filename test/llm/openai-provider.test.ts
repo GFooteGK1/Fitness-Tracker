@@ -35,6 +35,20 @@ beforeEach(() => {
 })
 
 describe('openaiProvider.chat', () => {
+  it.each([
+    { status: 'incomplete', incomplete_details: { reason: 'content_filter' }, output: [] },
+    { status: 'failed', output: [] },
+    { status: 'completed', output: [{ type: 'message', content: [{ type: 'refusal', refusal: 'Synthetic refusal' }] }] },
+  ])('rejects any incomplete or refused evidence response even with usable-looking JSON: %j', async overrides => {
+    mockCreate.mockResolvedValue(baseResponse({ ...overrides, output_text: '{"items":[]}' }))
+    await expect(openaiProvider.chat({ purpose:'vision',messages:[],maxTokens:1024,maxRetries:0,requireComplete:true },'synthetic-model')).rejects.toThrow('Incomplete or refused')
+    expect(mockCreate).toHaveBeenCalledTimes(1)
+  })
+  it('honors non-storage for the pilot and retains the provider-reported model identifier', async () => {
+    mockCreate.mockResolvedValue(baseResponse({ output_text:'{}',model:'synthetic-provider-snapshot' }))
+    const result=await openaiProvider.chat({purpose:'vision',messages:[],maxTokens:1024,store:false,requireComplete:true},'synthetic-request-alias')
+    expect(mockCreate.mock.calls[0][0].store).toBe(false);expect(result.model).toBe('synthetic-provider-snapshot')
+  })
   it('normalizes a plain text response and maps system -> instructions', async () => {
     mockCreate.mockResolvedValue(
       baseResponse({ output_text: 'hello world', usage: { input_tokens: 12, output_tokens: 3 } })

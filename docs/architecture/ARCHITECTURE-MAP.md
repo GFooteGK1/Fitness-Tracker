@@ -367,6 +367,18 @@ canonical nutrition. Photo bytes are transient; no storage upload is enabled.
 The existing capture-v2 pause applies. See ADR-0030 and ADR-0031 for recovery,
 screening thresholds, consent and release scope.
 
+### Prepared owner nutrition pilot
+
+The separately prepared `/capture/nutrition-pilot` and `/api/meals/photo-pilot`
+are disabled by a literal code gate. Their owner workflow retains a private,
+decoded JPEG derivative, reserves one screening/estimation attempt, and uses
+existing atomic capture operations to create an explicitly unreviewed estimate.
+`app/lib/nutrition/photo-pilot-tool.ts` prepares bounded verified-principal reads
+and revision-safe correction; it is not registered with production MCP. SQL is
+preparation-only under `docs/migrations/nutrition-photo-owner-pilot.sql` with a
+second literal disabled gate. Retention, deletion, storage permissions, credential
+reuse, paid-call bounds and activation remain pending. See ADR-0042.
+
 ### Opt-in Camera-close bridge
 
 `/capture/camera` pairs a revocable native capability. The companion's separate

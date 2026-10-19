@@ -1,0 +1,30 @@
+# ADR-0042 - Gated owner nutrition photo pilot
+
+- **Status:** Accepted for local preparation; activation pending
+- **Date:** 2026-10-19
+- **Deciders:** Greg, Codex
+
+## Context
+
+Selected photos currently produce review drafts and discard their bytes. Greg approved a selected-photo pilot that saves a private photo and automatically logs an estimate using OpenAI, with optional later refinement in the chosen LLM. A photo does not prove consumption or measure portions. Storage, provider billing and canonical writes cross distinct failure boundaries. Existing capture revisions and owner authorization must survive the change.
+
+## Decision
+
+We prepare a separately gated owner photo workflow with durable capture identities, at most one screening and one estimation attempt per capture, existing atomic canonical capture operations, and narrow retrieval and correction adapters for the chosen LLM.
+
+## Consequences
+
+- Positive: Original estimates, source hashes, effective provider/model and timestamps survive correction; totals derive from validated items.
+- Positive: Existing selected-photo drafts and native device permissions retain their current behavior.
+- Negative: A lost provider response stops automatic processing; reconciliation is necessary and may leave no estimate. Exactly one canonical meal does not imply a successful provider response.
+- Negative: Private storage and database state cannot commit together. Uncertain uploads remain visible and must be reconciled before deletion or retry.
+- Neutral: The pilot's compile-time activation gate remains false. SQL stays under `docs/migrations`, outside the migration runner. No credentials, grants, production writes, jobs or provider calls are activated by this candidate.
+- Neutral: Photo retention duration, deletion/orphan recovery, exact provider availability/cost, hard spending controls, credential reuse and existing bucket policies require a separate activation decision. Proposed values are not consent or runtime proof.
+
+## Alternatives considered
+
+Extending the native camera capability would turn a draft-only device permission into canonical write authority and add unrelated background capture. The selected-photo owner session is the smaller boundary.
+
+Reusing transient review drafts alone preserves established behavior but cannot retain a photo or automatically create an explicitly unreviewed estimated meal.
+
+Handing every photo into the chosen LLM avoids automatic provider spending but does not deliver the approved take-a-photo-and-move-on workflow. The model API performs bounded extraction only; it does not become the programmer or coach.

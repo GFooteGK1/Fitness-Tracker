@@ -84,6 +84,10 @@ export interface LlmRequest {
   timeoutMs?: number
   /** Optional per-request retry override; leave unrelated provider defaults intact. */
   maxRetries?: number
+  /** Opt out of provider response storage where supported; not an abuse-log retention guarantee. */
+  store?: false
+  /** Extraction may require a fully completed, non-refused provider response. */
+  requireComplete?: boolean
   /**
    * Reasoning effort for reasoning-capable models (GPT-5.x); ignored where
    * unsupported. Per the cost strategy, extraction purposes use 'low'.
