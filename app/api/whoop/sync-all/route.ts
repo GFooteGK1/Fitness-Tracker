@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/app/lib/auth/supabase-server';
 import * as syncService from '@/app/lib/whoop/sync-service';
+import { isWhoopTimingOwner } from '@/app/lib/whoop/timing-owner';
 
 /**
  * WHOOP Sync All Users Route
  *
- * Triggered by Vercel Cron (see vercel.json — daily at 10:30 UTC ≈ 05:30
- * America/Chicago). Syncs WHOOP data for all connected users.
+ * Vercel Cron GET runs daily at 10:30 UTC for the fixed owner pilot.
+ * Existing POST continues to process all connected users.
  *
  * POST /api/whoop/sync-all
  *
@@ -15,14 +16,14 @@ import * as syncService from '@/app/lib/whoop/sync-service';
  * - Uses a service-role Supabase client because a cron has no user session;
  *   the cookie-scoped client would see zero rows under RLS and sync nobody.
  */
-export async function POST(request: NextRequest) {
+async function syncConnectedUsers(request: NextRequest, ownerOnly: boolean) {
   try {
     // 1. Verify this is a legitimate cron request
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
 
-    // In production, verify the cron secret
-    if (process.env.NODE_ENV === 'production') {
+    // GET always requires the existing bearer secret; POST keeps its prior policy.
+    if (ownerOnly || process.env.NODE_ENV === 'production') {
       if (!cronSecret) {
         console.error('[WHOOP Sync All] CRON_SECRET not configured');
         return NextResponse.json(
@@ -40,7 +41,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('[WHOOP Sync All] Starting scheduled sync for all users');
+    console.log(ownerOnly
+      ? '[WHOOP Sync All] Starting scheduled sync for the owner pilot'
+      : '[WHOOP Sync All] Starting scheduled sync for all users');
 
     // 2. Get all users with WHOOP connected.
     // Service-role client: no user session on a cron, so RLS must be bypassed
@@ -59,7 +62,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!tokens || tokens.length === 0) {
+    const selectedTokens = ownerOnly
+      ? tokens?.filter(token => isWhoopTimingOwner(token?.user_id)).slice(0, 1)
+      : tokens;
+
+    if (!selectedTokens || selectedTokens.length === 0) {
       console.log('[WHOOP Sync All] No users with WHOOP connected');
       return NextResponse.json({
         success: true,
@@ -68,17 +75,17 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`[WHOOP Sync All] Found ${tokens.length} users with WHOOP connected`);
+    console.log(`[WHOOP Sync All] Found ${selectedTokens.length} users with WHOOP connected`);
 
     // 3. Sync each user (incremental sync)
     const results = {
-      total: tokens.length,
+      total: selectedTokens.length,
       successful: 0,
       failed: 0,
       errors: [] as string[],
     };
 
-    for (const { user_id } of tokens) {
+    for (const { user_id } of selectedTokens) {
       try {
         console.log(`[WHOOP Sync All] Syncing user: ${user_id}`);
         
@@ -126,15 +133,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Also support GET for manual testing (only in development)
-export async function GET(request: NextRequest) {
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      { error: 'GET method not allowed in production' },
-      { status: 405 }
-    );
-  }
+export async function POST(request: NextRequest) {
+  return syncConnectedUsers(request, false);
+}
 
-  // In development, allow GET for testing
-  return POST(request);
+export async function GET(request: NextRequest) {
+  const response = await syncConnectedUsers(request, true);
+  response.headers.set('Cache-Control', 'no-store');
+  return response;
 }

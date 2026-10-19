@@ -1,0 +1,9 @@
+# Owner-only authenticated WHOOP cron GET
+
+Greg approved this separate correction at16:19:36UTC. Dependency: PR98 candidate93485e78, normal merge de0b171; the two trees are identical. Isolated branch `codex/owner-whoop-cron-get` fast-forwarded to that merge while preserving only this slice's local changes. No PR98 source was edited.
+
+Acceptance: missing configuration GET500 and invalid bearer GET401 before client/lookup/sync; valid GET reaches only the fixed connected owner at most once; absent owner never falls back. GET always authenticates and responds no-store. POST response/headers, lookup, user order/client, failures and nonproduction policy match the exact captured baseline. Schedule, fixed owner helper, timing/health/date mapping and provider window stay byte-identical. No secret value, inactive-user row or live sync request is read/called during tests.
+
+`test/fixtures/whoop-sync-all-pre-get.ts` is the exact LF baseline route from93485e78, SHA256 `edaa37b16e74498194e0d712627e2b807c642122ece7f866863ef2a9b3fe6637`. The POST characterization compares observable calls, status/body and headers to that module under identical synthetic dependencies. Existing timing regressions substantiate unchanged ingestion. The independent pre-candidate oracle is `whoop-cron-get-independent-oracle-2026-10-19.md`, hash `9099B7D9E2AA6DF4832D22A8FDD6E166CF1A0B0547C6B4539EEF0775E60D4964`; review/probes/mutation bind frozen hashes.
+
+Only normal required CI, protected merge and Git deployment. Production verification may inspect exact source/config and unauthenticated GET guard; never invoke a successful authenticated live sync. The same nominal daily UTC schedule remains; delivery/retention is established only by ordinary scheduled evidence. No backfill, manual sync, new credential/access/account setting, second scheduler or other slice. Rollback reverts this route through the normal path and preserves all records/columns.
