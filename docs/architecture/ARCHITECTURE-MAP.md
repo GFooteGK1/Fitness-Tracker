@@ -3,6 +3,11 @@
 `get_coaching_context` exposes factual owner context through MCP; the cookie
 context route shares that reader. `get_coaching_reference` adds a versioned,
 repository-backed qualitative playbook and a small pointer in factual context.
+An additive external metrics/assessment view retains owned strength source sets,
+storage timestamps, estimate labels and unknown protocol/capture information.
+It references existing bounded observation series with transformation labels;
+internal evidence selection/calculators remain unchanged. See
+`docs/plans/socius-metrics-assessments-read-2026-10-19.md`.
 The selected LLM authors programming. Reference creates no athlete requirements;
 it reuses the existing authorization and performs no domain queries or writes.
 See `docs/plans/socius-coaching-reference-read-2026-10-19.md` for the bounded

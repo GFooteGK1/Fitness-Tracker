@@ -1,0 +1,124 @@
+{
+  "verdict": "no_remaining_blocking_finding_for_refrozen_local_candidate",
+  "base": "95dc18f326570a8cb0092f65cae3a8a9d6772e97",
+  "branch": "codex/coaching-metrics-read",
+  "oracleSha256": "C69D93C4D2D476EDE7BEDE63348531EB6DA507BEC21CFDD8B7E45FA7BE57F2AD",
+  "manifestSha256": "DAC60ADFE7858BAD4C537CC478CC2CBA87C9D8AF49B2590907F0C92711CF0891",
+  "candidateFiles": [
+    {
+      "path": "app/lib/coach/external-metrics-context.ts",
+      "sha256": "A2F1CB80E6E8CDDF09E45FC625C02DF1022A083F656806C12844BB2B2376EAFC"
+    },
+    {
+      "path": "app/lib/coach/coaching-context-server.ts",
+      "sha256": "1CF3885D1BB356E3E08788A4DCAF464322210A4FD01B0F4AA6463625B59A1008"
+    },
+    {
+      "path": "test/coach/external-metrics-context.test.ts",
+      "sha256": "DBCED272F2B4BC4707FD63947BBDC15550A3B7DE6284A4989D805D0D4DDE9873"
+    },
+    {
+      "path": "docs/plans/socius-metrics-assessments-read-2026-10-19.md",
+      "sha256": "D19B40A3BE36E6E8753CDE8B969CF525D7371E6DA421E33172CC8C47DC39F659"
+    },
+    {
+      "path": "docs/architecture/ARCHITECTURE-MAP.md",
+      "sha256": "A24411472CC437AE03E50AF8680C4A3DF28DDCE0EE1DE9D4C1A97DAB3045B02B"
+    },
+    {
+      "path": "handoffs/investigations/Fitness-Tracker-xrz.4.md",
+      "sha256": "F45017C2393BB15DB50CFAB95A27D55609488EBC636B6E03FEE2AE3D381856B5"
+    }
+  ],
+  "candidatePosthash": [
+    {
+      "path": "app/lib/coach/external-metrics-context.ts",
+      "sha256": "A2F1CB80E6E8CDDF09E45FC625C02DF1022A083F656806C12844BB2B2376EAFC",
+      "match": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context-server.ts",
+      "sha256": "1CF3885D1BB356E3E08788A4DCAF464322210A4FD01B0F4AA6463625B59A1008",
+      "match": true
+    },
+    {
+      "path": "test/coach/external-metrics-context.test.ts",
+      "sha256": "DBCED272F2B4BC4707FD63947BBDC15550A3B7DE6284A4989D805D0D4DDE9873",
+      "match": true
+    },
+    {
+      "path": "docs/plans/socius-metrics-assessments-read-2026-10-19.md",
+      "sha256": "D19B40A3BE36E6E8753CDE8B969CF525D7371E6DA421E33172CC8C47DC39F659",
+      "match": true
+    },
+    {
+      "path": "docs/architecture/ARCHITECTURE-MAP.md",
+      "sha256": "A24411472CC437AE03E50AF8680C4A3DF28DDCE0EE1DE9D4C1A97DAB3045B02B",
+      "match": true
+    },
+    {
+      "path": "handoffs/investigations/Fitness-Tracker-xrz.4.md",
+      "sha256": "F45017C2393BB15DB50CFAB95A27D55609488EBC636B6E03FEE2AE3D381856B5",
+      "match": true
+    }
+  ],
+  "critiqueCycles": 1,
+  "fixedFindings": [
+    {
+      "issue": "String-coerced enum arrays exported as original malformed values",
+      "fix": "actual string enum checks",
+      "priority": "P2",
+      "initialLocations": [
+        "external-metrics-context.ts:43",
+        "external-metrics-context.ts:45"
+      ]
+    },
+    {
+      "issue": "exact source count exceeding limit absent from sourceCapExceeded",
+      "initialLocation": "external-metrics-context.ts:116",
+      "priority": "P2",
+      "fix": "count-aware cap flag"
+    }
+  ],
+  "reproduced": {
+    "newRecordBudgetCharacters": 16000,
+    "independentPassed": 65,
+    "outerBudgetCharacters": 128000,
+    "ownedSourceForms": 6,
+    "knownBadMutationTests": 1,
+    "stableSourceChangeStatus": 409,
+    "mutation": "storage creation falsely supplied as source capture",
+    "focusedTests": 303,
+    "finalDiscriminatingPassed": 3,
+    "omissionLimit": 40,
+    "assessmentLimit": 16,
+    "derivationLimit": 24,
+    "knownBadMutationDetectedFailures": 1,
+    "focusedFiles": 10,
+    "focusedPassed": 303,
+    "initialDetectedFailures": 3,
+    "forbiddenEffects": 0,
+    "independentTests": 65,
+    "initialDiscriminatingTests": 3
+  },
+  "intermediateIndependentHarnessCorrection": {
+    "passed": 64,
+    "reason": "incorrect expected selector exclusion reason; fixed assertion to unchanged measurement_invalid_or_unsupported; receipt preserved",
+    "failed": 1
+  },
+  "inspected": [
+    "date-only event precision and unknown source capture/protocol/revision",
+    "persisted estimates not recomputed or measured outcomes",
+    "original and normalized units with existing selected evidence",
+    "sticky ownership failure and evidence double read",
+    "unchanged internal selectors/numeric/reference/workout/auth/tool/schema/dependency/workflow sources"
+  ],
+  "candidateAuthoredOrMutatedByReviewer": false,
+  "liveCallsByReviewer": 0,
+  "remainingGates": [
+    "full required CI/protected merge",
+    "verified Git deployment",
+    "separately authorized authenticated context acceptance"
+  ],
+  "blocker": null
+}
