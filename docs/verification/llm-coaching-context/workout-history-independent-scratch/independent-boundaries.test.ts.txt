@@ -1,0 +1,39 @@
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest'
+import {readCoachingContext} from '@/app/lib/coach/coaching-context-server'
+import {contextClient,contextOwner,contextRows} from '@/test/fixtures/coaching-context'
+import {workSnapshot} from '@/test/fixtures/coach-performed-work'
+const work=(id:string,date:string)=>({...structuredClone(workSnapshot().workouts[0]),id,user_id:contextOwner,workout_date:date,created_at:'2026-10-18T10:00:00Z',updated_at:'2026-10-18T10:00:00Z'})
+describe('independent requirement-derived history boundary probes',()=>{
+ beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime('2026-10-19T12:13:53.447Z');vi.stubEnv('COACH_HISTORY_CONTEXT_ENABLED','false')})
+ afterEach(()=>{vi.useRealTimers();vi.unstubAllEnvs();vi.restoreAllMocks()})
+ it('uses eastern raw offset and exactly seven inclusive local dates',async()=>{
+  const rows=contextRows();rows.workouts=[work('before','2026-10-13'),work('first','2026-10-14'),work('last','2026-10-20'),work('after','2026-10-21')]
+  const {db,writes}=contextClient(rows)
+  const result=await readCoachingContext(db,new URLSearchParams({tzOffset:'-720',days:'7'}))
+  expect(result.localDate).toBe('2026-10-20')
+  expect(result.performedWork?.window).toEqual({startsOn:'2026-10-14',endsOn:'2026-10-20'})
+  expect(result.performedWork?.records.map(r=>r.workoutId).sort()).toEqual(['first','last'])
+  expect(writes).not.toHaveBeenCalled()
+ })
+ it('treats missing exact count as incomplete, preserving available facts',async()=>{
+  const rows=contextRows();rows.workouts=[work('one','2026-10-18')]
+  const {db,writes}=contextClient(rows)
+  const from=vi.mocked(db.from).getMockImplementation()!
+  vi.spyOn(db,'from').mockImplementation(((table:string)=>{
+   const q=from(table);if(table==='workouts'){
+    const then=q.then.bind(q)
+    Object.assign(q,{then:(resolve:(r:unknown)=>unknown,reject:(e:unknown)=>unknown)=>then((r)=>resolve({...r,count:null}),reject)})
+   }return q
+  }) as typeof db.from)
+  const result=await readCoachingContext(db,new URLSearchParams({tzOffset:'0',days:'7'}))
+  expect(result.performedWork).toMatchObject({status:'partial',coverage:{complete:false,retrievalComplete:false},records:[{workoutId:'one'}]})
+  expect(result.gaps).toContain('performed_work_incomplete_or_unavailable')
+  expect(writes).not.toHaveBeenCalled()
+ })
+ it('rejects an owner violation that appears only in the second history read',async()=>{
+  const rows=contextRows();rows.workouts=[work('one','2026-10-18')]
+  const {db,writes}=contextClient(rows,{foreignRows:true,onRead:(table,read)=>{if(table==='workouts'&&read===2)rows.workouts[0].user_id='foreign-owner'}})
+  await expect(readCoachingContext(db,new URLSearchParams({tzOffset:'0',days:'7'}))).rejects.toMatchObject({status:503,message:'Coaching context is unavailable'})
+  expect(writes).not.toHaveBeenCalled()
+ })
+})

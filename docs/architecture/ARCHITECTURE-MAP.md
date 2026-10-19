@@ -1,5 +1,24 @@
 # SociusFit Architecture Map
 
+A single `get_coaching_context` tool exposes factual owner context through MCP;
+the cookie context route shares that reader. The owner-pilot connection was
+separately deployed and an actual partial read verified on October19. Request-local
+signature, issuer, audience, client, owner and active-grant checks remain required.
+Native consent uses the provider's saved-consent relay. ADR-0038 retains the
+broader-rights owner credential and unattested original-resource limitations.
+Refresh lifecycle and a usable fresh-browser answer are not yet qualified.
+The current connection checkpoint is documented in
+`docs/verification/llm-coaching-context/connection-commit-checkpoint-2026-10-19.md`.
+
+The accepted target is one user plane in the chosen LLM, which creates programming;
+Socius owns durable context, deterministic calculations and validated operations.
+Existing embedded programming is legacy behavior to retire through separate
+reviewed releases while preserving historical plans and completion links. No
+production authoring behavior is disabled by the goal record. ADR-0039 and
+`docs/plans/socius-durable-context-goal-2026-10-19.md` record the boundary and ordered
+acceptance gates. Recent-workout context is locally committed in `de3c5ef`, not
+deployed; other domains' storage, exposure and populated-record evidence differ.
+
 > **Purpose**: This document provides a comprehensive map of how features, components, and systems are interconnected in the SociusFit application. Use this to understand the impact of changes before making modifications.
 
 ## 🏗️ **High-Level Architecture Overview**

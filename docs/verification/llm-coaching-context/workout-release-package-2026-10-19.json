@@ -1,0 +1,79 @@
+{
+  "recordedAt": "2026-10-19T01:15:08.242269+00:00",
+  "approvalAt": "2026-10-19T01:09:37Z",
+  "sourceCommit": "de3c5efc0395fbf68b2372b830dcfc84aadf97e8",
+  "inheritedBaseCommit": "107a570339d8c53f7db44dfbc8d77c4c585cff68",
+  "package": "C:\\Users\\foote\\Documents\\Codex\\2026-10-18\\task\\socius-workout-history-de3c5ef-20261019",
+  "overlayDigest": "69068fcfa496087834008e72361a035e3075232509d7a79170fd850d374ff406",
+  "overlays": [
+    {
+      "path": "app/.well-known/oauth-protected-resource/api/mcp/route.ts",
+      "sha256": "d7e453bb6a3b4b9dac35eaf830c6764efab7fa31d5649f0042c1075a7b7f8543"
+    },
+    {
+      "path": "app/api/coach/context/route.ts",
+      "sha256": "709c35b717382a8c515e2ce2653eedf1738b3b9ad9263003ba95b36bbb228996"
+    },
+    {
+      "path": "app/api/mcp/route.ts",
+      "sha256": "f45754d6acf2be4cd138bc1d0b8ca1517397dbfb3461707210b2b9fc8c3dd6e8"
+    },
+    {
+      "path": "app/lib/auth/coaching-consent.ts",
+      "sha256": "a0ec556947ce307f7c5c345b42caab03f3118d8ae697ac3cea82e98d48e14030"
+    },
+    {
+      "path": "app/lib/auth/coaching-oauth.ts",
+      "sha256": "90e57df6ab7e459a8dc4e987cb90e5fd6fe274fb32882b8522e6960ccaea0651"
+    },
+    {
+      "path": "app/lib/coach/coaching-context-mcp.ts",
+      "sha256": "516a39adde1aac09c8890db368fb110e9fce6948c9c5371a43cd252cfa18ccd3"
+    },
+    {
+      "path": "app/lib/coach/coaching-context-server.ts",
+      "sha256": "de3d3bbb6408d3364bab0f8ad0c38b720c37f18ad01f8a83224b6579da3b2a39"
+    },
+    {
+      "path": "app/lib/coach/coaching-context-tool.ts",
+      "sha256": "eb65cc79c2545a0738cbcc23e14e478b8208a94bddb86b378bc41cb4624deef1"
+    },
+    {
+      "path": "app/lib/coach/coaching-context.ts",
+      "sha256": "046e8336d8d03f48bace3f185a82db7a8ed00010c4ae2588e2a693da8024f2ba"
+    },
+    {
+      "path": "app/lib/coach/coaching-mcp-http.ts",
+      "sha256": "53040e28876ffbd73fd749ebccdd264c9c1c35514a9690dbb6accc91442d17b7"
+    },
+    {
+      "path": "app/oauth/consent/route.ts",
+      "sha256": "7c6fe11261db1abdba0731818f20347d8e2ba8960bed128e4dd53223bab02944"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "b37d1f11f8c26b5cea76934cfd1b428378793bb79e449e9c7f68957c5b7eaf6e"
+    },
+    {
+      "path": "package.json",
+      "sha256": "b715927d9e8ca6866bc87b63edad994ea38d2f1b80b4ee5ed82827ba87258eee"
+    }
+  ],
+  "previousOverlayDigest": "359eb4805106dd282cafa8adff46b62dfbdb1ddcc2116cfd038fbc1054dbd376",
+  "expectedProduction": "dpl_2t5ciggevHsJUaS7jyDKowZqy4aG",
+  "rollbackReference": "dpl_2t5ciggevHsJUaS7jyDKowZqy4aG",
+  "changedRuntimeFiles": [
+    "app/lib/coach/coaching-context-server.ts"
+  ],
+  "otherOverlaysUnchanged": 12,
+  "environmentMetadataDigest": "882f5f2cd0a4b4050b6deabfc1a6d776e885ea1eecdeffe90cbe89f836879da9",
+  "planningFlagsOverrides": [],
+  "settingsMutations": false,
+  "cronUnchanged": true,
+  "regressionTests": 362,
+  "independentChecks": 117,
+  "independentReviewSha256": "19d77d24601cf3396a5b09e6786e9dc2d086a865b7c3ad909653805bdc6ee368",
+  "packaging": "Inherited base archive plus 13 released overlays; only committed reader replaced. Git-normalized runtime equals approved source commit. No goal/backlog files, new TLS keys, untracked logs or working changes included.",
+  "cronComparison": "Parsed configuration and LF-normalized source match prior released package and approved source; raw Git archive newline conversion explained",
+  "independentPreparationFinding": "Initial raw-byte cron comparison was false due solely to CRLF archive checkout. No deploy attempt existed. Comparison corrected and now asserted with previous release and approved commit."
+}

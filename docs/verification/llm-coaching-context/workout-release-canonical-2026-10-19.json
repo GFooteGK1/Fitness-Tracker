@@ -1,0 +1,17 @@
+{
+  "id": "dpl_2Z5b2poGbDtsStUFAHrSBaBWJHh5",
+  "url": "fitness-tracker-kemghd2d1-gregs-projects-98860c8b.vercel.app",
+  "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+  "readyState": "READY",
+  "target": "production",
+  "createdAt": 1792372835852,
+  "buildingAt": 1792372836766,
+  "ready": 1792372916021,
+  "meta": {
+    "sociusBaseCommit": "107a570339d8c53f7db44dfbc8d77c4c585cff68",
+    "sociusSourceCommit": "de3c5efc0395fbf68b2372b830dcfc84aadf97e8",
+    "sociusOverlayDigest": "69068fcfa496087834008e72361a035e3075232509d7a79170fd850d374ff406",
+    "sociusConnectionState": "configured",
+    "sociusSlice": "workout-history-readonly"
+  }
+}

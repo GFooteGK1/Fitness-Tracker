@@ -1,0 +1,16 @@
+{
+  "deployment": "dpl_2Z5b2poGbDtsStUFAHrSBaBWJHh5",
+  "passed": true,
+  "metadata": {
+    "resource": "https://www.sociusfit.com/api/mcp",
+    "authorization_servers": [
+      "https://auolnfwetmfcwhtvakzy.supabase.co/auth/v1"
+    ],
+    "scopes_supported": [
+      "email"
+    ],
+    "bearer_methods_supported": [
+      "header"
+    ]
+  }
+}

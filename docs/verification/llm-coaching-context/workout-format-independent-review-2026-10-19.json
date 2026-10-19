@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "reviewDate": "2026-10-19",
+  "reviewer": "independent context_security_review agent",
+  "scope": "Local external-only segmented workout compatibility adapter and its coaching-context call site",
+  "baseHead": "51079271bcc823ab936aade0575fdc746a6aa85b",
+  "verdict": "no_actionable_findings_remaining",
+  "findings": [],
+  "resolvedFindings": [
+    {
+      "issue": "Arbitrary nested metadata survived nominal scalar fields",
+      "verification": "Independent malformed scalar probes confirm exclusion, explicit omissions and partial coverage."
+    },
+    {
+      "issue": "Exact nested field provenance was lost",
+      "verification": "Independent probes confirm compact default provenance plus exact-path overrides for nested amounts, units, movement names, rounds and block scores."
+    },
+    {
+      "issue": "Representative fixture exceeded the external record budget",
+      "verification": "All 31 synthetic events from five sources and eight blocks now fit within the unchanged 64000-character record budget without omissions."
+    }
+  ],
+  "candidateSha256": {
+    "app/lib/coach/external-performed-work-context.ts": "DA0825DE9DAF4C71AE469F9D7C3677E041FC2A7B9EA7ABA9D704F6FDB634CC99",
+    "app/lib/coach/coaching-context-server.ts": "D9BA6F5999EA6E7718837A9CE46CD69D1BF4E6627986885C785E420F186FA267",
+    "test/fixtures/segmented-workouts.ts": "D6D8FF7C6C3D18D7D1B2660EAFABD66FDDF2739D9C71D993F514F538BA42C27C",
+    "test/coach/external-performed-work-context.test.ts": "6A6D0DB742DC2584F20B4A7AB682E5B76D96C4371EB8A701D46F73550F6BDB86",
+    "test/coach/coaching-context.test.ts": "DFA789B69047AEBC96A562285C8D25FA94CCEB7A400D5EED6DC5882FEC2FC46E",
+    "test/api/coach-context.test.ts": "934C279AC1534BD7036E7C363E51496F860BFF623560B540805248184D5B232A"
+  },
+  "independentlyExecutedVerification": {
+    "vitest": {
+      "command": ".\\node_modules\\.bin\\vitest.cmd run test/coach/external-performed-work-context.test.ts test/coach/coaching-context.test.ts test/api/coach-context.test.ts",
+      "execution": "Approved elevated local synthetic test invocation",
+      "filesPassed": 3,
+      "testsPassed": 49,
+      "testsFailed": 0,
+      "durationMilliseconds": 743,
+      "boundToCandidateHashes": true
+    },
+    "separateInMemoryProbes": {
+      "execution": "Inline Node assertions loading the actual TypeScript implementation through the installed TypeScript transpiler; synthetic inputs only",
+      "passed": 12,
+      "failed": 0,
+      "adapterSha256": "DA0825DE9DAF4C71AE469F9D7C3677E041FC2A7B9EA7ABA9D704F6FDB634CC99",
+      "cases": [
+        "Representative 31 events, eight blocks and five sources fit within 64K",
+        "Input immutability and unchanged shared evidence",
+        "Native and segmented distinct blocks retain their separate provenance contracts",
+        "Ambiguous native-block budget is removed before segmented admission",
+        "Unknown nested scalar objects are excluded with explicit omissions",
+        "Compact provenance covers exact summary source paths and separate range bounds",
+        "Movement name, rounds and block-score corrections survive",
+        "Foreign-owner and temporally ineligible sources are rejected",
+        "Unreviewed source imports remain excluded",
+        "Actuals never fall back to prescriptions or multiply by rounds",
+        "Unknown-field omissions and notice overflow remain explicit and bounded",
+        "Oversized event records are omitted whole within 64K"
+      ]
+    },
+    "separateOuterBudgetProbe": {
+      "passed": 1,
+      "failed": 0,
+      "adapterSha256": "DA0825DE9DAF4C71AE469F9D7C3677E041FC2A7B9EA7ABA9D704F6FDB634CC99",
+      "method": "Full readCoachingContext call using synthetic query fixtures and forbidden network fetch",
+      "externalUsedRecordCharacters": 63847,
+      "expectedStatus": 503,
+      "expectedReason": "Coaching context exceeds the bounded response budget",
+      "outer128KLimitFailsClosed": true
+    }
+  },
+  "representativeSyntheticProjection": {
+    "sources": 5,
+    "blocks": 8,
+    "eventsSelected": 31,
+    "eventsIncluded": 31,
+    "usedRecordCharacters": 55459,
+    "recordBudgetCharacters": 64000,
+    "complete": true,
+    "omissions": 0,
+    "issues": 0,
+    "source": "Checked-in sanitized representative fixture; no owner identities, source IDs, actual names or actual quantities accessed by this reviewer"
+  },
+  "compactProvenanceAssessment": {
+    "scope": "Retained scalar leaves only",
+    "amountDefault": "Existing historyFieldProvenance quantities fallback",
+    "overrides": "Exact retained scalar source paths override the default only where origin or reviewState differs",
+    "rangedQuantities": "The summary sourcePath points to the retained range object; min and max provenance resolve separately at their scalar leaf paths",
+    "absentOrUnknownQuantities": "The default grants no provenance to unretained or absent fields",
+    "nativeRecords": "Existing quantityProvenance maps retained unchanged",
+    "segmentedRecords": "Discriminated segmented_logged_event records use recordedFieldProvenance instead of duplicated quantityProvenance maps"
+  },
+  "unchangedSharedModules": {
+    "verifiedBy": "Empty git diff --numstat against the recorded base HEAD plus independent shared-output invariants",
+    "sha256": {
+      "app/lib/coach/performed-work-context.ts": "8DB7D416477A8042B635C0FB7F5FB930D5E0AA0914903C198400521D632B0627",
+      "app/lib/coach/performed-dose-evidence.ts": "467D6280F26B6E1EAD818E53089620F49FD9AF18D23ED0FC617E456F1BCC583C",
+      "app/lib/coach/planning-context.ts": "72BE39E011B12398EFFE61B9F4327FC2F2E30625A29A2B1E2C53EF3AF7EE1728",
+      "app/lib/coach/planning-history.ts": "63D723C8D705E3EB27C0640C79A9FD97414094283C0FD25A7EE00CC2A09CA17C"
+    }
+  },
+  "verificationLimits": [
+    "Local synthetic verification only; no owner data or live source rows accessed",
+    "No live Auth, hosted RLS, database, MCP transport, browser or production qualification performed",
+    "No software installed, credentials read, external services mutated, runtime/tests edited, deployment, push or merge performed by this reviewer",
+    "The representative fixture preserves reported shapes and counts, not actual athlete values",
+    "Historical logs remain unverified factual context and grant no numerical policy or planning authority",
+    "This receipt applies only to the recorded candidate hashes; later changes require applicability assessment"
+  ]
+}

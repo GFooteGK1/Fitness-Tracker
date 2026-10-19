@@ -1,0 +1,48 @@
+# Local workout-history context candidate
+
+## Subsequent release checkpoint
+
+The candidate narrative below is the historical local-preparation receipt. Greg subsequently approved deployment and scoped normal PR/CI/merge. The exact reader commit `de3c5efc0395fbf68b2372b830dcfc84aadf97e8` was promoted on October19 at01:25UTC as `dpl_2Z5b2poGbDtsStUFAHrSBaBWJHh5`. Build, seven staged and six canonical route checks passed. Actual hosted workout coverage remains pending the parent conversation's tool read. Merge is paused on an unexpected Git auto-deployment configuration effect. See `workout-release-receipt-2026-10-19.md` for current release evidence and the exact blocker.
+
+## Historical local preparation
+
+This is a local-only candidate on GregPC. No production deployment, hosted record, shared planning flag, permission, schema, credential, grant, WHOOP connection or background job was changed in this slice. Existing production remains the separately approved native-relay release recorded in `native-relay-release-and-connection-checkpoint.json`.
+
+## Source and exact boundary
+
+Repository: `C:\Users\foote\Documents\Codex\2026-10-18\task\Fitness-Tracker-context`; branch `codex/llm-context-inventory`; original implementation base `107a570339d8c53f7db44dfbc8d77c4c585cff68`. After local verification, Greg authorized local commits per slice. The separately released connection was recorded as present-day local checkpoint `23149a040486780546d20506773394e0af72ed90`; this workout-history delta is committed separately on top. Other task/prior release files were preserved. Neither new local commit is automatically deployed. The inaccessible original checkout was not inspected or modified again.
+
+Relative to the immutable, previously released `socius-native-relay-v2-20261018` package, exactly one of its thirteen runtime overlays differs: `app/lib/coach/coaching-context-server.ts`. Candidate SHA256: `de3d3bbb6408d3364bab0f8ad0c38b720c37f18ad01f8a83224b6579da3b2a39`; prior SHA256: `61f30878cdb805abaa915025fd646d72b38fcfd987dfe53117092b966017363b`. See `workout-history-candidate-manifest-2026-10-19.json`. No package/dependency change was made in this slice.
+
+The shared reader now obtains factual recent work independently of `COACH_HISTORY_CONTEXT_ENABLED`. Both existing authenticated surfaces change: cookie GET `/api/coach/context` and verified MCP `get_coaching_context`. This does not change the deployment-wide planning flag or its embedded-coach/new-direction consumers. Existing authentication, owner filters/RLS and the SELECT-only proxy remain in force. Returned workout/completion/revision owner mismatches fail with a generic 503. Saved programming and proposed changes retain their separate authority.
+
+The existing history reader uses the requested bounded local calendar window and a server-time capture cutoff, with exact source counts. Existing factual projection retains source dates/paths, capture/revision provenance, literal weight text, exact/bounded/unknown quantities and athlete logging coverage `unknown`. In-progress work and unconfirmed prescriptions are not promoted into actual performed facts. Source outages, caps and record-budget omissions remain explicit; no records does not establish no exercise. The response has no numeric-policy authority and invokes no model or WHOOP sync.
+
+History is read twice with the same server cutoff. A changed workout or completion-link result produces retryable 409, even when the coach revision does not change. The package still explicitly uses `application_double_read_not_transaction_snapshot`: no database-wide atomic snapshot or universal mutation detection is claimed.
+
+## Acceptance and local evidence
+
+- Seven-day midnight boundary: at `2026-10-19T00:13:53.447Z`, raw offset 300, local date is October18 and inclusive history is October12–18; October11/19 and post-cutoff creates are excluded. Post-cutoff amendments are partial evidence.
+- Owner failures for workout and check-in rows fail closed even with a defective filter adapter; write/RPC spies remain unused. Saved plan/session objects remain identical after retrieval.
+- Missing source versus empty owned history, source cap, projection omissions, unconfirmed prescription exclusions and concurrent source changes are covered.
+- Both cookie and verified MCP surfaces expose owned recent work while the shared planning flag remains false. The embedded coaching history wrapper remains disabled, and existing new-direction disabled-gate tests preserve the exact profile without reading history.
+- Initial focused checks: 114/114 across six files. Final broader candidate regression after adding two missing-exact-count cases: **362/362 across sixteen files**, including real MCP SDK/auth verification, disposable local PostgreSQL owner isolation, history/provenance, accepted execution readers and unchanged planning behavior. Reports: `workout-history-focused-final-2026-10-19.json`, `workout-history-regression-2026-10-19.json`.
+- TypeScript `npx tsc --noEmit`: passed. Focused Next lint: passed without warnings/errors. Local `npm run build`: passed, including type/lint checks and 96 static pages, using synthetic provider variables and a loopback Supabase URL. Two existing unrelated build warnings remain: `<img>` in `PhotoMealReview.tsx:124` and a missing hook dependency in `app/v2/page.tsx:266`.
+- Independent informed review: **no actionable findings**, 117 passing checks (114 focused/consumer checks plus three separate boundary probes). Separate in-memory negative controls removing ownership or history consistency caused the four intended test failures. Original runtime/tests were not mutated by the reviewer. Receipt: `workout-history-independent-review-2026-10-19.json`, bound to the candidate runtime hash above. These are local synthetic checks, not deployed data/RLS/latency proof.
+- Initial sandboxed Vitest failed before running any tests because its temporary-cache rename was blocked. Reviewed local fixture execution outside that filesystem sandbox produced the passing reports. One test initially used the wrong fixture quantity key (`status` instead of the existing `kind` contract); only the expectation was corrected. Initial Next build hit sandbox EPERM creating `.next` output; the reviewed local retry uses synthetic provider variables and a loopback Supabase URL. These are local environment/test-harness outcomes, not production failures.
+
+## Narrow release proposal; approval still required
+
+Propose releasing only this reader delta on top of the exact currently approved relay baseline, preserving the other twelve overlays and all runtime flags/settings. Before any later deployment, verify canonical production still matches that baseline, freeze and hash a reviewed package, build/stage it through the existing release process, test both authenticated read surfaces, and preserve an exact rollback reference. Any baseline drift requires reconciliation before release.
+
+After separately authorized deployment, one ordinary parent/harness `get_coaching_context({days:7,tzOffset:300})` can verify actual owned record coverage and explicit gaps. Local tests do not prove that Greg's external workouts have been saved or that the hosted schema supports all source columns. If the deployed reader reports unavailable coverage, report it; do not expand permissions, migrate schema, reconnect WHOOP or enable the shared planner as a shortcut. Rollback is the prior reader/relay package, with no data reversal required because this capability is read-only.
+
+This slice does not resolve missing current structured intent/accepted programming, date-only WHOOP timing, broader owner-credential rights, original OAuth resource attestation, refresh/rotation qualification or the previously failed browser answer rendering. The foundation assessment in `foundation-assessment-2026-10-19.md` supports incremental evolution, not a complete production-readiness or training-efficacy claim. Later write/photo/nutrition/notification work remains separate and unscheduled.
+
+Latest architecture direction and complete domain inventory are recorded in `durable-context-storage-inventory-2026-10-19.md`: Socius stores durable context; the user's chosen LLM creates programming. Current repository doctrine is not exposed by the external MCP and is not a demonstrated database playbook. Meals and profile body metrics are storage-supported but absent from the current external packet. No embedded programming development was performed; later retirement must preserve historical accepted plans and completion links.
+
+## Access blocks preserved
+
+Earlier readbacks of `git -C C:\Dev\Personal\repos\Fitness-Tracker rev-parse HEAD` and `status --short --branch` were denied with filesystem Permission denied. They were not retried or bypassed; current original worktree state remains unverified.
+
+Earlier default-client GET of `https://www.sociusfit.com/.well-known/oauth-protected-resource/api/mcp` returned 403. Automatic approval review rejected the proposed User-Agent retry as a possible access-control bypass. The retry did not execute and no workaround was used. Prior authorized canonical probes and ordinary host discovery are separate evidence. This local slice needs neither denied action.

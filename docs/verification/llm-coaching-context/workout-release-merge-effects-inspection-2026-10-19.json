@@ -1,0 +1,15 @@
+{
+  "projectId": "prj_RocmjxStsTrtmrDaqMddMnb29ENh",
+  "git": {
+    "type": "github",
+    "org": "GFooteGK1",
+    "repo": "Fitness-Tracker",
+    "productionBranch": "main"
+  },
+  "projectFlagPresenceOnly": [],
+  "gitProviderOptions": {
+    "createDeployments": "enabled"
+  },
+  "ignoreBuildCommandConfigured": false,
+  "credentialValuesReadOrRetained": false
+}

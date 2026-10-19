@@ -1,0 +1,335 @@
+{
+  "recordedAt": "2026-10-19T00:37:17.954Z",
+  "reviewer": "/root/consent_security_review",
+  "verdict": "No actionable findings in the bounded local workout-history reader delta. Local verification only; deployment and production acceptance are not granted.",
+  "scope": {
+    "workspace": "C:\\Users\\foote\\Documents\\Codex\\2026-10-18\\task\\Fitness-Tracker-context",
+    "priorPackage": "C:\\Users\\foote\\Documents\\Codex\\2026-10-18\\task\\socius-native-relay-v2-20261018",
+    "priorServerSha256": "61f30878cdb805abaa915025fd646d72b38fcfd987dfe53117092b966017363b",
+    "soleChangedReleaseOverlay": "app/lib/coach/coaching-context-server.ts",
+    "otherReleaseOverlaysUnchanged": 12
+  },
+  "independence": {
+    "runtimeAndOriginalTestEdits": false,
+    "independentlyExecuted": true,
+    "builderNarrativeSupplied": true,
+    "blindPreImplementationOracle": false,
+    "description": "Informed independent reviewer/verifier; builder supplied intent and test claims. Reviewer inspected source and tests and independently executed checks, with separate requirement-derived synthetic probes and in-memory transform-only negative controls. No original runtime/tests were modified; disposable probes are archived as text."
+  },
+  "acceptanceOracle": {
+    "source": "Parent task requirements, existing public request contract and immutable prior package",
+    "checks": [
+      "Authenticated owner is resolved before reads and cannot be selected by input. Every fetched history owner mismatch fails closed, including the second read.",
+      "Seven inclusive local calendar dates for days=7, raw Date.getTimezoneOffset convention, same server capture cutoff for both reads.",
+      "Factual projection retains source quantities, literal weights and provenance without numeric policy authority; no raw workout notes/input payload. Unknown logging coverage stays unknown.",
+      "Outages, missing counts, caps, unconfirmed prescription work and budget omissions never become complete empty history.",
+      "Changed workout or completion result returns retryable409 independently of coach revisions; consistency is application double-read, not an atomic database snapshot.",
+      "Both existing cookie and verified MCP surfaces receive factual history with shared planner flag false; SELECT-only capability prevents mutations/RPC. Planning flag, other consumers and accepted programming remain unchanged."
+    ]
+  },
+  "findings": [],
+  "codeAssessment": {
+    "ownerIsolation": "Owner-filtered queries plus pre-projection assertions on both history snapshots; generic503 on mismatched or malformed owners.",
+    "minimization": "Default shared reader omits notes/input_text and selects named factual fields; existing factual projector bounds records, keeps provenance/uncertainty and never accepts a new plan.",
+    "failureSemantics": "Stable read errors remain unavailable/null with explicit gap; exact-count mismatch or absent count remains incomplete. Different generations return409. No false claim that all exercise was logged.",
+    "concurrency": "Raw selected history compared at one capture cutoff. ABA/unobserved post-second-read updates remain possible and are outside the stated double-read guarantee.",
+    "unchangedConsumers": "Prior-package hash comparison of shared planner/capability/projection files and focused consumer tests confirms no rollout change to planning behavior."
+  },
+  "environment": {
+    "node": "v24.13.1",
+    "vitest": "4.1.11",
+    "execution": "PowerShell with process-local TEMP/TMP pointing to existing local temp; use_default execution succeeded. No install/escalation/browser/live requests required."
+  },
+  "reproduced": {
+    "focusedChangedSurfaces": {
+      "file": "docs\\verification\\llm-coaching-context\\workout-history-independent-results-2026-10-19.json",
+      "sha256": "cda6878e5feee74ed84bff0bafc42179e3e13f6a586a828e48612b2a129944f0",
+      "tests": 82,
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0,
+      "files": 4,
+      "failedCases": []
+    },
+    "unchangedConsumerRegression": {
+      "file": "docs\\verification\\llm-coaching-context\\workout-history-independent-consumers-2026-10-19.json",
+      "sha256": "860cf4f80067fb7f065abf2c96382af7493538f9f02fc0aea0016a4bde894cc6",
+      "tests": 32,
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "files": 2,
+      "failedCases": []
+    },
+    "independentBoundaryProbes": {
+      "file": "docs\\verification\\llm-coaching-context\\workout-history-independent-boundaries-2026-10-19.json",
+      "sha256": "6261df177372bd00129687af775c7cb423de11654f6351ecfab0f28d840e3802",
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "files": 1,
+      "failedCases": []
+    },
+    "totalPassingCandidateChecks": 117
+  },
+  "negativeControls": {
+    "mechanism": "Disposable Vite pre-transform configurations remove only specified safeguards in memory; original source and tests retain exact hashes.",
+    "ownership": {
+      "file": "docs\\verification\\llm-coaching-context\\workout-history-independent-owner-mutation-2026-10-19.json",
+      "sha256": "88d54d1e2c9e974e11365a0f2a9036e543aeb0b14a1aa60aea9402e2bd0cd040",
+      "tests": 11,
+      "passed": 9,
+      "failed": 2,
+      "skipped": 0,
+      "files": 1,
+      "failedCases": [
+        "authenticated context workout evidence with planning history disabled rejects foreign workouts rows if the adapter ignores owner filters",
+        "authenticated context workout evidence with planning history disabled rejects foreign coach_checkins rows if the adapter ignores owner filters"
+      ],
+      "interpretation": "Expected failures in both foreign-owner workout/checkin tests prove the new explicit owner rejection is tested; malformed owner becomes unavailable otherwise."
+    },
+    "historyConsistency": {
+      "file": "docs\\verification\\llm-coaching-context\\workout-history-independent-consistency-mutation-2026-10-19.json",
+      "sha256": "b8352756b45579d1bd82854fca3734fdb9e7dc6318d0aeb9ccbd2cbeb10c81a2",
+      "tests": 11,
+      "passed": 9,
+      "failed": 2,
+      "skipped": 0,
+      "files": 1,
+      "failedCases": [
+        "authenticated context workout evidence with planning history disabled rejects concurrent changes to workouts even without a coach revision change",
+        "authenticated context workout evidence with planning history disabled rejects concurrent changes to coach_checkins even without a coach revision change"
+      ],
+      "interpretation": "Expected failures in concurrent workout/checkin tests prove history-specific generation checking is tested."
+    }
+  },
+  "testCritique": {
+    "strengths": [
+      "Fixture executes real eq/range/order/cap/projection semantics rather than returning candidate-shaped output. Write/RPC calls throw and are observed.",
+      "Existing tests cover both surfaces, raw western midnight window, count caps, record budget, owner failures, post-cutoff creates/amendments, and independent history changes.",
+      "Reviewer supplemented supported eastern offset=-720 boundary, missing exact count, and owner violation appearing only in second read."
+    ],
+    "limits": [
+      "Synthetic client does not prove deployed Supabase schema/RLS/count behavior or production latency.",
+      "Reviewer probes were designed after code inspection, so do not claim independent blind pre-implementation oracle.",
+      "Initial disposable-probe run had two reviewer fixture mistakes: unsupported -840 offset and recursive mock wrapper. Corrected to supported -720 and captured mock implementation; initial harness report retained. These were not candidate failures."
+    ]
+  },
+  "sourceAndTestHashes": [
+    {
+      "path": "app/lib/coach/coaching-context-server.ts",
+      "sha256": "de3d3bbb6408d3364bab0f8ad0c38b720c37f18ad01f8a83224b6579da3b2a39",
+      "unchangedFromPriorPackage": false
+    },
+    {
+      "path": "app/lib/coach/planning-context.ts",
+      "sha256": "72be39e011b12398effe61b9f4327fc2f2e30625a29a2b1e2c53ef3af7ee1728",
+      "unchangedFromPriorPackage": true
+    },
+    {
+      "path": "app/lib/coach/planning-history.ts",
+      "sha256": "63d723c8d705e3eb27c0640c79a9fd97414094283c0fd25a7ee00cc2a09ca17c",
+      "unchangedFromPriorPackage": true
+    },
+    {
+      "path": "app/lib/coach/performed-work-context.ts",
+      "sha256": "8db7d416477a8042b635c0fb7f5fb930d5e0aa0914903c198400521d632b0627",
+      "unchangedFromPriorPackage": true
+    },
+    {
+      "path": "app/lib/coach/performed-dose-evidence.ts",
+      "sha256": "467d6280f26b6e1ead818e53089620f49fd9af18d23ed0fc617e456f1bcc583c",
+      "unchangedFromPriorPackage": true
+    },
+    {
+      "path": "app/lib/personalized-coaching-capabilities.ts",
+      "sha256": "11344fbe34a36600e698dea579ffca8ab7975e15a30ca6908853c07fdeecb691",
+      "unchangedFromPriorPackage": true
+    },
+    {
+      "path": "app/lib/coach/planning-intent-server.ts",
+      "sha256": "257000a86636887c0d643ea9202f423564eae70dce0641c1524f5d1f2578893d",
+      "unchangedFromPriorPackage": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context-tool.ts",
+      "sha256": "eb65cc79c2545a0738cbcc23e14e478b8208a94bddb86b378bc41cb4624deef1",
+      "unchangedFromPriorPackage": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context.ts",
+      "sha256": "046e8336d8d03f48bace3f185a82db7a8ed00010c4ae2588e2a693da8024f2ba",
+      "unchangedFromPriorPackage": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context-mcp.ts",
+      "sha256": "516a39adde1aac09c8890db368fb110e9fce6948c9c5371a43cd252cfa18ccd3",
+      "unchangedFromPriorPackage": true
+    },
+    {
+      "path": "app/lib/auth/coaching-oauth.ts",
+      "sha256": "90e57df6ab7e459a8dc4e987cb90e5fd6fe274fb32882b8522e6960ccaea0651",
+      "unchangedFromPriorPackage": true
+    },
+    {
+      "path": "app/api/coach/context/route.ts",
+      "sha256": "709c35b717382a8c515e2ce2653eedf1738b3b9ad9263003ba95b36bbb228996",
+      "unchangedFromPriorPackage": true
+    },
+    {
+      "path": "test/coach/coaching-context-history.test.ts",
+      "sha256": "af786fc60aa4bba52fa10b5c3fe6fa4616042fa26bf345e767ac04661a2e2cd8"
+    },
+    {
+      "path": "test/coach/coaching-context.test.ts",
+      "sha256": "dfa789b69047aebc96a562285c8d25fa94cceb7a400d5eed6dc5882fec2fc46e"
+    },
+    {
+      "path": "test/coach/coaching-context-tool.test.ts",
+      "sha256": "78912b69f0c042e1dcfae143d5401bac965b1c698481c94607b2b7a09e4cccc9"
+    },
+    {
+      "path": "test/api/coach-context.test.ts",
+      "sha256": "934c279ac1534bd7036e7c363e51496f860bff623560b540805248184d5b232a"
+    },
+    {
+      "path": "test/coach/planning-context-refresh.test.ts",
+      "sha256": "cf0c655cac4be8720ebe5fef8aee49efa46693b4cec7bf3cc41e108c8d6e82b9"
+    },
+    {
+      "path": "test/coach/performed-work-context.test.ts",
+      "sha256": "ade69c498d07ab7f2c4bfe9af6e2d155d976d90e023ec98f07189482702800dd"
+    },
+    {
+      "path": "test/fixtures/coaching-context.ts",
+      "sha256": "e61e2d5e7de545a020c6314519632e0698034bd056a9120f0143334328f8123b"
+    },
+    {
+      "path": "test/fixtures/coach-performed-work.ts",
+      "sha256": "42e01c3c000873e4c1039679169c9a883c0fa080ae2a61da53c83f40af6cf57b"
+    }
+  ],
+  "priorOverlayComparison": [
+    {
+      "path": "app/.well-known/oauth-protected-resource/api/mcp/route.ts",
+      "priorSha256": "d7e453bb6a3b4b9dac35eaf830c6764efab7fa31d5649f0042c1075a7b7f8543",
+      "currentSha256": "d7e453bb6a3b4b9dac35eaf830c6764efab7fa31d5649f0042c1075a7b7f8543",
+      "unchanged": true
+    },
+    {
+      "path": "app/api/coach/context/route.ts",
+      "priorSha256": "709c35b717382a8c515e2ce2653eedf1738b3b9ad9263003ba95b36bbb228996",
+      "currentSha256": "709c35b717382a8c515e2ce2653eedf1738b3b9ad9263003ba95b36bbb228996",
+      "unchanged": true
+    },
+    {
+      "path": "app/api/mcp/route.ts",
+      "priorSha256": "f45754d6acf2be4cd138bc1d0b8ca1517397dbfb3461707210b2b9fc8c3dd6e8",
+      "currentSha256": "f45754d6acf2be4cd138bc1d0b8ca1517397dbfb3461707210b2b9fc8c3dd6e8",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/auth/coaching-consent.ts",
+      "priorSha256": "a0ec556947ce307f7c5c345b42caab03f3118d8ae697ac3cea82e98d48e14030",
+      "currentSha256": "a0ec556947ce307f7c5c345b42caab03f3118d8ae697ac3cea82e98d48e14030",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/auth/coaching-oauth.ts",
+      "priorSha256": "90e57df6ab7e459a8dc4e987cb90e5fd6fe274fb32882b8522e6960ccaea0651",
+      "currentSha256": "90e57df6ab7e459a8dc4e987cb90e5fd6fe274fb32882b8522e6960ccaea0651",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context-mcp.ts",
+      "priorSha256": "516a39adde1aac09c8890db368fb110e9fce6948c9c5371a43cd252cfa18ccd3",
+      "currentSha256": "516a39adde1aac09c8890db368fb110e9fce6948c9c5371a43cd252cfa18ccd3",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context-server.ts",
+      "priorSha256": "61f30878cdb805abaa915025fd646d72b38fcfd987dfe53117092b966017363b",
+      "currentSha256": "de3d3bbb6408d3364bab0f8ad0c38b720c37f18ad01f8a83224b6579da3b2a39",
+      "unchanged": false
+    },
+    {
+      "path": "app/lib/coach/coaching-context-tool.ts",
+      "priorSha256": "eb65cc79c2545a0738cbcc23e14e478b8208a94bddb86b378bc41cb4624deef1",
+      "currentSha256": "eb65cc79c2545a0738cbcc23e14e478b8208a94bddb86b378bc41cb4624deef1",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/coach/coaching-context.ts",
+      "priorSha256": "046e8336d8d03f48bace3f185a82db7a8ed00010c4ae2588e2a693da8024f2ba",
+      "currentSha256": "046e8336d8d03f48bace3f185a82db7a8ed00010c4ae2588e2a693da8024f2ba",
+      "unchanged": true
+    },
+    {
+      "path": "app/lib/coach/coaching-mcp-http.ts",
+      "priorSha256": "53040e28876ffbd73fd749ebccdd264c9c1c35514a9690dbb6accc91442d17b7",
+      "currentSha256": "53040e28876ffbd73fd749ebccdd264c9c1c35514a9690dbb6accc91442d17b7",
+      "unchanged": true
+    },
+    {
+      "path": "app/oauth/consent/route.ts",
+      "priorSha256": "7c6fe11261db1abdba0731818f20347d8e2ba8960bed128e4dd53223bab02944",
+      "currentSha256": "7c6fe11261db1abdba0731818f20347d8e2ba8960bed128e4dd53223bab02944",
+      "unchanged": true
+    },
+    {
+      "path": "package-lock.json",
+      "priorSha256": "b37d1f11f8c26b5cea76934cfd1b428378793bb79e449e9c7f68957c5b7eaf6e",
+      "currentSha256": "b37d1f11f8c26b5cea76934cfd1b428378793bb79e449e9c7f68957c5b7eaf6e",
+      "unchanged": true
+    },
+    {
+      "path": "package.json",
+      "priorSha256": "b715927d9e8ca6866bc87b63edad994ea38d2f1b80b4ee5ed82827ba87258eee",
+      "currentSha256": "b715927d9e8ca6866bc87b63edad994ea38d2f1b80b4ee5ed82827ba87258eee",
+      "unchanged": true
+    }
+  ],
+  "instructionFingerprints": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "172424f085aea130c3f17ed247ee1b0848e17adb6cc8ac7430b2c86ce12dd57b"
+    },
+    {
+      "path": "docs/architecture/ARCHITECTURE-MAP.md",
+      "sha256": "71bfa4e9f39125d8060351d173d274cd10f9272d5976051c83fc504f97c9b414"
+    },
+    {
+      "path": "C:/Users/foote/.codex/docs/SOFTWARE_DELIVERY.md",
+      "sha256": "88a4505b67e4fa610a07c30f7d8740f10ba59738808bf98bff94e0028577f515"
+    },
+    {
+      "path": "C:/Users/foote/.codex/docs/GUARDRAILS.md",
+      "sha256": "428e98fa054d4781fe7629a9027b05d24b362aaac311eb88163bf9f3d43bea30"
+    },
+    {
+      "path": "C:/Users/foote/.codex/plugins/cache/gfoote-codex-os/cos/1.7.0/skills/check/SKILL.md",
+      "sha256": "a4992cda379da6ecbcad6118ce4dfc24683daa19a321d643d84429498e2113f2"
+    }
+  ],
+  "localProposalReview": {
+    "path": "docs\\verification\\llm-coaching-context\\workout-history-local-receipt-2026-10-19.md",
+    "sha256": "6c24b959b1c3c27e6866b6e43606e038f792cc6890e5a40e5bd9449c98ad517f",
+    "assessment": "Accurately distinguishes local test/build claims from independent proof and any future separately authorized deployment; preserves denied action boundaries, hosted data/schema limits, original-resource and broad-owner-credential pilot limits. No authority or production-readiness overclaim found."
+  },
+  "limits": [
+    "No hosted API/authentication/data retrieval, deploy, grant/settings change, live RLS check or owner session used.",
+    "Actual external workout persistence, deployed schema compatibility and host answer rendering remain unverified.",
+    "Exact counts and double reads add database work; production latency/size distribution was not measured.",
+    "Original OAuth request resource remains unattested; normal owner credential remains broader than the exposed read-only tool. These pre-existing pilot constraints are unchanged."
+  ],
+  "prohibitedActions": "Did not retry/escalate/bypass the denied original-repository readback or denied canonical metadata User-Agent workaround. Did not make live calls, deploy, install dependencies, add credentials/permissions/schema/jobs, or open browser prompts.",
+  "evidenceArchive": "workout-history-independent-scratch contains only .txt source/config copies, excluded from default test/type discovery. To reproduce probes, copy to original suffix in a disposable location then run the recorded Vitest commands.",
+  "commands": [
+    "node node_modules/vitest/vitest.mjs run test/coach/coaching-context-history.test.ts test/coach/coaching-context.test.ts test/coach/coaching-context-tool.test.ts test/api/coach-context.test.ts --reporter=json --outputFile=docs/verification/llm-coaching-context/workout-history-independent-results-2026-10-19.json",
+    "node node_modules/vitest/vitest.mjs run test/coach/planning-context-refresh.test.ts test/coach/performed-work-context.test.ts --reporter=json --outputFile=docs/verification/llm-coaching-context/workout-history-independent-consumers-2026-10-19.json",
+    "node node_modules/vitest/vitest.mjs run docs/verification/llm-coaching-context/workout-history-independent-scratch/independent-boundaries.test.ts --reporter=json --outputFile=docs/verification/llm-coaching-context/workout-history-independent-boundaries-2026-10-19.json",
+    "node node_modules/vitest/vitest.mjs run test/coach/coaching-context-history.test.ts --config docs/verification/llm-coaching-context/workout-history-independent-scratch/ownership.config.mts --reporter=json --outputFile=docs/verification/llm-coaching-context/workout-history-independent-owner-mutation-2026-10-19.json",
+    "node node_modules/vitest/vitest.mjs run test/coach/coaching-context-history.test.ts --config docs/verification/llm-coaching-context/workout-history-independent-scratch/consistency.config.mts --reporter=json --outputFile=docs/verification/llm-coaching-context/workout-history-independent-consistency-mutation-2026-10-19.json"
+  ]
+}

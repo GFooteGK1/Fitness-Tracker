@@ -1,5 +1,9 @@
 # Architecture decisions
 
+- [ADR-0039: Chosen LLM programming and durable Socius context](ADR-0039-chosen-llm-and-durable-context.md) - accepted target with incremental release gates; embedded authoring remains legacy behavior until separately retired, with historical records preserved.
+
+- [ADR-0038: External context authorization](ADR-0038-external-context-authorization.md) - deployed owner pilot with one factual read tool, broader credential rights and bounded verification; refresh/browser qualification remains open.
+
 - [ADR-0034: Independent set RIR](ADR-0034-independent-set-rir.md) — nullable actual RIR alongside RPE, exact legacy requests and compatible completion; local authenticated storage verified, browser/hosted gates remain.
 - [ADR-0033: Effort-led reviewed work](ADR-0033-effort-led-reviewed-work.md) — uncapped effort targets and explicit optional work; local storage verified, newer browser proof remains.
 - [ADR-0032: Reviewed dose and complete-week reconciliation](ADR-0032-reviewed-dose-week-reconciliation.md) — preserve historical evidence, accepted base and proposed trial with dated source linkage.

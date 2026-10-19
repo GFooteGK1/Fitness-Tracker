@@ -1,0 +1,6 @@
+{
+  "returnCode": 2,
+  "httpStatusLines": [],
+  "stderr": "Vercel CLI 56.4.1 (Node.js 24.13.1) | curl is in beta \u2014 https://[redacted-url]\nRetrieving project\u2026\nRetrieving project\u2026\ncurl: option --scope: is unknown\ncurl: try 'curl --help' for more information\n",
+  "rawBodyRetained": false
+}

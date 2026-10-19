@@ -1,0 +1,81 @@
+{
+  "recordedAt": "2026-10-19T01:19:45.834341+00:00",
+  "reviewer": "/root/consent_security_review",
+  "verdict": "No remaining actionable local preflight finding at reviewed helper/package hashes; deployment success and live data verification remain separate.",
+  "helper": {
+    "path": "C:\\Users\\foote\\Documents\\Codex\\2026-10-18\\task\\release_workout_history.py",
+    "sha256": "d907b63e71fa01a516dbe155d74de5bcf45b20184921acb053c92621cae1d9c2"
+  },
+  "manifest": {
+    "path": "workout-release-package-2026-10-19.json",
+    "sha256": "77fa2ed492af48dacba87f38cf48ecd5a3ad2eb57f140c866af7cca11badddb6",
+    "overlayDigest": "69068fcfa496087834008e72361a035e3075232509d7a79170fd850d374ff406",
+    "sourceCommit": "de3c5efc0395fbf68b2372b830dcfc84aadf97e8"
+  },
+  "resolvedFindings": [
+    "Cron mismatch was CRLF-only; parsed configuration equality with prior package/approved commit and manifest true are now asserted.",
+    "Promotion now rejects nonzero build receipt returnCode even when all success log markers are present.",
+    "Candidate ID/project/production target/READY/source/digest are freshly checked before promotion; canonical postcheck pins the same tuple.",
+    "Deploy consumes dry-check forbiddenFiles==[]."
+  ],
+  "independentlyReproducedSyntheticChecks": [
+    {
+      "name": "failed build receipt despite success log markers",
+      "passed": true,
+      "blockedBeforeCliMutationOrSave": true,
+      "guardLine": 184
+    },
+    {
+      "name": "forbidden dry upload file",
+      "passed": true,
+      "blockedBeforeCliMutationOrSave": true,
+      "guardLine": 124
+    },
+    {
+      "name": "candidate digest drift",
+      "passed": true,
+      "blockedBeforeCliMutationOrSave": true,
+      "guardLine": 182
+    },
+    {
+      "name": "candidate project drift",
+      "passed": true,
+      "blockedBeforeCliMutationOrSave": true,
+      "guardLine": 181
+    },
+    {
+      "name": "candidate target drift",
+      "passed": true,
+      "blockedBeforeCliMutationOrSave": true,
+      "guardLine": 181
+    }
+  ],
+  "mutationOrSaveCalls": [],
+  "networkCalls": 0,
+  "packageEvidenceReuse": {
+    "independentlyCheckedEarlierThisReview": true,
+    "manifestHashesMatchApprovedCommit": 13,
+    "otherPriorOverlaysUnchanged": 12,
+    "inheritedBaseFilesMatched": 1685,
+    "extraPackageFiles": [
+      ".vercel/project.json"
+    ],
+    "packageOrRuntimeChangesSincePriorScopeInspection": false
+  },
+  "inspectedOnly": [
+    "Parent dry-check reports1680upload files, no forbidden paths, correct linked project; reviewer did not execute CLI dry upload.",
+    "Production-before receipt pins expected prior deployment/digest/project; reviewer did not make live metadata requests."
+  ],
+  "guardAssessment": [
+    "Production target/id/project/digest and project environment metadata generations are checked before deployment and promotion.",
+    "One-attempt markers precede mutations; timeout/interruption leaves marker to require outcome inspection; no automatic submission retry.",
+    "Connection override dictionary equals prior relay helper; no planner/writer override or settings/schema/grant/data call added.",
+    "Seven staged public checks and cloud build/type evidence gate promotion; canonical public checks exclude the denied metadata URL."
+  ],
+  "limits": [
+    "Application public probes do not prove authenticated workout data coverage, host rendering or coaching outcomes. Parent/harness real tool read remains separate.",
+    "Normal owner credential retains broader authority and original OAuth request resource remains unattested.",
+    "Read-only local review did not execute deploy/promote or retry denied paths."
+  ],
+  "noLiveActions": "No network, deployment, runtime/test/Git edits, credentials, owner-data/settings/schema/job mutations or denied target retries by reviewer."
+}
