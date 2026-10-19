@@ -4,13 +4,19 @@ import { sqlFile } from '../database/fixture'
 import { createHash } from 'node:crypto'
 
 export const pilotTestOwner = '11111111-1111-4111-8111-111111111111'
-export async function nutritionPilotDatabase(active = true) {
+export async function nutritionPilotDatabase(active = true, clock?: string) {
   const db = await photoDraftDatabase()
   // Only this disposable synthetic copy changes the literal activation gate and
   // owner digest. Production SQL/file is not modified or executed externally.
+  if (clock) {
+    await db.exec(`CREATE TABLE pilot_test_clock(at TIMESTAMPTZ NOT NULL);
+      CREATE FUNCTION public.pilot_test_clock() RETURNS timestamptz LANGUAGE sql SECURITY DEFINER AS $$ SELECT at FROM public.pilot_test_clock $$;`)
+    await db.query('INSERT INTO pilot_test_clock VALUES($1)',[clock])
+  }
   let sql = sqlFile('docs/migrations/nutrition-photo-owner-pilot.sql')
-  if (active) sql = sql.replace('IF NOT false THEN','IF NOT true THEN')
-  sql = sql.replace('2bf29505900fa586ff4ff34b6f049944c0f44fcc7786ffb5ac6acb1d66b76543',createHash('sha256').update(pilotTestOwner).digest('hex'))
+  if (active) sql = sql.replaceAll('IF NOT false THEN','IF NOT true THEN')
+  sql = sql.replaceAll('2bf29505900fa586ff4ff34b6f049944c0f44fcc7786ffb5ac6acb1d66b76543',createHash('sha256').update(pilotTestOwner).digest('hex'))
+  if(clock)sql=sql.replaceAll('clock_timestamp()', 'public.pilot_test_clock()')
   await db.exec(sql)
   await db.exec(`CREATE TABLE daily_targets(user_id UUID PRIMARY KEY,target_protein NUMERIC,target_carbs NUMERIC,target_fat NUMERIC,target_calories NUMERIC,tolerance_pct NUMERIC,updated_at TIMESTAMPTZ DEFAULT now());
     ALTER TABLE daily_targets ENABLE ROW LEVEL SECURITY;
@@ -57,4 +63,18 @@ export function nutritionPilotClient(db: PGlite, owner: () => string|null) {
     }
   }
   return client
+}
+
+/** Test-only service transport. SET LOCAL is contained in its own transaction;
+ * no HTTP, credential, hosted DB or shared role mutation is involved. */
+export function nutritionPilotSettlementClient(db:PGlite) {
+  return {rpc:async(name:string,args:Record<string,unknown>)=>{
+    if(name!=='settle_nutrition_photo_usage')throw new Error('Unsupported service test RPC')
+    try{return await db.transaction(async tx=>{
+      await tx.exec('SET LOCAL ROLE service_role')
+      const result=await tx.query<{value:unknown}>('SELECT settle_nutrition_photo_usage($1,$2,$3,$4) value',
+        [args.p_capture_id,args.p_owner,args.p_stage,args.p_evidence])
+      return {data:result.rows[0].value,error:null}
+    })}catch(error){return {data:null,error:{code:(error as {code:string}).code}}}
+  }}
 }

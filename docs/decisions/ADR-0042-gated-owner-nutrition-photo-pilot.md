@@ -45,3 +45,20 @@ control foundation, not an activation recommendation. A trusted server-only
 settlement path for confirmed actual usage is proposed separately; owner-supplied
 RPC result payloads must never authorize a financial refund. See the dated
 [nutrition budget controls and capacity analysis](../verification/llm-coaching-context/nutrition-photo-budget-controls-2026-10-19.md).
+
+## Trusted settlement preparation, 2026-10-19
+
+The next inactive slice implements the approved trusted-usage direction. Full
+pre-dispatch reservations remain immutable. A service-only, owner/capture/stage/
+model/rate-bound RPC can record one provider receipt and upward-rounded confirmed
+charge, retaining original evidence. Owner-facing result transitions lose all
+financial completion authority. Missing/invalid usage and unknown outcomes retain
+full exposure; there is no timeout release, reset or automatic reconciliation.
+A confirmed cost above a deliberately violated reserve halts new admissions.
+
+Synthetic capacity acceptance uses3,000 screening input tokens and5,000 estimate
+input/1,024 output tokens:660+4,778microUSD/photo. Ten sequential actual capture
+transactions/day and300 across a simulated720h initial period are the acceptance
+fixture, not a measured cost or guarantee for arbitrary photos. Real hosted
+credentials/prices/data controls and multi-session/Storage proof remain separate.
+The SQL remains unapplied and adds a third literalfalse gate on settlement.

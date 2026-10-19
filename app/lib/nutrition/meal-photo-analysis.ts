@@ -217,7 +217,7 @@ export async function analyzeMealPhotoWithEvidence(input: MealPhotoAnalysisInput
   const llmResult = await requestMealPhoto(input, true)
   if (llmResult.stopReason !== 'stop') throw new MealPhotoAnalysisError('invalid_schema', 'Incomplete or refused estimate')
   return { analysis: parseMealPhotoAnalysis(llmResult.text), provider: llmResult.provider,
-    model: llmResult.model, usage: llmResult.usage }
+    model: llmResult.model, usage: llmResult.usage, ...(llmResult.billing ? { billing: llmResult.billing } : {}) }
 }
 
 export async function analyzeMealPhoto(input: MealPhotoAnalysisInput): Promise<MealPhotoAnalysis> {

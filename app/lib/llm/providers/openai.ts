@@ -203,6 +203,10 @@ export const openaiProvider: LlmProvider = {
     const toolCalls = extractToolCalls(response)
 
     return {
+      ...(req.beforeDispatch && req.store === false && req.requireComplete && response.status === 'completed'
+        && response.model === model && response.service_tier === 'default' && response.id && response.usage
+        ? { billing: { receiptId: response.id, inputTokens: response.usage.input_tokens,
+            outputTokens: response.usage.output_tokens, totalTokens: response.usage.total_tokens, serviceTier: response.service_tier } } : {}),
       text: response.output_text ?? '',
       toolCalls,
       usage: {

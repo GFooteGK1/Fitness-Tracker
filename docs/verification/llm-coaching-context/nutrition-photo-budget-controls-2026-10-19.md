@@ -186,3 +186,11 @@ must be independently reproduced and a relevant budget mutation detected before
 claiming reviewed control behavior. Production pricing/access and Storage behavior
 remain separate runtime checks. No athletic or nutrition outcomes follow from
 passing software tests.
+
+## Subsequent inactive settlement slice
+
+The follow-up implements trusted confirmed-usage settlement and removes owner
+result financial-time authority; this packet's no-refund capacity describes the
+prior foundation. See [the settlement preparation and actual synthetic capacity
+evidence](nutrition-photo-settlement-preparation-2026-10-19.md). Hosted qualification,
+true multi-session proof and activation remain separately gated.

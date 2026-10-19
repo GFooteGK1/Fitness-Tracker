@@ -14,8 +14,8 @@ async function ready() {
 }
 async function exposure(amounts:number[],settled:string|null=null) {
   await db.exec('RESET ROLE')
-  for(const amount of amounts)await db.query(`INSERT INTO nutrition_photo_exposure(capture_id,user_id,stage,policy,reserved_micro_usd,admitted_at,settled_at)
-    VALUES($1,$2,$3,'openai-owner-30d-v1',$4,clock_timestamp()-interval '3 days',$5)`,[randomUUID(),pilotTestOwner,amount===250000?'screen':'estimate',amount,settled])
+  for(const amount of amounts)await db.query(`INSERT INTO nutrition_photo_exposure(capture_id,user_id,stage,policy,reserved_micro_usd,admitted_at,settled_at,confirmed_micro_usd,usage_evidence,provider_receipt_id)
+    VALUES($1,$2,$3,'openai-owner-30d-v1',$4,clock_timestamp()-interval '3 days',$5,CASE WHEN $5::timestamptz IS NULL THEN NULL ELSE $4::bigint END,CASE WHEN $5::timestamptz IS NULL THEN NULL ELSE '{}'::jsonb END,CASE WHEN $5::timestamptz IS NULL THEN NULL ELSE ($1::uuid)::text END)`,[randomUUID(),pilotTestOwner,amount===250000?'screen':'estimate',amount,settled])
   await photoDraftActor(db,pilotTestOwner)
 }
 beforeAll(async()=>{db=await nutritionPilotDatabase();await db.query('INSERT INTO auth.users(id) VALUES($1)',[pilotTestOwner])},30000)
