@@ -11,3 +11,7 @@ A separate copied adapter with only its database-subject comparison removed fail
 Full publication SHA-256: `585d5ce41d96cbe34e1b8cc47dd605983ba39d4d982002a109cbd787b4bde5ae`.
 
 This is local software evidence only. Required CI, normal protected merge, resulting Git deployment, connected reference retrieval and full fresh-conversation coaching acceptance remain separate checkpoints. No athlete record, schema, credential, permission, environment setting, dependency or job was changed by this slice; tests establish no athletic outcome.
+
+## OAuth transport test addendum
+
+The first full required CI run, `39246918099`, found one missed one-tool registry assertion in `test/auth/coaching-oauth.test.ts`; 5,572 tests passed, one failed and 38 were skipped. The scoped correction expects the approved two-tool registry and additionally exercises authenticated reference retrieval, zero additional domain queries and reference refusal after grant revocation through the real stateless handler with synthetic signatures/provider. Builder and independent reproduction both passed 142/142 tests across the OAuth, reference and MCP suites; TypeScript passed. The original ten reviewed files and publication digest are unchanged. Exact test-file hash and independent verdict are retained in `coaching-reference-oauth-addendum-2026-10-19.json`. This does not waive the updated-head full CI gate.
