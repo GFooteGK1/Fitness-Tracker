@@ -1,3 +1,3 @@
-/** Owner-only metadata diagnostic approved 2026-10-19; pilot gates stay disabled. */
-export const NUTRITION_PHOTO_QUALIFICATION_ACTIVE = true
+/** The separately approved single metadata check is complete. Do not repeat it. */
+export const NUTRITION_PHOTO_QUALIFICATION_ACTIVE = false
 export function nutritionPhotoQualificationEnabled(): boolean { return NUTRITION_PHOTO_QUALIFICATION_ACTIVE }

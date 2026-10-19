@@ -1,5 +1,10 @@
 # SociusFit Architecture Map
 
+ADR-0042's separately gated fixed nutrition canary reuses owner Auth, private
+Storage and existing extraction/settlement, with a permanent canonical commit
+veto. Canary staging/paid dispatch and the normal pilot remain off; account and
+runtime boundary evidence precedes live work. GET bypasses React/AuthProvider.
+
 ADR-0040 records the original nullable WHOOP timing preparation and fixed owner
 filter at existing sync upserts. Separately approved migration20261019154246 was
 applied with old owner records and access preserved; PR98's exact candidate was

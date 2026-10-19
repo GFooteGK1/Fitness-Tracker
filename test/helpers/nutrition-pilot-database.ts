@@ -26,7 +26,7 @@ export async function nutritionPilotDatabase(active = true, clock?: string) {
 }
 
 /** Real SQL functions/RLS, mock storage transport only. Never an external client. */
-export function nutritionPilotClient(db: PGlite, owner: () => string|null) {
+export function nutritionPilotClient(db: PGlite, owner: () => string|null, prefix = 'nutrition-pilot') {
   const objects = new Map<string,Uint8Array>()
   const rpcArgs: Record<string,string[]> = { nutrition_photo_pilot:['p_id','p_action','p_payload'],
     amend_logged_activity:['p_kind','p_entity_id','p_expected_revision','p_request_id','p_record','p_blocks','p_provenance'] }
@@ -34,8 +34,12 @@ export function nutritionPilotClient(db: PGlite, owner: () => string|null) {
     objects,
     auth:{getUser:async()=>({data:{user:owner()?{id:owner()}:null},error:null})},
     storage:{from:(bucket:string)=>({upload:async(path:string,bytes:Uint8Array,options:{upsert:boolean})=>{
-      if (bucket!=='meal-photos' || !owner() || !path.startsWith('meals/'+owner()+'/nutrition-pilot/') || options.upsert || objects.has(path)) return {error:{code:'rejected'}}
+      if (bucket!=='meal-photos' || !owner() || !path.startsWith('meals/'+owner()+'/'+prefix+'/') || options.upsert || objects.has(path)) return {error:{code:'rejected'}}
       objects.set(path,bytes);return {error:null}
+    },download:async(path:string)=>{
+      const bytes=objects.get(path)
+      if(bucket!=='meal-photos'||!owner()||!path.startsWith('meals/'+owner()+'/'+prefix+'/')||!bytes)return {data:null,error:{code:'rejected'}}
+      return {data:new Blob([new Uint8Array(bytes)]),error:null}
     }})},
     rpc:async(name:string,args:Record<string,unknown>)=>{
       const names=rpcArgs[name];if(!names)throw new Error('Unsupported test RPC')

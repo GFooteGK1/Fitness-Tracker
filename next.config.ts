@@ -8,6 +8,10 @@ const withSerwist = withSerwistInit({
   disable: process.env.NODE_ENV === "development",
 });
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  outputFileTracingIncludes: {
+    '/api/meals/photo-pilot/canary': ['./app/lib/nutrition/fixtures/nutrition-canary-source.jpg'],
+  },
+};
 
 export default withSerwist(nextConfig);

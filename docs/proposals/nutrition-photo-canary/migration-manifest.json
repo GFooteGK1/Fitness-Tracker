@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-19T21:33:40.459983+00:00",
+  "repository": "GFooteGK1/Fitness-Tracker",
+  "base": "8e017960169b98b3fc50d43bda477754936490f9",
+  "canaryId": "853b894f-fa52-5fec-b503-91c11bdb0978",
+  "project": "auolnfwetmfcwhtvakzy",
+  "mode": "READ-ONLY PREPARATION;SQLFILESNOTEXECUTED",
+  "originalCommittedSqlSha256": "2777fc61ec733b9179b46d855eaaceb8aa151e13209896832b68577b4ceec6e6",
+  "sqlFiles": {
+    "00-additive-foundation-disabled.sql": "8f2ea56eb75d2bcc01af4119dee2e1115647bf05bbfeccb609250a92ed303da1",
+    "01-canary-only-functions.sql": "928ed0277d75215a7a140adb51ab64b6fa0bfc0ae3dbe56dc50a8e2dea572209",
+    "02-conditional-owner-live-functions.sql": "4c9e012c94e2ff8202c48e16619d053f7fe569f01dcc53e0b43db8ae425bd71e",
+    "03-pause-without-delete-or-reset.sql": "b6de0603e1e6da93f236e5318f750b0c4ed9ebd17df3869cc7cf6b611407618b"
+  }
+}

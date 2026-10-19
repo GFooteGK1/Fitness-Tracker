@@ -11,3 +11,6 @@ test/fixtures/frozen-whole-week-development-v1/*.json -text
 docs/verification/programming-quality/release-catalog-fingerprints.sql text eol=lf
 # This immutable review has hash-bound mixed line endings. Preserve its Git bytes.
 docs/verification/programming-quality/c2r-week-context-review-1.md -text
+# Owner-approved nutrition canary operator inputs retain their exact fingerprints.
+docs/proposals/nutrition-photo-canary/*.sql text eol=lf
+docs/proposals/nutrition-photo-canary/migration-manifest.json -text

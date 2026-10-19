@@ -102,7 +102,7 @@ describe('inactive prepared selected-photo pilot: real PostgreSQL, synthetic byt
   it.each(['screen','estimate','upload'])('stops %s ambiguity without blind paid retry',async boundary=>{
     if(boundary==='screen')screening.mockRejectedValue(new Error('lost response'))
     if(boundary==='estimate')vi.mocked(complete).mockRejectedValue(new Error('lost response'))
-    if(boundary==='upload')vi.spyOn(client.storage,'from').mockReturnValue({upload:async()=>({error:{code:'transport'}})})
+    if(boundary==='upload')vi.spyOn(client.storage,'from').mockReturnValue({upload:async()=>({error:{code:'transport'}}),download:async()=>({data:null,error:{code:'transport'}})})
     const request=input();expect((await capturePilotPhoto(typed(),request)).state).toBe('uncertain')
     await capturePilotPhoto(typed(),request)
     expect(screening).toHaveBeenCalledTimes(boundary==='upload'?0:1);expect(complete).toHaveBeenCalledTimes(boundary==='estimate'?1:0)
