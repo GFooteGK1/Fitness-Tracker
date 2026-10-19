@@ -75,23 +75,22 @@ attachment require separate runtime proof.
 
 ## Exact activation gates and release changes
 
-1. **Retention/deletion decision — pending.** Recommended pilot policy: retain
-   the normalized private derivative for seven days, then remove it; keep derived
-   meal/history until explicit owner deletion. Rejected/nonfood images should be
-   removed within 24 hours. Confirm whether owner deletion includes original
-   estimate/history or only the photo. No such retention period is currently
-   approved, implemented or scheduled. Before activation add explicit expiry and
-   deletion state, an owner deletion operation, and tested reconciliation for
-   upload-with-lost-acknowledgment, object-delete failure and expired/orphan
-   objects. Do not silently reuse the dormant helper's 30-day policy or change
-   existing cleanup jobs. Original submitted bytes remain transient; only the
-   normalized derivative would be retained.
+1. **Private retention; no unattended permanent deletion.** Retain the normalized
+   private derivative for later review. The earlier seven-day/24-hour purge
+   proposal is superseded: there is no automatic permanent deletion and no new
+   cleanup job in this scope. Permanent deletion requires action-specific owner
+   confirmation when the action is taken. Recoverable deletion or retention
+   cleanup may be separately designed and approved. Before activation qualify
+   owner isolation, private photo access, storage-loss/uncertain-upload recovery
+   and clear retention consent. Do not reuse the dormant helper's 30-day expiry
+   or alter existing cleanup jobs. Original submitted bytes remain transient;
+   only the normalized derivative would be retained.
 2. **Schema/release — pending.** The exact prepared SQL is
    `docs/migrations/nutrition-photo-owner-pilot.sql`, outside the migration runner.
    It creates one owner SELECT/RLS table and one authenticated, owner-filtered,
    SECURITY DEFINER transition function with empty search_path and a second
    literal false gate. It reuses existing logging/freeze/commit/revision functions.
-   It must not be applied yet. Add the approved retention/deletion/spend fields
+   It must not be applied yet. Implement the approved privacy and spending controls
    first, independently review the final SQL, inspect deployed function versions,
    then request exact migration/release authority. Application activation requires
    an explicit reviewed code change, host tool registration and end-to-end proof.
@@ -111,7 +110,12 @@ attachment require separate runtime proof.
    Presence is not validation of billing project, scopes, data retention, eligible
    ZDR, available models or permission to reuse it. Reuse of that existing key
    needs an explicit decision; new keys/persistent access are prohibited. The
-   estimator requests `store:false`, which does not establish zero abuse-log
+   existing sensitive Vercel `OPENAI_API_KEY` metadata was separately confirmed
+   for `gregs-projects-98860c8b/fitness-tracker`, covering Production and Preview.
+   Reuse would be in place at that server-side destination, without copying a
+   secret to this worktree. Its value was not read or compared to the process key.
+   Await the pending reuse/model/budget decision before any live provider call.
+   The estimator requests `store:false`, which does not establish zero abuse-log
    retention. Confirm OpenAI project/data controls before a real photo is sent.
 5. **Paid calls and spending bounds — pending.** No provider HTTP response or live
    billing proof was obtained; the independent review's failed-DNS mock incident
@@ -129,7 +133,7 @@ attachment require separate runtime proof.
    bandwidth, database/hosting, regional premiums and existing traffic are excluded.
    This is a conservative illustrative token scenario, not measured utilization.
 
-   Proposed pilot approval bounds: **$1/day, $5 total for an initial 30-day pilot,
+   Proposed pilot approval bounds: **$1 in any rolling 24 hours, $5 total for an initial 30-day pilot,
    at most 10 captures/rolling 24 hours and one attempt/stage**. Before paid
    activation pin approved models/rates, calculate a documented worst-case cost
    from actual request/token limits, atomically reserve that full exposure before
@@ -153,6 +157,12 @@ phone capture or provider billing controls. No migration, live photo/provider
 call, permission/credential change, push, merge, deployment, job or notification
 is authorized by these tests. WHOOP ordinary-sync proof remains a separate pending
 acceptance item; nutrition work does not resolve it.
+
+The inactive preparation PR workflow is separately authorized through normal
+required CI, review/mobile checks and protected merge, provided the literal false
+gates, unapplied SQL and unregistered tools remain intact. This allows a normal
+hosted deployment to remain inactive; it does not authorize schema application,
+provider calls, activation, unattended permanent deletion or a new cleanup job.
 
 Independent review identified and the builder addressed three P2 findings:
 normalized-image deduplication, incomplete/refused response rejection, and an
