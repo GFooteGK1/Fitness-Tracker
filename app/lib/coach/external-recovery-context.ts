@@ -35,7 +35,11 @@ function record(row: ContextRow | null, keys: readonly string[]) {
 const timingColumns = ['provider_created_at', 'provider_updated_at', 'provider_interval_start', 'provider_interval_end',
   'provider_timezone_offset', 'provider_score_state', 'timing_ingested_at', 'timing_mapping_version', 'timing_provenance']
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(v)
-const positiveId = (v: unknown): boolean => Number.isSafeInteger(v) && Number(v) > 0
+// cycle_id is TEXT in storage, though the provider payload uses a JSON number.
+const positiveId = (v: unknown): boolean => {
+  const n = typeof v === 'string' && /^[1-9]\d{0,15}$/.test(v) ? Number(v) : v
+  return Number.isSafeInteger(n) && Number(n) > 0
+}
 const zone = (v: unknown): v is string => typeof v === 'string' && v !== '-00:00' && /^(?:[+-](?:0\d|1[0-3]):[0-5]\d|[+-]14:00)$/.test(v)
 function providerInstant(value: unknown) {
   const raw = timestamp(value)
