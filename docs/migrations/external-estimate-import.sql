@@ -110,6 +110,9 @@ BEGIN
  result:=jsonb_build_object('schemaVersion',1,'requestId',p_id,'state','estimated_unreviewed','canonicalChanged',false,'consumption','unknown',
   'capture',c,'originalEstimate',e,'fingerprint',p_fingerprint,'receivedAt',a.created_at,'draftId',a.id,'draftRevisionAtImport',a.revision,
   'record',operation->'record','provenance',pr,'eventTimeMeaning','photo_capture_only','sourceModelVerified',false);
+ -- Same 128 KiB contract as HTTP and native transport/completion/persistence.
+ -- Raising here rolls back the draft too; never commit an unreadable receipt.
+ IF octet_length(result::text)>131072 THEN RAISE EXCEPTION 'Estimated receipt exceeds contract' USING ERRCODE='54000'; END IF;
  INSERT INTO public.external_estimate_requests(id,device_id,user_id,payload,fingerprint,content_hash,draft_id,receipt)
   VALUES(p_id,d.id,d.user_id,p_payload,p_fingerprint,c->>'contentHash',a.id,result);
  RETURN result;

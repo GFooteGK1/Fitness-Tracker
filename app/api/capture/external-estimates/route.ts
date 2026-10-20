@@ -1,11 +1,18 @@
 import { createHash } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/app/lib/auth/supabase-server'
-import { ExternalEstimateError, EXTERNAL_ESTIMATE_MAX_BYTES, externalEstimateFingerprint, parseExternalImport } from '@/app/lib/nutrition/external-estimate'
+import { ExternalEstimateError, EXTERNAL_ESTIMATE_MAX_BYTES, EXTERNAL_ESTIMATE_RECEIPT_MAX_BYTES, externalEstimateFingerprint, parseExternalImport } from '@/app/lib/nutrition/external-estimate'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-const respond = (body: object, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store' } })
+const respond = (body: object, status = 200) => {
+  const encoded = JSON.stringify(body)
+  const headers = { 'Cache-Control': 'private, no-store', 'Content-Type': 'application/json' }
+  if (Buffer.byteLength(encoded, 'utf8') > EXTERNAL_ESTIMATE_RECEIPT_MAX_BYTES) {
+    return NextResponse.json({ error: 'Import is unconfirmed. Check the original capture ID.', state: 'save_unconfirmed' }, { status: 503, headers })
+  }
+  return new NextResponse(encoded, { status, headers })
+}
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/
 // Separate authority: camera-cloud-v1 tokens never enter this import lane.
 async function authorize(request: Request) {

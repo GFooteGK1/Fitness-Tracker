@@ -6,6 +6,9 @@ export class ExternalEstimateError extends Error {
 }
 export const EXTERNAL_ESTIMATE_VERSION = 1
 export const EXTERNAL_ESTIMATE_MAX_BYTES = 64 * 1024
+// Matches prepared SQL and native EstimateHandoffLimits.receiptBytes.
+// Receipt includes the items in both originalEstimate and the draft record.
+export const EXTERNAL_ESTIMATE_RECEIPT_MAX_BYTES = 128 * 1024
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/
 const hash = /^[a-f0-9]{64}$/
 const keys = ['protein', 'carbs', 'fat', 'calories'] as const

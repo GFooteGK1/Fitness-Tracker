@@ -5,7 +5,7 @@ import { photoDraftDatabase, photoDraftActor } from '../helpers/photo-draft-data
 import { sqlFile } from '../database/fixture'
 import { POST, GET } from '@/app/api/capture/external-estimates/route'
 import { createServiceRoleClient } from '@/app/lib/auth/supabase-server'
-import { externalEstimateFingerprint, validateExternalEstimate } from '@/app/lib/nutrition/external-estimate'
+import { EXTERNAL_ESTIMATE_MAX_BYTES, EXTERNAL_ESTIMATE_RECEIPT_MAX_BYTES, externalEstimateFingerprint, validateExternalEstimate } from '@/app/lib/nutrition/external-estimate'
 
 vi.mock('@/app/lib/auth/supabase-server', () => ({ createServiceRoleClient: vi.fn() }))
 let db: PGlite, owner: string, other: string, token: string, device: string
@@ -81,6 +81,38 @@ describe('inactive external estimate HTTP -> real PostgreSQL boundary', () => {
     expect((await POST(request({ ...payload, capture: { ...payload.capture, requestId: randomUUID() } }))).status).toBe(409)
     expect(await (await status(payload.capture.requestId)).json()).toEqual(receipt)
     expect(await count('activity_drafts')).toBe(1)
+  })
+  it('round-trips maximum item/text/macro bounds with worst-case JSON escaping through SQL and readback', async () => {
+    const payload = fixture()
+    payload.estimate.items = Array.from({ length: 20 }, () => ({ food: '\u0001'.repeat(256), portion: '\u0001'.repeat(128), protein: 50, carbs: 100, fat: 50, calories: 1000 }))
+    payload.estimate.totals = { protein: 1000, carbs: 2000, fat: 1000, calories: 20000 }
+    payload.estimate.model = '\u0001'.repeat(128)
+    const submission = request(payload)
+    expect(Buffer.byteLength(await submission.clone().text())).toBeLessThanOrEqual(EXTERNAL_ESTIMATE_MAX_BYTES)
+    const imported = await POST(submission), text = await imported.text(), receipt = JSON.parse(text)
+    expect(imported.status).toBe(200)
+    expect(Buffer.byteLength(text)).toBeGreaterThan(32 * 1024)
+    expect(Buffer.byteLength(text)).toBeLessThan(EXTERNAL_ESTIMATE_RECEIPT_MAX_BYTES)
+    expect(receipt.originalEstimate).toEqual(payload.estimate)
+    expect(receipt.record.items).toEqual(payload.estimate.items)
+    const readback = await status(payload.capture.requestId)
+    expect(readback.status).toBe(200); expect(await readback.json()).toEqual(receipt)
+    expect(await count('activity_drafts')).toBe(1); expect(await count('external_estimate_requests')).toBe(1); expect(await count('meals')).toBe(0)
+  })
+  it('bounds serialized import and readback receipts at the same native contract', async () => {
+    const payload = fixture()
+    const receipt = { requestId: payload.capture.requestId, state: 'estimated_unreviewed', canonicalChanged: false, padding: '' }
+    receipt.padding = 'x'.repeat(EXTERNAL_ESTIMATE_RECEIPT_MAX_BYTES - Buffer.byteLength(JSON.stringify(receipt)))
+    vi.mocked(createServiceRoleClient).mockReturnValue({ rpc: async (_n: string, a: Record<string, unknown>) => ({
+      data: a.p_action === 'check' ? { deviceId: device, scope: 'external-estimate-v1' } : receipt, error: null,
+    }) } as never)
+    for (const response of [await POST(request(payload)), await status(payload.capture.requestId)]) {
+      expect(response.status).toBe(200); expect(Buffer.byteLength(await response.text())).toBe(EXTERNAL_ESTIMATE_RECEIPT_MAX_BYTES)
+    }
+    receipt.padding += 'x'
+    for (const response of [await POST(request(payload)), await status(payload.capture.requestId)]) {
+      expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ state: 'save_unconfirmed' })
+    }
   })
   it('concurrent same-input submissions share exactly one draft and receipt', async () => {
     const payload = fixture()

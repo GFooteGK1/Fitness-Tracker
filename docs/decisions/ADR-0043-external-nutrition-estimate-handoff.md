@@ -29,6 +29,16 @@ Dates require valid UTC ISO timestamps; capture/estimate admission is checked by
 the database against grant enrollment and server time. Model/time labels supplied
 by the harness are unverified metadata, never evidence of a provider identity.
 
+The receipt contract is 128KiB in prepared SQL, HTTP serialization and native
+streaming/completion/ledger validation. Native estimate input remains 32KiB and
+the outer request 64KiB. Duplicated item text has at most 2*20*(256+128) UTF-8
+bytes; worst-case six-byte JSON escaping plus the model label uses 92,928bytes.
+Numeric values require under 1,536bytes, and 16KiB conservatively covers fixed
+keys, punctuation, identifiers, dates and provenance: under 111KiB total. SQL's
+bound is checked transactionally before receipt insertion, rolling back the draft
+on overflow. HTTP also refuses an oversized result. The 1MiB local ledger cap
+still applies and preserves existing state when capacity is reached.
+
 Default-off EXTERNAL_ESTIMATE_IMPORT_ENABLED protects both import and readback.
 A distinct external-estimate-v1 capability/table/RPC is prepared only locally.
 Camera-cloud-v1 credentials never authorize imports. No issuer, credential,
