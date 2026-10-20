@@ -18,7 +18,8 @@ let package = Package(
         .testTarget(
             name: "SociusFitAutoMealsCoreTests",
             dependencies: ["SociusFitAutoMealsCore"],
-            path: "Tests"
+            path: "Tests",
+            resources: [.copy("Fixtures")]
         ),
     ]
 )

@@ -172,7 +172,8 @@ actor CloudPhotoRuntime {
     }
 }
 
-private enum CloudPhotoImage {
+// Shared pixel-only reader; each lane retains its own consent, identity and ledger.
+enum CloudPhotoImage {
     static func read(_ identifier: String) async -> Data? {
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil)
         guard let asset = assets.firstObject, asset.mediaType == .image else { return nil }

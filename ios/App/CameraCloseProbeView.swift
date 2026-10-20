@@ -77,6 +77,10 @@ struct CameraCloseProbeView: View {
                     NavigationLink("Pair Camera Photos with SociusFit") { CloudPhotoSetupView() }.frame(minHeight: 44)
                     Text("Separate explicit cloud consent. Log New Camera Photos sends new images to GPT screening and creates review drafts. Local probe actions remain unchanged.")
                 }
+                Section("Chosen ChatGPT estimate") {
+                    NavigationLink("Set Up ChatGPT Photo Handoff") { ExternalEstimateSetupView() }.frame(minHeight: 44)
+                    Text("Separate opt-in image handoff and inactive estimate import. Existing cloud photo logging and local diagnostics stay separate.")
+                }
                 Section("Thumbnail test setup") {
                     Text("In Shortcuts, use Camera → Is Closed → Run Immediately. Add Check Camera Photo Access from SociusFit Auto Meals. Its text result can feed Show Notification during the test.")
                     Text("Use one disposable still photo. Compare the run and timestamps after leaving Camera unlocked, then after taking a photo from Lock Screen without unlocking.")
