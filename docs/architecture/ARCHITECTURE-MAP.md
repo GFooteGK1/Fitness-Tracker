@@ -1,5 +1,15 @@
 # SociusFit Architecture Map
 
+ADR-0043 prepares an inactive external nutrition estimate receiver at
+`/api/capture/external-estimates`. The existing native capture app hands an
+image-bound UUID/time/hash to the chosen ChatGPT Shortcut action. Socius validates
+strict JSON and deterministic totals, then a separately authorized RPC atomically
+saves an unreviewed estimate draft plus immutable replay/readback receipt.
+Consumption stays unknown; canonical totals do not change. The new flag is off
+by default; prepared SQL is uninstalled, no issuer is supplied, and existing
+camera pairing scope remains unchanged. Native source stays on its existing
+branch and signed distribution/locked-phone acceptance require separate approval.
+
 ADR-0042's separately gated fixed nutrition canary reuses owner Auth, private
 Storage and existing extraction/settlement, with a permanent canonical commit
 veto. Canary staging/paid dispatch and the normal pilot remain off; account and
