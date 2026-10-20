@@ -16,6 +16,11 @@ Comparisons retain PostgreSQL microseconds. Future values remain exposed as
 retained facts with explicit diagnostics, never current-readiness evidence.
 Unknown/invalid metadata is not echoed. Arbitrary provenance keys are excluded.
 
+Stored `cycle_id` columns are TEXT. Their canonical positive decimal strings
+and numeric provider IDs are recognized only within the same safe-integer range;
+the reader preserves their stored representation. Noncanonical or unsafe IDs
+remain invalid. Recognizing storage format does not verify cross-record linkage.
+
 Recovery's null interval/timezone and an explicitly null open-cycle end remain
 valid. Missing columns, missing sleep endpoints and missing metadata are partial.
 Each valid individual fact survives unrelated missing or invalid evidence.

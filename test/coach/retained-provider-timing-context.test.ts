@@ -30,6 +30,23 @@ function project(rows = timedRows(), now = contextNow) {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
 
 describe('retained WHOOP timing facts without measurement-freshness claims', () => {
+  it.each(['12', '9007199254740991'])('accepts canonical stored TEXT cycle IDs through owned SELECTs (%s)', async id => {
+    vi.useFakeTimers(); vi.setSystemTime(contextNow)
+    const rows = timedRows(); rows.whoop_recovery[0].cycle_id = id; rows.whoop_cycles[0].cycle_id = id
+    const { db, writes } = contextClient(rows)
+    const result = await readCoachingContext(db, new URLSearchParams({ tzOffset: '0' }))
+    for (const kind of ['recovery', 'strain'] as const) {
+      expect(result.recovery.metrics[kind].record?.cycle_id).toBe(id)
+      expect(result.recovery.metrics[kind].providerTiming).toMatchObject({ status: 'recorded', issues: [] })
+      expect(result.recovery.metrics[kind].usableAsCurrent).toBe(false)
+    }
+    expect(writes).not.toHaveBeenCalled()
+  })
+  it.each(['0', '-1', '+12', '012', '12.0', '1e1', ' 12', '12 ', '9007199254740992', '', null, 1.1])('rejects noncanonical/unsafe stored cycle ID %s', id => {
+    const rows = timedRows(); rows.whoop_recovery[0].cycle_id = id; rows.whoop_cycles[0].cycle_id = id
+    for (const kind of ['recovery', 'strain'] as const) expect(project(rows).metrics[kind].providerTiming)
+      .toMatchObject({ status: 'invalid', issues: ['source_identity_invalid'] })
+  })
   it('exposes all populated facts through query-respecting owner SELECTs, retaining precision and legitimate nulls', async () => {
     vi.useFakeTimers(); vi.setSystemTime(contextNow)
     const rows = timedRows(), { db, traces, writes } = contextClient(rows)
