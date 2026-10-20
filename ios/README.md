@@ -1,5 +1,10 @@
 # SociusFit Auto Meal Photos — native harness
 
+The separately prepared [external estimate handoff](EXTERNAL-ESTIMATE-HANDOFF.md)
+reuses this app's Camera-close automation, discovery and pixel reader for a chosen
+ChatGPT Shortcut action. It has separate state/authority, no API inference,
+default-inactive hosted import and no signed distribution in this slice.
+
 ## Automated screening evaluation
 
 `LocalFoodVisionClassifier` shares the phone's Vision operation with the macOS
