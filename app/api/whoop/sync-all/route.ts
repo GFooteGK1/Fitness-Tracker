@@ -89,7 +89,9 @@ async function syncConnectedUsers(request: NextRequest, ownerOnly: boolean) {
       try {
         console.log(`[WHOOP Sync All] Syncing user: ${user_id}`);
         
-        const result = await syncService.incrementalSync(user_id, supabase);
+        const result = ownerOnly
+          ? await syncService.incrementalOwnerCronSync(user_id, supabase)
+          : await syncService.incrementalSync(user_id, supabase);
         
         if (result.success) {
           results.successful++;

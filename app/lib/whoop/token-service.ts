@@ -1,6 +1,6 @@
 /**
  * WHOOP Token Service
- * 
+ *
  * Manages WHOOP OAuth tokens with encryption:
  * - Store encrypted tokens in database
  * - Retrieve and decrypt tokens
@@ -15,6 +15,79 @@ import { createServerClient } from '../auth/supabase-server';
 import { encryptTokens, decryptTokens } from './encryption';
 import { refreshAccessToken as refreshTokenAPI } from './api-client';
 import type { WhoopTokens, TokenValidationResult } from '../types/whoop';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { isWhoopTimingOwner } from './timing-owner';
+
+/**
+ * Existing trusted client from the authenticated owner-only cron GET.
+ * No cookie fallback or destructive credential cleanup in this system path.
+ * Legacy token APIs below retain their session-scoped behavior.
+ */
+class OwnerCronTokenError extends Error {}
+
+export async function getOwnerCronAccessToken(userId: string, client: SupabaseClient): Promise<string> {
+  if (!client || !isWhoopTimingOwner(userId)) {
+    throw new Error('Invalid owner WHOOP cron token context');
+  }
+  try {
+    const { data, error } = await client.from('whoop_tokens')
+      .select('user_id,access_token_encrypted,refresh_token_encrypted,expires_at,scope')
+      .eq('user_id', userId).single();
+    if (error || !data || data.user_id !== userId) {
+      throw new OwnerCronTokenError('Owner WHOOP credentials unavailable');
+    }
+    let tokens: ReturnType<typeof decryptTokens>;
+    try {
+      tokens = decryptTokens(data.access_token_encrypted, data.refresh_token_encrypted);
+    } catch {
+      throw new OwnerCronTokenError('Owner WHOOP credentials unreadable');
+    }
+    const expiresAt = typeof data.expires_at === 'string' ? new Date(data.expires_at).getTime() : NaN;
+    if (!Number.isFinite(expiresAt) || typeof tokens.accessToken !== 'string' || !tokens.accessToken
+      || typeof tokens.refreshToken !== 'string' || !tokens.refreshToken) {
+      throw new OwnerCronTokenError('Owner WHOOP credentials invalid');
+    }
+    if (expiresAt - Date.now() >= 5 * 60 * 1000) return tokens.accessToken;
+
+    // Expired access may still have a usable refresh grant. Persist rotation before use.
+    let rotated: WhoopTokens;
+    try {
+      rotated = await refreshTokenAPI(tokens.refreshToken);
+    } catch {
+      // Provider errors can contain sensitive response bodies; retain no raw details.
+      throw new OwnerCronTokenError('Owner WHOOP token refresh failed');
+    }
+    if (!rotated || typeof rotated.accessToken !== 'string' || !rotated.accessToken
+      || typeof rotated.refreshToken !== 'string' || !rotated.refreshToken || typeof rotated.scope !== 'string'
+      || !(rotated.expiresAt instanceof Date) || !Number.isFinite(rotated.expiresAt.getTime())
+      || rotated.expiresAt.getTime() <= Date.now()) {
+      throw new OwnerCronTokenError('Owner WHOOP refreshed credentials invalid');
+    }
+    let encrypted: ReturnType<typeof encryptTokens>;
+    try {
+      encrypted = encryptTokens(rotated.accessToken, rotated.refreshToken);
+    } catch {
+      throw new OwnerCronTokenError('Owner WHOOP refreshed credentials could not be encrypted');
+    }
+    const { data: saved, error: saveError } = await client.from('whoop_tokens').update({
+      access_token_encrypted: encrypted.accessTokenEncrypted,
+      refresh_token_encrypted: encrypted.refreshTokenEncrypted,
+      expires_at: rotated.expiresAt.toISOString(),
+      scope: rotated.scope,
+      updated_at: new Date().toISOString(),
+    }).eq('user_id', userId)
+      .eq('refresh_token_encrypted', data.refresh_token_encrypted)
+      .select('user_id').single();
+    // Do not recreate a disconnected row or overwrite a concurrently replaced grant.
+    if (saveError || saved?.user_id !== userId) {
+      throw new OwnerCronTokenError('Owner WHOOP refreshed credentials could not be saved');
+    }
+    return rotated.accessToken;
+  } catch (error) {
+    if (error instanceof OwnerCronTokenError) throw error;
+    throw new OwnerCronTokenError('Owner WHOOP token operation failed');
+  }
+}
 
 /**
  * Store WHOOP tokens for a user (encrypted)
@@ -53,7 +126,7 @@ export async function storeTokens(
 /**
  * Retrieve and decrypt WHOOP tokens for a user
  * Returns null if no tokens found
- * 
+ *
  * Requirements: 3.1, 3.2
  */
 export async function getTokens(userId: string): Promise<WhoopTokens | null> {
@@ -134,7 +207,7 @@ export async function deleteTokens(userId: string): Promise<void> {
 export async function refreshAccessToken(userId: string): Promise<WhoopTokens> {
   // Get current tokens
   const currentTokens = await getTokens(userId);
-  
+
   if (!currentTokens) {
     throw new Error('No WHOOP tokens found for user');
   }
@@ -240,7 +313,7 @@ export async function getValidAccessToken(userId: string): Promise<string> {
  * Retrieve and decrypt WHOOP tokens for a user
  * Alias for getTokens() to match design document naming
  * Returns null if no tokens found
- * 
+ *
  * Requirements: 3.1, 3.2
  */
 export async function retrieveTokens(userId: string): Promise<WhoopTokens | null> {
@@ -250,7 +323,7 @@ export async function retrieveTokens(userId: string): Promise<WhoopTokens | null
 /**
  * Check if user has valid WHOOP tokens
  * Returns true if tokens exist and are valid (not expired)
- * 
+ *
  * Requirements: 3.1, 3.2
  */
 export async function hasValidTokens(userId: string): Promise<boolean> {
@@ -267,14 +340,14 @@ export async function hasValidTokens(userId: string): Promise<boolean> {
  * Initialize WHOOP connection on app startup
  * Retrieves tokens, validates them, and attempts refresh if needed
  * Returns true if connection is successfully initialized
- * 
+ *
  * Requirements: 3.1, 3.2, 3.3
  */
 export async function initializeConnection(userId: string): Promise<boolean> {
   try {
     // Check if tokens exist
     const tokens = await getTokens(userId);
-    
+
     if (!tokens) {
       // No tokens found - user hasn't connected WHOOP
       return false;
