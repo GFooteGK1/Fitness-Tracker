@@ -31,8 +31,70 @@ function record(row: ContextRow | null, keys: readonly string[]) {
   }))
 }
 
-/** Legacy rows retain a UTC ingest date label and database-created time, but no
- * provider intervals or mapping provenance. A successful batch cannot supply them.
+// These are retained provider facts, not observation times or a cross-row join.
+const timingColumns = ['provider_created_at', 'provider_updated_at', 'provider_interval_start', 'provider_interval_end',
+  'provider_timezone_offset', 'provider_score_state', 'timing_ingested_at', 'timing_mapping_version', 'timing_provenance']
+const uuid = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(v)
+const positiveId = (v: unknown): boolean => Number.isSafeInteger(v) && Number(v) > 0
+const zone = (v: unknown): v is string => typeof v === 'string' && v !== '-00:00' && /^(?:[+-](?:0\d|1[0-3]):[0-5]\d|[+-]14:00)$/.test(v)
+function providerInstant(value: unknown) {
+  const raw = timestamp(value)
+  if (!raw || raw.startsWith('0000-')) return null
+  const match = /^(.*T\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2})$/.exec(raw)
+  if (!match || (match[3] !== 'Z' && !zone(match[3]))) return null
+  return { raw, us: BigInt(Date.parse(match[1] + match[3])) * BigInt(1000) + BigInt((match[2] ?? '').padEnd(6, '0')) }
+}
+
+function retainedTiming(row: ContextRow | null, kind: keyof typeof fields, asOf: string) {
+  const r = row ?? {}, issues: string[] = []
+  const supplied = [...timingColumns, 'provider_sleep_id', 'provider_cycle_id'].some(key => r[key] != null)
+  if (supplied) for (const key of timingColumns) if (!(key in r)) issues.push(`${key}_missing`)
+  const now = providerInstant(asOf)!.us
+  const time = (key: string, required = true) => {
+    if (r[key] == null) { if (supplied && required) issues.push(`${key}_missing`); return null }
+    const value = providerInstant(r[key])
+    if (!value) issues.push(`${key}_invalid`)
+    else if (value.us > now) issues.push(`${key}_future`)
+    return value
+  }
+  const text = (key: string, valid: (v: unknown) => boolean) => {
+    if (r[key] == null) { if (supplied) issues.push(`${key}_missing`); return null }
+    if (!valid(r[key])) { issues.push(`${key}_invalid`); return null }
+    return r[key] as string
+  }
+  const created = time('provider_created_at'), updated = time('provider_updated_at'), ingested = time('timing_ingested_at')
+  const start = kind === 'recovery' ? null : time('provider_interval_start')
+  const end = kind === 'recovery' ? null : time('provider_interval_end', kind === 'sleep')
+  const timezone = kind === 'recovery' ? null : text('provider_timezone_offset', zone)
+  if (kind === 'recovery' && [r.provider_interval_start, r.provider_interval_end, r.provider_timezone_offset].some(v => v != null)) issues.push('recovery_interval_or_timezone_invalid')
+  if ((created && updated && updated.us < created.us) || (updated && ingested && updated.us > ingested.us)
+    || (start && end && end.us < start.us) || (ingested && [start, end].some(t => t && t.us > ingested.us))) issues.push('snapshot_order_invalid')
+  const mappingVersion = text('timing_mapping_version', v => v === 'whoop_timing_owner_v1')
+  const scoreState = text('provider_score_state', v => typeof v === 'string' && ['SCORED', 'PENDING_SCORE', 'UNSCORABLE'].includes(v))
+  const expected = { source: 'provider_payload', intervalRole: kind === 'recovery' ? 'none' : kind === 'strain' ? 'cycle' : 'sleep',
+    legacyDate: 'unchanged_not_measurement_day', observationTime: 'not_assigned' }
+  const p = r.timing_provenance
+  const provenance = p && typeof p === 'object' && !Array.isArray(p)
+    && Object.entries(expected).every(([key, value]) => (p as ContextRow)[key] === value) ? expected : null
+  if (supplied && !provenance) issues.push(p == null ? 'timing_provenance_missing' : 'timing_provenance_invalid')
+  const sleepId = kind === 'recovery' ? text('provider_sleep_id', uuid) : null
+  const cycleId = kind === 'sleep' ? text('provider_cycle_id', v => typeof v === 'string' && /^[1-9]\d{0,15}$/.test(v) && positiveId(Number(v))) : null
+  if (supplied && !(kind === 'sleep' ? uuid(r.sleep_id) : positiveId(r.cycle_id))) issues.push('source_identity_invalid')
+  const status = !supplied ? 'unrecorded' : issues.some(v => v.endsWith('_invalid')) ? 'invalid'
+    : issues.some(v => v.endsWith('_future')) ? 'future' : issues.length ? 'partial' : 'recorded'
+  return {
+    providerCreatedAt: created?.raw ?? null, providerUpdatedAt: updated?.raw ?? null,
+    intervalStart: start?.raw ?? null, intervalEnd: end?.raw ?? null,
+    providerTimezoneOffset: timezone, lastRecordIngestedAt: ingested?.raw ?? null,
+    providerTiming: { status, mappingVersion, scoreState, provenance, issues: [...new Set(issues)],
+      sourceLink: { sleepId, cycleId, verification: 'not_joined' as const },
+      ingestionMeaning: 'last_retained_timing_snapshot_not_every_health_upsert' as const,
+      completenessMeaning: 'recognized_stored_fields_not_verified_provider_authenticity_or_atomic_generation' as const },
+  }
+}
+
+/** Expose retained provider facts separately from measurement freshness. Legacy
+ * rows have only a UTC ingest date label and storage time; batch time cannot fill gaps.
  * This projection never diagnoses readiness or causes provider/token/sync effects.
  */
 export function projectContextRecovery(sources: Record<string, ContextSource>, asOf: string, localDate: string) {
@@ -70,14 +132,13 @@ export function projectContextRecovery(sources: Record<string, ContextSource>, a
       dateMeaning: 'legacy_ingest_calendar_label_not_verified_measurement_day' as const,
       legacyDateOrigin: 'provider_created_or_sync_fallback_unrecorded' as const,
       measurementAgeMs: null, measurementTimingStatus: 'unrecorded' as const,
-      providerCreatedAt: null, providerUpdatedAt: null, intervalStart: null, intervalEnd: null,
-      providerTimezoneOffset: null, lastRecordIngestedAt: null,
+      ...retainedTiming(row, key, asOf),
       source: { provider: 'WHOOP', table: key === 'strain' ? 'whoop_cycles' : `whoop_${key}`,
         status: source.status, count: source.count, selection: 'latest_stored_date_then_id_desc',
         filter: key === 'sleep' ? 'non_nap' : null, athleteCoverage: 'unknown' },
       record: record(row, fields[key]) }
   }
-  return { viewVersion: 'external-recovery-timing-1', connected, connectionSourceStatus: sources.connection.status,
+  return { viewVersion: 'external-recovery-timing-2', connected, connectionSourceStatus: sources.connection.status,
     syncEligible: eligible, syncEligibilityMeaning: 'existing_24h_batch_source_rule_not_measurement_freshness',
     lastSyncAt, syncStatus, syncSourceStatus: sources.sync.status,
     batch: { lastSuccessfulBatchAt: lastSyncAt, timeStatus: batchTimeStatus,
