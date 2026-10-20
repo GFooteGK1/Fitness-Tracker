@@ -12,6 +12,13 @@ merged normally as de0b171. Its production deployment/runtime proof is tracked
 separately. Other owners retain legacy mapper behavior; external recovery stays
 conservative. Original SQL/scope artifacts are in `docs/proposals/recovery-timing-owner/`.
 
+The local retained-timing read slice exposes those nullable provider facts through
+the same owner-authorized external context reader, with bounded provenance and
+partial/invalid/future diagnostics. Legacy measurement labels, current-use and
+local-day claims remain conservative; provider links stay explicitly unjoined.
+See `docs/plans/retained-provider-timing-context-read-2026-10-20.md`. Publication
+and live-runtime qualification are separate from local verification.
+
 ADR-0041 adds the separately approved owner-only cron GET: the existing bearer
 secret is checked before privileged work; only an existing fixed-owner connection
 can reach incremental sync. GET is no-store, POST behavior and daily10:30UTC

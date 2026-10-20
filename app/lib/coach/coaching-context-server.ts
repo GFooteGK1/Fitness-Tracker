@@ -82,6 +82,7 @@ async function readRows(db: SupabaseClient, owner: string, table: string, column
 }
 
 const memoryFields = 'id,user_id,memory_key,kind,content,version,status,confirmed_at,provenance,effective_from,effective_until,review_after,last_reviewed_at'
+const providerTimingFields = 'provider_created_at,provider_updated_at,provider_interval_start,provider_interval_end,provider_timezone_offset,provider_score_state,timing_ingested_at,timing_mapping_version,timing_provenance'
 const planFields = 'id,user_id,program_id,version,status,plan_mode,window_start,window_end,reference_version,policy_version,intent,input_snapshot,accepted_at,created_at'
 interface SavedProgramming {
   program: ContextRow; plan: ContextRow; sessions: ContextRow[]; savedRationale: ContextRow | null; rationaleSourceStatus: ContextSource['status']
@@ -104,11 +105,11 @@ async function readSources(db: SupabaseClient, owner: string, asOf: string, loca
       query => query.eq('status', 'active').order('start_date', { ascending: false }), 2).then(value => ['program', value] as const),
     readRows(db, owner, 'whoop_tokens', 'user_id,id').then(value => ['connection', value] as const),
     readRows(db, owner, 'whoop_sync_status', 'user_id,status,last_sync_at,next_sync_at,records_synced,error_message,created_at,updated_at').then(value => ['sync', value] as const),
-    readRows(db, owner, 'whoop_recovery', 'id,user_id,cycle_id,date,recovery_score,resting_heart_rate,hrv_rmssd_milli,created_at',
+    readRows(db, owner, 'whoop_recovery', `id,user_id,cycle_id,date,recovery_score,resting_heart_rate,hrv_rmssd_milli,created_at,${providerTimingFields},provider_sleep_id`,
       query => query.order('date', { ascending: false }).order('id', { ascending: false }), 1, true).then(value => ['recovery', value] as const),
-    readRows(db, owner, 'whoop_sleep', 'id,user_id,sleep_id,date,sleep_performance_percentage,sleep_efficiency_percentage,total_sleep_duration_ms,is_nap,created_at',
+    readRows(db, owner, 'whoop_sleep', `id,user_id,sleep_id,date,sleep_performance_percentage,sleep_efficiency_percentage,total_sleep_duration_ms,is_nap,created_at,${providerTimingFields},provider_cycle_id`,
       query => query.eq('is_nap', false).order('date', { ascending: false }).order('id', { ascending: false }), 1, true).then(value => ['sleep', value] as const),
-    readRows(db, owner, 'whoop_cycles', 'id,user_id,cycle_id,date,strain,created_at',
+    readRows(db, owner, 'whoop_cycles', `id,user_id,cycle_id,date,strain,created_at,${providerTimingFields}`,
       query => query.order('date', { ascending: false }).order('id', { ascending: false }), 1, true).then(value => ['strain', value] as const),
   ])
   return Object.fromEntries(entries) as Record<string, ContextSource>
@@ -252,6 +253,7 @@ export async function readCoachingContext(client: SupabaseClient, params: URLSea
   if (proposals.items.length) gaps.push('proposal_acceptance_eligibility_not_evaluated')
   const recovery = projectContextRecovery(sources, readStartedAt, localDate)
   for (const [key, metric] of Object.entries(recovery.metrics)) if (!metric.usableAsCurrent) gaps.push(`whoop_${key}_${metric.status}`)
+  for (const [key, metric] of Object.entries(recovery.metrics)) if (['partial', 'invalid', 'future'].includes(metric.providerTiming.status)) gaps.push(`whoop_${key}_provider_timing_${metric.providerTiming.status}`)
   if (recovery.localDayAlignment === 'unverified') gaps.push('whoop_local_day_alignment_unverified')
 
   const plan = programming ? projectCoachingPlan(programming.plan) : null
