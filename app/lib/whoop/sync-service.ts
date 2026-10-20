@@ -4,6 +4,7 @@ import * as whoopClient from './api-client';
 import * as tokenService from './token-service';
 import { validateWhoopIdentifier, assertValidWhoopIdentifier } from './validation';
 import { upsertWhoopTiming } from './timing-upsert';
+import { isWhoopTimingOwner } from './timing-owner';
 import type {
   WhoopRecovery,
   WhoopSleep,
@@ -49,6 +50,7 @@ export interface SyncResult {
 export interface SyncOptions {
   fullSync?: boolean; // If true, fetch 7 days; otherwise incremental
   retryCount?: number; // Current retry attempt (for internal use)
+  ownerCron?: boolean; // Only the authenticated fixed-owner GET supplies this context.
 }
 
 const MAX_RETRIES = 3;
@@ -100,6 +102,18 @@ export async function incrementalSync(userId: string, client?: SupabaseClient): 
   return await syncDateRange(userId, startDate, endDate, supabase);
 }
 
+/** Explicit system path; normal POST/session callers retain their token behavior. */
+export async function incrementalOwnerCronSync(userId: string, client: SupabaseClient): Promise<SyncResult> {
+  if (!client || !isWhoopTimingOwner(userId)) {
+    throw new Error('Invalid owner WHOOP cron context');
+  }
+  const status = await getSyncStatus(userId, client);
+  const endDate = new Date();
+  const startDate = status.lastSyncAt ? new Date(status.lastSyncAt) : new Date(endDate);
+  if (!status.lastSyncAt) startDate.setDate(startDate.getDate() - 7);
+  return syncDateRange(userId, startDate, endDate, client, { ownerCron: true });
+}
+
 /**
  * Sync WHOOP data for a specific date range
  */
@@ -120,7 +134,9 @@ async function syncDateRange(
     }, supabase);
 
     // Get valid access token (auto-refreshes if needed)
-    const accessToken = await tokenService.getValidAccessToken(userId);
+    const accessToken = options.ownerCron
+      ? await tokenService.getOwnerCronAccessToken(userId, supabase)
+      : await tokenService.getValidAccessToken(userId);
 
     if (!accessToken) {
       throw new Error('No valid WHOOP access token found');

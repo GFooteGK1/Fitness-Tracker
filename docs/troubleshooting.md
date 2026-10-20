@@ -1,5 +1,22 @@
 # Troubleshooting
 
+## Owner WHOOP cron returns HTTP 200 but reports no valid tokens
+
+Observed October 20, 2026: the authenticated owner GET selected the correct
+connection, but token lookup created a cookie-scoped client without a user session.
+The token table's RLS requires the user identity. A separate ordering defect also
+rejected expired access before reaching refresh. The runtime error did not retain
+which validation branch failed; expiry alone did not establish a revoked grant.
+
+The bounded owner-cron path carries the existing trusted client into token work,
+refreshes expired-but-refreshable access, and awaits guarded encrypted persistence.
+Lookup/decryption errors never delete credentials in this path. Normal POST/session
+callers retain their existing behavior. See the [scope and verification limits](verification/llm-coaching-context/owner-cron-token-context-2026-10-20.md).
+Hermetic tests are code evidence; successful future ordinary ingestion is a separate
+production acceptance gate. Never use an HTTP 200 wrapper as proof of ingestion,
+reconnect reflexively, or trigger a manual sync to verify this release.
+
+
 ## Local Podman reports a missing network after VM startup
 
 Verified September 26, 2026 UTC / September 25 Chicago on WSL2.6.3.0 and the

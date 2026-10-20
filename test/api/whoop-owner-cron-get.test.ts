@@ -5,10 +5,10 @@ const owner = '11111111-1111-4111-8111-111111111111'
 const otherA = '22222222-2222-4222-8222-222222222222'
 const otherB = '33333333-3333-4333-8333-333333333333'
 vi.mock('@/app/lib/auth/supabase-server', () => ({ createServiceRoleClient: vi.fn() }))
-vi.mock('@/app/lib/whoop/sync-service', () => ({ incrementalSync: vi.fn() }))
+vi.mock('@/app/lib/whoop/sync-service', () => ({ incrementalSync: vi.fn(), incrementalOwnerCronSync: vi.fn() }))
 vi.mock('@/app/lib/whoop/timing-owner', () => ({ isWhoopTimingOwner: (id: unknown) => id === '11111111-1111-4111-8111-111111111111' }))
 import { createServiceRoleClient } from '@/app/lib/auth/supabase-server'
-import { incrementalSync } from '@/app/lib/whoop/sync-service'
+import { incrementalSync, incrementalOwnerCronSync } from '@/app/lib/whoop/sync-service'
 import { GET, POST } from '@/app/api/whoop/sync-all/route'
 import { POST as baselinePOST } from '../fixtures/whoop-sync-all-pre-get'
 
@@ -17,7 +17,7 @@ function setup(rows: unknown = [{ user_id: otherA }, { user_id: owner }, { user_
   const from = vi.fn(() => ({ select }))
   const client = { from } as unknown as ReturnType<typeof createServiceRoleClient>
   vi.mocked(createServiceRoleClient).mockReturnValue(client)
-  vi.mocked(incrementalSync).mockResolvedValue({ success:true, recordsSynced:{recovery:1,sleep:1,cycles:1,workouts:1} })
+  vi.mocked(incrementalOwnerCronSync).mockResolvedValue({ success:true, recordsSynced:{recovery:1,sleep:1,cycles:1,workouts:1} })
   return { client, from, select }
 }
 function request(method: 'GET' | 'POST', authorization: string | undefined = 'Bearer synthetic-secret', suffix = '') {
@@ -44,20 +44,20 @@ describe('authenticated fixed-owner GET', () => {
     expect(response.status).toBe(401)
     expect(response.headers.get('cache-control')).toBe('no-store')
     expect(createServiceRoleClient).not.toHaveBeenCalled()
-    expect(from).not.toHaveBeenCalled(); expect(select).not.toHaveBeenCalled(); expect(incrementalSync).not.toHaveBeenCalled()
+    expect(from).not.toHaveBeenCalled(); expect(select).not.toHaveBeenCalled(); expect(incrementalOwnerCronSync).not.toHaveBeenCalled()
   })
   it.each(['',undefined])('missing configured secret fails closed before lookup: %s', async secret => {
     const {from,select}=setup(); vi.stubEnv('CRON_SECRET',secret)
     const response=await GET(request('GET','Bearer undefined'))
     expect(response.status).toBe(500)
-    expect(createServiceRoleClient).not.toHaveBeenCalled();expect(from).not.toHaveBeenCalled();expect(select).not.toHaveBeenCalled();expect(incrementalSync).not.toHaveBeenCalled()
+    expect(createServiceRoleClient).not.toHaveBeenCalled();expect(from).not.toHaveBeenCalled();expect(select).not.toHaveBeenCalled();expect(incrementalOwnerCronSync).not.toHaveBeenCalled()
   })
   it.each([[owner,otherA,otherB],[otherA,owner,otherB],[otherA,otherB,owner],[owner,owner,otherA]].map(ids=>[ids]))('selects only the fixed connected owner: %j', async ids => {
     const {client,from,select}=setup(ids.map(user_id=>({user_id})))
     const response=await GET(request('GET')); const body=await response.json()
     expect(response.status).toBe(200);expect(body.results).toEqual({total:1,successful:1,failed:0})
     expect(from).toHaveBeenCalledExactlyOnceWith('whoop_tokens');expect(select).toHaveBeenCalledExactlyOnceWith('user_id')
-    expect(incrementalSync).toHaveBeenCalledExactlyOnceWith(owner,client)
+    expect(incrementalOwnerCronSync).toHaveBeenCalledExactlyOnceWith(owner,client)
     expect(JSON.stringify(body)).not.toContain(otherA);expect(JSON.stringify(body)).not.toContain(otherB)
     expect(response.headers.get('cache-control')).toBe('no-store')
   })
@@ -65,33 +65,33 @@ describe('authenticated fixed-owner GET', () => {
     setup(rows)
     const response=await GET(request('GET'));expect(response.status).toBe(200)
     expect(await response.json()).toEqual({success:true,message:'No users to sync',usersSynced:0})
-    expect(incrementalSync).not.toHaveBeenCalled()
+    expect(incrementalOwnerCronSync).not.toHaveBeenCalled()
   })
   it('ignores caller owner selectors and activity flags', async () => {
     const {client}=setup([{user_id:otherA,active:true},{user_id:owner,active:false}])
     vi.stubEnv('WHOOP_OWNER_ID',otherA)
     const req=request('GET','Bearer synthetic-secret','?user_id='+otherA+'&ownerOnly=false&fullSync=true')
     req.headers.set('x-owner-id',otherA)
-    await GET(req);expect(incrementalSync).toHaveBeenCalledExactlyOnceWith(owner,client)
+    await GET(req);expect(incrementalOwnerCronSync).toHaveBeenCalledExactlyOnceWith(owner,client)
   })
   it('lookup error cannot sync', async () => {
     setup([{user_id:owner}],{message:'synthetic lookup failure'})
-    const response=await GET(request('GET'));expect(response.status).toBe(500);expect(incrementalSync).not.toHaveBeenCalled()
+    const response=await GET(request('GET'));expect(response.status).toBe(500);expect(incrementalOwnerCronSync).not.toHaveBeenCalled()
   })
   it.each(['result','throw'])('reports selected-owner failure without extra calls: %s', async kind => {
     const {client}=setup()
-    if(kind==='throw')vi.mocked(incrementalSync).mockRejectedValue(new Error('synthetic sync failure'))
-    else vi.mocked(incrementalSync).mockResolvedValue({success:false,recordsSynced:{recovery:0,sleep:0,cycles:0,workouts:0},errors:['synthetic sync failure']})
+    if(kind==='throw')vi.mocked(incrementalOwnerCronSync).mockRejectedValue(new Error('synthetic sync failure'))
+    else vi.mocked(incrementalOwnerCronSync).mockResolvedValue({success:false,recordsSynced:{recovery:0,sleep:0,cycles:0,workouts:0},errors:['synthetic sync failure']})
     const body=await (await GET(request('GET'))).json()
     expect(body.results.total).toBe(1);expect(body.results.successful).toBe(0);expect(body.results.failed).toBe(1)
-    expect(body.results.errors).toHaveLength(1);expect(incrementalSync).toHaveBeenCalledExactlyOnceWith(owner,client)
+    expect(body.results.errors).toHaveLength(1);expect(incrementalOwnerCronSync).toHaveBeenCalledExactlyOnceWith(owner,client)
     expect(JSON.stringify(body)).not.toContain(otherA)
   })
   it('GET remains authenticated and owner-only outside production',async()=>{
     vi.stubEnv('NODE_ENV','development');const {client}=setup()
     const req=request('GET');req.headers.delete('authorization')
     expect((await GET(req)).status).toBe(401);expect(createServiceRoleClient).not.toHaveBeenCalled()
-    await GET(request('GET'));expect(incrementalSync).toHaveBeenCalledExactlyOnceWith(owner,client)
+    await GET(request('GET'));expect(incrementalOwnerCronSync).toHaveBeenCalledExactlyOnceWith(owner,client)
   })
 })
 
@@ -122,6 +122,7 @@ describe('POST exact baseline characterization',()=>{
     }
     const baseline=await run(baselinePOST),candidate=await run(POST)
     expect(candidate).toEqual(baseline)
+    expect(incrementalOwnerCronSync).not.toHaveBeenCalled()
     if(value.name==='all connected')expect(candidate.syncIds).toEqual([otherA,owner,otherB])
   })
 })
