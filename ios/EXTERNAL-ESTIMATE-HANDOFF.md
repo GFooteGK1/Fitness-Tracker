@@ -63,6 +63,14 @@ reads or rewrites existing camera-pairing credentials.
 
 ## Acceptance and exact remaining owner test
 
+Receipt transport, completion and persisted validation share a 128KiB bound with
+the prepared server SQL/HTTP contract. Estimates remain bounded to32KiB and
+requests to64KiB. Item text occurs twice in receipts; maximum text with six-byte
+JSON escaping plus the model label uses92,928bytes, numeric values under1,536bytes
+and fixed structure under16KiB. A35KiB escaped receipt must complete/read back,
+and a receipt above128KiB must preserve the pending identity. The existing1MiB
+ledger capacity remains a separate fail-closed limit.
+
 Synthetic JPEG/core tests and unsigned compilation can establish file construction,
 hash/identity binding, durable state and fail-closed transitions. They cannot
 establish what the ChatGPT app's actual Shortcut action accepts, output framing,

@@ -96,6 +96,39 @@ final class ExternalEstimateHandoffTests: XCTestCase {
         }
         XCTAssertEqual(state.pending?.capture.requestId, entry.capture.requestId)
     }
+    func testEscapedTwentyItemReceiptCompletesAndSurvivesRelaunch() throws {
+        let item: [String: Any] = ["food": String(repeating: "\\", count: 256), "portion": String(repeating: "\\", count: 128),
+            "protein": 0, "carbs": 0, "fat": 0, "calories": 0]
+        let estimate: [String: Any] = ["items": Array(repeating: item, count: 20),
+            "totals": ["protein": 0, "carbs": 0, "fat": 0, "calories": 0],
+            "estimatedAt": EstimateCaptureEnvelope.time(date.addingTimeInterval(1)), "model": String(repeating: "\\", count: 128)]
+        let raw = String(data: try JSONSerialization.data(withJSONObject: estimate), encoding: .utf8)!
+        XCTAssertLessThan(raw.utf8.count, 32 * 1024)
+        var state = ledger(); let entry = try state.prepare(asset: asset(), bytes: image())
+        try state.handOff(entry.capture.requestId, bytes: image()); try state.submit(entry.capture.requestId, estimateJSON: raw)
+        // The receiver returns items twice: original estimate plus normalized record.
+        let response = try receipt(entry.capture, changed: ["originalEstimate": estimate, "record": ["items": Array(repeating: item, count: 20)]])
+        XCTAssertGreaterThan(response.utf8.count, 32 * 1024)
+        XCTAssertLessThan(response.utf8.count, EstimateHandoffLimits.receiptBytes)
+        try state.complete(entry.capture.requestId, receiptJSON: response)
+        let store = EstimateHandoffStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        try store.save(state)
+        let reloaded = try XCTUnwrap(store.load())
+        XCTAssertNil(reloaded.pending); XCTAssertEqual(try reloaded.entry(entry.capture.requestId).receiptJSON, response)
+    }
+    func testReceiptLimitAcceptsBoundaryAndRejectsOneExtraByteWithoutChangingPendingState() throws {
+        var state = ledger(); let entry = try state.prepare(asset: asset(), bytes: image())
+        try state.handOff(entry.capture.requestId, bytes: image()); try state.submit(entry.capture.requestId, estimateJSON: estimateJSON())
+        let base = try receipt(entry.capture, changed: ["padding": ""])
+        let response = try receipt(entry.capture, changed: ["padding": String(repeating: "x", count: EstimateHandoffLimits.receiptBytes - base.utf8.count)])
+        XCTAssertEqual(response.utf8.count, EstimateHandoffLimits.receiptBytes)
+        let pending = state
+        XCTAssertThrowsError(try state.complete(entry.capture.requestId, receiptJSON: response + " "))
+        XCTAssertEqual(state, pending)
+        try state.complete(entry.capture.requestId, receiptJSON: response)
+        let store = EstimateHandoffStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        try store.save(state); XCTAssertEqual(try store.load(), state)
+    }
     func testCorruptAndFutureStateCannotBeOverwritten() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let store = EstimateHandoffStore(directory: directory); try store.save(ledger())

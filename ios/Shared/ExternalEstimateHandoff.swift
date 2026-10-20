@@ -1,6 +1,12 @@
 import Foundation
 import CryptoKit
 
+/// Contract shared with the inactive receiver: receipt JSON is at most 128 KiB.
+/// Items appear twice in a receipt; escaped output can exceed the input size.
+public enum EstimateHandoffLimits {
+    public static let receiptBytes = 128 * 1024
+}
+
 public enum EstimateHandoffError: Error, LocalizedError {
     case invalid, disabled, full, changedImage, awaitingEstimate
     public var errorDescription: String? {
@@ -52,7 +58,7 @@ public struct EstimateHandoffLedger: Codable, Equatable, Sendable {
         Set(entries.values.map { $0.capture.requestId }).count == entries.count &&
         entries.allSatisfy { key, value in
             key == value.localIdentifier && !key.isEmpty && key.utf8.count <= 512 && value.capture.isValid &&
-            (value.estimateJSON?.utf8.count ?? 0) <= 32 * 1024 && (value.receiptJSON?.utf8.count ?? 0) <= 32 * 1024 &&
+            (value.estimateJSON?.utf8.count ?? 0) <= 32 * 1024 && (value.receiptJSON?.utf8.count ?? 0) <= EstimateHandoffLimits.receiptBytes &&
             ((value.phase == .prepared || value.phase == .imageHandedOff) ? value.estimateJSON == nil && value.receiptJSON == nil : value.estimateJSON != nil) &&
             (value.estimateJSON == nil || (try? ExternalFoodEstimate.parse(value.estimateJSON!)) != nil) &&
             (value.phase != .importSubmitted || value.receiptJSON == nil) && (value.phase != .complete || Self.validReceipt(value.receiptJSON, capture: value.capture, estimateJSON: value.estimateJSON))
@@ -100,7 +106,7 @@ public struct EstimateHandoffLedger: Codable, Equatable, Sendable {
     }
     public mutating func complete(_ id: String, receiptJSON: String) throws {
         var item = try entry(id)
-        guard item.phase == .importSubmitted, receiptJSON.utf8.count <= 32 * 1024,
+        guard item.phase == .importSubmitted, receiptJSON.utf8.count <= EstimateHandoffLimits.receiptBytes,
               Self.validReceipt(receiptJSON, capture: item.capture, estimateJSON: item.estimateJSON) else { throw EstimateHandoffError.invalid }
         item.receiptJSON = receiptJSON; item.phase = .complete; entries[item.localIdentifier] = item
     }

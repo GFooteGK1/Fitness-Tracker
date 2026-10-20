@@ -193,7 +193,7 @@ actor ExternalEstimateRuntime {
         let (stream, response) = try await session.bytes(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw EstimateHandoffError.invalid }
         var data = Data()
-        for try await byte in stream { guard data.count < 32 * 1024 else { throw EstimateHandoffError.invalid }; data.append(byte) }
+        for try await byte in stream { guard data.count < EstimateHandoffLimits.receiptBytes else { throw EstimateHandoffError.invalid }; data.append(byte) }
         guard let text = String(data: data, encoding: .utf8) else { throw EstimateHandoffError.invalid }; return text
     }
 }
