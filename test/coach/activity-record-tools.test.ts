@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import type { PGlite } from '@electric-sql/pglite'
 import { mcpActivityFixture, mcpOwnerClient } from '../database/mcp-activity-fixture'
@@ -26,7 +26,7 @@ async function actor(id = owner) { await sql.exec('SET ROLE authenticated'); awa
 function tool(name: ActivityToolName, id = owner) { const client = mcpOwnerClient(sql, id); return { ...client, call: createActivityRecordTool(async () => ({ principal: principal(id), db: client.db }), policy, name).call } }
 async function call(name: ActivityToolName, input: unknown, id = owner): Promise<any> { return (await tool(name, id).call(input)).structuredContent.activity }
 const count = async (table: string) => Number((await sql.query<any>(`SELECT count(*) count FROM ${table}`)).rows[0].count)
-beforeAll(async () => { sql = await mcpActivityFixture(); await sql.query('INSERT INTO auth.users(id) VALUES($1),($2)', [owner, other]); await actor() }, 30000)
+beforeAll(async () => { vi.stubEnv('SOCIUS_MCP_ACTIVITY_CORRECTIONS_V2_ENABLED', 'true'); sql = await mcpActivityFixture(); await sql.query('INSERT INTO auth.users(id) VALUES($1),($2)', [owner, other]); await actor() }, 30000)
 afterAll(async () => { await sql?.close() })
 
 describe('typed MCP persistence through installed owner RPCs and real PostgreSQL', () => {

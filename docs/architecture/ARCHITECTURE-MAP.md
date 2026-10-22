@@ -4,10 +4,14 @@ ADR-0044 adds typed external workout/meal create and amendment adapters over the
 installed capture RPCs, immutable revisions and receipts. ChatGPT remains the
 operating interface; Socius supplies deterministic persistence and retrieval.
 Four writes are default-off behind `SOCIUS_MCP_WRITES_ENABLED`; two owner record
-and recovery getters require no UI. No schema, grants, OAuth permissions, photo
-bridge or paid model changes. External factual projection retains nested sets,
-VBT and readiness without changing numeric-policy evidence. Publication, runtime
-activation and real-data canaries require separate authorization.
+and recovery getters require no UI. A prepared in-place correction-engine migration
+preserves unchanged score/PR projections; workout corrections additionally require
+`SOCIUS_MCP_ACTIVITY_CORRECTIONS_V2_ENABLED`. Revision-bound set velocity patches
+preserve surrounding JSON and exact-leaf provenance. No grants, OAuth permissions,
+photo bridge or paid model changes. External factual projection retains nested sets,
+boolean VBT markers and readiness without changing numeric-policy evidence. Draft
+publication is owner-approved; migration application, merge, deployment, activation
+and real-data canaries require separate authorization.
 
 ADR-0043 prepares an inactive external nutrition estimate receiver at
 `/api/capture/external-estimates`. The existing native capture app hands an

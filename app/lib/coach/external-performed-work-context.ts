@@ -40,8 +40,9 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
     return Object.fromEntries(allowed.filter(key => {
       if (!has(value, key) || skip.includes(key)) return false
       const leaf = value[key]
+      if (key === 'vbt' && typeof leaf !== 'boolean') { omit(id, `${path}.${key}`, 'unsupported_recorded_scalar_shape'); return false }
       if (leaf === null || nested.includes(key) || key === 'sets' && Array.isArray(leaf)) return true
-      const valid = strings.includes(key) ? typeof leaf === 'string' : key === 'is_pr' ? typeof leaf === 'boolean'
+      const valid = strings.includes(key) ? typeof leaf === 'string' : ['is_pr', 'vbt'].includes(key) ? typeof leaf === 'boolean'
         : typeof leaf === 'number' && Number.isFinite(leaf)
       if (!valid) omit(id, `${path}.${key}`, 'unsupported_recorded_scalar_shape')
       return valid
@@ -53,7 +54,7 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
     return value.map((set, index) => {
       const setPath = `${path}[${index}]`
       if (!object(set)) { omit(id, setPath, 'invalid_recorded_set_detail'); return null }
-      const projected = fields(set, ['id', 'reps', 'sets', 'legs', 'reps_per_leg', 'load', 'weight', 'rpe', 'rir', 'velocity', 'notes'], setPath, id)
+      const projected = fields(set, ['id', 'reps', 'sets', 'legs', 'reps_per_leg', 'load', 'weight', 'rpe', 'rir', 'velocity', 'vbt', 'notes'], setPath, id)
       if (!projected) return null
       if (has(projected, 'load')) projected.load = fields(projected.load, ['value', 'unit'], `${setPath}.load`, id)
       if (has(projected, 'sets')) {

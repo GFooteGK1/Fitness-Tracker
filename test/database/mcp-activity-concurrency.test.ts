@@ -69,6 +69,7 @@ async function observeLock<T>(pending: Promise<T>, marker: string): Promise<T> {
 
 describe.skipIf(!enabled)('MCP adapters with independent native PostgreSQL backends', () => {
   beforeAll(async () => {
+    vi.stubEnv('SOCIUS_MCP_ACTIVITY_CORRECTIONS_V2_ENABLED', 'true')
     await execute(`CREATE DATABASE ${database};`, 'postgres')
     await mcpActivityFixture()
     const bootstrap = pieces.join('\n').replace('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;',
@@ -83,7 +84,7 @@ describe.skipIf(!enabled)('MCP adapters with independent native PostgreSQL backe
   })
   it.each(['meal', 'workout'] as const)('deduplicates concurrent %s creates and permits only one competing correction', async kind => {
     const record = kind === 'meal' ? { meal_timestamp: '2026-10-20T12:00:00Z', items: [{ food: 'Synthetic', portion: '1 g', protein: 1, carbs: 2, fat: 3, calories: 39 }] }
-      : { workout_date: '2026-10-20', input_text: 'Synthetic native session', blocks: [{ block_type: 'STRENGTH', segments: [{ rounds: 1, events: [{ movement_name: 'Synthetic deadlift', performed: { reps: 3, load: { value: 50, unit: 'kg' } } }] }] }] }
+      : { workout_date: '2026-10-20', input_text: 'Synthetic native session', blocks: [{ block_type: 'STRENGTH', segments: [{ rounds: 1, events: [{ movement_name: 'Synthetic deadlift', performed: { reps: 3, load: { value: 50, unit: 'kg' }, set_details: Array.from({ length: 8 }, () => ({ id: randomUUID(), reps: 3, load: { value: 50, unit: 'kg' } })) } }] }] }] }
     const keys = kind === 'meal' ? ['meal_timestamp', 'items', 'quantities', 'macros'] : ['workout_date', 'input_text', 'blocks', 'quantities']
     const input = { requestId: randomUUID(), record, provenance: provenance(keys) }
     const createBarrier = barrier()
@@ -92,8 +93,10 @@ describe.skipIf(!enabled)('MCP adapters with independent native PostgreSQL backe
     const entityId = created[0].receipt.entityId
     const count = JSON.parse(await execute(`SELECT json_build_object('count',count(*)) FROM ${kind === 'meal' ? 'meals' : 'workouts'} WHERE id=${literal(entityId)};`))
     expect(count.count).toBe(1)
-    const changes = kind === 'meal' ? { meal_timing: 'SNACK' } : { notes: 'synthetic corrected note' }
-    const correction = { entityId, expectedRevision: 1, changes, provenance: provenance(Object.keys(changes)) }
+    const changes = kind === 'meal' ? { meal_timing: 'SNACK' } : { setMeasurements: [{ blockIndex: 0, segmentIndex: 0, eventIndex: 0, collection: 'set_details', setIndex: 3,
+      velocity: { value: 0.47, unit: 'm/s', metric: 'mean_concentric', device: null, measuredAt: null },
+      provenance: Object.fromEntries(['value', 'unit', 'metric', 'device', 'measuredAt'].map(key => [key, field])) }] }
+    const correction = { entityId, expectedRevision: 1, changes, provenance: kind === 'meal' ? provenance(Object.keys(changes)) : { fields: {} } }
     const amendBarrier = barrier()
     const results = await observeLock(Promise.allSettled([tool(`amend_${kind}`, owner, amendBarrier).call({ ...correction, requestId: randomUUID() }), tool(`amend_${kind}`, owner, amendBarrier).call({ ...correction, requestId: randomUUID() })]), amendBarrier.marker)
     expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1)

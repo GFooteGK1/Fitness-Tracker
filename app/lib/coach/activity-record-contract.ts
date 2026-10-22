@@ -25,6 +25,9 @@ const provenance = object({ occurrence: field, fields: object(Object.fromEntries
 const load = object({ value: nullable(number(5000)), unit: enumeration('lb', 'kg') })
 const velocity = object({ value: nullable(number(10)), unit: enumeration('m/s'), metric: enumeration('mean_concentric', 'peak_concentric'),
   device: nullable(text(120)), measuredAt: nullable(timestamp) })
+const setMeasurement = object({ blockIndex: integer(29), segmentIndex: integer(999), eventIndex: integer(999),
+  collection: enumeration('sets', 'set_details'), setIndex: integer(999), velocity,
+  provenance: object(Object.fromEntries(['value', 'unit', 'metric', 'device', 'measuredAt'].map(key => [key, field]))) })
 const set = object({ id: uuid, reps: nullable(integer(10000)), load: nullable(load), rpe: nullable(number(10, 1)), rir: nullable(number(10)),
   velocity: nullable(velocity), notes: nullable(text(2000)) }, ['id'])
 const amounts = object({ reps: nullable(integer(10000)), sets: nullable(integer(1000)), load: nullable(load), time_s: nullable(number(86400)),
@@ -43,7 +46,7 @@ const mealFields = { meal_timestamp: timestamp, meal_timing: nullable(enumeratio
 const identity = { entityId: uuid, expectedRevision: integer(2147483647, 1), requestId: uuid }
 export const activityToolSchemas = {
   create_workout: object({ requestId: uuid, record: object(workoutFields, ['workout_date', 'input_text', 'blocks']), provenance }),
-  amend_workout: object({ ...identity, changes: object({ ...workoutFields, readiness }, []), provenance }),
+  amend_workout: object({ ...identity, changes: object({ ...workoutFields, readiness, setMeasurements: list(setMeasurement, 100) }, []), provenance }),
   create_meal: object({ requestId: uuid, record: object(mealFields, ['meal_timestamp', 'items']), provenance }),
   amend_meal: object({ ...identity, changes: object(mealFields, []), provenance }),
   get_activity_record: object({ kind: enumeration('workout', 'meal'), entityId: uuid }),
@@ -91,6 +94,13 @@ export function validateActivityToolInput(name: ActivityToolName, input: unknown
     }
   }
   validateTimes(record)
+  if (record.setMeasurements) {
+    if (record.blocks) throw new CoachingContextError(400, 'Set measurements cannot accompany replacement blocks')
+    if (value.provenance.occurrence) throw new CoachingContextError(400, 'Set measurements cannot change occurrence provenance')
+    const paths = record.setMeasurements.map((patch: Record<string, unknown>) =>
+      [patch.blockIndex, patch.segmentIndex, patch.eventIndex, patch.collection, patch.setIndex].join(':'))
+    if (new Set(paths).size !== paths.length) throw new CoachingContextError(400, 'Duplicate set measurement path')
+  }
   if (record.items) for (const macro of ['protein', 'carbs', 'fat', 'calories']) {
     const total = record.items.reduce((sum: number, item: Record<string, number>) => sum + item[macro], 0)
     if (total > (macro === 'calories' ? 99999 : 9999)) throw new CoachingContextError(400, 'Meal total exceeds storage range')

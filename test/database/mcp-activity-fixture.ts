@@ -4,9 +4,10 @@ import { recommendationFixture } from './recommendation-fixture'
 import { sqlFile } from './fixture'
 
 /** Real PostgreSQL SQL/RLS behind the unmodified adapter; no success-shaped RPC mocks. */
-export async function mcpActivityFixture() {
+export async function mcpActivityFixture(corrections = true) {
   const db = await recommendationFixture()
   await db.exec(sqlFile('supabase/migrations/20260926120000_workout_save_recovery.sql'))
+  if (corrections) await db.exec(sqlFile('supabase/migrations/20261022131056_activity_measurement_corrections.sql'))
   return db
 }
 export function mcpOwnerClient(sql: PGlite, owner: string) {
