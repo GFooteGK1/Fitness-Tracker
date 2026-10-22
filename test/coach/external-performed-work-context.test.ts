@@ -10,6 +10,22 @@ const event = (input: ReturnType<typeof segmentedSnapshot>) => block(input).segm
 function one() { const input = segmentedSnapshot(); input.workouts = [input.workouts[0]]; block(input).segments[0].events = [event(input)]; return input }
 
 describe('external-only segmented factual context', () => {
+  it('retains eight nested performed.sets and legacy movement sets without deriving a set count', () => {
+    const input = one(), sets = Array.from({ length: 8 }, (_, index) => ({ reps: index + 1, load: { value: 30 + index, unit: 'kg' } }))
+    event(input).performed = { sets }
+    const result = build(input), record = result.records[0] as Obj
+    expect(record.recordedEvent.performed.sets).toEqual(sets)
+    expect(record.quantities.sets.kind).toBe('unknown')
+    block(input).movements = [{ name: 'Synthetic deadlift', sets }]; delete block(input).segments
+    const legacy = build(input)
+    expect(legacy.nestedSetContexts).toHaveLength(1)
+    expect(legacy.nestedSetContexts[0].recordedSets).toEqual(sets)
+    expect(legacy.nestedSetContexts[0].sourcePath).toBe('blocks[0].movements[0].sets')
+    input.workouts[0].capture_provenance = { schemaVersion: 1, fields: { blocks: { origin: 'copied_template', reviewState: 'unreviewed' } } }
+    const template = build(input)
+    expect(template.nestedSetContexts).toEqual([])
+    expect(template.coverage.omitted.some(item => item.reason === 'unreviewed_template_or_import')).toBe(true)
+  })
   it('projects all representative sources without altering shared numeric/compiler/planning evidence', () => {
     const input = segmentedSnapshot(), before = structuredClone(input)
     const shared = buildPerformedWorkEvidence(input), prompt = buildPerformedWorkContext(input)
