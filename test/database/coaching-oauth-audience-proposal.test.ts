@@ -5,6 +5,10 @@ import { resolve } from 'node:path'
 
 // This database is disposable in-memory qualification of a proposal. It never
 // connects to Supabase or installs a hosted hook/credential/grant.
+describe.each([
+  ['proposal', 'docs/plans/socius-mcp-audience-hook.sql.template'],
+  ['recovered historical migration', 'supabase/migrations/20261018220557_socius_pilot_context_audience.sql'],
+])('%s on disposable synthetic PostgreSQL only', (_name, path) => {
 const db = new PGlite(), client = '20000000-0000-4000-8000-000000000001'
 const resource = 'https://www.sociusfit.com/api/mcp'
 const original = (patch: Record<string, unknown> = {}) => ({
@@ -14,17 +18,19 @@ const original = (patch: Record<string, unknown> = {}) => ({
     user_metadata: { unrelated: 'synthetic' }, ...patch },
 })
 beforeAll(async () => {
-  const template = readFileSync(resolve(process.cwd(), 'docs/plans/socius-mcp-audience-hook.sql.template'), 'utf8')
-  expect(template.split('__SOCIUS_REGISTERED_CLIENT_UUID__')).toHaveLength(2)
-  await db.exec('create role anon; create role authenticated; create role supabase_auth_admin;')
-  await db.exec(template.replace('__SOCIUS_REGISTERED_CLIENT_UUID__', client))
+  const template = readFileSync(resolve(process.cwd(), path), 'utf8')
+  const binding = /#>>\s*'\{claims,client_id\}'\s*=\s*'([^']+)'/.exec(template)![1]
+  // Substitute only in disposable fixture memory; committed historical binding stays exact.
+  await db.exec(`create role anon; create role authenticated; create role service_role; create role supabase_auth_admin;
+    alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;`)
+  await db.exec(template.replace(binding, client))
 })
 afterAll(async () => { await db.close() })
 async function transform(event: unknown) {
   return (await db.query<{ event: ReturnType<typeof original> }>('select public.socius_mcp_audience_hook($1::jsonb) as event', [JSON.stringify(event)])).rows[0].event
 }
 
-describe('unapplied native pilot audience hook proposal', () => {
+describe('native pilot audience hook contract', () => {
   it('adds only the canonical resource audience for the exact client and email scope', async () => {
     const event = original(), result = await transform(event)
     expect(result).toEqual({ ...event, claims: { ...event.claims, aud: ['authenticated', resource] } })
@@ -38,7 +44,7 @@ describe('unapplied native pilot audience hook proposal', () => {
   it.each([
     { client_id: undefined }, { client_id: '20000000-0000-4000-8000-000000000002' },
     { scope: undefined }, { scope: 'openid email' }, { scope: 'profile' },
-    { aud: null },
+    { aud: null }, { aud: true }, { aud: 42 }, { aud: {} },
     { client_id: undefined, user_metadata: { client_id: client } },
   ])('leaves direct, other-client, broadened or malformed events unchanged: %j', async patch => {
     const event = JSON.parse(JSON.stringify(original(patch)))
@@ -52,11 +58,13 @@ describe('unapplied native pilot audience hook proposal', () => {
     const event = { ...original(), authentication_method: 'token_refresh' }
     expect(await transform(event)).toEqual({ ...event, claims: { ...event.claims, aud: ['authenticated', resource] } })
   })
-  it('allows only the existing Auth service role to execute the new pure function', async () => {
+  it('preserves the observed service_role grant and Auth service execution while rejecting app roles', async () => {
     const result = await db.query<{ role: string; allowed: boolean }>(
-      "select role, has_function_privilege(role, 'public.socius_mcp_audience_hook(jsonb)', 'execute') as allowed from (values ('anon'), ('authenticated'), ('supabase_auth_admin')) roles(role)")
+      "select role, has_function_privilege(role, 'public.socius_mcp_audience_hook(jsonb)', 'execute') as allowed from (values ('anon'), ('authenticated'), ('service_role'), ('supabase_auth_admin')) roles(role)")
     expect(result.rows).toEqual([
-      { role: 'anon', allowed: false }, { role: 'authenticated', allowed: false }, { role: 'supabase_auth_admin', allowed: true },
+      { role: 'anon', allowed: false }, { role: 'authenticated', allowed: false }, { role: 'service_role', allowed: true }, { role: 'supabase_auth_admin', allowed: true },
     ])
   })
+})
+
 })

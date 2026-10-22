@@ -14,3 +14,6 @@ docs/verification/programming-quality/c2r-week-context-review-1.md -text
 # Owner-approved nutrition canary operator inputs retain their exact fingerprints.
 docs/proposals/nutrition-photo-canary/*.sql text eol=lf
 docs/proposals/nutrition-photo-canary/migration-manifest.json -text
+# Recovered hosted history statements must retain their original UTF-8 bytes.
+supabase/migrations/20261018220557_socius_pilot_context_audience.sql text eol=lf
+supabase/migrations/20261019154246_owner_whoop_provider_timing_nullable.sql text eol=lf

@@ -1,0 +1,222 @@
+{
+  "projectRef": "auolnfwetmfcwhtvakzy",
+  "observedAt": "2026-10-22",
+  "source": "Read-only supabase_migrations.schema_migrations statements and list_migrations. Each restored version has one statement; raw recorded UTF-8 bytes preserved.",
+  "recovered": [
+    {
+      "version": "20261018220557",
+      "name": "socius_pilot_context_audience",
+      "path": "supabase/migrations/20261018220557_socius_pilot_context_audience.sql",
+      "recordedStatementCount": 1,
+      "bytes": 1375,
+      "md5": "c172ef1b57207ee69f131bf0e0e0f8c4",
+      "sha256": "48831734be7a2c59527801b7e203396eca8f2f0924d999ba441d70827c4325e3"
+    },
+    {
+      "version": "20261019154246",
+      "name": "owner_whoop_provider_timing_nullable",
+      "path": "supabase/migrations/20261019154246_owner_whoop_provider_timing_nullable.sql",
+      "recordedStatementCount": 1,
+      "bytes": 1642,
+      "md5": "f70e6fd443873f332fbd053deaeee15d",
+      "sha256": "7f366fd3edccd8e0e57e161433600c7fffd02e84d8fb35506f61b29306b1ae12"
+    }
+  ],
+  "applied": [
+    {
+      "version": "20260728134202",
+      "name": "personal_record_idempotency"
+    },
+    {
+      "version": "20260728143952",
+      "name": "nutrition_fast_logging"
+    },
+    {
+      "version": "20260728234500",
+      "name": "coach_complete_programming_v0_3"
+    },
+    {
+      "version": "20260729182500",
+      "name": "coach_execution_feedback"
+    },
+    {
+      "version": "20260730130953",
+      "name": "coach_workout_runner_v0_5"
+    },
+    {
+      "version": "20260730151344",
+      "name": "secure_legacy_database_objects"
+    },
+    {
+      "version": "20260901152000",
+      "name": "layered_adaptive_evidence"
+    },
+    {
+      "version": "20260901170000",
+      "name": "atomic_coach_session_completion"
+    },
+    {
+      "version": "20260901183000",
+      "name": "qwik_vbt_import"
+    },
+    {
+      "version": "20260901220000",
+      "name": "coach_trust_review"
+    },
+    {
+      "version": "20260903150000",
+      "name": "rolling_weekly_coach"
+    },
+    {
+      "version": "20260904023000",
+      "name": "fix_atomic_session_workout_link"
+    },
+    {
+      "version": "20260904120000",
+      "name": "logging_receipts"
+    },
+    {
+      "version": "20260915220000",
+      "name": "exercise_preferences"
+    },
+    {
+      "version": "20260918010000",
+      "name": "optional_session_feedback"
+    },
+    {
+      "version": "20260918011000",
+      "name": "session_capture_signals"
+    },
+    {
+      "version": "20260918020000",
+      "name": "capture_receipts"
+    },
+    {
+      "version": "20260918030000",
+      "name": "training_intent"
+    },
+    {
+      "version": "20260918040000",
+      "name": "targeted_review_sources"
+    },
+    {
+      "version": "20260918050000",
+      "name": "recommendations"
+    },
+    {
+      "version": "20260921010000",
+      "name": "coach_proposal_context_revision"
+    },
+    {
+      "version": "20260923010000",
+      "name": "coaching_write_pause"
+    },
+    {
+      "version": "20260926010000",
+      "name": "coach_setup_memory_bindings"
+    },
+    {
+      "version": "20260926120000",
+      "name": "workout_save_recovery"
+    },
+    {
+      "version": "20260928010000",
+      "name": "reviewed_session_set_reports"
+    },
+    {
+      "version": "20260928020000",
+      "name": "reviewed_session_completion"
+    },
+    {
+      "version": "20260928030000",
+      "name": "reviewed_proposal_registration"
+    },
+    {
+      "version": "20260928040000",
+      "name": "reviewed_execution_slots"
+    },
+    {
+      "version": "20260928050000",
+      "name": "reviewed_next_week_transition"
+    },
+    {
+      "version": "20260928060000",
+      "name": "reviewed_registration_recovery"
+    },
+    {
+      "version": "20260928070000",
+      "name": "reviewed_session_request_resolution"
+    },
+    {
+      "version": "20260928080000",
+      "name": "reviewed_proposal_resolution"
+    },
+    {
+      "version": "20260928090000",
+      "name": "reviewed_qualitative_recovery"
+    },
+    {
+      "version": "20260929010000",
+      "name": "reviewed_effort_rir"
+    },
+    {
+      "version": "20260930010000",
+      "name": "supervised_programming_review"
+    },
+    {
+      "version": "20260930020000",
+      "name": "supervised_programming_lifecycle"
+    },
+    {
+      "version": "20260930030000",
+      "name": "supervised_programming_workspace"
+    },
+    {
+      "version": "20260930040000",
+      "name": "supervised_resource_scope"
+    },
+    {
+      "version": "20261003134727",
+      "name": "supervised_request_resolution"
+    },
+    {
+      "version": "20261003150403",
+      "name": "supervised_issue_closure_preflight"
+    },
+    {
+      "version": "20261005120000",
+      "name": "first_reviewed_designation"
+    },
+    {
+      "version": "20261005130000",
+      "name": "first_reviewed_candidates"
+    },
+    {
+      "version": "20261005155602",
+      "name": "first_reviewed_acceptance"
+    },
+    {
+      "version": "20261005172408",
+      "name": "first_reviewed_workspace"
+    },
+    {
+      "version": "20261005192643",
+      "name": "first_reviewed_setup_requests"
+    },
+    {
+      "version": "20261010213531",
+      "name": "camera_photo_bridge"
+    },
+    {
+      "version": "20261018220557",
+      "name": "socius_pilot_context_audience"
+    },
+    {
+      "version": "20261019154246",
+      "name": "owner_whoop_provider_timing_nullable"
+    }
+  ],
+  "pending": [
+    "20261022131056_activity_measurement_corrections.sql"
+  ]
+}

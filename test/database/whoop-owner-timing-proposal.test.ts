@@ -6,7 +6,6 @@ import { projectProviderTiming } from '@/app/lib/whoop/provider-timing'
 import { upsertWhoopTiming } from '@/app/lib/whoop/timing-upsert'
 import { legacyIdentity, providerPayload, syntheticOther, syntheticTimingOwner, timingNow } from '../fixtures/whoop-provider-timing'
 
-const sql = readFileSync('docs/proposals/recovery-timing-owner/add-provider-timing.sql', 'utf8')
 vi.mock('@/app/lib/whoop/timing-owner', () => ({ isWhoopTimingOwner: (id: unknown) => id === '11111111-1111-4111-8111-111111111111' }))
 const tables = [
   ['whoop_recovery', 'cycle_id', 'recovery_score'], ['whoop_sleep', 'sleep_id', 'sleep_performance_percentage'], ['whoop_cycles', 'cycle_id', 'strain'],
@@ -35,11 +34,13 @@ async function oldRows(db: PGlite) {
 }
 async function security(db: PGlite) {
   return Promise.all([
-    `SELECT relname,relrowsecurity,relforcerowsecurity,relacl::text FROM pg_class WHERE relname IN('whoop_recovery','whoop_sleep','whoop_cycles') ORDER BY relname`,
+    `SELECT relname,relowner,relrowsecurity,relforcerowsecurity,relacl::text FROM pg_class WHERE relname IN('whoop_recovery','whoop_sleep','whoop_cycles') ORDER BY relname`,
     `SELECT tablename,policyname,roles::text,cmd,qual,with_check FROM pg_policies WHERE schemaname='public' ORDER BY tablename,policyname`,
     `SELECT tablename,indexname,indexdef FROM pg_indexes WHERE schemaname='public' ORDER BY indexname`,
     `SELECT tgname,pg_get_triggerdef(oid) FROM pg_trigger WHERE NOT tgisinternal ORDER BY tgname`,
     `SELECT p.proname,p.proacl::text FROM pg_proc p JOIN pg_namespace n ON p.pronamespace=n.oid WHERE n.nspname IN('public','auth') ORDER BY p.proname`,
+    `SELECT table_name,column_name,column_default FROM information_schema.columns WHERE table_schema='public'
+      AND column_name NOT LIKE 'provider_%' AND column_name NOT LIKE 'timing_%' ORDER BY table_name,column_name`,
   ].map(async q => (await db.query(q)).rows))
 }
 async function write(db: PGlite, values: Record<string, unknown>) {
@@ -53,7 +54,12 @@ async function timingSnapshot(db: PGlite) {
     FROM whoop_cycles WHERE user_id=$1 AND cycle_id='42'`, [syntheticTimingOwner])).rows[0]
 }
 
-describe('unapplied WHOOP draft on disposable synthetic PostgreSQL only', () => {
+describe.each([
+  ['proposal', 'docs/proposals/recovery-timing-owner/add-provider-timing.sql'],
+  ['recovered historical migration', 'supabase/migrations/20261019154246_owner_whoop_provider_timing_nullable.sql'],
+])('%s on disposable synthetic PostgreSQL only', (_name, path) => {
+const sql = readFileSync(path, 'utf8')
+describe('data, schema and security', () => {
   let db: PGlite, beforeRows: unknown, beforeSecurity: unknown
   beforeAll(async () => { db = await fixture(); beforeRows = await oldRows(db); beforeSecurity = await security(db); await db.exec(sql) }, 30_000)
   beforeEach(async () => { await db.exec('BEGIN') })
@@ -81,8 +87,14 @@ describe('unapplied WHOOP draft on disposable synthetic PostgreSQL only', () => 
   })
   it('keeps existing owner RLS isolation after nullable DDL', async () => {
     await db.query(`SELECT set_config('request.jwt.claim.sub',$1,true)`, [syntheticTimingOwner]); await db.exec('SET LOCAL ROLE authenticated')
-    expect((await db.query('SELECT count(*)::int AS n FROM whoop_cycles')).rows).toEqual([{ n: 1 }])
-    expect((await db.query('UPDATE whoop_cycles SET strain=99 WHERE user_id=$1 RETURNING id', [syntheticOther])).rows).toEqual([])
+    for (const [table, id] of tables) {
+      expect((await db.query(`SELECT count(*)::int AS n FROM ${table}`)).rows).toEqual([{ n: 1 }])
+      expect((await db.query(`UPDATE ${table} SET provider_score_state='denied' WHERE user_id=$1 RETURNING id`, [syntheticOther])).rows).toEqual([])
+      expect((await db.query(`UPDATE ${table} SET provider_score_state='owner' WHERE user_id=$1 RETURNING id`, [syntheticTimingOwner])).rows).toHaveLength(1)
+      await db.exec('SAVEPOINT cross_owner')
+      await expect(db.query(`INSERT INTO ${table}(user_id,${id},date) VALUES($1,'43','2026-10-18')`, [syntheticOther])).rejects.toMatchObject({ code: '42501' })
+      await db.exec('ROLLBACK TO SAVEPOINT cross_owner')
+    }
   })
   it('retains microseconds and exact old timing on malformed/rollback legacy-only writes; valid re-ingestion updates only the same identity', async () => {
     const identity = { ...legacyIdentity('cycle'), strain: 17.125 }
@@ -145,4 +157,6 @@ describe('proposal DDL failure is atomic and not silently repeatable', () => {
       expect(await oldRows(db)).toEqual(before)
     } finally { await db.close() }
   }, 30_000)
+})
+
 })
