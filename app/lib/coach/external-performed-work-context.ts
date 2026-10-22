@@ -35,17 +35,34 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
     if (value === undefined || value === null) return null
     if (!object(value)) { omit(id, path, 'invalid_recorded_object'); return null }
     for (const key of Object.keys(value)) if (!allowed.includes(key)) omit(id, `${path}.${key}`, 'unsupported_recorded_field')
-    const nested = ['segments', 'events', 'performed', 'prescribed', 'load', 'distance', 'subreps', 'rep_range', 'set_details', 'score_model', 'block_score', 'duration', 'duration_per_side']
-    const strings = ['movement_name', 'title', 'block_type', 'scoring', 'unit', 'rx_status']
+    const nested = ['segments', 'events', 'performed', 'prescribed', 'load', 'distance', 'subreps', 'rep_range', 'set_details', 'score_model', 'block_score', 'duration', 'duration_per_side', 'velocity', 'session_readiness']
+    const strings = ['movement_name', 'title', 'block_type', 'scoring', 'unit', 'rx_status', 'id', 'notes', 'metric', 'device', 'measuredAt', 'reportedAt', 'scale', 'weight']
     return Object.fromEntries(allowed.filter(key => {
       if (!has(value, key) || skip.includes(key)) return false
       const leaf = value[key]
-      if (leaf === null || nested.includes(key)) return true
+      if (leaf === null || nested.includes(key) || key === 'sets' && Array.isArray(leaf)) return true
       const valid = strings.includes(key) ? typeof leaf === 'string' : key === 'is_pr' ? typeof leaf === 'boolean'
         : typeof leaf === 'number' && Number.isFinite(leaf)
       if (!valid) omit(id, `${path}.${key}`, 'unsupported_recorded_scalar_shape')
       return valid
     }).map(key => [key, structuredClone(value[key])]))
+  }
+  const setDetails = (value: unknown, path: string, id: string): unknown => {
+    if (!Array.isArray(value)) { omit(id, path, 'invalid_recorded_set_details'); return null }
+    if (value.length > 1000) { omit(id, path, 'record_budget'); return null }
+    return value.map((set, index) => {
+      const setPath = `${path}[${index}]`
+      if (!object(set)) { omit(id, setPath, 'invalid_recorded_set_detail'); return null }
+      const projected = fields(set, ['id', 'reps', 'sets', 'legs', 'reps_per_leg', 'load', 'weight', 'rpe', 'rir', 'velocity', 'notes'], setPath, id)
+      if (!projected) return null
+      if (has(projected, 'load')) projected.load = fields(projected.load, ['value', 'unit'], `${setPath}.load`, id)
+      if (has(projected, 'sets')) {
+        if (Array.isArray(projected.sets)) { omit(id, `${setPath}.sets`, 'unsupported_recursive_set_array'); projected.sets = null }
+      }
+      if (has(projected, 'velocity')) projected.velocity = fields(projected.velocity,
+        ['value', 'unit', 'metric', 'device', 'measuredAt'], `${setPath}.velocity`, id)
+      return projected
+    })
   }
   const leafProvenance = (value: unknown, sourcePath: string, capture: unknown, fallback: string) => {
     const defaultValue = historyFieldProvenance(capture, fallback, fallback)
@@ -67,19 +84,14 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
     const prescribedFields = kind === 'prescribed' ? ['duration', 'reps_per_side', 'duration_per_side'] : []
     const result = fields(value, ['reps', 'sets', 'load', 'distance', 'time_s', 'rep_range', 'subreps', 'set_details', ...prescribedFields], path, id)
     if (!result) return null
+    if (['sets', 'set_details'].some(key => Array.isArray(result[key]) && (result[key] as unknown[]).length > 1000)) {
+      omit(id, path, 'record_budget'); return null
+    }
     for (const key of ['load', 'distance', 'subreps', 'rep_range', 'duration', 'duration_per_side']) if (has(result, key)) {
       result[key] = fields(result[key], key === 'rep_range' ? ['min', 'max'] : ['value', 'unit'], `${path}.${key}`, id)
     }
-    if (has(result, 'set_details')) {
-      if (!Array.isArray(result.set_details)) { omit(id, `${path}.set_details`, 'invalid_recorded_set_details'); result.set_details = null }
-      else result.set_details = result.set_details.map((set, index) => {
-        const setPath = `${path}.set_details[${index}]`
-        if (!object(set)) { omit(id, setPath, 'invalid_recorded_set_detail'); return null }
-        const projected = fields(set, ['reps', 'sets', 'legs', 'reps_per_leg', 'load'], setPath, id)
-        if (projected && has(projected, 'load')) projected.load = fields(projected.load, ['value', 'unit'], `${setPath}.load`, id)
-        return projected
-      })
-    }
+    if (has(result, 'set_details')) result.set_details = setDetails(result.set_details, `${path}.set_details`, id)
+    if (Array.isArray(result.sets)) result.sets = setDetails(result.sets, `${path}.sets`, id)
     return result
   }
   const nativeRecords = [...base.records]
@@ -99,6 +111,7 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
   const blockContexts: Array<{ workoutId: string; sourcePath: string; origin: string; reviewState: string;
     authority: 'unverified_recorded_block_context'; recorded: ObjectValue; fieldProvenance: ReturnType<typeof leafProvenance> }> = []
   const handled = new Set<string>(), ambiguous = new Set<string>()
+  const nestedSetContexts: Array<{ workoutId: string; sourcePath: string; recordedSets: unknown; fieldProvenance: ReturnType<typeof leafProvenance> }> = []
   const adaptedWorkouts = new Set<string>()
   let selectedEvents = 0
   for (const row of resolved.workouts) {
@@ -128,6 +141,23 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
     const root = Array.isArray(row.blocks) ? 'blocks' : 'blocks.blocks'
     if (object(row.blocks) && Array.isArray(row.blocks.blocks)) fields(row.blocks, ['blocks'], 'blocks', row.id, ['blocks'])
     for (const [bi, block] of blocks.entries()) {
+      // Legacy movement/exercise set arrays previously reached the scalar normalizer
+      // and disappeared. Preserve bounded source facts without changing numeric policy.
+      if (object(block) && !has(block, 'segments')) for (const key of ['movements', 'exercises']) {
+        if (!Array.isArray(block[key])) continue
+        for (const [ei, entry] of block[key].entries()) if (object(entry)) for (const setKey of ['sets', 'set_details']) {
+          if (!Array.isArray(entry[setKey])) continue
+          const sourcePath = `${root}[${bi}].${key}[${ei}].${setKey}`
+          const source = historyFieldProvenance(row.capture_provenance, sourcePath)
+          if (['copied_template', 'imported_unverified'].includes(source.origin) && source.reviewState === 'unreviewed') {
+            omit(row.id, sourcePath, 'unreviewed_template_or_import'); continue
+          }
+          const recordedSets = setDetails(entry[setKey], sourcePath, row.id)
+          const context = { workoutId: row.id, sourcePath, recordedSets,
+            fieldProvenance: leafProvenance(recordedSets, sourcePath, row.capture_provenance, 'quantities') }
+          if (fit(context, row.id, sourcePath)) nestedSetContexts.push(context)
+        }
+      }
       if (!object(block) || !has(block, 'segments')) continue
       const blockPath = `${root}[${bi}]`, identity = `${row.id}:${bi}`
       if (has(block, 'movements') || has(block, 'exercises')) {
@@ -139,7 +169,9 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
       if (['copied_template', 'imported_unverified'].includes(provenance.origin) && provenance.reviewState === 'unreviewed') {
         omit(row.id, blockPath, 'unreviewed_template_or_import'); continue
       }
-      const metadata = fields(block, ['title', 'block_type', 'time_cap_s', 'score_model', 'block_score', 'segments'], blockPath, row.id, ['segments'])!
+      const metadata = fields(block, ['title', 'block_type', 'time_cap_s', 'score_model', 'block_score', 'segments', 'session_readiness'], blockPath, row.id, ['segments'])!
+      if (has(metadata, 'session_readiness')) metadata.session_readiness = fields(metadata.session_readiness,
+        ['scale', 'value', 'reportedAt', 'notes'], `${blockPath}.session_readiness`, row.id)
       if (has(metadata, 'score_model')) metadata.score_model = fields(metadata.score_model, ['scoring', 'round_rep_bundle'], `${blockPath}.score_model`, row.id)
       if (has(metadata, 'block_score')) metadata.block_score = fields(metadata.block_score,
         ['rounds_completed', 'extra_reps', 'total_reps', 'time_s', 'tonnage_lb', 'rx_status', 'is_pr'], `${blockPath}.block_score`, row.id)
@@ -199,7 +231,7 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
   const omitted = [...base.coverage.omitted, ...addedOmissions]
   const records = [...retainedNative, ...segmentedRecords]
   const complete = base.coverage.retrievalComplete && !issues.length && !omitted.length && !additionalOmissions
-  return { ...base, externalProjectionVersion: 'segmented-logged-events-1' as const, records, blockContexts,
+  return { ...base, externalProjectionVersion: 'segmented-logged-events-2' as const, records, blockContexts, nestedSetContexts,
     segmentedEventLimitations: ['Stored event amounts are unverified reports/estimates, not independently confirmed execution.',
       'Rounds, set details, per-leg counts and block scores are not multiplied, summed or assigned to individual events.',
       'Block is_pr is an unverified stored claim. Time and distance retain recorded units; movement identity is unresolved.',

@@ -126,7 +126,7 @@ describe('owner OAuth bearer verification with real SDK JWT signatures and synth
     const client = new Client({ name: 'synthetic-owner', version: '1.0.0' })
     try {
       await client.connect(transport)
-      expect((await client.listTools()).tools.map(tool => tool.name)).toEqual(['get_coaching_context', 'get_coaching_reference'])
+      expect((await client.listTools()).tools.map(tool => tool.name)).toEqual(['get_coaching_context', 'get_coaching_reference', 'get_activity_record', 'get_activity_write_status'])
       const result = await client.callTool({ name: 'get_coaching_context', arguments: { tzOffset: 0 } })
       expect(result.isError, JSON.stringify(result)).toBe(false)
       expect(result.structuredContent).toHaveProperty('context')

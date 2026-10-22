@@ -10,8 +10,8 @@ import { contextClient, contextNow, contextOwner } from '../fixtures/coaching-co
 const policy = { clientId: 'synthetic-client', issuer: 'https://synthetic-auth.invalid', resource: 'https://synthetic.invalid/api/mcp', resourceMetadataUrl: 'https://synthetic.invalid/.well-known/oauth-protected-resource/api/mcp' }
 const principal = (): VerifiedContextPrincipal => ({ ...policy, subject: contextOwner, role: 'authenticated', expiresAt: Date.parse(contextNow) + 60_000 })
 
-async function localMcp(authorize: AuthorizeContextRequest, jsonResponse = true) {
-  const mcp = createCoachingContextMcpServer(authorize, policy)
+async function localMcp(authorize: AuthorizeContextRequest, jsonResponse = true, writesEnabled = false) {
+  const mcp = createCoachingContextMcpServer(authorize, policy, { writesEnabled })
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => 'synthetic-session', enableJsonResponse: jsonResponse })
   await mcp.connect(transport)
   let origin = ''
@@ -47,7 +47,7 @@ describe('official SDK MCP over loopback Streamable HTTP, synthetic owner only',
   beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(contextNow) })
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
 
-  it.each([true, false])('initializes, lists two read-only tools and retrieves exact saved context (JSON response=%s)', async json => {
+  it.each([true, false])('initializes, lists read-only tools and retrieves exact saved context (JSON response=%s)', async json => {
     const { db, writes, traces } = contextClient()
     const host = await localMcp(async () => ({ principal: principal(), db }), json)
     try {
@@ -55,7 +55,8 @@ describe('official SDK MCP over loopback Streamable HTTP, synthetic owner only',
       expect(host.client.getServerVersion()).toMatchObject({ name: 'socius-coaching-context', version: '1.0.0' })
       expect(host.clientTransport.sessionId).toBe('synthetic-session')
       const tools = await host.client.listTools()
-      expect(tools.tools.map(tool => tool.name)).toEqual(['get_coaching_context', 'get_coaching_reference'])
+      expect(tools.tools.map(tool => tool.name)).toEqual(['get_coaching_context', 'get_coaching_reference', 'get_activity_record', 'get_activity_write_status'])
+      expect(tools.tools.every(tool => tool.annotations?.readOnlyHint === true)).toBe(true)
       expect(tools.tools[0].annotations?.readOnlyHint).toBe(true)
       // The standard SDK strips host-specific top-level extensions; its
       // preserved metadata mirror still carries the OAuth declaration.
@@ -91,11 +92,30 @@ describe('official SDK MCP over loopback Streamable HTTP, synthetic owner only',
     try {
       await host.client.connect(host.clientTransport)
       await expect(host.client.callTool({ name: 'save_workout', arguments: { user_id: 'foreign' } })).rejects.toMatchObject({ code: -32602 })
+      await expect(host.client.callTool({ name: 'create_workout', arguments: {} })).rejects.toMatchObject({ code: -32602 })
       expect(authorize).not.toHaveBeenCalled()
       const invalid = await host.client.callTool({ name: 'get_coaching_context', arguments: { tzOffset: 0, user_id: 'foreign', sql: 'DELETE FROM workouts' } })
       expect(invalid.isError).toBe(true)
       expect(db.from).not.toHaveBeenCalled()
       expect(writes).not.toHaveBeenCalled()
+    } finally { await host.close() }
+  })
+
+  it('exposes bounded writes only after activation and validates before any domain operation', async () => {
+    const { db, writes } = contextClient()
+    const host = await localMcp(async () => ({ principal: principal(), db }), true, true)
+    try {
+      await host.client.connect(host.clientTransport)
+      const listed = await host.client.listTools()
+      const mutations = listed.tools.filter(tool => !tool.annotations?.readOnlyHint)
+      expect(mutations.map(tool => tool.name)).toEqual(['create_workout', 'amend_workout', 'create_meal', 'amend_meal'])
+      expect(mutations.every(tool => tool.annotations?.idempotentHint === true && tool.annotations?.openWorldHint === false)).toBe(true)
+      expect(mutations.filter(tool => tool.name.startsWith('amend')).every(tool => tool.annotations?.destructiveHint === true)).toBe(true)
+      for (const name of mutations.map(tool => tool.name)) {
+        const result = await host.client.callTool({ name, arguments: { user_id: 'foreign', arbitrary_sql: 'SELECT 1' } })
+        expect(result.isError).toBe(true)
+      }
+      expect(writes).not.toHaveBeenCalled(); expect(db.from).not.toHaveBeenCalled()
     } finally { await host.close() }
   })
 

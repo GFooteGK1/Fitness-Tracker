@@ -1,5 +1,7 @@
 # Architecture decisions
 
+- [ADR-0044: ChatGPT activity record operations](ADR-0044-chatgpt-activity-record-operations.md) - default-off typed workout/nutrition writes over installed capture RPCs, direct record/recovery reads and next domain slices.
+
 - [ADR-0042: Gated owner nutrition photo pilot](ADR-0042-gated-owner-nutrition-photo-pilot.md) - local preparation with private derivative, one provider attempt and unreviewed canonical estimate; activation remains blocked.
 
 - [ADR-0041: Authenticated owner WHOOP cron GET](ADR-0041-owner-authenticated-whoop-cron-get.md) - approved owner-only GET correction; existing bearer secret before privileged work, unchanged POST and daily UTC schedule; release/runtime evidence separate.

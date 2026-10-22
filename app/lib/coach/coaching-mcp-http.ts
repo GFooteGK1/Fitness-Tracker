@@ -4,7 +4,8 @@ import { authorizeCoachingBearer, coachingOAuthError, coachingPrivateHeaders, ty
 import { CoachingContextError } from './coaching-context'
 
 /** Stateless, owner-bound per request. The SDK owns the protocol; no refresh,
- * OAuth grant, host operation or domain mutation is exposed by this route.
+ * OAuth grant or host operation is exposed by this route. Domain writes are
+ * separately default-off and use the same request-local owner authorization.
  */
 export async function handleCoachingMcp(request: Request, config: CoachingOAuthConfig, dependencies?: CoachingBearerDependencies) {
   try {
@@ -14,7 +15,7 @@ export async function handleCoachingMcp(request: Request, config: CoachingOAuthC
     }
     const authorized = await authorizeCoachingBearer(request, config, dependencies)
     const server = createCoachingContextMcpServer(async () => authorized, config)
-    const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true, maxRequestBodySize: 16_384 })
+    const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true, maxRequestBodySize: 65_536 })
     try {
       await server.connect(transport)
       const response = await transport.handleRequest(request)

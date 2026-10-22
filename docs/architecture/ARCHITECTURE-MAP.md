@@ -1,5 +1,14 @@
 # SociusFit Architecture Map
 
+ADR-0044 adds typed external workout/meal create and amendment adapters over the
+installed capture RPCs, immutable revisions and receipts. ChatGPT remains the
+operating interface; Socius supplies deterministic persistence and retrieval.
+Four writes are default-off behind `SOCIUS_MCP_WRITES_ENABLED`; two owner record
+and recovery getters require no UI. No schema, grants, OAuth permissions, photo
+bridge or paid model changes. External factual projection retains nested sets,
+VBT and readiness without changing numeric-policy evidence. Publication, runtime
+activation and real-data canaries require separate authorization.
+
 ADR-0043 prepares an inactive external nutrition estimate receiver at
 `/api/capture/external-estimates`. The existing native capture app hands an
 image-bound UUID/time/hash to the chosen ChatGPT Shortcut action. Socius validates
