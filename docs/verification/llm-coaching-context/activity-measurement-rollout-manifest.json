@@ -1,0 +1,246 @@
+{
+  "projectRef": "auolnfwetmfcwhtvakzy",
+  "observedAt": "2026-10-22T16:49:08Z",
+  "source": "Owner-approved connected Supabase apply_migration followed by list_migrations and read-only stored SQL/catalog readback; no manual migration-history writes.",
+  "migration": {
+    "previousPath": "supabase/migrations/20261022131056_activity_measurement_corrections.sql",
+    "path": "supabase/migrations/20261022164908_activity_measurement_corrections.sql",
+    "version": "20261022164908",
+    "name": "activity_measurement_corrections",
+    "recordedStatementCount": 1,
+    "bytes": 11360,
+    "md5": "09999bd92519592e5ab124d04eda7f97",
+    "sha256": "aa79d59d6b83f7d8a00e66cbb51a24b1d4f330b4cf393c65871a9d8d13dbd4a5",
+    "exactStoredSQLReadback": true
+  },
+  "functionBefore": {
+    "acl": "{postgres=X/postgres}",
+    "oid": "161206",
+    "owner": "postgres",
+    "config": [
+      "search_path=\"\""
+    ],
+    "bodyMD5": "c39a0f39dd87c75402b79bb956b925b0",
+    "hasNewMarker": false,
+    "securityDefiner": true
+  },
+  "functionAfter": {
+    "acl": "{postgres=X/postgres}",
+    "oid": "161206",
+    "owner": "postgres",
+    "config": [
+      "search_path=\"\""
+    ],
+    "bodyMD5": "30bf6fd1aee1dc278df5497f4f58e552",
+    "hasNewMarker": true,
+    "securityDefiner": true
+  },
+  "automation": {
+    "deployToProduction": false,
+    "savedOffReadback": true
+  },
+  "writeFlags": {
+    "changed": false,
+    "runtimeValuesDirectlyInspected": false,
+    "reason": "No environment setting was modified; Vercel team-scope access denial remains respected. Code defaults remain OFF; this receipt does not assert fresh hosted flag-value inspection."
+  },
+  "pending": [],
+  "applied": [
+    {
+      "version": "20260728134202",
+      "name": "personal_record_idempotency"
+    },
+    {
+      "version": "20260728143952",
+      "name": "nutrition_fast_logging"
+    },
+    {
+      "version": "20260728234500",
+      "name": "coach_complete_programming_v0_3"
+    },
+    {
+      "version": "20260729182500",
+      "name": "coach_execution_feedback"
+    },
+    {
+      "version": "20260730130953",
+      "name": "coach_workout_runner_v0_5"
+    },
+    {
+      "version": "20260730151344",
+      "name": "secure_legacy_database_objects"
+    },
+    {
+      "version": "20260901152000",
+      "name": "layered_adaptive_evidence"
+    },
+    {
+      "version": "20260901170000",
+      "name": "atomic_coach_session_completion"
+    },
+    {
+      "version": "20260901183000",
+      "name": "qwik_vbt_import"
+    },
+    {
+      "version": "20260901220000",
+      "name": "coach_trust_review"
+    },
+    {
+      "version": "20260903150000",
+      "name": "rolling_weekly_coach"
+    },
+    {
+      "version": "20260904023000",
+      "name": "fix_atomic_session_workout_link"
+    },
+    {
+      "version": "20260904120000",
+      "name": "logging_receipts"
+    },
+    {
+      "version": "20260915220000",
+      "name": "exercise_preferences"
+    },
+    {
+      "version": "20260918010000",
+      "name": "optional_session_feedback"
+    },
+    {
+      "version": "20260918011000",
+      "name": "session_capture_signals"
+    },
+    {
+      "version": "20260918020000",
+      "name": "capture_receipts"
+    },
+    {
+      "version": "20260918030000",
+      "name": "training_intent"
+    },
+    {
+      "version": "20260918040000",
+      "name": "targeted_review_sources"
+    },
+    {
+      "version": "20260918050000",
+      "name": "recommendations"
+    },
+    {
+      "version": "20260921010000",
+      "name": "coach_proposal_context_revision"
+    },
+    {
+      "version": "20260923010000",
+      "name": "coaching_write_pause"
+    },
+    {
+      "version": "20260926010000",
+      "name": "coach_setup_memory_bindings"
+    },
+    {
+      "version": "20260926120000",
+      "name": "workout_save_recovery"
+    },
+    {
+      "version": "20260928010000",
+      "name": "reviewed_session_set_reports"
+    },
+    {
+      "version": "20260928020000",
+      "name": "reviewed_session_completion"
+    },
+    {
+      "version": "20260928030000",
+      "name": "reviewed_proposal_registration"
+    },
+    {
+      "version": "20260928040000",
+      "name": "reviewed_execution_slots"
+    },
+    {
+      "version": "20260928050000",
+      "name": "reviewed_next_week_transition"
+    },
+    {
+      "version": "20260928060000",
+      "name": "reviewed_registration_recovery"
+    },
+    {
+      "version": "20260928070000",
+      "name": "reviewed_session_request_resolution"
+    },
+    {
+      "version": "20260928080000",
+      "name": "reviewed_proposal_resolution"
+    },
+    {
+      "version": "20260928090000",
+      "name": "reviewed_qualitative_recovery"
+    },
+    {
+      "version": "20260929010000",
+      "name": "reviewed_effort_rir"
+    },
+    {
+      "version": "20260930010000",
+      "name": "supervised_programming_review"
+    },
+    {
+      "version": "20260930020000",
+      "name": "supervised_programming_lifecycle"
+    },
+    {
+      "version": "20260930030000",
+      "name": "supervised_programming_workspace"
+    },
+    {
+      "version": "20260930040000",
+      "name": "supervised_resource_scope"
+    },
+    {
+      "version": "20261003134727",
+      "name": "supervised_request_resolution"
+    },
+    {
+      "version": "20261003150403",
+      "name": "supervised_issue_closure_preflight"
+    },
+    {
+      "version": "20261005120000",
+      "name": "first_reviewed_designation"
+    },
+    {
+      "version": "20261005130000",
+      "name": "first_reviewed_candidates"
+    },
+    {
+      "version": "20261005155602",
+      "name": "first_reviewed_acceptance"
+    },
+    {
+      "version": "20261005172408",
+      "name": "first_reviewed_workspace"
+    },
+    {
+      "version": "20261005192643",
+      "name": "first_reviewed_setup_requests"
+    },
+    {
+      "version": "20261010213531",
+      "name": "camera_photo_bridge"
+    },
+    {
+      "version": "20261018220557",
+      "name": "socius_pilot_context_audience"
+    },
+    {
+      "version": "20261019154246",
+      "name": "owner_whoop_provider_timing_nullable"
+    },
+    {
+      "version": "20261022164908",
+      "name": "activity_measurement_corrections"
+    }
+  ]
+}

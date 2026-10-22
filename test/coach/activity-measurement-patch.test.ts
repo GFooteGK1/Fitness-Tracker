@@ -11,7 +11,7 @@ import { measurement, measurementBlocks, measurementField as field } from './act
 
 let sql: PGlite
 const owner = randomUUID(), other = randomUUID()
-const migration = 'supabase/migrations/20261022131056_activity_measurement_corrections.sql'
+const migration = 'supabase/migrations/20261022164908_activity_measurement_corrections.sql'
 const policy = { clientId: 'synthetic-shape', issuer: 'https://shape.invalid', resource: 'https://shape.invalid/mcp' }
 const leaf = 'blocks[2].segments[0].events[0].performed.sets[3].velocity'
 async function actor(id = owner) { await sql.exec('SET ROLE authenticated'); await sql.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [id]) }
