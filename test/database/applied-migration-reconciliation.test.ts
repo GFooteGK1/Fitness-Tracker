@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { recommendationFixture } from './recommendation-fixture'
 import manifest from '../../docs/verification/llm-coaching-context/applied-migration-reconciliation-manifest.json'
+import rollout from '../../docs/verification/llm-coaching-context/activity-measurement-rollout-manifest.json'
 
 const directory = 'supabase/migrations'
 const files = readdirSync(directory).filter(file => file.endsWith('.sql')).sort()
@@ -45,17 +46,35 @@ describe('read-only historical migration source reconciliation', () => {
       normalize(readFileSync('docs/proposals/recovery-timing-owner/add-provider-timing.sql', 'utf8')))
   })
 
-  it('leaves exactly the unapplied activity correction SQL pending against the observed hosted inventory', () => {
+  it('matches the genuine applied version without leaving the original SQL pending for a second application', () => {
     expect(manifest.applied).toHaveLength(48)
-    expect(pending(files, manifest.applied)).toEqual(manifest.pending)
     expect(manifest.pending).toEqual(['20261022131056_activity_measurement_corrections.sql'])
+    expect(rollout.applied).toEqual([...manifest.applied, {
+      version: '20261022164908', name: 'activity_measurement_corrections',
+    }])
+    expect(rollout.pending).toEqual([])
+    expect(pending(files, rollout.applied)).toEqual([])
+    const original = rollout.migration.previousPath.split('/').at(-1)!
+    const applied = rollout.migration.path.split('/').at(-1)!
+    expect(original).toBe(manifest.pending[0])
+    expect(rollout.migration.version).toBe('20261022164908')
+    expect(rollout.migration.name).toBe('activity_measurement_corrections')
+    expect(applied).toBe(`${rollout.migration.version}_${rollout.migration.name}.sql`)
+    expect(files).not.toContain(original)
+    expect(files.filter(file => file.endsWith('_activity_measurement_corrections.sql'))).toEqual([applied])
+    // Negative control: retaining the old file would schedule the same SQL again.
+    expect(pending([...files, original], rollout.applied)).toEqual([original])
     // Bind canonical Git/LF bytes so the same assertion works on Windows and CI.
-    expect(createHash('sha256').update(readFileSync(`${directory}/${manifest.pending[0]}`, 'utf8').replaceAll('\r\n', '\n')).digest('hex'))
+    const source = readFileSync(rollout.migration.path, 'utf8').replaceAll('\r\n', '\n')
+    expect(Buffer.byteLength(source)).toBe(rollout.migration.bytes)
+    expect(createHash('sha256').update(source).digest('hex'))
       .toBe('aa79d59d6b83f7d8a00e66cbb51a24b1d4f330b4cf393c65871a9d8d13dbd4a5')
-    expect(() => pending([...files, files[0]], manifest.applied)).toThrow('Duplicate')
-    expect(() => pending(files, [...manifest.applied, manifest.applied[0]])).toThrow('Duplicate')
-    expect(() => pending(files.slice(1), manifest.applied)).toThrow('Unreconciled')
-    expect(() => pending(files, [{ ...manifest.applied[0], name: 'wrong_name' }])).toThrow('Unreconciled')
+    expect(createHash('sha256').update(source).digest('hex')).toBe(rollout.migration.sha256)
+    expect(createHash('md5').update(source).digest('hex')).toBe(rollout.migration.md5)
+    expect(() => pending([...files, files[0]], rollout.applied)).toThrow('Duplicate')
+    expect(() => pending(files, [...rollout.applied, rollout.applied[0]])).toThrow('Duplicate')
+    expect(() => pending(files.slice(1), rollout.applied)).toThrow('Unreconciled')
+    expect(() => pending(files, [{ ...rollout.applied[0], name: 'wrong_name' }])).toThrow('Unreconciled')
   })
 
   it('replays the maintained legacy bootstrap and every later tracked migration in order on disposable PostgreSQL', async () => {
@@ -73,7 +92,7 @@ describe('read-only historical migration source reconciliation', () => {
       }
       expect(tail).toContain(manifest.recovered[0].path.split('/').at(-1))
       expect(tail).toContain(manifest.recovered[1].path.split('/').at(-1))
-      expect(tail.at(-1)).toBe(manifest.pending[0])
+      expect(tail.at(-1)).toBe(rollout.migration.path.split('/').at(-1))
       // Only SQL actually executed above is considered applied in this local runner.
       const replay = tail.filter(file => !applied.has(file))
       expect(replay).toEqual([])

@@ -7,7 +7,7 @@ import { sqlFile } from './fixture'
 export async function mcpActivityFixture(corrections = true) {
   const db = await recommendationFixture()
   await db.exec(sqlFile('supabase/migrations/20260926120000_workout_save_recovery.sql'))
-  if (corrections) await db.exec(sqlFile('supabase/migrations/20261022131056_activity_measurement_corrections.sql'))
+  if (corrections) await db.exec(sqlFile('supabase/migrations/20261022164908_activity_measurement_corrections.sql'))
   return db
 }
 export function mcpOwnerClient(sql: PGlite, owner: string) {
