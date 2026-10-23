@@ -1,5 +1,7 @@
 # Architecture decisions
 
+- [ADR-0045: Structured repetition source](ADR-0045-structured-repetition-source.md) - bounded source phases on existing performed sets, external raw artifact and separate derived summaries; no SQL migration.
+
 - [ADR-0044: ChatGPT activity record operations](ADR-0044-chatgpt-activity-record-operations.md) - default-off typed workout/nutrition writes over installed capture RPCs, direct record/recovery reads and next domain slices.
 
 - [ADR-0042: Gated owner nutrition photo pilot](ADR-0042-gated-owner-nutrition-photo-pilot.md) - local preparation with private derivative, one provider attempt and unreviewed canonical estimate; activation remains blocked.

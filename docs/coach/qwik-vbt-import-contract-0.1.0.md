@@ -1,5 +1,7 @@
 # Qwik VBT import contract 0.1.0
 
+The separate [structured repetition recording contract](structured-repetition-recording-1.md) supports the observed iOS array format for revision-bound attachment to existing workout sets. This wrapped 1.10 observation adapter remains unchanged.
+
 **Status:** production database schema applied; application deployment pending
 **Source system:** `qwik_vbt`
 **Supported source schema:** `qwik-vbt-json-1.10`
