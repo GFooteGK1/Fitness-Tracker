@@ -1,18 +1,9 @@
 import { CoachingContextError } from './coaching-context'
+import { assertRepRecording, repRecordingSchema } from './rep-recording'
 
 // Small, closed JSON-schema vocabulary shared by descriptors and runtime validation.
 // No coercion, defaults, arbitrary metadata, model calls or source identity in input.
-type Schema = { type?: string; properties?: Record<string, Schema>; required?: readonly string[]; additionalProperties?: false;
-  items?: Schema; minItems?: number; maxItems?: number; minLength?: number; maxLength?: number; pattern?: string;
-  minimum?: number; maximum?: number; multipleOf?: number; enum?: readonly unknown[]; anyOf?: readonly Schema[]; description?: string }
-const object = (properties: Record<string, Schema>, required: readonly string[] = Object.keys(properties)): Schema =>
-  ({ type: 'object', properties, required, additionalProperties: false })
-const text = (maxLength = 500): Schema => ({ type: 'string', minLength: 1, maxLength })
-const number = (maximum: number, minimum = 0): Schema => ({ type: 'number', minimum, maximum })
-const integer = (maximum: number, minimum = 0): Schema => ({ type: 'integer', minimum, maximum })
-const nullable = (s: Schema): Schema => ({ anyOf: [s, { type: 'null' }] })
-const list = (items: Schema, maxItems = 100, minItems = 1): Schema => ({ type: 'array', items, minItems, maxItems })
-const enumeration = (...values: string[]): Schema => ({ type: 'string', enum: values })
+import { object, text, number, integer, nullable, list, enumeration, valid, type Schema } from './activity-input-schema'
 const uuid: Schema = { ...text(36), pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' }
 const date: Schema = { ...text(10), pattern: '^\\d{4}-\\d{2}-\\d{2}$' }
 const timestamp: Schema = { ...text(40), pattern: '^\\d{4}-\\d{2}-\\d{2}T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?(?:Z|[+-](?:0\\d|1[0-4]):[0-5]\\d)$' }
@@ -28,6 +19,10 @@ const velocity = object({ value: nullable(number(10)), unit: enumeration('m/s'),
 const setMeasurement = object({ blockIndex: integer(29), segmentIndex: integer(999), eventIndex: integer(999),
   collection: enumeration('sets', 'set_details'), setIndex: integer(999), velocity,
   provenance: object(Object.fromEntries(['value', 'unit', 'metric', 'device', 'measuredAt'].map(key => [key, field]))) })
+const recordingIdentity = object({ fileSha256: { ...text(64), pattern: '^[a-f0-9]{64}$' }, sourceSetId: text(255) })
+const setRecording = object({ blockIndex: integer(29), segmentIndex: integer(999), eventIndex: integer(999),
+  collection: enumeration('sets', 'set_details'), setIndex: integer(999), recording: repRecordingSchema,
+  expectedRecording: nullable(recordingIdentity), provenance: field })
 const set = object({ id: uuid, reps: nullable(integer(10000)), load: nullable(load), rpe: nullable(number(10, 1)), rir: nullable(number(10)),
   velocity: nullable(velocity), notes: nullable(text(2000)) }, ['id'])
 const amounts = object({ reps: nullable(integer(10000)), sets: nullable(integer(1000)), load: nullable(load), time_s: nullable(number(86400)),
@@ -46,7 +41,7 @@ const mealFields = { meal_timestamp: timestamp, meal_timing: nullable(enumeratio
 const identity = { entityId: uuid, expectedRevision: integer(2147483647, 1), requestId: uuid }
 export const activityToolSchemas = {
   create_workout: object({ requestId: uuid, record: object(workoutFields, ['workout_date', 'input_text', 'blocks']), provenance }),
-  amend_workout: object({ ...identity, changes: object({ ...workoutFields, readiness, setMeasurements: list(setMeasurement, 100) }, []), provenance }),
+  amend_workout: object({ ...identity, changes: object({ ...workoutFields, readiness, setMeasurements: list(setMeasurement, 100), setRecordings: list(setRecording, 20) }, []), provenance }),
   create_meal: object({ requestId: uuid, record: object(mealFields, ['meal_timestamp', 'items']), provenance }),
   amend_meal: object({ ...identity, changes: object(mealFields, []), provenance }),
   get_activity_record: object({ kind: enumeration('workout', 'meal'), entityId: uuid }),
@@ -54,25 +49,6 @@ export const activityToolSchemas = {
 } as const
 export type ActivityToolName = keyof typeof activityToolSchemas
 
-function valid(value: unknown, s: Schema): boolean {
-  if (s.anyOf) return s.anyOf.some(option => valid(value, option))
-  if (s.enum && !s.enum.includes(value)) return false
-  switch (s.type) {
-    case 'null': return value === null
-    case 'string': return typeof value === 'string' && value.length >= (s.minLength ?? 0) && value.length <= (s.maxLength ?? Infinity)
-      && (!(s.minLength && s.minLength > 0) || value.trim().length >= s.minLength)
-      && (!s.pattern || new RegExp(s.pattern).test(value))
-    case 'integer': case 'number': return typeof value === 'number' && Number.isFinite(value) && (s.type !== 'integer' || Number.isSafeInteger(value))
-      && value >= (s.minimum ?? -Infinity) && value <= (s.maximum ?? Infinity)
-      && (!s.multipleOf || Math.abs(value / s.multipleOf - Math.round(value / s.multipleOf)) < 1e-7)
-    case 'array': return Array.isArray(value) && value.length >= (s.minItems ?? 0) && value.length <= (s.maxItems ?? Infinity)
-      && value.every(item => valid(item, s.items!))
-    case 'object': return Boolean(value && typeof value === 'object' && !Array.isArray(value)
-      && (s.required ?? []).every(key => Object.hasOwn(value, key))
-      && Object.entries(value).every(([key, part]) => Object.hasOwn(s.properties!, key) && valid(part, s.properties![key])))
-    default: return false
-  }
-}
 
 export function validateActivityToolInput(name: ActivityToolName, input: unknown): asserts input is Record<string, any> {
   if (!valid(input, activityToolSchemas[name]) || JSON.stringify(input).length > 48000 || /data:(image|audio)\//i.test(JSON.stringify(input))) {
@@ -94,10 +70,16 @@ export function validateActivityToolInput(name: ActivityToolName, input: unknown
     }
   }
   validateTimes(record)
-  if (record.setMeasurements) {
+  if (record.setRecordings) for (const patch of record.setRecordings) {
+    try { assertRepRecording(patch.recording) } catch { throw new CoachingContextError(400, 'Invalid structured repetition recording') }
+    if (patch.provenance.origin !== 'imported_unverified' || !['unreviewed', 'corrected'].includes(patch.provenance.reviewState)) {
+      throw new CoachingContextError(400, 'Source recordings retain imported_unverified provenance; review is separate from measurement truth')
+    }
+  }
+  if (record.setMeasurements || record.setRecordings) {
     if (record.blocks) throw new CoachingContextError(400, 'Set measurements cannot accompany replacement blocks')
     if (value.provenance.occurrence) throw new CoachingContextError(400, 'Set measurements cannot change occurrence provenance')
-    const paths = record.setMeasurements.map((patch: Record<string, unknown>) =>
+    const paths = [...(record.setMeasurements ?? []), ...(record.setRecordings ?? [])].map((patch: Record<string, unknown>) =>
       [patch.blockIndex, patch.segmentIndex, patch.eventIndex, patch.collection, patch.setIndex].join(':'))
     if (new Set(paths).size !== paths.length) throw new CoachingContextError(400, 'Duplicate set measurement path')
   }

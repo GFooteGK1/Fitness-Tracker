@@ -2,6 +2,7 @@ import type { PlanningHistorySnapshot } from './planning-context'
 import { buildPerformedWorkContext } from './performed-work-context'
 import { historyFieldProvenance, resolveHistorySnapshot } from './planning-history'
 import type { EvidenceQuantity } from './performed-dose-evidence'
+import { isRepRecording } from './rep-recording'
 
 const BUDGET = 64_000
 const MAX_NOTICES = 128
@@ -35,7 +36,7 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
     if (value === undefined || value === null) return null
     if (!object(value)) { omit(id, path, 'invalid_recorded_object'); return null }
     for (const key of Object.keys(value)) if (!allowed.includes(key)) omit(id, `${path}.${key}`, 'unsupported_recorded_field')
-    const nested = ['segments', 'events', 'performed', 'prescribed', 'load', 'distance', 'subreps', 'rep_range', 'set_details', 'score_model', 'block_score', 'duration', 'duration_per_side', 'velocity', 'session_readiness']
+    const nested = ['segments', 'events', 'performed', 'prescribed', 'load', 'distance', 'subreps', 'rep_range', 'set_details', 'score_model', 'block_score', 'duration', 'duration_per_side', 'velocity', 'session_readiness', 'recording']
     const strings = ['movement_name', 'title', 'block_type', 'scoring', 'unit', 'rx_status', 'id', 'notes', 'metric', 'device', 'measuredAt', 'reportedAt', 'scale', 'weight']
     return Object.fromEntries(allowed.filter(key => {
       if (!has(value, key) || skip.includes(key)) return false
@@ -60,15 +61,38 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
       if (has(projected, 'sets')) {
         if (Array.isArray(projected.sets)) { omit(id, `${setPath}.sets`, 'unsupported_recursive_set_array'); projected.sets = null }
       }
-      if (has(projected, 'velocity')) projected.velocity = fields(projected.velocity,
-        ['value', 'unit', 'metric', 'device', 'measuredAt'], `${setPath}.velocity`, id)
+      if (has(projected, 'velocity')) {
+        projected.velocity = fields(projected.velocity,
+          ['value', 'unit', 'metric', 'device', 'measuredAt', 'recording'], `${setPath}.velocity`, id)
+        if (object(projected.velocity) && has(projected.velocity, 'recording') && !isRepRecording(projected.velocity.recording)) {
+          omit(id, `${setPath}.velocity.recording`, 'invalid_structured_rep_recording'); delete projected.velocity.recording
+        }
+      }
       return projected
     })
   }
   const leafProvenance = (value: unknown, sourcePath: string, capture: unknown, fallback: string) => {
     const defaultValue = historyFieldProvenance(capture, fallback, fallback)
     const overrides: Record<string, typeof defaultValue> = {}
+    const subtreeOverrides: Record<string, typeof defaultValue & { scope: 'all_recording_leaves' }> = {}
     const visit = (part: unknown, path: string) => {
+      // Exact leaf provenance remains stored. Compress a homogeneous source subtree
+      // in this bounded read projection so long paths cannot crowd out all eight sets.
+      if (path.endsWith('.velocity.recording') && isRepRecording(part)) {
+        const sources: typeof defaultValue[] = []
+        const collect = (v: unknown, p: string) => {
+          if (Array.isArray(v)) v.forEach((c, i) => collect(c, `${p}[${i}]`))
+          else if (object(v)) Object.entries(v).forEach(([k, c]) => collect(c, `${p}.${k}`))
+          else sources.push(historyFieldProvenance(capture, p, fallback))
+        }
+        collect(part, path)
+        if (sources.length && sources.every(s => s.origin === sources[0].origin && s.reviewState === sources[0].reviewState)) {
+          if (sources[0].origin !== defaultValue.origin || sources[0].reviewState !== defaultValue.reviewState) {
+            subtreeOverrides[path] = { ...sources[0], scope: 'all_recording_leaves' }
+          }
+          return
+        }
+      }
       if (Array.isArray(part)) part.forEach((child, index) => visit(child, `${path}[${index}]`))
       else if (object(part)) Object.entries(part).forEach(([key, child]) => visit(child, `${path}.${key}`))
       else {
@@ -77,7 +101,8 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
       }
     }
     visit(value, sourcePath)
-    return { scope: 'retained_scalar_leaves' as const, default: defaultValue, overrides }
+    return { scope: 'retained_scalar_leaves' as const, default: defaultValue, overrides,
+      ...(Object.keys(subtreeOverrides).length ? { subtreeOverrides } : {}) }
   }
   const amounts = (value: unknown, path: string, id: string, kind: 'performed' | 'prescribed') => {
     // These aliases preserve recorded prescription intent only. They never
