@@ -126,7 +126,13 @@ export function WeeklyProgramView({
       <ReviewedWeekView value={state.currentWeek.intent.reviewed_week} sessionLinks={sessionLinks} /></>
   }
   const acceptedWeek = state.currentWeek?.intent.weekly_plan ?? null
-  const todaySession = selectTodaySession(activeProgram)
+  const today = getLocalDate()
+  const validWindow = acceptedWeek && [acceptedWeek.windowStart, acceptedWeek.windowEnd].every(date => (
+    typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && getLocalDate(parseDateString(date)) === date
+  )) && acceptedWeek.windowStart <= acceptedWeek.windowEnd
+  const period = acceptedWeek && acceptedWeek.windowEnd < today ? 'past'
+    : acceptedWeek && acceptedWeek.windowStart > today ? 'future' : 'current'
+  const todaySession = validWindow && period === 'current' ? selectTodaySession(activeProgram) : null
   const todayPrescription = todaySession && isCompletePrescription(todaySession.prescription)
     ? todaySession.prescription
     : null
@@ -148,12 +154,12 @@ export function WeeklyProgramView({
       && state.coachingDecision.decision.proposal.id === proposal.proposalId
       && state.coachingDecision.decision.reviewId === proposal.proposal.reviewDecision?.reviewId))) ? proposal : null
 
-  if (!acceptedWeek || !state.program) {
+  if (!acceptedWeek || !state.program || !validWindow) {
     return (
       <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
         <h2 className="text-lg font-bold text-amber-950 dark:text-amber-100">Weekly plan data needs a refresh</h2>
         <p className="mt-2 text-sm text-amber-900 dark:text-amber-200">
-          The active weekly plan is missing its accepted prescription snapshot.
+          The accepted week or its calendar dates could not be read. Refresh your plan before using it.
         </p>
       </section>
     )
@@ -167,7 +173,7 @@ export function WeeklyProgramView({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-              This week
+              {period === 'past' ? 'Last accepted week' : period === 'future' ? 'Upcoming accepted week' : 'This week'}
             </p>
             <h2 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">{acceptedWeek.title}</h2>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
@@ -175,7 +181,7 @@ export function WeeklyProgramView({
             </p>
           </div>
           <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-            Active
+            {period === 'past' ? 'Accepted history' : period === 'future' ? 'Scheduled' : 'Current'}
           </span>
         </div>
 
@@ -194,13 +200,15 @@ export function WeeklyProgramView({
             >
               <CompleteSessionCard prescription={todayPrescription} />
             </TodaySessionCard>
-          ) : todaySession && todaySession.status !== 'planned' ? (
+          ) : todaySession && todaySession.scheduledDate === today && todaySession.status !== 'planned' ? (
             <TodayTerminalCard session={todaySession} />
           ) : (
             <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900">
-              <p className="font-semibold text-gray-950 dark:text-white">No session needs attention today</p>
+              <p className="font-semibold text-gray-950 dark:text-white">{period === 'past' ? 'This saved week is in your history' : period === 'future' ? 'This accepted week has not started' : 'No session needs attention today'}</p>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                Recovery days and missed sessions stay in this week’s record. They are not carried forward.
+                {period === 'past' ? 'Review your next week above to prepare a new plan. The sessions below keep their recorded status; a gap does not establish completed or skipped training.'
+                  : period === 'future' ? 'Your sessions are scheduled for the dates above.'
+                    : 'Recovery days and missed sessions stay in this week’s record. They are not carried forward.'}
               </p>
             </div>
           )}
