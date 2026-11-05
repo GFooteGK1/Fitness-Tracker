@@ -8,6 +8,14 @@ import { resolveSignalExercise } from '@/app/lib/coach/session-signals'
 import { reviewedRollingWeek } from '../fixtures/reviewed-rolling-week'
 
 describe('reviewed rolling-week compiler and read boundary', () => {
+  it.each(['2026-11-02', '2030-01-07'])('builds an explicitly dated synthetic fixture with valid bindings: %s', startDate => {
+    const shifted = reviewedRollingWeek(startDate), original = reviewedRollingWeek()
+    expect(shifted.plan.windowStart).toBe(startDate)
+    expect(shifted.plan.scheduledSessions[0].scheduledDate).toBe(startDate)
+    expect(parseReviewedRollingWeek(shifted.plan)).toEqual(shifted.plan)
+    expect(shifted.plan.scheduledSessions.map(s => s.prescription.content)).toEqual(original.plan.scheduledSessions.map(s => s.prescription.content))
+    expect(reviewedRollingWeek().plan.windowStart).toBe('2026-08-03')
+  })
   it('builds five dated lossless sessions at the real compiler boundary, without invented coverage or persistence authority', () => {
     const { result, plan } = reviewedRollingWeek()
     expect(result).toMatchObject({ persistable: false, numericRuntimeEligible: false })
