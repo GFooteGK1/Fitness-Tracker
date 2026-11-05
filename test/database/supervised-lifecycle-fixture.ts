@@ -69,7 +69,7 @@ export function sourceClient(db: PGlite, owner: string, role: 'authenticated' | 
   } } as unknown as SupabaseClient
 }
 
-export async function supervisedLifecycleFixture(applyLifecycle = true, applyReview = true, seedLegacyBase = false) {
+export async function supervisedLifecycleFixture(applyLifecycle = true, applyReview = true, seedLegacyBase = false, startDate?: string) {
   const db = await recommendationFixture()
   for (const file of ['20260921010000_coach_proposal_context_revision.sql', '20260923010000_coaching_write_pause.sql', '20260926010000_coach_setup_memory_bindings.sql',
     '20260928010000_reviewed_session_set_reports.sql', '20260928020000_reviewed_session_completion.sql', '20260928030000_reviewed_proposal_registration.sql',
@@ -80,7 +80,7 @@ export async function supervisedLifecycleFixture(applyLifecycle = true, applyRev
     await db.exec(sqlFile(`supabase/migrations/${file}`))
   }
   const { owner, reviewer, foreign, program, base } = lifecycleIds
-  const original = reviewedRollingWeek()
+  const original = reviewedRollingWeek(startDate)
   // Create the requested fixture format initially. Never mutate accepted content
   // or disable its immutability trigger to arrange a legacy-onboarding test.
   const legacyProfile = { ...structuredClone(original.plan.profileSnapshot), startDate: '2026-09-14' }

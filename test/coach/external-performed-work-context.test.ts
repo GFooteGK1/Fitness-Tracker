@@ -10,6 +10,66 @@ const event = (input: ReturnType<typeof segmentedSnapshot>) => block(input).segm
 function one() { const input = segmentedSnapshot(); input.workouts = [input.workouts[0]]; block(input).segments[0].events = [event(input)]; return input }
 
 describe('external-only segmented factual context', () => {
+  it.each(['imported_unverified', 'copied_template'] as const)('diagnoses %s blocks by provenance without admitting their performed amounts', origin => {
+    const input = one()
+    input.workouts[0].capture_provenance = { schemaVersion: 1, fields: {
+      blocks: { origin, reviewState: 'unreviewed' },
+      quantities: { origin, reviewState: 'unreviewed' },
+      occurrence: { origin: 'athlete_reported', reviewState: 'athlete_confirmed' },
+    } }
+    const before = structuredClone(input), shared = buildPerformedWorkContext(input)
+    const result = build(input)
+    expect(result).toMatchObject({ status: 'partial', records: [], blockContexts: [], numericPolicyEligible: false,
+      coverage: { complete: false, includedRecords: 0, issues: [], omitted: [
+        { sourceId: input.workouts[0].id, sourcePath: 'blocks[0]', reason: 'unreviewed_template_or_import' },
+      ] } })
+    expect(input).toEqual(before)
+    expect(buildPerformedWorkContext(input)).toEqual(shared)
+
+    // Recognizing one excluded block cannot conceal another unsupported shape.
+    ;(input.workouts[0].blocks as Obj[]).push({ title: 'Unsupported fixture block' })
+    const mixed = build(input)
+    expect(mixed.records).toEqual([])
+    expect(mixed.coverage.issues.map(issue => issue.reason)).toEqual([
+      'unsupported_block_entries:1', 'no_supported_exercise_entries',
+    ])
+  })
+
+  it('keeps empty performed events excluded and does not require a recorded round count', () => {
+    const input = one()
+    block(input).segments[0].rounds = null
+    event(input).performed = {}
+    const result = build(input)
+    expect(result.records).toEqual([])
+    expect(result.coverage.omitted).toContainEqual(expect.objectContaining({ reason: 'no_reported_performance' }))
+    event(input).performed = { time_s: 20 }
+    const timed = build(input)
+    expect(timed.records[0]).toMatchObject({ segmentContext: { recordedRounds: null }, recordedEvent: { performed: { time_s: 20 } } })
+  })
+
+  it('keeps genuine shape errors alongside eligible work and provenance-blocked blocks across sources', () => {
+    const input = one(), valid = structuredClone(block(input))
+    ;(input.workouts[0].blocks as Obj[]).push(valid, { title: 'Unknown shape' })
+    input.workouts[0].capture_provenance = { schemaVersion: 1, fields: {
+      blocks: { origin: 'imported_unverified', reviewState: 'unreviewed' },
+      'blocks[1]': { origin: 'athlete_reported', reviewState: 'athlete_confirmed' },
+      'blocks[1].segments[0].events[0]': { origin: 'athlete_reported', reviewState: 'athlete_confirmed' },
+    } }
+    input.workouts.push({ ...structuredClone(input.workouts[0]), id: 'synthetic-unsupported-source',
+      blocks: [{ title: 'Another unknown shape' }] as never })
+    const result = build(input)
+    expect(result.records).toHaveLength(1)
+    expect(result.records[0].sourcePath).toContain('blocks[1]')
+    expect(result.status).toBe('partial')
+    expect(result.coverage.complete).toBe(false)
+    expect(result.coverage.omitted).toContainEqual({ sourceId: input.workouts[0].id, sourcePath: 'blocks[0]', reason: 'unreviewed_template_or_import' })
+    expect(result.coverage.issues).toEqual(expect.arrayContaining([
+      { sourceId: input.workouts[0].id, reason: 'unsupported_block_entries:2' },
+      { sourceId: 'synthetic-unsupported-source', reason: 'unsupported_block_entries:0' },
+      { sourceId: 'synthetic-unsupported-source', reason: 'no_supported_exercise_entries' },
+    ]))
+  })
+
   it('retains eight nested performed.sets and legacy movement sets without deriving a set count', () => {
     const input = one(), sets = Array.from({ length: 8 }, (_, index) => ({ reps: index + 1, load: { value: 30 + index, unit: 'kg' } }))
     event(input).performed = { sets }

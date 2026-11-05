@@ -10,12 +10,18 @@ import { createSupervisedReviewService } from '@/app/lib/coach/supervised-review
 import { createSupervisedWeekIssuer } from '@/app/lib/coach/supervised-proposal-issuer'
 import { prepareSupervisedCandidate } from '@/app/lib/coach/supervised-candidate-server'
 import { doseContentHash } from '@/app/lib/coach/initial-dose-policy'
+import { formatUTCAsLocalDateWithOffset, localDateToUTCStart } from '@/app/lib/timezone-utils'
 
 describe('supervised programming database lifecycle', () => {
   let f: Awaited<ReturnType<typeof supervisedLifecycleFixture>>
   const { owner, reviewer, foreign, program, base } = lifecycleIds
   beforeAll(async () => {
-    f = await supervisedLifecycleFixture()
+    // Keep all three synthetic weeks in the real 90-day retrieval window.
+    // Freezing JS Date alone would disagree with PostgreSQL's capture clock.
+    const today = formatUTCAsLocalDateWithOffset(new Date().toISOString(), 0)
+    const midnight = new Date(localDateToUTCStart(today, 0))
+    const start = new Date(midnight.getTime() - (21 + (midnight.getUTCDay() + 6) % 7) * 86400000)
+    f = await supervisedLifecycleFixture(true, true, false, formatUTCAsLocalDateWithOffset(start.toISOString(), 0))
     await f.db.exec(sqlFile('supabase/migrations/20261003150403_supervised_issue_closure_preflight.sql'))
   }, 30000)
   beforeEach(async () => { await f.db.exec('BEGIN'); await f.actor(); await f.scalar('SELECT get_coach_context_revision() AS value') })
@@ -130,6 +136,9 @@ describe('supervised programming database lifecycle', () => {
     const finished = await complete(session.id, [corrected.saved.id])
     expect(finished.saved.result.session_status).toBe('completed')
     const second = await accepted(enrollment, 'next_week')
+    const history = second.candidate.privatePacket.source.binding.history
+    expect(history.endsOn).toBe(formatUTCAsLocalDateWithOffset(new Date().toISOString(), 0))
+    expect(session.scheduled_date >= history.startsOn && session.scheduled_date <= history.endsOn).toBe(true)
     expect(second.candidate.privatePacket.source.binding.history.workouts.some(w => w.id === finished.saved.result.workout_id)).toBe(true)
     expect(second.candidate.reviewPacket.evidence.some(row => row.summary.includes('"rir":2'))).toBe(true)
     expect(second.proposal.planVersionId).not.toBe(first.proposal.planVersionId)
@@ -307,10 +316,11 @@ describe('supervised programming database lifecycle', () => {
   it('rejects a legacy rolling replacement with its valid weekly review for an enrolled program', async () => {
     await ready(); await f.actor()
     const revision = await f.scalar<number>('SELECT get_coach_context_revision() AS value')
-    const review = await legacyReview(program, base, '2026-08-03', revision)
+    const review = await legacyReview(program, base, f.initialWeek.windowStart, revision)
+    const nextWeek = formatUTCAsLocalDateWithOffset(new Date(Date.parse(localDateToUTCStart(f.initialWeek.windowStart, 0)) + 7 * 86400000).toISOString(), 0)
     await rejected(() => callLegacy('create_rolling_weekly_replacement_proposal', [program, base, review.review_id,
-      'Legacy next week', 'Strength', '2026-08-10', null, {}, 'legacy', 'legacy', legacyIntent,
-      { contextRevision: revision, setupMemoryBindings: legacySetup }, legacySessions('2026-08-10'), {}, 'c'.repeat(64), randomUUID()]), '55000')
+      'Legacy next week', 'Strength', nextWeek, null, {}, 'legacy', 'legacy', legacyIntent,
+      { contextRevision: revision, setupMemoryBindings: legacySetup }, legacySessions(nextWeek), {}, 'c'.repeat(64), randomUUID()]), '55000')
   })
   it('keeps a nonpilot legacy initial/review/replacement/acceptance lifecycle unchanged', async () => {
     await f.actor(foreign)

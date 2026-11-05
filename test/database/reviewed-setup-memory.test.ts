@@ -8,6 +8,8 @@ import { savedSetupIsConfirmed } from '@/app/lib/coach/complete-intake'
 import { validateProgrammingProfile, validateReviewedProgrammingProfile } from '@/app/lib/coach/programming-schema'
 import { createFirstReviewedProfileService } from '@/app/lib/coach/first-reviewed-profile-service'
 import { SUPERVISED_REVIEW_SHAPES } from '@/app/lib/coach/supervised-programming-contract'
+import { projectRequirement, type ContextRow } from '@/app/lib/coach/coaching-context'
+import { highLowConstraints, highLowSchedule } from '../fixtures/high-low-requirements'
 
 describe('saved reviewed setup v2 (disposable SQL; synthetic Auth claims)', () => {
   let f: Awaited<ReturnType<typeof supervisedLifecycleFixture>>
@@ -41,6 +43,33 @@ describe('saved reviewed setup v2 (disposable SQL; synthetic Auth claims)', () =
     try { await expect(work()).rejects.toMatchObject({code}) }
     finally { await f.db.exec('ROLLBACK TO SAVEPOINT denial; RELEASE SAVEPOINT denial') }
   }
+  it('round-trips high-low prose through SQL confirmation/correction to the coach without changing accepted programming', async () => {
+    await f.db.exec('RESET ROLE')
+    const acceptedBefore = await f.scalar('SELECT jsonb_agg(to_jsonb(v) ORDER BY id) AS value FROM training_plan_versions v')
+    const sessionsBefore = await f.scalar('SELECT jsonb_agg(to_jsonb(s) ORDER BY id) AS value FROM prescribed_sessions s')
+    await save('training_schedule', highLowSchedule)
+    await f.actor(owner)
+    const original = (await f.db.query<{ memory_id: string }>('SELECT * FROM confirm_coach_memory($1,$2,$3,$4,$5,$6)',
+      ['training_constraints', 'constraint', JSON.stringify({ constraints: 'Existing fixture constraint', constraintKinds: [] }),
+        '{"source":"athlete_confirmed"}', 1, randomUUID()])).rows[0]
+    const request = randomUUID(), args = [original.memory_id, JSON.stringify(highLowConstraints), request]
+    const correction = (await f.db.query('SELECT * FROM correct_coach_memory_with_review($1,$2,$3)', args)).rows
+    expect((await f.db.query('SELECT * FROM correct_coach_memory_with_review($1,$2,$3)', args)).rows).toEqual(correction)
+    // This SQL fixture covers setup tables. Exercise the same owner-bound latest
+    // memory selection and projection without fabricating its absent domains.
+    for (const [key, expected] of [['training_constraints', highLowConstraints], ['training_schedule', highLowSchedule]] as const) {
+      const saved = await sourceClient(f.db, owner).from('coach_memories').select('*')
+        .eq('user_id', owner).eq('memory_key', key).order('version', { ascending: false }).limit(1)
+      expect(saved.error).toBeNull()
+      expect(projectRequirement({ status: 'available', rows: saved.data as ContextRow[], count: saved.count }, key, new Date().toISOString()))
+        .toMatchObject({ status: 'current', value: expected })
+    }
+    await f.db.exec('RESET ROLE')
+    expect(await f.scalar('SELECT content AS value FROM coach_memories WHERE id=$1', [original.memory_id]))
+      .toEqual({ constraints: 'Existing fixture constraint', constraintKinds: [] })
+    expect(await f.scalar('SELECT jsonb_agg(to_jsonb(v) ORDER BY id) AS value FROM training_plan_versions v')).toEqual(acceptedBefore)
+    expect(await f.scalar('SELECT jsonb_agg(to_jsonb(s) ORDER BY id) AS value FROM prescribed_sessions s')).toEqual(sessionsBefore)
+  })
   it('saves unequal daily times and resolved equipment without erasing the original wording', async () => {
     const s=setup(), request=randomUUID(), first=await save('training_schedule',s.schedule,request)
     expect(await save('training_schedule',s.schedule,request)).toEqual(first)

@@ -139,6 +139,7 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
   const handled = new Set<string>(), ambiguous = new Set<string>()
   const nestedSetContexts: Array<{ workoutId: string; sourcePath: string; recordedSets: unknown; fieldProvenance: ReturnType<typeof leafProvenance> }> = []
   const adaptedWorkouts = new Set<string>()
+  const provenanceBlockedWorkouts = new Set<string>()
   let selectedEvents = 0
   for (const row of resolved.workouts) {
     const blocks = Array.isArray(row.blocks) ? row.blocks : object(row.blocks) && Array.isArray(row.blocks.blocks) ? row.blocks.blocks : []
@@ -193,6 +194,10 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
       if (row.execution_source === 'program_runner') { omit(row.id, blockPath, 'unsupported_segmented_program_runner_contract'); continue }
       const provenance = historyFieldProvenance(row.capture_provenance, blockPath)
       if (['copied_template', 'imported_unverified'].includes(provenance.origin) && provenance.reviewState === 'unreviewed') {
+        // This shape is supported by the external reader. Report the actual
+        // provenance exclusion, not the shared numeric reader's shape error.
+        handled.add(identity)
+        provenanceBlockedWorkouts.add(row.id)
         omit(row.id, blockPath, 'unreviewed_template_or_import'); continue
       }
       const metadata = fields(block, ['title', 'block_type', 'time_cap_s', 'score_model', 'block_score', 'segments', 'session_readiness'], blockPath, row.id, ['segments'])!
@@ -251,8 +256,14 @@ export function buildExternalPerformedWorkContext(input: PlanningHistorySnapshot
   }
   const issues = base.coverage.issues.filter(issue => {
     const match = /^unsupported_block_entries:(\d+)$/.exec(issue.reason)
+    const fullyDiagnosedImport = provenanceBlockedWorkouts.has(issue.sourceId)
+      && base.coverage.issues.every(other => {
+        if (other.sourceId !== issue.sourceId || other.reason === 'no_supported_exercise_entries') return true
+        const block = /^unsupported_block_entries:(\d+)$/.exec(other.reason)
+        return Boolean(block && handled.has(`${other.sourceId}:${block[1]}`))
+      })
     return !(match && handled.has(`${issue.sourceId}:${match[1]}`))
-      && !(issue.reason === 'no_supported_exercise_entries' && adaptedWorkouts.has(issue.sourceId))
+      && !(issue.reason === 'no_supported_exercise_entries' && (adaptedWorkouts.has(issue.sourceId) || fullyDiagnosedImport))
   })
   const omitted = [...base.coverage.omitted, ...addedOmissions]
   const records = [...retainedNative, ...segmentedRecords]

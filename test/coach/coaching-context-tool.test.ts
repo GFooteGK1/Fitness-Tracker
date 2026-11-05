@@ -3,6 +3,8 @@ import { assertVerifiedContextPrincipal, coachingContextTool, createCoachingCont
 import { selectOnlyClient } from '../../app/lib/coach/coaching-context-server'
 import { contextClient, contextNow, contextOwner, contextRows } from '../fixtures/coaching-context'
 import { workSnapshot } from '../fixtures/coach-performed-work'
+import { highLowConstraints, highLowSchedule } from '../fixtures/high-low-requirements'
+import { parseReviewedConstraintMemory, parseReviewedScheduleMemory } from '../../app/lib/coach/reviewed-setup-memory'
 
 const policy = { clientId: 'synthetic-chatgpt-client', resource: 'https://synthetic.invalid/api/mcp', issuer: 'https://synthetic-auth.invalid/auth/v1' }
 const principal = (): VerifiedContextPrincipal => ({ subject: contextOwner, ...policy,
@@ -31,6 +33,47 @@ describe('unwired coaching MCP tool adapter with synthetic verified-identity fix
     expect(traces.length).toBeGreaterThan(0)
     expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === contextOwner))).toBe(true)
     expect(db.auth.getUser).toHaveBeenCalledTimes(1)
+  })
+
+  it('delivers saved high-low prose and five-day availability unchanged with intent missing and no event date', async () => {
+    expect(parseReviewedConstraintMemory(highLowConstraints)).toEqual(highLowConstraints)
+    expect(parseReviewedScheduleMemory(highLowSchedule)).toEqual(highLowSchedule)
+    const rows = contextRows()
+    rows.coach_memories = rows.coach_memories.filter(row => row.memory_key !== 'training_intent')
+    rows.coach_memories.find(row => row.memory_key === 'training_constraints')!.content = structuredClone(highLowConstraints)
+    rows.coach_memories.find(row => row.memory_key === 'training_schedule')!.content = structuredClone(highLowSchedule)
+    const before = structuredClone(rows), { db, writes } = contextClient(rows)
+    const result = await createCoachingContextTool(async () => ({ principal: principal(), db }), policy).call({ tzOffset: 0 })
+    const context = result.structuredContent.context
+    expect(context.requirements.training_constraints).toMatchObject({ status: 'current', value: highLowConstraints })
+    expect(context.requirements.training_schedule.value).toEqual(highLowSchedule)
+    expect(context.requirements.training_intent).toMatchObject({ status: 'missing', value: null })
+    expect(context.gaps).toContain('training_intent_missing')
+    expect(context.acceptedProgramming?.todaySessions[0].prescription).toEqual(before.prescribed_sessions[0].prescription)
+    expect(JSON.parse(result.content[0].text)).toEqual(result.structuredContent)
+    expect(rows).toEqual(before)
+    expect(writes).not.toHaveBeenCalled()
+  })
+
+  it('uses the existing reviewed-constraint bounds and flags without adding a high-low enum', () => {
+    expect(parseReviewedConstraintMemory({ ...highLowConstraints, constraints: 'x'.repeat(4000) })).not.toBeNull()
+    expect(parseReviewedConstraintMemory({ ...highLowConstraints, constraints: 'x'.repeat(4001) })).toBeNull()
+    expect(parseReviewedConstraintMemory({ ...highLowConstraints, constraintKinds: ['high_low'] })).toBeNull()
+  })
+
+  it.each(['legacy', 'empty', 'missing', 'withdrawn'] as const)('does not invent a high-low policy for %s constraints', async state => {
+    const rows = contextRows(), constraint = rows.coach_memories.find(row => row.memory_key === 'training_constraints')!
+    if (state === 'empty') constraint.content = { constraints: '', constraintKinds: [] }
+    if (state === 'missing') rows.coach_memories = rows.coach_memories.filter(row => row !== constraint)
+    if (state === 'withdrawn') Object.assign(constraint, { status: 'withdrawn', content: highLowConstraints })
+    const { db, writes } = contextClient(rows)
+    const result = await createCoachingContextTool(async () => ({ principal: principal(), db }), policy).call({ tzOffset: 0 })
+    expect(result.structuredContent.context.requirements.training_constraints).toMatchObject({
+      status: state === 'missing' || state === 'withdrawn' ? state : 'current',
+      value: state === 'missing' || state === 'withdrawn' ? null : constraint.content,
+    })
+    expect(JSON.stringify(result)).not.toContain('competition-style high-day anchor')
+    expect(writes).not.toHaveBeenCalled()
   })
 
   it.each([

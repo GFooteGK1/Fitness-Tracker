@@ -9,6 +9,7 @@ vi.mock('@/app/lib/coach/trust-center', async importOriginal => {
 import { GET, POST } from '@/app/api/coach/trust/route'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { fetchCoachTrustCenter } from '@/app/lib/coach/trust-center'
+import { highLowConstraints } from '../fixtures/high-low-requirements'
 
 const userId = '11111111-1111-4111-8111-111111111111'
 const importId = '31111111-1111-4111-8111-111111111111'
@@ -60,6 +61,15 @@ describe('/api/coach/trust', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('private, no-store')
     expect(fetchCoachTrustCenter).toHaveBeenCalledWith(supabase, userId)
+  })
+
+  it('passes high-low prose through the existing owned constraint correction without new flags or dates', async () => {
+    const id = '51111111-1111-4111-8111-111111111111'
+    const db = client({ tables: { coach_memories: [{ id, user_id: userId, memory_key: 'training_constraints', kind: 'constraint', status: 'confirmed' }] } })
+    vi.mocked(createServerClient).mockResolvedValue(db as never)
+    const body = { action: 'correct_memory', resourceId: id, content: highLowConstraints, idempotencyKey: 'synthetic-high-low-policy' }
+    expect((await POST(request(body))).status).toBe(200)
+    expect(db.rpc).toHaveBeenCalledWith('correct_coach_memory_with_review', expect.objectContaining({ p_content: highLowConstraints }))
   })
 
   it('authenticates before reading an action body', async () => {
