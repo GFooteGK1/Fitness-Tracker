@@ -273,32 +273,30 @@ function calculateDailySummaries(meals: any[], tzOffset: number = 0): NutritionD
 
 
 /**
- * Fetches cross-domain data combining workout, nutrition, and WHOOP data
+ * Fetches cross-domain data consumed by the workout/nutrition response contract
  * Requirements: 2.3, 5.6, 6.6
  * 
  * @param supabase - Supabase client instance
  * @param userId - Authenticated user's ID
  * @param timeWindow - Start and end dates for data retrieval
  * @param tzOffset - Client timezone offset in minutes (optional)
- * @returns CrossDomainData containing workout, nutrition, and WHOOP data
+ * @returns CrossDomainData containing workout and nutrition data
  */
 export async function fetchCrossDomainData(
   supabase: SupabaseClient,
   userId: string,
   timeWindow: TimeWindow,
   tzOffset: number = 0
-): Promise<CrossDomainData & { whoop?: WhoopData }> {
-  // Fetch all domains in parallel for efficiency
-  const [workoutData, nutritionData, whoopData] = await Promise.all([
+): Promise<CrossDomainData> {
+  // The response formatter and metadata consume only these two domains.
+  const [workoutData, nutritionData] = await Promise.all([
     fetchWorkoutData(supabase, userId, timeWindow),
-    fetchNutritionData(supabase, userId, timeWindow, tzOffset),
-    fetchWhoopData(supabase, userId, timeWindow)
+    fetchNutritionData(supabase, userId, timeWindow, tzOffset)
   ])
 
   return {
     workout: workoutData,
-    nutrition: nutritionData,
-    whoop: whoopData.hasData ? whoopData : undefined
+    nutrition: nutritionData
   }
 }
 
