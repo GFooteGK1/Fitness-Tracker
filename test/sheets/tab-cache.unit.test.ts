@@ -8,7 +8,7 @@
  * **Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5**
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { TabCache } from '@/app/lib/sheets/tab-cache'
 import type { CachedTabResult } from '@/app/lib/sheets/types'
 
@@ -512,23 +512,32 @@ describe('Tab Cache - Unit Tests', () => {
     })
 
     it('should correctly use isExpired helper method', () => {
-      const now = Date.now()
-      const oneHourAgo = now - (1 * 60 * 60 * 1000)
-      const fiveHoursAgo = now - (5 * 60 * 60 * 1000)
+      const now = Date.UTC(2026, 0, 15, 12)
+      const clock = vi.spyOn(Date, 'now').mockReturnValue(now)
+      try {
+        const oneHourAgo = now - (1 * 60 * 60 * 1000)
+        const fiveHoursAgo = now - (5 * 60 * 60 * 1000)
 
-      // Within 4-hour TTL
-      expect(cache.isExpired(oneHourAgo, 4)).toBe(false)
+        // Within 4-hour TTL
+        expect(cache.isExpired(oneHourAgo, 4)).toBe(false)
 
-      // Beyond 4-hour TTL
-      expect(cache.isExpired(fiveHoursAgo, 4)).toBe(true)
+        // Beyond 4-hour TTL
+        expect(cache.isExpired(fiveHoursAgo, 4)).toBe(true)
 
-      // Just inside the strict 4-hour TTL boundary
-      const fourHoursMinusOneMs = now - (4 * 60 * 60 * 1000 - 1)
-      expect(cache.isExpired(fourHoursMinusOneMs, 4)).toBe(false)
+        // Just inside the strict 4-hour TTL boundary
+        const fourHoursMinusOneMs = now - (4 * 60 * 60 * 1000 - 1)
+        expect(cache.isExpired(fourHoursMinusOneMs, 4)).toBe(false)
 
-      // Just past boundary
-      const fourHoursAndOneMs = now - (4 * 60 * 60 * 1000 + 1)
-      expect(cache.isExpired(fourHoursAndOneMs, 4)).toBe(true)
+        // Equality is still valid: expiration uses a strict greater-than comparison.
+        const exactlyFourHoursAgo = now - (4 * 60 * 60 * 1000)
+        expect(cache.isExpired(exactlyFourHoursAgo, 4)).toBe(false)
+
+        // Just past boundary
+        const fourHoursAndOneMs = now - (4 * 60 * 60 * 1000 + 1)
+        expect(cache.isExpired(fourHoursAndOneMs, 4)).toBe(true)
+      } finally {
+        clock.mockRestore()
+      }
     })
   })
 })
