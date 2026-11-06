@@ -16,8 +16,13 @@ vi.mock('../../app/lib/auth/supabase-server', () => ({
   createServerClient: vi.fn(),
 }))
 
-import { GET } from '../../app/api/adherence/weekly/route'
+import { GET, POST } from '../../app/api/adherence/weekly/route'
 import { createServerClient } from '../../app/lib/auth/supabase-server'
+import { randomUUID } from 'node:crypto'
+import { loggingContext, saveActivity } from '@/app/lib/logging/server'
+import { captureProvenance } from '@/app/lib/capture/contracts'
+import { localDateToUTCStart } from '@/app/lib/timezone-utils'
+import { mcpActivityFixture, mcpOwnerClient } from '../database/mcp-activity-fixture'
 
 // Helper to create a mock NextRequest for GET
 function createMockRequest(weekStart: string): NextRequest {
@@ -74,7 +79,7 @@ function createAuthenticatedMockSupabase(
   targetsData: typeof mockTargetsData | null = mockTargetsData,
   mealsData: typeof mockMealsData | null = mockMealsData,
   targetsError: { message: string } | null = null,
-  mealsError: { message: string } | null = null
+  mealsError: { message: string; day?: string; data?: typeof mockMealsData[string] } | null = null
 ) {
   return {
     auth: {
@@ -107,8 +112,8 @@ function createAuthenticatedMockSupabase(
             capturedStartDate = value.split('T')[0]
             return {
               lt: vi.fn().mockImplementation(() => {
-                if (mealsError) {
-                  return Promise.resolve({ data: null, error: mealsError })
+                if (mealsError && (!mealsError.day || mealsError.day === capturedStartDate)) {
+                  return Promise.resolve({ data: mealsError.data ?? null, error: mealsError })
                 }
                 // Return meals for the captured date
                 const dayMeals = mealsData && capturedStartDate ? mealsData[capturedStartDate] || [] : []
@@ -480,6 +485,112 @@ describe('GET /api/adherence/weekly', () => {
    * Error handling tests
    */
   describe('Error Handling', () => {
+    it.each([
+      { method: 'GET', day: '2025-01-20', queryCount: 1 },
+      { method: 'GET', day: '2025-01-23', queryCount: 4 },
+      { method: 'GET', day: '2025-01-26', queryCount: 7 },
+      { method: 'POST', day: '2025-01-23', queryCount: 4 },
+    ])('returns only a safe error for $method when meal reads fail on $day', async ({ method, day, queryCount }) => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const client = createAuthenticatedMockSupabase('test-user-id', mockTargetsData, mockMealsData, null,
+        { day, message: 'private upstream details: synthetic-owner@example.invalid' })
+      vi.mocked(createServerClient).mockResolvedValue(client as any)
+      const response = method === 'POST' ? await POST(new NextRequest('http://localhost/api/adherence/weekly', {
+        method: 'POST', body: JSON.stringify({ tzOffset: 0 }), headers: { 'Content-Type': 'application/json' },
+      })) : await GET(createMockRequestWithTimezone('2025-01-20', 0))
+      expect(response.status).toBe(500)
+      expect(await response.json()).toEqual({ error: 'Unable to load weekly nutrition data. Please try again.' })
+      expect(client.from.mock.calls.filter(([table]) => table === 'meals')).toHaveLength(queryCount)
+    })
+
+    it('does not publish data returned alongside a meal-read error', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const client = createAuthenticatedMockSupabase('test-user-id', mockTargetsData, mockMealsData, null,
+        { day: '2025-01-21', message: 'Synthetic incomplete read', data: mockMealsData['2025-01-21'] })
+      vi.mocked(createServerClient).mockResolvedValue(client as any)
+      const response = await GET(createMockRequestWithTimezone('2025-01-20', 0))
+      expect(response.status).toBe(500)
+      expect(await response.json()).toEqual({ error: 'Unable to load weekly nutrition data. Please try again.' })
+    })
+
+    it('preserves saved fractions, zeros and local dates, then withholds the report when a stored day cannot be read', async () => {
+      vi.useRealTimers()
+      vi.stubEnv('CAPTURE_RECEIPTS_V2_ENABLED', 'true')
+      vi.stubGlobal('fetch', () => { throw new Error('Unexpected network call in local fixture') })
+      let cleanupDb: Awaited<ReturnType<typeof mcpActivityFixture>> | undefined
+      try {
+        const sql = await mcpActivityFixture(); cleanupDb = sql
+        const owner = randomUUID()
+        await sql.query('INSERT INTO auth.users(id) VALUES($1)', [owner])
+        await sql.exec('SET ROLE authenticated')
+        await sql.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [owner])
+        for (const [timestamp, protein, carbs, fat, calories] of [
+          ['2026-11-02T23:30:00-06:00', 25.25, 10.5, 2.25, 163.25],
+          ['2026-11-03T12:00:00-06:00', 0, 0, 0, 0],
+        ] as const) {
+          const writer = mcpOwnerClient(sql, owner)
+          const request = await writer.db.rpc('begin_logging_request', { p_key: `synthetic-weekly:${randomUUID()}`, p_fingerprint: 'e'.repeat(64) })
+          expect(request.error).toBeNull()
+          await loggingContext.run({ id: request.data.id, userId: owner, inputMethod: 'manual' }, () =>
+            saveActivity(writer.db, 'meal', { meal_timestamp: timestamp, items: [
+              { food: 'Synthetic complete meal', portion: '1 serving', protein, carbs, fat, calories },
+            ] }, [], undefined, { inputMethod: 'manual', provenance: captureProvenance('meal', 'athlete_reported', 'athlete_confirmed') }))
+        }
+        const stored = async () => (await sql.query<{ value: Record<string, unknown> }>(
+          'SELECT to_jsonb(m) value FROM meals m WHERE user_id=$1 ORDER BY id', [owner])).rows
+        const before = await stored()
+        const client = createAuthenticatedMockSupabase(owner, { ...mockTargetsData, user_id: owner })
+        const originalFrom = client.from.getMockImplementation()!
+        const writes = vi.fn(() => { throw new Error('Reporting cannot write') })
+        Object.assign(client, { rpc: writes })
+        let failRead = false, withheldRows = 0
+        client.from.mockImplementation((table: string) => {
+          if (table !== 'meals') return originalFrom(table)
+          let columns = '*', startsAt = ''
+          const predicates: string[] = [], values: unknown[] = []
+          const filter = (key: string, op: string, value: unknown) => {
+            if (key === 'user_id') expect(value).toBe(owner)
+            values.push(value); predicates.push(`${key}${op}$${values.length}`); return q
+          }
+          const execute = async () => {
+            const rows = (await sql.query<{ value: Record<string, unknown> }>(`SELECT to_jsonb(m) value FROM
+              (SELECT ${columns} FROM meals WHERE ${predicates.join(' AND ')}) m`, values)).rows.map(row => row.value)
+            if (failRead && startsAt === localDateToUTCStart('2026-11-02', 360)) {
+              withheldRows = rows.length
+              return { data: null, error: { message: 'Synthetic read unavailable' } }
+            }
+            return { data: rows, error: null }
+          }
+          const q = { select: (value: string) => { columns = value; return q },
+            eq: (key: string, value: unknown) => filter(key, '=', value),
+            gte: (key: string, value: string) => { startsAt = value; return filter(key, '>=', value) },
+            lt: (key: string, value: string) => filter(key, '<', value),
+            then: (resolve: any, reject: any) => execute().then(resolve, reject) }
+          return q
+        })
+        vi.mocked(createServerClient).mockResolvedValue(client as any)
+        vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime('2026-11-06T20:00:00Z')
+        const weeklyRequest = () => createMockRequestWithTimezone('2026-11-02', 360)
+        const healthy = await GET(weeklyRequest()), data = await healthy.json()
+        expect(healthy.status).toBe(200); expect(data.daysWithData).toBe(2)
+        expect(data.cumulativeData).toMatchObject({ totalProtein: 25.25, totalCarbs: 10.5, totalFat: 2.25, totalCalories: 163.25 })
+        expect(data.weeklyAdherence.dailyScores.map((day: any) => [day.date, day.dailyTotals.protein]))
+          .toEqual([['2026-11-02', 25.25], ['2026-11-03', 0]])
+        failRead = true
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+        for (const response of [await GET(weeklyRequest()), await POST(new NextRequest('http://localhost/api/adherence/weekly', {
+          method: 'POST', body: JSON.stringify({ tzOffset: 360 }), headers: { 'Content-Type': 'application/json' },
+        }))]) {
+          expect(response.status).toBe(500)
+          expect(await response.json()).toEqual({ error: 'Unable to load weekly nutrition data. Please try again.' })
+        }
+        expect(withheldRows).toBe(1); expect(writes).not.toHaveBeenCalled()
+        expect(await stored()).toEqual(before)
+      } finally {
+        await cleanupDb?.close(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers()
+      }
+    }, 30000)
+
     it('should return 401 for unauthenticated requests', async () => {
       const mockSupabase = createUnauthenticatedMockSupabase()
       vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any)

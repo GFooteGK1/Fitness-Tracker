@@ -135,7 +135,10 @@ export async function GET(request: NextRequest) {
       
       if (dayError) {
         console.error(`Error fetching meals for ${dateStr}:`, dayError)
-        continue
+        return NextResponse.json(
+          { error: 'Unable to load weekly nutrition data. Please try again.' },
+          { status: 500 }
+        )
       }
       
       // Only add to summaries if there's data for this day
