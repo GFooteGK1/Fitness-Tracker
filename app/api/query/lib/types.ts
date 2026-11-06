@@ -25,13 +25,12 @@ export interface QueryContext {
   };
 }
 
-// Workout data structure from domain fetcher
+// Workout summary consumed by the legacy query prompt and response metadata.
 export interface WorkoutData {
   workouts: Array<{
     workout_date: string;
     input_text: string;
     primary_score: string | null;
-    blocks: unknown;
     rpe: number | null;
     tags: string[];
   }>;
