@@ -42,6 +42,20 @@ function exclusiveLocks(){
   return {locks:{request} as unknown as Pick<LockManager,'request'>,request}
 }
 describe('first reviewed browser pending requests',()=>{
+  it('explains a source denial while preserving the exact original request and getter-only recovery',async()=>{
+    const h=fixture(),fetcher=vi.fn(async()=>Response.json({kind:'review_required',reasons:['Untrusted arbitrary provider detail']},{status:409}))
+    await expect(performFirstReviewedPending(h.store,h.pending,()=>h.userId,'send',fetcher)).rejects.toThrow('current training facts or reviewer scope')
+    expect(fetcher).toHaveBeenCalledTimes(1);expect(readFirstReviewedPending(h.store,h.userId,h.programId)).toEqual(h.pending)
+    expect([...h.records.keys()].some(k=>k.startsWith('first-reviewed-receipt:'))).toBe(false)
+    const getter=vi.fn(async()=>Response.json({kind:'resolved',resolution:{schemaVersion:1,request:h.pending,disposition:'not_found'}}))
+    await expect(performFirstReviewedPending(h.store,h.pending,()=>h.userId,'recover',getter)).rejects.toThrow('unconfirmed')
+    expect(getter.mock.calls).toHaveLength(1);expect(readFirstReviewedPending(h.store,h.userId,h.programId)).toEqual(h.pending)
+  })
+  it.each([['retry_required',503],['request_conflict',409],['review_required',503]] as const)('keeps unknown %s/%s denial generic and pending',async(kind,status)=>{
+    const h=fixture(),fetcher=vi.fn(async()=>Response.json({kind},{status}))
+    await expect(performFirstReviewedPending(h.store,h.pending,()=>h.userId,'send',fetcher)).rejects.toThrow('result is unconfirmed')
+    expect(readFirstReviewedPending(h.store,h.userId,h.programId)).toEqual(h.pending)
+  })
   it('serializes reservation through archive/removal and rejects a second tab without overwriting',async()=>{
     const h=fixture(),{locks,request}=exclusiveLocks()
     h.store.removeItem(`first-reviewed-pending:${h.userId}:${h.programId}`)

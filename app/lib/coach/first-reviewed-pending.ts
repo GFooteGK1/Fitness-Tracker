@@ -71,7 +71,11 @@ export async function performFirstReviewedPending(store:Store,input:FirstReviewe
     const response=await post(mode==='send'?'':'/resolve');unchanged()
     // Retain uncertain requests. Do not turn transport or writer denial into a
     // cancellation, and do not issue another write on the user's behalf.
-    if(!response.ok)throw Error('The result is unconfirmed. Recover the original request before another action.')
+    if(!response.ok){
+      let value:unknown;try{value=await response.json()}catch{/* Keep unknown transport failures generic. */}
+      if(response.status===409&&record(value)&&value.kind==='review_required')throw Error('This week needs current training facts or reviewer scope. The original request remains preserved; check its saved result before refreshing the week.')
+      throw Error('The result is unconfirmed. Recover the original request before another action.')
+    }
   }
   unchanged()
   const response=await post('/resolution'),value:unknown=await response.json();unchanged()

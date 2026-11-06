@@ -583,6 +583,29 @@ describe('first reviewed issuance and atomic acceptance (disposable SQL, not rea
     expect(s.privateCalls.filter(n=>n==='submit_first_review_candidate')).toHaveLength(1)
     expect(await count('coach_first_review_candidates')).toBe(1)
   })
+  it('reports changed-source approval through SQL, HTTP and browser transport without losing the original request',async()=>{
+    const c=await candidate(false),s=services(),q:FirstReviewedPending={schemaVersion:1,userId:reviewer,programId:program,operation:'decide',
+      body:{expectedUserId:reviewer,candidateId:c.candidateId,designationId:c.designationId,requestId:randomUUID(),decision:'approve',contentHash:c.saved.contentHash,sourceHash:c.saved.sourceHash}}
+    await saveSetup('training_constraints',{constraints:'A newly reported restriction requires fresh review.',constraintKinds:[]})
+    const profiles=createFirstReviewedProfileService({enabled:()=>true,createServiceClient:()=>s.privateDb})
+    const http=createFirstReviewedHttp({createUserClient:async()=>s.reviewerDb,profiles,review:s.review,life:s.life})
+    const entries=new Map<string,string>(),store={getItem:(k:string)=>entries.get(k)??null,setItem:(k:string,v:string)=>{entries.set(k,v)},removeItem:(k:string)=>{entries.delete(k)}}
+    saveFirstReviewedPending(store,q)
+    const calls:string[]=[],fetcher=async(url:string|URL|Request,init?:RequestInit)=>{
+      calls.push(String(url));const request=new Request('http://localhost'+String(url),init)
+      const result=String(url).endsWith('/resolution')?await http.resolution(request):await http.execute(request)
+      if(!String(url).endsWith('/resolution')){expect(result.status).toBe(409);expect((await result.clone().json()).kind).toBe('review_required')}
+      return result
+    }
+    await expect(performFirstReviewedPending(store,q,()=>reviewer,'send',fetcher)).rejects.toThrow('current training facts or reviewer scope')
+    expect(readFirstReviewedPending(store,reviewer,program)).toEqual(q)
+    expect(await count('coach_first_review_decisions')).toBe(0)
+    expect(await count('coach_first_review_acceptances')).toBe(0)
+    await expect(performFirstReviewedPending(store,q,()=>reviewer,'recover',fetcher)).rejects.toThrow('unconfirmed')
+    expect(calls).toEqual(['/api/coach/first-reviewed','/api/coach/first-reviewed/resolution'])
+    expect(s.reviewerCalls.filter(n=>n==='decide_first_review_candidate')).toHaveLength(1)
+    expect(readFirstReviewedPending(store,reviewer,program)).toEqual(q)
+  })
   it('recovers a lost reviewer decision after revocation and disabling without replay',async()=>{
     const c=await candidate(false);let enabled=true
     const s=services(()=>enabled),request:FirstReviewedPending={schemaVersion:1,userId:reviewer,programId:program,operation:'decide',
