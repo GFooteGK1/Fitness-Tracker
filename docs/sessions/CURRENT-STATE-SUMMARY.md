@@ -1,6 +1,12 @@
 # SociusFit - Current State Summary
 **Last Updated:** January 11, 2026
 
+> **Historical snapshot:** The dated body below is preserved as the January 11,
+> 2026 record, not current architecture, rollout status or readiness. Start with
+> the [current architecture overview](../architecture/PROJECT-OVERVIEW.md) and
+> [ADR-0039](../decisions/ADR-0039-chosen-llm-and-durable-context.md) for the
+> chosen-LLM transition and its limits.
+
 ## 🎯 Project Overview
 
 **SociusFit** is a holistic AI-powered fitness companion that integrates:
