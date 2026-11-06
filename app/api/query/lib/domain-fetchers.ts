@@ -1,78 +1,11 @@
 /**
  * Domain Fetchers for Holistic Query System
- * Fetches workout, nutrition, WHOOP, and cross-domain data based on query intent
+ * Fetches workout, nutrition, and cross-domain data based on query intent
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 5.6, 6.6
  */
 
 import { SupabaseClient } from '@supabase/supabase-js'
 import { WorkoutData, NutritionData, CrossDomainData, TimeWindow } from './types'
-import type { WhoopRecovery, WhoopSleep, WhoopCycle } from '@/app/lib/types/whoop'
-
-/**
- * WHOOP data structure for query context
- */
-export interface WhoopData {
-  recovery: WhoopRecovery[]
-  sleep: WhoopSleep[]
-  cycles: WhoopCycle[]
-  hasData: boolean
-}
-
-/**
- * Fetches WHOOP data for a user within a time window
- * Requirements: 6.6
- * 
- * @param supabase - Supabase client instance
- * @param userId - Authenticated user's ID
- * @param timeWindow - Start and end dates for data retrieval
- * @returns WhoopData containing recovery, sleep, and cycle data
- */
-export async function fetchWhoopData(
-  supabase: SupabaseClient,
-  userId: string,
-  timeWindow: TimeWindow
-): Promise<WhoopData> {
-  const startDate = `${timeWindow.start.getUTCFullYear()}-${String(timeWindow.start.getUTCMonth() + 1).padStart(2, '0')}-${String(timeWindow.start.getUTCDate()).padStart(2, '0')}`
-  const endDate = `${timeWindow.end.getUTCFullYear()}-${String(timeWindow.end.getUTCMonth() + 1).padStart(2, '0')}-${String(timeWindow.end.getUTCDate()).padStart(2, '0')}`
-
-  // Fetch all WHOOP data in parallel
-  const [recoveryResult, sleepResult, cyclesResult] = await Promise.all([
-    supabase
-      .from('whoop_recovery')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('date', startDate)
-      .lte('date', endDate)
-      .order('date', { ascending: false }),
-    
-    supabase
-      .from('whoop_sleep')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('date', startDate)
-      .lte('date', endDate)
-      .order('date', { ascending: false }),
-    
-    supabase
-      .from('whoop_cycles')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('date', startDate)
-      .lte('date', endDate)
-      .order('date', { ascending: false })
-  ])
-
-  const recovery = recoveryResult.data || []
-  const sleep = sleepResult.data || []
-  const cycles = cyclesResult.data || []
-
-  return {
-    recovery,
-    sleep,
-    cycles,
-    hasData: recovery.length > 0 || sleep.length > 0 || cycles.length > 0
-  }
-}
 
 /**
  * Fetches workout data for a user within a time window
