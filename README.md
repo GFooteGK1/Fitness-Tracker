@@ -1,232 +1,100 @@
-# 🏋️ Fitness Tracker
+# SociusFit
 
-AI-powered workout logging and analytics platform. Log workouts using natural language, voice, or photos. Query your history with conversational AI.
+SociusFit is evolving into a durable fitness context and workflow service for the
+athlete's chosen LLM. The accepted target puts conversation, interpretation and
+program authorship in that LLM; Socius retains facts, provenance, deterministic
+calculations and validated persistence. See [ADR-0039](docs/decisions/ADR-0039-chosen-llm-and-durable-context.md).
 
-## Features
+The transition is incomplete. The repository also retains the first-party
+application and embedded model-backed paths. Their presence is not evidence that
+they should be deleted, or that every source capability is enabled in a deployment.
 
-- 📝 **Natural Language Logging** - Write workouts like you would on a whiteboard
-- 📷 **Photo OCR** - Snap a photo of the whiteboard, AI extracts the workout
-- 🎤 **Voice Input** - Speak your workout using Web Speech API
-- 🍽️ **Nutrition Tracking** - Photo-based meal logging with AI macro estimation
-- 🤖 **AI Parsing** - Provider-neutral task routing structures workout and meal data
-- 📊 **Analytics Dashboard** - Track progress, PRs, and workout types
-- 🔍 **Conversational Queries** - Ask questions about your workout history
-- 📅 **Program View** - View coach programming from Google Sheets
-- 📱 **Mobile-First** - Optimized for gym-floor and kitchen use
-- 🔒 **Secure** - Row-level security with Supabase
+## Start here
 
-## Tech Stack
+- [Current architecture overview](docs/architecture/PROJECT-OVERVIEW.md): implemented interfaces, gates, retained dependencies and verification limits.
+- [Architecture map](docs/architecture/ARCHITECTURE-MAP.md): module boundaries and data flows; verify affected code before a change.
+- [Chosen-LLM transition plan](docs/plans/socius-durable-context-goal-2026-10-19.md): existing ordered roadmap, with dated checkpoint tables rather than live rollout status.
+- [External activity-operation contract](docs/decisions/ADR-0044-chatgpt-activity-record-operations.md): typed records, corrections, receipts and remaining external workflow slices.
+- [January 11 state summary](docs/sessions/CURRENT-STATE-SUMMARY.md): historical record, not current readiness.
 
-- **Frontend**: Next.js 15 + React 19 + TypeScript + Tailwind CSS
-- **Backend**: Supabase (PostgreSQL + Auth + Real-time)
-- **AI**: Provider-neutral LLM seam with Anthropic and OpenAI per task
-- **Hosting**: Vercel (frontend) + Supabase (backend)
+## Interfaces in the current source
 
-## Getting Started
+| Surface | Implemented role | Boundary |
+| --- | --- | --- |
+| MCP at `/api/mcp` | Two coaching reads plus six activity operations: eight descriptors in total | Owner-pilot authorization and rollout gates apply; see the [tool inventory and gates](docs/architecture/PROJECT-OVERVIEW.md#external-tools-and-rollout-gates). |
+| `/coach` and `/v2` | The same embedded chat client, calling `/api/agent/process` | Still uses server-side models; it has not been retired. |
+| `/query` | Redirects to `/coach` | The separate legacy `/api/query` endpoint remains. External usage has not been established by the cleanup. |
+| Web logging, dashboard and Program | Direct workout/meal entry, facts/views and durable program workflows | Some entry paths still call providers. Stored accepted plans and completion history must remain interpretable. |
 
-### 1. Prerequisites
+The source inventory is detailed and linked in the
+[overview](docs/architecture/PROJECT-OVERVIEW.md#retained-application-and-provider-dependencies).
+Source presence does not establish deployed flags, complete athlete coverage,
+general multi-client support or successful visual plugin rendering.
 
-- Node.js 24 installed
-- Supabase account (free tier)
-- Anthropic and/or OpenAI API key for the tasks you enable
+## Local development
 
-### 2. Clone and Install
-
-```bash
-cd fitness-tracker
-npm install
-```
-
-### 3. Set Up Supabase
-
-1. Go to [supabase.com](https://supabase.com) and create a new project
-2. Wait for the database to be provisioned (~2 minutes)
-3. Go to **SQL Editor** in the Supabase dashboard
-4. Copy the contents of `supabase-migration.sql` and run it
-5. Go to **Settings > API** and copy:
-   - Project URL
-   - Anon/Public key
-
-### 4. Configure Environment Variables
-
-Create `.env.local` in the root directory:
+Use Node.js **24.x**, as specified in [package.json](package.json), and the
+committed lockfile:
 
 ```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-
-# LLM providers (server-only)
-ANTHROPIC_API_KEY=sk-ant-your-key
-OPENAI_API_KEY=sk-your-openai-key
-
-# Optional routing; Anthropic is the default when unset
-# LLM_NUTRITION_PROVIDER=openai
-# LLM_VISION_PROVIDER=anthropic
-
-# Google Sheets API (optional - for dynamic tab detection)
-# Required if using coach programming feature
-# See docs/guides/GOOGLE-SHEETS-API-SETUP.md for setup instructions
-GOOGLE_SHEETS_API_KEY=your-google-sheets-api-key
-
-# Google Sheets Cache TTL (optional - defaults to 4 hours)
-# GOOGLE_SHEETS_CACHE_TTL_HOURS=4
-```
-
-See `.env.local.example` for service-role, cron, and per-purpose model settings.
-
-**Note:** For the coach programming feature to work with dynamic tab detection, you'll need to set up a Google Sheets API key. See the [Google Sheets API Setup Guide](docs/guides/GOOGLE-SHEETS-API-SETUP.md) for detailed instructions.
-
-### 5. Run Development Server
-
-```bash
+npm ci
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+The development server defaults to [http://localhost:3000](http://localhost:3000).
+Configure `.env.local` for an approved development target using the
+[example settings](.env.local.example). Keep credentials out of source control.
+The existing MCP authorization code has a specific owner-pilot configuration;
+it is not a generic self-service connection for arbitrary projects or clients.
 
-## Usage
+Anthropic/OpenAI credentials are required for the server-side tasks you enable,
+not for deterministic MCP record operations themselves. The
+[provider-neutral seam](app/lib/llm/client.ts) supports per-purpose routing;
+screening and audio also have direct OpenAI callers. Do not remove these
+dependencies while required ingestion or embedded application callers remain.
 
-### Logging a Workout
+Schema history is maintained in [Supabase migrations](supabase/migrations) and
+[documented migrations](docs/migrations). A single historical bootstrap file is
+not a complete current schema or an instruction to modify an existing database.
+Match schema, application and configuration to the intended release.
 
-Navigate to `/log` and enter your workout naturally:
+## Verification
 
-```
-12min AMRAP:
-5 Pull-ups
-10 Push-ups
-15 Air Squats
-
-Got 7 rounds + 5 pull-ups
-RPE: 8/10
-```
-
-The AI will:
-- Parse the workout structure
-- Calculate scores (rounds, reps, tonnage, time)
-- Detect workout type (AMRAP, For Time, Strength, etc.)
-- Store structured data in the database
-
-### Querying Your History
-
-Navigate to `/query` and ask questions:
-
-- "What's my best Fran time?"
-- "When did I last do back squat?"
-- "How often do I deadlift?"
-- "Have I ever done Murph?"
-
-The AI analyzes your workout history and responds conversationally.
-
-## Database Schema
-
-### Tables
-
-- **workouts** - Main workout log with JSONB blocks
-- **movements** - Movement dictionary with aliases
-- **block_scores** - Performance metrics per workout block
-- **benchmark_prs** - Personal records for named workouts
-
-### Key Features
-
-- Row Level Security (RLS) - Users only see their own data
-- JSONB for flexible workout structures
-- Full-text search on workout descriptions
-- Automatic user_id assignment via triggers
-
-## Deployment
-
-### Deploy to Vercel
+The repository's [CI workflow](.github/workflows/ci.yml) runs tests, type-check,
+lint, build and local mobile browser journeys. Commands are defined in
+[package.json](package.json):
 
 ```bash
-npm install -g vercel
-vercel
+npm test
+node node_modules/typescript/bin/tsc --noEmit --pretty false
+npm run lint
+npm run build
+npm run test:browser
 ```
 
-Follow the prompts and add your environment variables in the Vercel dashboard.
+Some tests require explicit live/evaluation or local-service gates; a passing
+default run is not proof those paths were exercised. See the
+[live-test environment loader](test/live-env.ts) and each gated test's requirements.
+Use synthetic/local fixtures for ordinary verification.
 
-### Database is Already Deployed
+## Release and remaining work
 
-Your Supabase database is already hosted and managed. No additional deployment needed.
+Code, CI results, deployment identity/configuration, actual owner/host behavior
+and product acceptance are separate evidence. A source flag, a merged commit or
+a deployment status alone does not establish all of them. This README makes no
+blanket security certification, production-readiness, latency or cost claim.
 
-## Migration from Google Apps Script
+Remaining transition work is tracked in the existing
+[ordered plan](docs/plans/socius-durable-context-goal-2026-10-19.md) and
+[operation contract](docs/decisions/ADR-0044-chatgpt-activity-record-operations.md).
+Retirement of embedded authoring requires replacement proof and its own release
+decision. Preserve authorization, historical plans, provenance, idempotency and
+uncertain-save recovery while simplifying the application.
 
-If you're migrating from the original Google Apps Script version:
-
-1. Export your `Parsed_Workouts` sheet to CSV
-2. Transform the data to match the new schema
-3. Import via Supabase SQL Editor or use the Supabase API
-
-See `migration-guide.md` for detailed instructions (coming soon).
-
-## Project Structure
-
-```
-fitness-tracker/
-├── app/                        # Next.js application
-│   ├── api/                    # API routes
-│   │   ├── meals/              # Food tracking endpoints
-│   │   ├── parse-workout/      # Workout parsing
-│   │   ├── query/              # Natural language queries
-│   │   └── ...
-│   ├── components/             # React components
-│   ├── lib/                    # Utilities and helpers
-│   ├── dashboard/              # Dashboard page
-│   ├── food-progress/          # Nutrition tracking
-│   ├── log/                    # Workout logging
-│   ├── program/                # Coach programming view
-│   └── query/                  # Query interface
-├── docs/                       # Documentation
-│   ├── architecture/           # System design docs
-│   ├── guides/                 # Setup & deployment guides
-│   ├── migrations/             # SQL migration files
-│   ├── security/               # Security documentation
-│   ├── sessions/               # Development session logs
-│   └── errors/                 # Error documentation
-├── scripts/                    # Utility scripts
-├── test/                       # Test files
-└── public/                     # Static assets
-```
-
-## Documentation
-
-All documentation is organized in the `docs/` folder:
-
-| Folder | Contents |
-|--------|----------|
-| `docs/architecture/` | System design, component dependencies, development principles |
-| `docs/guides/` | Setup, deployment, testing, and migration guides |
-| `docs/migrations/` | SQL migration files for Supabase |
-| `docs/security/` | Security checklists, RLS policies, vulnerability fixes |
-| `docs/sessions/` | Development session summaries and project status |
-| `docs/errors/` | Documented errors and their solutions |
-
-Key documents:
-- `docs/architecture/PROJECT-OVERVIEW.md` - Full system overview
-- `docs/guides/SETUP-GUIDE.md` - Step-by-step setup instructions
-- `docs/guides/DEPLOYMENT-READINESS.md` - Pre-deployment checklist
-- `docs/sessions/CURRENT-STATE-SUMMARY.md` - Latest project state
-
-## Roadmap
-
-- [x] Dashboard with charts and analytics
-- [x] Voice input (Web Speech API)
-- [x] Photo OCR (Claude Vision)
-- [x] Nutrition tracking with AI analysis
-- [ ] PWA support for offline mode
-- [ ] Workout templates library
-- [ ] PR detection and notifications
-- [ ] Export to CSV/PDF
-- [ ] Multi-user leaderboards
-
-## Contributing
-
-This is a personal project, but suggestions and feedback are welcome!
+Follow [AGENTS.md](AGENTS.md) for repository instructions and the existing Beads
+tracker. Deployment, schema, credential and activation changes require their
+applicable release authority; this documentation does not enable them.
 
 ## License
 
 MIT
-
-## Acknowledgments
-
-Built by Greg - CrossFit competitor and data architect. Migrated from Google Apps Script to modern web stack.
