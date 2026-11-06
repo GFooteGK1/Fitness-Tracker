@@ -12,7 +12,8 @@ const workout = { workout_date: '2026-11-04', input_text: 'Synthetic squat sessi
   blocks: [{ block_type: 'STRENGTH', segments: [{ exercise: 'Synthetic squat', sets: [{ reps: 5, load: 100 }] }] }],
   rpe: 7, tags: ['strength'] }
 const pr = { benchmark_name: 'Synthetic benchmark', date: '2026-11-04', score_value: 5, score_display: '5 reps', rx_status: 'rx' }
-const meal = { meal_timestamp: '2026-11-04T12:00:00.000Z', items: [{ name: 'Synthetic meal' }],
+const meal = { meal_timestamp: '2026-11-04T12:00:00.000Z',
+  items: [{ food: 'Synthetic meal', portion: '1 serving', protein: 30, carbs: 40, fat: 10, calories: 370 }],
   total_protein: '30', total_carbs: '40', total_fat: '10', total_calories: '370', meal_timing: 'LUNCH' }
 const targets = { target_protein: '150', target_carbs: '200', target_fat: '60', target_calories: '1940' }
 
@@ -69,6 +70,8 @@ describe('legacy query reads only the data consumed by its response contract', (
   it.each([
     { intent: 'WORKOUT_ONLY', question: 'Show my workout history', populated: true },
     { intent: 'WORKOUT_ONLY', question: 'Show my workout history', populated: false },
+    { intent: 'NUTRITION_ONLY', question: 'Show my meals', populated: true },
+    { intent: 'NUTRITION_ONLY', question: 'Show my meals', populated: false },
     { intent: 'CROSS_DOMAIN', question: 'How do my meals affect my workout?', populated: true },
     { intent: 'CROSS_DOMAIN', question: 'How do my meals affect my workout?', populated: false },
   ])('preserves $intent responses without discarded reads (populated=$populated)', async ({ intent, question, populated }) => {
@@ -83,7 +86,8 @@ describe('legacy query reads only the data consumed by its response contract', (
     expect(result).toMatchObject({ success: true, metadata: {
       intent, dataFetched: intent === 'CROSS_DOMAIN'
         ? { workouts: populated ? 1 : 0, meals: populated ? 1 : 0, prs: populated ? 1 : 0 }
-        : { workouts: populated ? 1 : 0, prs: populated ? 1 : 0 },
+        : intent === 'NUTRITION_ONLY' ? { meals: populated ? 1 : 0 }
+          : { workouts: populated ? 1 : 0, prs: populated ? 1 : 0 },
     } })
     if (populated) {
       expect(result.answer).toBe('Synthetic answer')
@@ -93,24 +97,32 @@ describe('legacy query reads only the data consumed by its response contract', (
       const context = JSON.parse((input as string).split('\nData:\n')[1].split('\n\nAnalyze the data')[0])
       const workoutContext = { workouts: [{ date: workout.workout_date, description: workout.input_text,
         score: workout.primary_score, rpe: workout.rpe, tags: workout.tags }], benchmark_prs: [pr] }
-      expect(context).toEqual(intent === 'CROSS_DOMAIN' ? {
-        workout_data: workoutContext,
-        nutrition_data: { meals: [{ meal_timestamp: meal.meal_timestamp, meal_name: 'Synthetic meal',
+      const nutritionContext = { meals: [{ meal_timestamp: meal.meal_timestamp, meal_name: 'Synthetic meal',
           total_protein: 30, total_carbs: 40, total_fat: 10, total_calories: 370, meal_timing: 'LUNCH' }],
           daily_targets: { target_protein: 150, target_carbs: 200, target_fat: 60, target_calories: 1940 },
-          daily_summaries: [{ date: '2026-11-04', total_protein: 30, total_carbs: 40, total_fat: 10, total_calories: 370, meal_count: 1 }] },
-      } : workoutContext)
+          daily_summaries: [{ date: '2026-11-04', total_protein: 30, total_carbs: 40, total_fat: 10, total_calories: 370, meal_count: 1 }] }
+      expect(context).toEqual(intent === 'CROSS_DOMAIN'
+        ? { workout_data: workoutContext, nutrition_data: nutritionContext }
+        : intent === 'NUTRITION_ONLY' ? nutritionContext : workoutContext)
     } else {
       expect(result.answer).toEqual(expect.any(String))
       expect(complete).not.toHaveBeenCalled()
     }
     // The public response and model input above need only these owner-scoped sources.
     expect(queries.map(query => query.table).sort()).toEqual(intent === 'CROSS_DOMAIN'
-      ? ['benchmark_prs', 'daily_targets', 'meals', 'workouts'] : ['benchmark_prs', 'workouts'])
+      ? ['benchmark_prs', 'daily_targets', 'meals', 'workouts']
+      : intent === 'NUTRITION_ONLY' ? ['daily_targets', 'meals'] : ['benchmark_prs', 'workouts'])
     for (const query of queries) expect(query.eq).toHaveBeenCalledWith('user_id', owner)
-    const workoutQuery = queries.find(query => query.table === 'workouts')!
-    expect(workoutQuery.select).toHaveBeenCalledWith('workout_date, input_text, primary_score, rpe, tags')
-    expect(workoutQuery.gte).toHaveBeenCalledWith('workout_date', '2026-05-09')
-    expect(workoutQuery.lte).toHaveBeenCalledWith('workout_date', '2026-11-05')
+    if (intent !== 'NUTRITION_ONLY') {
+      const workoutQuery = queries.find(query => query.table === 'workouts')!
+      expect(workoutQuery.select).toHaveBeenCalledWith('workout_date, input_text, primary_score, rpe, tags')
+      expect(workoutQuery.gte).toHaveBeenCalledWith('workout_date', '2026-05-09')
+      expect(workoutQuery.lte).toHaveBeenCalledWith('workout_date', '2026-11-05')
+    }
+    if (intent !== 'WORKOUT_ONLY') {
+      const mealQuery = queries.find(query => query.table === 'meals')!
+      expect(mealQuery.gte).toHaveBeenCalledWith('meal_timestamp', expect.stringMatching(/^2026-05-09T/))
+      expect(mealQuery.lte).toHaveBeenCalledWith('meal_timestamp', '2026-11-05T12:00:00.000Z')
+    }
   })
 })

@@ -488,6 +488,49 @@ describe('Domain Fetchers Unit Tests', () => {
     expect(result.dailySummaries).toEqual([]);
   });
 
+  const canonicalFood = { food: 'Synthetic oats', portion: '1 bowl', protein: 10, carbs: 30, fat: 4, calories: 196 };
+  it.each([
+    { label: 'canonical food', items: [canonicalFood], expected: 'Synthetic oats' },
+    { label: 'first three canonical foods', items: ['First', 'Second', 'Third', 'Fourth'].map(food => ({ ...canonicalFood, food })), expected: 'First, Second, Third' },
+    { label: 'legacy name precedence', items: [{ ...canonicalFood, name: 'Legacy name' }], expected: 'Legacy name' },
+    { label: 'legacy food_name precedence', items: [{ ...canonicalFood, food_name: 'Legacy food-name' }], expected: 'Legacy food-name' },
+    { label: 'both legacy aliases', items: [{ ...canonicalFood, name: 'Legacy name', food_name: 'Other legacy name' }], expected: 'Legacy name' },
+    { label: 'empty legacy aliases', items: [{ ...canonicalFood, name: '', food_name: '' }], expected: 'Synthetic oats' },
+    { label: 'retained canonical spelling', items: [{ ...canonicalFood, food: '  Synthetic oats  ' }], expected: '  Synthetic oats  ' },
+    { label: 'unknown food', items: [{}], expected: 'Unknown' },
+    { label: 'null food', items: [{ food: null }], expected: 'Unknown' },
+    { label: 'numeric food', items: [{ food: 42 }], expected: 'Unknown' },
+    { label: 'object food', items: [{ food: { label: 'Not a food string' } }], expected: 'Unknown' },
+    { label: 'array food', items: [{ food: ['Not a food string'] }], expected: 'Unknown' },
+    { label: 'blank food', items: [{ food: '   ' }], expected: 'Unknown' },
+  ])('fetchNutritionData retains $label in the query label', async ({ items, expected }) => {
+    const meal = { meal_timestamp: '2026-11-05T12:00:00.000Z', items,
+      total_protein: '10', total_carbs: '30', total_fat: '4', total_calories: '196', meal_timing: 'general' };
+    const result = await fetchNutritionData(createMockSupabase({ meals: [meal] }) as any, 'synthetic-query-owner',
+      { start: new Date('2026-11-05T00:00:00.000Z'), end: new Date('2026-11-05T23:59:59.000Z') });
+
+    expect(result.meals).toEqual([{ meal_timestamp: meal.meal_timestamp, meal_name: expected,
+      total_protein: 10, total_carbs: 30, total_fat: 4, total_calories: 196, meal_timing: 'general' }]);
+    expect(result.dailySummaries).toEqual([{ date: '2026-11-05', total_protein: 10,
+      total_carbs: 30, total_fat: 4, total_calories: 196, meal_count: 1 }]);
+  });
+
+  it.each([
+    { label: 'empty', items: [] },
+    { label: 'missing', items: undefined },
+    { label: 'null', items: null },
+  ])('fetchNutritionData keeps the timestamp fallback for $label items', async ({ items }) => {
+    // A stored UTC timestamp corresponding to server-local noon in any test timezone.
+    const timestamp = new Date(2026, 10, 5, 12).toISOString();
+    const meal = { meal_timestamp: timestamp, items, total_protein: '10', total_carbs: '30',
+      total_fat: '4', total_calories: '196', meal_timing: 'general' };
+    const result = await fetchNutritionData(createMockSupabase({ meals: [meal] }) as any, 'synthetic-query-owner',
+      { start: new Date('2026-11-04T00:00:00.000Z'), end: new Date('2026-11-06T23:59:59.000Z') });
+
+    expect(result.meals[0].meal_name).toBe('Lunch');
+    expect(result.meals[0].meal_timestamp).toBe(timestamp);
+  });
+
   it('fetchNutritionData calculates daily summaries correctly', async () => {
     const meals = [
       {

@@ -122,8 +122,8 @@ export async function fetchNutritionData(
       // Derive meal_name from items if available, otherwise use timestamp-based name
       let mealName = 'Meal';
       if (m.items && Array.isArray(m.items) && m.items.length > 0) {
-        // Use first item name or combine first few items
-        const itemNames = m.items.slice(0, 3).map((item: any) => item.name || item.food_name || 'Unknown').filter(Boolean);
+        // Retain legacy alias precedence, then recognize canonical FoodItem.food.
+        const itemNames = m.items.slice(0, 3).map((item: any) => item.name || item.food_name || (typeof item.food === 'string' && item.food.trim() ? item.food : 'Unknown')).filter(Boolean);
         mealName = itemNames.length > 0 ? itemNames.join(', ') : 'Meal';
       } else {
         // Derive from timestamp (e.g., "Breakfast", "Lunch", "Dinner")
