@@ -64,11 +64,8 @@ export function categorizeWorkout(blocks: unknown, inputText: string | null): Se
     for (const block of blocks) {
       if (!block || typeof block !== 'object') continue
 
-      const rawType = 'block_type' in block
-        ? block.block_type
-        : 'type' in block
-          ? block.type
-          : ''
+      const rawType = ('block_type' in block ? block.block_type : undefined)
+        ?? ('type' in block ? block.type : '')
       const blockType = typeof rawType === 'string' ? rawType.toLowerCase() : ''
 
       if (
