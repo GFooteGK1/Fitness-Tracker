@@ -32,7 +32,12 @@ export function mcpOwnerClient(sql: PGlite, owner: string) {
       async function execute(single: boolean) {
         try {
           // PostgREST returns JSON numeric values, unlike the native NUMERIC text codec.
-          const result = await sql.query<{ value: Record<string, unknown> }>(`SELECT to_jsonb(q) value FROM (SELECT ${columns} FROM public.${table} WHERE ${filters.map(([key], i) => `${key}=$${i + 1}`).join(' AND ')}) q`, filters.map(([, value]) => value))
+          // Translate only simple JSON-preserving PostgREST leaf aliases to SQL.
+          const selection = columns.split(',').map(column => {
+            const leaf = /^([a-z_]\w*):([a-z_]\w*)->([a-z_]\w*)$/i.exec(column)
+            return leaf ? `${leaf[2]}->'${leaf[3]}' AS ${leaf[1]}` : column
+          }).join(',')
+          const result = await sql.query<{ value: Record<string, unknown> }>(`SELECT to_jsonb(q) value FROM (SELECT ${selection} FROM public.${table} WHERE ${filters.map(([key], i) => `${key}=$${i + 1}`).join(' AND ')}) q`, filters.map(([, value]) => value))
           if (single && result.rows.length > 1) return { data: null, error: { code: 'PGRST116' } }
           return { data: single ? result.rows[0]?.value ?? null : result.rows.map(row => row.value), error: null }
         } catch (error: any) { return { data: null, error: { code: error.code, message: error.message } } }

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { randomUUID } from 'node:crypto'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { PGlite } from '@electric-sql/pglite'
 import { createActivityRecordTool } from '@/app/lib/coach/activity-record-tools'
 import { normalizeActivity } from '@/app/lib/capture/normalize'
@@ -20,6 +20,8 @@ const source = (id = entityId, revision = 1) => ({ kind: 'saved_revision', entit
 const metadata = (status: string, value: number | null, origin: unknown = source()) => ({
   status, value, source: origin, interpretation: 'retained_report_only',
 })
+const revisionColumns = 'user_id,entity_kind,original_entity_id,revision,event_at,event_precision,captured_at,deleted'
+const snapshotLeaves = 'snapshot_id:record->id,snapshot_owner:record->user_id,snapshot_revision:record->capture_revision,reported_rpe:record->reported_rpe'
 
 /** Filters and projections execute; bypass mode injects inconsistent adapter responses. */
 function mockRead(options: { canonical?: Record<string, any>; revisions?: Record<string, any>[]; bypass?: boolean } = {}) {
@@ -41,8 +43,12 @@ function mockRead(options: { canonical?: Record<string, any>; revisions?: Record
         maybeSingle: async () => {
           const row = rows[table].find(item => options.bypass || trace.filters.every(([key, value]) =>
             typeof item[key] === 'string' && typeof value === 'string' ? item[key].toLowerCase() === value.toLowerCase() : item[key] === value))
-          return { data: row ? Object.fromEntries(trace.columns.split(',').filter(key => Object.hasOwn(row, key))
-            .map(key => [key, structuredClone(row[key])])) : null, error: null }
+          return { data: row ? Object.fromEntries(trace.columns.split(',').map(column => {
+            const leaf = /^([a-z_]\w*):([a-z_]\w*)->([a-z_]\w*)$/i.exec(column)
+            if (!leaf) return [column, structuredClone(row[column])]
+            const json = row[leaf[2]]
+            return [leaf[1], json && typeof json === 'object' && !Array.isArray(json) ? structuredClone(json[leaf[3]] ?? null) : null]
+          })) : null, error: null }
         },
       }
       return query
@@ -73,6 +79,7 @@ describe('bounded exact-revision reported effort read metadata', () => {
     expect(fixture.traces[1].filters).toEqual([
       ['user_id', owner], ['entity_kind', 'workout'], ['original_entity_id', entityId], ['revision', 1],
     ])
+    expect(fixture.traces[1].columns).toBe(`${revisionColumns},${snapshotLeaves}`)
   })
 
   it('preserves conflicting canonical fractional effort without substituting either source', async () => {
@@ -141,7 +148,7 @@ describe('bounded exact-revision reported effort read metadata', () => {
     const fixture = mockRead(); fixture.revision.entity_kind = 'meal'
     const result = await read(fixture, 'meal')
     expect(result).not.toHaveProperty('reportedEffort')
-    expect(fixture.traces[1].columns).toBe('user_id,entity_kind,original_entity_id,revision,event_at,event_precision,captured_at,deleted')
+    expect(fixture.traces[1].columns).toBe(revisionColumns)
   })
 })
 
@@ -154,6 +161,63 @@ describe('reported effort from supported current migration fixtures', () => {
     await sql.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [owner])
   }, 30000)
   afterAll(async () => { await sql?.close() })
+
+  async function projectWithSql(record: unknown) {
+    // Independent fixed SQL oracle: do not reuse the fixture's selector translator.
+    return (await sql.query<any>(`SELECT to_jsonb(p) value FROM (SELECT
+      $1::jsonb->'id' AS snapshot_id, $1::jsonb->'user_id' AS snapshot_owner,
+      $1::jsonb->'capture_revision' AS snapshot_revision, $1::jsonb->'reported_rpe' AS reported_rpe) p`, [JSON.stringify(record)])).rows[0].value
+  }
+  async function sdkRead(snapshot: unknown) {
+    const canonical = { id: entityId, user_id: owner, capture_revision: 1, rpe: null,
+      workout_date: '2026-10-20', created_at: '2026-10-20T12:00:00Z', blocks: [] }
+    const projected = { user_id: owner, entity_kind: 'workout', original_entity_id: entityId, revision: 1,
+      event_at: '2026-10-20', event_precision: 'date', captured_at: '2026-10-20T12:00:00Z', deleted: false,
+      ...await projectWithSql(snapshot) }
+    const requests: URL[] = []
+    const db = createClient('https://synthetic.invalid', 'synthetic-public-key', {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      global: { fetch: async (input, init) => {
+        const url = new URL(String(input)); requests.push(url)
+        expect(init?.method).toBe('GET')
+        expect(url.searchParams.get('user_id')).toBe(`eq.${owner}`)
+        if (url.pathname.endsWith('/workouts')) {
+          expect(url.searchParams.get('id')).toBe(`eq.${entityId}`)
+          return Response.json([canonical])
+        }
+        expect(url.pathname).toBe('/rest/v1/activity_revisions')
+        expect(url.searchParams.get('select')).toBe(`${revisionColumns},${snapshotLeaves}`)
+        expect(url.searchParams.get('entity_kind')).toBe('eq.workout')
+        expect(url.searchParams.get('original_entity_id')).toBe(`eq.${entityId}`)
+        expect(url.searchParams.get('revision')).toBe('eq.1')
+        return Response.json([projected])
+      } },
+    })
+    vi.spyOn(db.auth, 'getUser').mockResolvedValue({ data: { user: { id: owner } as any }, error: null })
+    try {
+      const response = await tool(db).call({ kind: 'workout', entityId })
+      expect(requests).toHaveLength(2)
+      return { activity: response.structuredContent.activity as any, projected }
+    } finally { vi.mocked(db.auth.getUser).mockRestore() }
+  }
+
+  it.each([0, 7.5, null, '7.5', true, [], {}, -1, 10.1, undefined])('preserves SQL JSON type %j through installed SDK mocked transport', async value => {
+    const snapshot = { id: entityId, user_id: owner, capture_revision: 1,
+      ...(value === undefined ? {} : { reported_rpe: value }), blocks: [{ notes: 'synthetic'.repeat(8192) }] }
+    const { activity, projected } = await sdkRead(snapshot)
+    expect(projected.reported_rpe).toEqual(value ?? null)
+    const valid = typeof value === 'number' && value >= 0 && value <= 10
+    expect(activity.reportedEffort).toEqual(metadata(value == null ? 'not_recorded' : valid ? 'reported' : 'unsupported', valid ? value : null))
+    expect(activity.record.rpe).toBeNull()
+    expect(projected).not.toHaveProperty('record')
+    expect(Buffer.byteLength(JSON.stringify(projected))).toBeLessThan(600)
+    expect(Buffer.byteLength(JSON.stringify(snapshot))).toBeGreaterThan(70000)
+  })
+
+  it.each([null, [], 7, 'malformed'])('fails closed when SQL extracts null identities from snapshot %j', async snapshot => {
+    expect(await projectWithSql(snapshot)).toEqual({ snapshot_id: null, snapshot_owner: null, snapshot_revision: null, reported_rpe: null })
+    await expect(sdkRead(snapshot)).rejects.toMatchObject({ status: 503 })
+  })
 
   it.each([
     { label: 'retained fractional', rpe: null, reported: 7.5 },

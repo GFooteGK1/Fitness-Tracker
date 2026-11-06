@@ -58,21 +58,21 @@ async function currentReadback(db: SupabaseClient, owner: string, kind: Activity
     throw new CoachingContextError(503, 'Activity readback identity mismatch')
   }
   const revisionColumns = 'user_id,entity_kind,original_entity_id,revision,event_at,event_precision,captured_at,deleted'
-  const { data, error } = await db.from('activity_revisions').select(`${revisionColumns}${kind === 'workout' ? ',record' : ''}`)
+  const snapshotLeaves = ',snapshot_id:record->id,snapshot_owner:record->user_id,snapshot_revision:record->capture_revision,reported_rpe:record->reported_rpe'
+  const { data, error } = await db.from('activity_revisions').select(`${revisionColumns}${kind === 'workout' ? snapshotLeaves : ''}`)
     .eq('user_id', owner).eq('entity_kind', kind).eq('original_entity_id', id).eq('revision', record.capture_revision).maybeSingle<Record<string, any>>()
   if (error) fail(error.code)
   if (data) {
     assertOwner(data, owner)
     if (data.deleted || data.original_entity_id !== record.id || data.revision !== record.capture_revision) fail(undefined)
     if (kind === 'workout') {
-      assertOwner(data.record, owner)
-      if (data.entity_kind !== kind || data.record.id !== record.id || data.record.capture_revision !== record.capture_revision) {
+      if (data.entity_kind !== kind || data.snapshot_owner !== owner || data.snapshot_id !== record.id || data.snapshot_revision !== record.capture_revision) {
         throw new CoachingContextError(503, 'Activity readback identity mismatch')
       }
     }
   }
   // The source report is snapshot-only. It cannot replace or backfill canonical RPE.
-  const reported = kind === 'workout' ? data?.record.reported_rpe : undefined
+  const reported = kind === 'workout' ? data?.reported_rpe : undefined
   const supported = typeof reported === 'number' && Number.isFinite(reported) && reported >= 0 && reported <= 10
   return { record, ...(kind === 'workout' ? { reportedEffort: {
     status: !data ? 'unavailable' : reported === undefined || reported === null ? 'not_recorded' : supported ? 'reported' : 'unsupported',
