@@ -1,7 +1,8 @@
 /**
  * Property-based tests for Domain Fetchers
  * Feature: holistic-query-system
- * Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 5.6
+ * Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.7, 5.6
+ * Workout summaries follow current query consumers; archived Requirement 2.6 also required unconsumed blocks.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -317,12 +318,13 @@ describe('Domain Fetchers Property Tests', () => {
 
 
   /**
-   * Property 7: Fetched data contains required fields
-   * For any workout data returned by the Domain Fetcher, each workout record SHALL contain:
-   * workout_date, input_text, primary_score, blocks, rpe, and tags.
+   * Property 7: Query summaries contain their consumed fields
+   * For any workout summary returned by the Domain Fetcher, each record SHALL contain:
+   * workout_date, input_text, primary_score, rpe, and tags; unconsumed blocks stay outside this summary.
    * For any nutrition data returned, each meal record SHALL contain:
    * meal_timestamp, meal_name, total_protein, total_carbs, total_fat, total_calories, and meal_timing.
-   * Validates: Requirements 2.6, 2.7
+   * The current workout summary supersedes archived Requirement 2.6's blocks field.
+   * Nutrition fields retain Requirement 2.7 traceability.
    */
   it('Property 7: Fetched data contains required fields', async () => {
     await fc.assert(
@@ -344,7 +346,7 @@ describe('Domain Fetchers Property Tests', () => {
             expect(workout).toHaveProperty('workout_date');
             expect(workout).toHaveProperty('input_text');
             expect(workout).toHaveProperty('primary_score');
-            expect(workout).toHaveProperty('blocks');
+            expect(workout).not.toHaveProperty('blocks');
             expect(workout).toHaveProperty('rpe');
             expect(workout).toHaveProperty('tags');
             expect(Array.isArray(workout.tags)).toBe(true);

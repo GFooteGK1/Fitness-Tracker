@@ -21,10 +21,10 @@ export async function fetchWorkoutData(
   userId: string,
   timeWindow: TimeWindow
 ): Promise<WorkoutData> {
-  // Query workouts table for required fields
+  // Query only summary fields consumed by the legacy query response contract.
   const { data: workoutsData, error: workoutsError } = await supabase
     .from('workouts')
-    .select('workout_date, input_text, primary_score, blocks, rpe, tags')
+    .select('workout_date, input_text, primary_score, rpe, tags')
     .eq('user_id', userId)
     .gte('workout_date', `${timeWindow.start.getUTCFullYear()}-${String(timeWindow.start.getUTCMonth() + 1).padStart(2, '0')}-${String(timeWindow.start.getUTCDate()).padStart(2, '0')}`)
     .lte('workout_date', `${timeWindow.end.getUTCFullYear()}-${String(timeWindow.end.getUTCMonth() + 1).padStart(2, '0')}-${String(timeWindow.end.getUTCDate()).padStart(2, '0')}`)
@@ -50,7 +50,6 @@ export async function fetchWorkoutData(
       workout_date: w.workout_date,
       input_text: w.input_text || '',
       primary_score: w.primary_score,
-      blocks: w.blocks,
       rpe: w.rpe,
       tags: w.tags || []
     })),

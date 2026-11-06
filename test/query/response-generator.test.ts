@@ -32,7 +32,6 @@ const sampleWorkoutData: WorkoutData = {
       workout_date: '2026-01-15',
       input_text: 'Back Squat 5x5 @ 225lbs',
       primary_score: '225lbs',
-      blocks: null,
       rpe: 8,
       tags: ['strength', 'legs'],
     },
