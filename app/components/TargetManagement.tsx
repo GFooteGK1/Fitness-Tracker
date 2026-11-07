@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { DailyTargets } from '@/app/lib/types/food-tracking'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import { calculateTargetCalories } from '@/app/lib/target-management'
@@ -18,6 +18,8 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [readError, setReadError] = useState('')
+  const targetRead = useRef<AbortController | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -30,17 +32,21 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
 
   const fetchTargets = useCallback(async () => {
     if (!user) return
+    targetRead.current?.abort()
+    const controller = new AbortController()
+    targetRead.current = controller
 
     try {
       setLoading(true)
-      setError('')
+      setReadError('')
 
-      const response = await fetch('/api/targets')
+      const response = await fetch('/api/targets', { signal: controller.signal })
       if (!response.ok) {
         throw new Error('Failed to fetch targets')
       }
 
       const data: DailyTargets = await response.json()
+      if (controller.signal.aborted) return
       const targetCalories = calculateTargetCalories(data.targetProtein, data.targetCarbs, data.targetFat)
       setTargets(data)
       setFormData({
@@ -50,10 +56,10 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
         targetCalories,
         tolerancePct: data.tolerancePct
       })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load targets')
+    } catch {
+      if (!controller.signal.aborted) setReadError('Unable to load your daily targets. Please try again.')
     } finally {
-      setLoading(false)
+      if (!controller.signal.aborted) setLoading(false)
     }
   }, [user])
 
@@ -61,6 +67,7 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
     if (user) {
       fetchTargets()
     }
+    return () => targetRead.current?.abort()
   }, [fetchTargets, user])
 
   const handleSave = async () => {
@@ -149,6 +156,18 @@ export default function TargetManagement({ onTargetsUpdated, className = '' }: T
         <div className="flex items-center justify-center py-6 sm:py-8">
           <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--accent-line)]"></div>
         </div>
+      </div>
+    )
+  }
+
+  if (readError) {
+    return (
+      <div className={`bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700 ${className}`}>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Daily Targets</h2>
+        <p role="alert" className="text-red-600 dark:text-red-400 mb-4">{readError}</p>
+        <button type="button" onClick={() => fetchTargets()} className="app-primary transition-colors touch-target">
+          Try Again
+        </button>
       </div>
     )
   }
