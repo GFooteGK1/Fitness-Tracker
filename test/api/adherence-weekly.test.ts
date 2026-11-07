@@ -95,8 +95,9 @@ function createAuthenticatedMockSupabase(
           eq: vi.fn().mockReturnThis(),
           single: vi.fn().mockResolvedValue({
             data: targetsData,
-            error: targetsError
-          })
+            error: targetsError ?? (targetsData ? null : { code: 'PGRST116', details: 'The result contains 0 rows' })
+          }),
+          limit: vi.fn().mockResolvedValue({ data: targetsData ? [targetsData] : [], error: targetsError })
         }
       }
       if (table === 'meals') {
@@ -632,7 +633,7 @@ describe('GET /api/adherence/weekly', () => {
         'test-user-id',
         null,
         mockMealsData,
-        { message: 'No rows found' }
+        null
       )
       vi.mocked(createServerClient).mockResolvedValue(mockSupabase as any)
 

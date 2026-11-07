@@ -86,19 +86,27 @@ export async function GET(request: NextRequest) {
     const weekEndStr = getLocalDate(weekEndDate)
 
     // Fetch user's daily targets
-    const { data: targetsData, error: targetsError } = await supabase
+    const { data: targetRows, error: targetsError } = await supabase
       .from('daily_targets')
       .select('*')
       .eq('user_id', user.id)
-      .single()
+      .limit(2)
 
-    if (targetsError) {
+    if (targetsError || !Array.isArray(targetRows) || targetRows.length > 1) {
       console.error('Error fetching daily targets:', targetsError)
+      return NextResponse.json(
+        { error: 'Unable to load your daily targets. Please try again.' },
+        { status: 500 }
+      )
+    }
+
+    if (targetRows.length === 0) {
       return NextResponse.json(
         { error: 'Failed to fetch user targets. Please set your daily targets first.' },
         { status: 404 }
       )
     }
+    const targetsData = targetRows[0]
 
     // Convert targets to proper format
     const targets: DailyTargets = {

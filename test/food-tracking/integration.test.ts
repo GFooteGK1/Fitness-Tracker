@@ -287,8 +287,9 @@ function createMockSupabase(opts: {
             eq: vi.fn().mockReturnValue({
               single: vi.fn().mockResolvedValue({
                 data: targetsData,
-                error: targetsError,
+                error: targetsError ?? (targetsData ? null : { code: 'PGRST116', details: 'The result contains 0 rows' }),
               }),
+              limit: vi.fn().mockResolvedValue({ data: targetsData ? [targetsData] : [], error: targetsError }),
             }),
           }),
           upsert: vi.fn().mockResolvedValue({ error: null }),
@@ -925,7 +926,6 @@ describe('Food Tracking Integration Tests', () => {
     it('returns 404 when no targets set for weekly view', async () => {
       const mockSb = createMockSupabase({
         targetsData: null,
-        targetsError: { message: 'No rows found' },
       })
       vi.mocked(createServerClient).mockResolvedValue(mockSb as any)
 
