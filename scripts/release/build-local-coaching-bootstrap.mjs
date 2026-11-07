@@ -76,6 +76,7 @@ const food = 'docs/migrations/food-tracking-migration.sql'
 const holistic = 'docs/migrations/complete-holistic-migration.sql'
 for (const name of ['workouts', 'block_scores', 'benchmark_prs', 'movements']) table(original, name)
 for (const name of ['meals', 'daily_targets']) table(food, name)
+whole('supabase/migrations/20261107170516_target_tolerance_capacity.sql')
 table(holistic, 'user_profiles')
 whole('scripts/release/fixtures/profile-owner-trigger.sql')
 source('test/database/fixture.ts')

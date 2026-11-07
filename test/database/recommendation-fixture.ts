@@ -7,6 +7,7 @@ export async function recommendationFixture() {
  await db.exec(sqlFile('supabase/migrations/20260728134202_personal_record_idempotency.sql'))
  for(const file of ['20260918020000_capture_receipts.sql','20260918030000_training_intent.sql','20260918040000_targeted_review_sources.sql'])await db.exec(sqlFile(`supabase/migrations/${file}`))
  const food=sqlFile('docs/migrations/food-tracking-migration.sql'),start=food.indexOf('CREATE TABLE daily_targets (');await db.exec(food.slice(start,food.indexOf('\n);',start)+3))
+ await db.exec(sqlFile('supabase/migrations/20261107170516_target_tolerance_capacity.sql'))
  // Original WHOOP tables/policies; uuid helper already exists in the fixture.
  await db.exec(sqlFile('docs/migrations/whoop-integration-migration.sql').replace(/CREATE EXTENSION[^;]+;/g,''))
  const migration=sqlFile('supabase/migrations/20260918050000_recommendations.sql');await db.exec(migration);await db.exec(migration)
