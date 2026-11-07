@@ -21,6 +21,43 @@ function noSetup() {
 }
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.clearAllMocks(); user = { id: saved.userId } })
 
+it.each([
+  { entry: null, expected: 0, label: 'unchanged saved zero' },
+  { entry: '0', expected: 0, label: 'explicit zero' },
+  { entry: '0.5', expected: 0.5, label: 'fractional tolerance' },
+  { entry: '100', expected: 100, label: 'upper boundary' },
+  { entry: '', expected: 5, label: 'cleared input default' },
+  { entry: 'invalid', expected: 5, label: 'invalid number input default' },
+])('preserves $label through the displayed value and save payload', async ({ entry, expected }) => {
+  const fetcher = vi.fn().mockImplementation(async (_url, options) =>
+    Response.json(options?.method === 'POST' ? { ...saved, ...JSON.parse(options.body) } : saved))
+  vi.stubGlobal('fetch', fetcher)
+  const onTargetsUpdated = vi.fn()
+  render(<TargetManagement onTargetsUpdated={onTargetsUpdated} />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
+  const tolerance = screen.getByPlaceholderText('5.0')
+  expect(tolerance).toHaveValue(0)
+  expect(tolerance).toHaveAttribute('min', '0')
+  expect(tolerance).toHaveAttribute('max', '100')
+  expect(tolerance).toHaveAttribute('step', '0.1')
+  if (entry !== null) {
+    // Change away from the loaded zero so explicit zero exercises onChange.
+    fireEvent.change(tolerance, { target: { value: '1' } })
+    fireEvent.change(tolerance, { target: { value: entry } })
+  }
+  expect(tolerance).toHaveValue(expected)
+  fireEvent.click(screen.getByRole('button', { name: 'Save Targets' }))
+  await screen.findByRole('button', { name: 'Edit' })
+  expect(fetcher).toHaveBeenCalledTimes(2)
+  expect(fetcher.mock.calls[1][0]).toBe('/api/targets')
+  expect(fetcher.mock.calls[1][1].method).toBe('POST')
+  expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({
+    targetProtein: 150.25, targetCarbs: 200.5, targetFat: 60.75,
+    targetCalories: 1949.8, tolerancePct: expected,
+  })
+  expect(onTargetsUpdated).toHaveBeenCalledExactlyOnceWith({ ...saved, tolerancePct: expected })
+})
+
 it.each(['http', 'fetch', 'json'])('keeps an initial %s read failure out of setup and offers safe retry', async kind => {
   const fetcher = vi.fn().mockImplementation(async () => {
     if (kind === 'fetch') throw new Error('Synthetic private transport detail')
