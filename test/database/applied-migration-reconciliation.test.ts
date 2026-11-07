@@ -7,6 +7,8 @@ import rollout from '../../docs/verification/llm-coaching-context/activity-measu
 
 const directory = 'supabase/migrations'
 const files = readdirSync(directory).filter(file => file.endsWith('.sql')).sort()
+// The dated rollout ledger stays immutable; this forward repair is not applied there.
+const newPending = ['20261107170516_target_tolerance_capacity.sql']
 // Offline comparison only. This never connects to a database or repairs history.
 function pending(local: string[], applied: { version: string; name: string }[]) {
   const entries = local.map(file => {
@@ -53,7 +55,7 @@ describe('read-only historical migration source reconciliation', () => {
       version: '20261022164908', name: 'activity_measurement_corrections',
     }])
     expect(rollout.pending).toEqual([])
-    expect(pending(files, rollout.applied)).toEqual([])
+    expect(pending(files, rollout.applied)).toEqual(newPending)
     const original = rollout.migration.previousPath.split('/').at(-1)!
     const applied = rollout.migration.path.split('/').at(-1)!
     expect(original).toBe(manifest.pending[0])
@@ -63,7 +65,7 @@ describe('read-only historical migration source reconciliation', () => {
     expect(files).not.toContain(original)
     expect(files.filter(file => file.endsWith('_activity_measurement_corrections.sql'))).toEqual([applied])
     // Negative control: retaining the old file would schedule the same SQL again.
-    expect(pending([...files, original], rollout.applied)).toEqual([original])
+    expect(pending([...files, original].sort(), rollout.applied)).toEqual([original, ...newPending])
     // Bind canonical Git/LF bytes so the same assertion works on Windows and CI.
     const source = readFileSync(rollout.migration.path, 'utf8').replaceAll('\r\n', '\n')
     expect(Buffer.byteLength(source)).toBe(rollout.migration.bytes)
@@ -92,7 +94,8 @@ describe('read-only historical migration source reconciliation', () => {
       }
       expect(tail).toContain(manifest.recovered[0].path.split('/').at(-1))
       expect(tail).toContain(manifest.recovered[1].path.split('/').at(-1))
-      expect(tail.at(-1)).toBe(rollout.migration.path.split('/').at(-1))
+      expect(tail).toContain(rollout.migration.path.split('/').at(-1))
+      expect(tail.at(-1)).toBe(newPending[0])
       // Only SQL actually executed above is considered applied in this local runner.
       const replay = tail.filter(file => !applied.has(file))
       expect(replay).toEqual([])

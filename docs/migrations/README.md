@@ -30,6 +30,28 @@ See `WHOOP-V2-SCHEMA-STATUS.md` for detailed verification results.
 
 These are the canonical schema definitions:
 
+### `../../supabase/migrations/20261107170516_target_tolerance_capacity.sql`
+
+Prepared forward repair for the existing inclusive 0–100 nutrition tolerance
+contract. Historical `food-tracking-migration.sql` and
+`complete-holistic-migration.sql` retain their original `DECIMAL(4,2)` declarations;
+fresh installations must apply this forward migration after either base schema.
+The maintained local bootstrap and database fixtures include it. It widens only
+`daily_targets.tolerance_pct` to `NUMERIC(5,2)`, preserving the range constraint,
+two-decimal rounding, default, nullability, rows, ownership policies and triggers.
+It accepts the original type or an already widened column and stops on other
+types. No hosted application is established by this source change.
+
+Before a separately authorized database application, verify the target's actual
+type, defaults, constraints, policies, grants, triggers and dependencies. Use the
+reviewed migration through the existing migration process; its transaction has
+bounded lock/statement timeouts. An unexpected dependency or schema must be
+reviewed rather than dropped or coerced. Read back metadata and verify synthetic
+owner-scoped POST/PUT/readback at 0, fractions and 100 after application.
+Application rollback may retain the compatible wider column. Do not blindly
+narrow it: subsequently stored 100 cannot fit the old type. Any narrowing needs
+separate authorization and proof of representability, without truncating user data.
+
 ### `complete-holistic-migration.sql`
 Complete schema including all features:
 - User profiles and authentication
