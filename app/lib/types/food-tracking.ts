@@ -192,6 +192,15 @@ export interface DailyMealsResponse {
   adherence: AdherenceStatus;
 }
 
+// Opt-in daily read contract; legacy callers retain non-null adherence.
+export type DailyAdherenceResult =
+  | { adherenceAvailability: 'available'; adherence: AdherenceStatus }
+  | { adherenceAvailability: 'not_configured'; adherence: null }
+  | { adherenceAvailability: 'unavailable'; adherence: null };
+
+export type DailyMealsAvailabilityResponse =
+  Pick<DailyMealsResponse, 'meals' | 'dailyTotals'> & DailyAdherenceResult;
+
 // Error handling interfaces
 export interface FoodTrackingError {
   code: string;
