@@ -2,7 +2,51 @@
 
 This directory contains SQL migration scripts for the SociusFit database schema.
 
-## Current Schema Status
+## Migration release procedure
+
+Provider-managed migration integrations can run independently of repository CI
+and the application build. A migration-containing merge or release can therefore
+change a database even without a SQL deployment step in the repository workflow.
+This guide does not establish any target's current automation settings.
+
+1. **Reconcile before release.** Identify the intended database environment and
+   branch through authorized access. Compare the complete pending SQL set,
+   prerequisites, versions, names and content with the target's migration ledger
+   and relevant catalog state. A source file or dated inventory alone does not
+   establish whether a migration is pending. Do not replay aggregate historical
+   schemas over an existing database.
+2. **Review the runner and authority before a triggering merge.** Verify the
+   responsible runner, repository/branch bindings, enabled settings and triggers.
+   Treat an unverified integration as a possible database deployment; do not
+   assume it is off. Review the entire SQL set that could run, application/schema
+   compatibility and recovery plan, and obtain explicit approval for that scope
+   before merging or releasing. Stop if target, runner or pending scope is
+   uncertain; do not implicitly change settings or expand access to resolve it.
+3. **Test in disposable fixtures.** Verify fresh installation, upgrade behavior,
+   ownership/RLS, constraints and failure atomicity as applicable. Apply-twice or
+   idempotence tests belong only in disposable databases, never production.
+   A rollback-only fixture is not permission to test against real user data.
+4. **Inspect the release outcome before manual application.** Read the runner's
+   workflow result, target ledger and relevant catalog state. Match the expected
+   version, name and SQL content, accounting for statement serialization. Do not
+   apply an already recorded matching migration again. If application is still
+   needed, use the authorized runner for only the exact approved pending scope.
+   After an error, timeout or uncertain response, stop writes and inspect the
+   outcome before considering a retry. Repeat-safe DDL does not prevent duplicate
+   history entries. Stop on ledger/schema drift; do not manually repair history
+   to make it appear aligned.
+5. **Separate application rollback from database recovery.** Reverting code or
+   promoting an older application does not undo SQL. Verify older-code/schema
+   compatibility and use the migration-specific, separately authorized
+   forward/recovery plan. Do not blindly reverse or narrow a type, coerce/delete
+   data, or restore a backup as an automatic rollback step.
+
+## Historical schema inventory
+
+The inventory and verification statements below are dated historical context,
+not current target readback, a complete pending-migration list or authorization
+to apply SQL. Use the [migration release procedure](#migration-release-procedure)
+for every new release.
 
 **Last Verified:** September 1, 2026
 **Status:** Production migration history is aligned through the layered adaptive-coach evidence and trust schema
@@ -26,13 +70,15 @@ All WHOOP v2 schema requirements are met:
 
 See `WHOOP-V2-SCHEMA-STATUS.md` for detailed verification results.
 
-## Active Migration Files
+## Migration File Inventory
 
-These are the canonical schema definitions:
+These descriptions record schema sources and their historical prerequisites.
+Reconcile the checked-in migration chain and matching bootstrap/fixtures rather
+than treating an aggregate schema file as a complete current installation.
 
 ### `../../supabase/migrations/20261107170516_target_tolerance_capacity.sql`
 
-Prepared forward repair for the existing inclusive 0–100 nutrition tolerance
+Forward repair for the existing inclusive 0–100 nutrition tolerance
 contract. Historical `food-tracking-migration.sql` and
 `complete-holistic-migration.sql` retain their original `DECIMAL(4,2)` declarations;
 fresh installations must apply this forward migration after either base schema.
@@ -40,14 +86,15 @@ The maintained local bootstrap and database fixtures include it. It widens only
 `daily_targets.tolerance_pct` to `NUMERIC(5,2)`, preserving the range constraint,
 two-decimal rounding, default, nullability, rows, ownership policies and triggers.
 It accepts the original type or an already widened column and stops on other
-types. No hosted application is established by this source change.
+types. This source file alone does not establish any target's current state.
 
-Before a separately authorized database application, verify the target's actual
-type, defaults, constraints, policies, grants, triggers and dependencies. Use the
-reviewed migration through the existing migration process; its transaction has
-bounded lock/statement timeouts. An unexpected dependency or schema must be
-reviewed rather than dropped or coerced. Read back metadata and verify synthetic
-owner-scoped POST/PUT/readback at 0, fractions and 100 after application.
+Use the [migration release procedure](#migration-release-procedure) to reconcile
+source, ledger and catalog before deciding whether application is needed. Verify
+type, defaults, constraints, policies, grants, triggers and dependencies; the
+reviewed transaction has bounded lock/statement timeouts. Unexpected dependencies
+or schema require review, not dropping or coercion. Synthetic owner-scoped
+POST/PUT/readback at 0, fractions and 100 belongs in disposable fixtures; a live
+application canary requires its own approved account, data and cleanup boundary.
 Application rollback may retain the compatible wider column. Do not blindly
 narrow it: subsequently stored 100 cannot fit the old type. Any narrowing needs
 separate authorization and proof of representability, without truncating user data.
@@ -60,7 +107,7 @@ Complete schema including all features:
 - WHOOP integration (tokens, recovery, sleep, cycles, workouts, sync_status)
 - Cross-domain analytics (fitness_correlations, daily_fitness_summary view)
 
-**Use this as the reference schema.**
+**Historical base schema; additional forward migrations may be required.**
 
 ### `whoop-integration-migration.sql`
 WHOOP-specific tables only:
@@ -248,6 +295,10 @@ It was applied twice and rollback-verified in production on July 30, 2026; see
 
 ## Verification Scripts
 
+These instructions describe disposable-fixture verification. Historical production
+verification statements are dated records, not directions to repeat application.
+Follow the [migration release procedure](#migration-release-procedure) for a live target.
+
 ### `verify-whoop-schema.sql`
 Comprehensive verification script that checks:
 - Column data types
@@ -260,7 +311,7 @@ Run this after any schema changes to verify correctness.
 
 ### `verify-autonomous-queue-migrations.sql`
 Post-apply structural, grant, and two-user RLS verification for the personal
-records and view-template migrations. Run both migrations twice first. The
+records and view-template migrations. In a disposable fixture, run both migrations twice first. The
 script creates verification fixtures inside a transaction and rolls them back.
 
 Both migrations passed this process on a disposable PostgreSQL 17.6 Supabase
@@ -271,14 +322,15 @@ then applied and independently verified in production; see
 
 ### `verify-view-compositions-migration.sql`
 Rollback-only structural, least-privilege grant, and two-user RLS verification
-for `view-compositions-migration.sql`. Run the migration twice first. The
+for `view-compositions-migration.sql`. In a disposable fixture, run the migration twice first. The
 verifier creates two user-scoped cache entries inside a transaction and rolls
 all fixtures back. The migration passed apply-twice and verifier execution in
 production on July 27, 2026; see
 `view-compositions-production-application-2026-07-27.md`.
 
 ### `verify-coach-system-migration.sql`
-Rollback-only two-user verification for the adaptive coach schema. Run
+Rollback-only two-user verification for the adaptive coach schema. In a disposable
+fixture, run
 `coach-system-migration.sql` twice before this script. It checks forced RLS,
 assessment and memory idempotency, initial and replacement plan activation,
 atomic initial-proposal creation and retry, mismatched-payload rejection,
@@ -290,7 +342,8 @@ July 27, 2026; see `coach-system-verification-2026-07-27.md` and
 ### `verify-coach-plan-replacement-migration.sql`
 Rollback-only verification for replacement proposal retry, mismatched-payload
 rejection, stale-base rejection, metadata activation, execute grants, lack of
-direct mutation grants, and cross-user isolation. Apply both coach migrations
+direct mutation grants, and cross-user isolation. In a disposable fixture, apply
+both coach migrations
 twice before running it.
 
 The replacement migration was applied twice and rollback-verified in production
@@ -299,7 +352,8 @@ on July 27, 2026. See
 
 ### `verify-coach-complete-programming-v0-3-migration.sql`
 Rollback-only compatibility verification for the dual-format prescription
-contract. Apply the v0.3 compatibility migration twice first. The verifier
+contract. In a disposable fixture, apply the v0.3 compatibility migration twice
+first. The verifier
 proves that representative legacy v0.2 and complete v0.3 prescriptions pass,
 an incomplete object fails, and the installed constraint contains both format
 markers. The migration passed production apply-twice, rollback-only
@@ -310,14 +364,16 @@ RLS/privilege/trigger inspection on July 29, 2026. See
 ### `verify-coach-execution-feedback-migration.sql`
 Rollback-only verification for completed and skipped results, identical retry,
 mismatched retry rejection, cross-user isolation, function execute grants, and
-removal of authenticated direct table writes. Apply the execution-feedback
+removal of authenticated direct table writes. In a disposable fixture, apply the
+execution-feedback
 migration twice before running it. This verifier has not been run against
 production.
 
 ### `verify-layered-adaptive-evidence-migration.sql`
 Rollback-only verification for import and source idempotency, canonical-workout
 and lineage ownership, memory lifecycle representation, forced RLS, and table
-privileges. Apply the base workout schema, coach-system migration, and layered
+privileges. In a disposable fixture, apply the base workout schema, coach-system
+migration, and layered
 adaptive evidence migration twice before running it. This verifier has not been
 run against production. See
 `layered-adaptive-evidence-verification-2026-09-01.md` for the disposable
@@ -327,13 +383,15 @@ PostgreSQL-compatible apply-twice and rollback-verifier evidence.
 Rollback-only verification for Qwik manifest and observation persistence,
 authenticated-only RPC execution, normalized-only storage, trust state,
 idempotent replay, duplicate detection, mismatched retry rejection, atomic
-failure, and cross-user isolation. Apply the layered evidence and Qwik
+failure, and cross-user isolation. In a disposable fixture, apply the layered
+evidence and Qwik
 migrations twice before running it. This verifier has not been run against
 production. See `qwik-vbt-import-verification-2026-09-01.md`.
 ### `verify-coach-trust-review-migration.sql`
 Rollback-only verification for append-only review history, memory lifecycle,
 explicit Qwik mapping and rejection, proposal rejection, idempotency, grants,
-forced RLS, normalized-only storage, and cross-athlete isolation. Apply the base
+forced RLS, normalized-only storage, and cross-athlete isolation. In a disposable
+fixture, apply the base
 workout, coach-system, layered evidence, Qwik, and trust migrations first, with
 the trust migration applied twice. This verifier has not been run against
 production. See
@@ -345,7 +403,8 @@ Rollback-only verification for legacy compatibility, one-week horizon and
 window constraints, initial and next-week proposal idempotency, weekly review
 immutability, stale-base rejection, overlapping-window rejection,
 tenant-consistent evidence links, forced RLS, and least-privilege grants.
-Apply the complete prerequisite coach chain and the rolling migration twice
+In a disposable fixture, apply the complete prerequisite coach chain and the
+rolling migration twice
 before running it.
 
 
@@ -356,7 +415,8 @@ existing auth users and rolls back every catalog and meal fixture.
 
 ### `verify-secure-legacy-database-objects.sql`
 Rollback-only structural and privilege verification for the legacy-object
-containment migration. Apply the forward migration twice first. The verifier
+containment migration. In a disposable fixture, apply the forward migration twice
+first. The verifier
 checks forced RLS, absence of Data API user privileges, retained service-role
 maintenance access, invoker and search-path function hardening, executable SQL,
 and unchanged backup-table row counts.
@@ -391,16 +451,18 @@ and unchanged backup-table row counts.
 ## How to Use
 
 ### For New Deployments
-Run `complete-holistic-migration.sql` to create the full schema.
+Test the base schema and its required forward chain in a disposable fixture.
+Reconcile the intended target through the
+[migration release procedure](#migration-release-procedure) before application.
 
 ### For Schema Verification
-Run `verify-whoop-schema.sql` to check current state.
+Use relevant scoped verification for the schema being changed. A domain-specific
+script does not establish the complete migration ledger or release state.
 
 ### For Incremental Updates
-Run the relevant incremental migration, repeat it to prove idempotence, and then
-run its verification script. Do not run a historical aggregate migration over
-an existing production schema without first reconciling it against the live
-database.
+Follow the [migration release procedure](#migration-release-procedure), including
+disposable apply-twice testing where appropriate and post-release readback before
+manual application. Never repeat a production migration to test idempotence.
 
 ## Important Notes
 
@@ -422,4 +484,4 @@ database.
 
 ---
 
-**Last Updated:** September 1, 2026
+**Historical inventory checkpoint:** September 1, 2026

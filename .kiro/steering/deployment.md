@@ -4,6 +4,11 @@ inclusion: manual
 
 # Deployment Guide
 
+For database-affecting changes, use the maintained
+[migration release procedure](../../docs/migrations/README.md#migration-release-procedure)
+before a triggering push, merge or release. These instructions do not establish
+current provider settings or grant permission to change a live environment.
+
 ## Vercel Deployment
 
 ### Initial Setup
@@ -29,13 +34,13 @@ inclusion: manual
    ```
 
 4. **Deploy:**
-   - Vercel auto-deploys on push to main
+   - Verify the configured deployment branch and provider settings before a push
    - Or click "Deploy" button manually
 
 ### Subsequent Deployments
 
 ```bash
-# Automatic on push
+# With an approved release and verified integration bindings
 git push origin main
 
 # Or manual with Vercel CLI
@@ -52,7 +57,9 @@ vercel
 - [ ] Code reviewed and approved
 
 ### Database
-- [ ] All migrations applied
+- [ ] Intended target, complete pending SQL set and runner/settings verified
+- [ ] Exact database scope and application/schema compatibility approved before release
+- [ ] Workflow, ledger and catalog outcome inspected after release
 - [ ] RLS policies enabled and tested
 - [ ] Indexes created for performance
 - [ ] Backup strategy in place
@@ -103,7 +110,13 @@ vercel
 
 ## Database Deployment
 
-Supabase database is already hosted and managed. No deployment needed.
+Hosting and schema deployment are separate concerns. Provider-managed migration
+integrations can run independently of repository CI and the application build;
+this guide does not establish whether one is enabled. Follow the
+[migration release procedure](../../docs/migrations/README.md#migration-release-procedure),
+including pre-merge approval and fresh post-release reconciliation. Do not manually
+apply an already recorded matching migration or repeat a production migration to
+test idempotence.
 
 **Production Checklist:**
 - [ ] RLS policies enabled and tested
@@ -166,9 +179,12 @@ If deployment has issues:
    git push origin main
    ```
 
-3. **Database Rollback:**
-   - Restore from Supabase backup
-   - Or manually revert migrations
+3. **Database Recovery:**
+   - Application rollback does not undo SQL; verify old-code/schema compatibility
+     before promoting an older application or pushing a revert.
+   - Follow the migration-specific, separately approved recovery/forward plan in
+     the [migration release procedure](../../docs/migrations/README.md#migration-release-procedure).
+     Do not blindly reverse/narrow SQL, restore a backup or manually repair history.
 
 ## Monitoring & Maintenance
 
