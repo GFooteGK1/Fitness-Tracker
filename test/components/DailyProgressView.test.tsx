@@ -15,7 +15,7 @@ const date = new Date(2026, 5, 15, 12), nextDate = new Date(2026, 5, 16, 12)
 const meal = { id: 'meal-current', userId: 'user-123', captureRevision: 7, mealTimestamp: '2026-06-15T12:00:00Z',
   items: [{ food: 'Synthetic eggs', portion: '2 eggs', protein: 12.25, carbs: 0, fat: 3.75, calories: 82.75 }],
   totalProtein: 12.25, totalCarbs: 0, totalFat: 3.75, totalCalories: 82.75, needsReview: false, manualOverride: true }
-const daily = { meals: [meal], dailyTotals: { protein: 12.25, carbs: 0, fat: 3.75, calories: 82.75 },
+const daily = { adherenceAvailability: 'available' as const, meals: [meal], dailyTotals: { protein: 12.25, carbs: 0, fat: 3.75, calories: 82.75 },
   adherence: { proteinAdherence: 8, carbsAdherence: 0, fatAdherence: 6, caloriesAdherence: 4, overallScore: 4.5, withinTolerance: false } }
 const target = { userId: 'user-123', targetProtein: 150.25, targetCarbs: 200.5, targetFat: 60.75, targetCalories: 1949.8, tolerancePct: 0 }
 const empty = { ...target, targetProtein: 0, targetCarbs: 0, targetFat: 0, targetCalories: 0 }
@@ -62,7 +62,7 @@ describe('Daily Progress target availability', () => {
     render(<DailyProgressView date={date} />)
     await screen.findByText(message)
     assertTotals(); assertNoComparison()
-    expect(screen.getByRole('button', { name: 'Retry Targets' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Retry comparison' })).toBeEnabled()
     expect(screen.queryByText(/private provider error/)).not.toBeInTheDocument()
   })
   it('keeps daily facts visible while targets are pending and after timeout', async () => {
@@ -92,7 +92,7 @@ describe('Daily Progress target availability', () => {
     expect(screen.queryByText(/0% adherence/)).not.toBeInTheDocument()
   })
   it('offers setup only after successful empty targets', async () => {
-    mockReads(async () => response(empty))
+    mockReads(async () => response(empty), async () => response({ ...daily, adherenceAvailability: 'not_configured', adherence: null }))
     render(<DailyProgressView date={date} />)
     await screen.findByText('No Daily Targets Set')
     expect(screen.getByRole('link', { name: 'Set Targets' })).toHaveAttribute('href', '/food-progress?view=targets')
@@ -104,24 +104,25 @@ describe('Daily Progress target availability', () => {
     const fetcher = mockReads(async () => ++reads === 1 ? response({}, 500) : reads === 2 ? pending.promise : response(target))
     render(<DailyProgressView date={date} />)
     await screen.findByText(message)
-    fireEvent.click(screen.getByRole('button', { name: 'Retry Targets' }))
-    const retry = screen.getByRole('button', { name: 'Retry Targets' })
+    fireEvent.click(screen.getByRole('button', { name: 'Retry comparison' }))
+    await waitFor(() => expect(reads).toBe(2))
+    const retry = screen.getByRole('button', { name: /Retry (Targets|comparison)/ })
     expect(retry).toBeDisabled(); fireEvent.click(retry); expect(reads).toBe(2)
     assertTotals(); assertNoComparison()
     await act(async () => pending.resolve(response({}, 500)))
     expect(screen.getByText(message)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Retry Targets' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Retry comparison' }))
     await screen.findByText('of 150.3g target')
     assertTotals()
     expect(fetcher.mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true)
-    expect(fetcher.mock.calls.filter(([url]) => String(url).startsWith('/api/meals/daily'))).toHaveLength(1)
+    expect(fetcher.mock.calls.filter(([url]) => String(url).startsWith('/api/meals/daily'))).toHaveLength(3)
   })
   it('recovers from failure to confirmed empty targets', async () => {
-    let reads = 0
-    mockReads(async () => response(++reads === 1 ? {} : empty, reads === 1 ? 500 : 200))
+    let reads = 0, days = 0
+    mockReads(async () => response(++reads === 1 ? {} : empty, reads === 1 ? 500 : 200), async () => response(++days === 1 ? daily : { ...daily, adherenceAvailability: 'not_configured', adherence: null }))
     render(<DailyProgressView date={date} />)
     await screen.findByText(message)
-    fireEvent.click(screen.getByRole('button', { name: 'Retry Targets' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Retry comparison' }))
     await screen.findByText('No Daily Targets Set')
     expect(screen.queryByText(/temporarily unavailable/)).not.toBeInTheDocument()
   })
@@ -177,7 +178,8 @@ describe('Daily Progress target availability', () => {
     const pending = deferred<Response>(); let reads = 0
     const fetcher = mockReads(async () => ++reads === 1 ? response({}, 500) : pending.promise)
     const view = render(<DailyProgressView date={date} />)
-    await screen.findByText(message); fireEvent.click(screen.getByRole('button', { name: 'Retry Targets' }))
+    await screen.findByText(message); fireEvent.click(screen.getByRole('button', { name: 'Retry comparison' }))
+    await waitFor(() => expect(reads).toBe(2))
     const signal = fetcher.mock.calls.filter(([url]) => url === '/api/targets')[1][1]?.signal
     view.unmount(); expect(signal?.aborted).toBe(true)
     await act(async () => pending.resolve(response(target)))
@@ -188,7 +190,7 @@ describe('Daily Progress target availability', () => {
     render(<React.StrictMode><DailyProgressView date={date} onAddMeal={add} /></React.StrictMode>)
     await screen.findByText('of 150.3g target')
     fireEvent.click(screen.getByRole('button', { name: 'Add Meal' })); expect(add).toHaveBeenCalledOnce()
-    expect(fetcher).toHaveBeenCalledWith('/api/meals/daily?date=' + getLocalDate(date) + '&tzOffset=' + getTimezoneOffset(), expect.objectContaining({ signal: expect.any(AbortSignal) }))
+    expect(fetcher).toHaveBeenCalledWith('/api/meals/daily?date=' + getLocalDate(date) + '&tzOffset=' + getTimezoneOffset() + '&availability=explicit', expect.objectContaining({ signal: expect.any(AbortSignal), cache: 'no-store' }))
   })
   it('keeps meal failure/retry separate and does not request targets until meals recover', async () => {
     let reads = 0
@@ -223,5 +225,97 @@ describe('Daily Progress target availability', () => {
     expect(corrections.send).toHaveBeenCalledOnce()
     expect(corrections.send).toHaveBeenCalledWith('/api/meals/meal-current', 'PUT', expect.objectContaining({ expectedRevision: 7, expectedUserId: 'user-123', manualOverride: true }), 'user-123')
     await act(async () => pending.resolve(response(target)))
+  })
+
+  it.each([0, 87])('keeps old-server facts but never displays its unverified score %s', async overallScore => {
+    const { adherenceAvailability, ...legacy } = daily
+    mockReads(async () => response(target), async () => response({ ...legacy, adherence: { ...daily.adherence, overallScore } }))
+    render(<DailyProgressView date={date} />)
+    await screen.findByText('Target comparison could not be verified. Please try again.')
+    assertTotals(); assertNoComparison()
+    expect(screen.getByRole('button', { name: 'Retry comparison' })).toBeEnabled()
+  })
+
+  it.each([
+    ['available', null], ['unavailable', daily.adherence], ['not_configured', daily.adherence],
+    ['unexpected', null], ['available', { overallScore: 75 }],
+    ['available', { ...daily.adherence, overallScore: -1 }],
+    ['available', { ...daily.adherence, withinTolerance: 'false' }],
+  ])('fails closed for an inconsistent %s discrimination', async (adherenceAvailability, adherence) => {
+    mockReads(async () => response(target), async () => response({ ...daily, adherenceAvailability, adherence }))
+    render(<DailyProgressView date={date} />)
+    await screen.findByText('Target comparison could not be verified. Please try again.')
+    assertTotals(); assertNoComparison()
+  })
+
+  it('does not let independent target success reveal an unavailable comparison', async () => {
+    let targets = 0
+    mockReads(async () => { targets++; return response(target) }, async () => response({ ...daily, adherenceAvailability: 'unavailable', adherence: null }))
+    render(<DailyProgressView date={date} />)
+    await screen.findByText('Target comparison is temporarily unavailable. Please try again.')
+    await waitFor(() => expect(targets).toBe(1))
+    assertTotals(); assertNoComparison()
+  })
+
+  const revised = {
+    ...daily, dailyTotals: { protein: 75.125, carbs: 100.25, fat: 30.375, calories: 974.9 },
+    meals: [{ ...meal, captureRevision: 8, totalProtein: 75.125, totalCarbs: 100.25, totalFat: 30.375, totalCalories: 974.9,
+      items: [{ ...meal.items[0], portion: '3 eggs', protein: 75.125, carbs: 100.25, fat: 30.375, calories: 974.9 }] }],
+    adherence: { proteinAdherence: 50, carbsAdherence: 50, fatAdherence: 50, caloriesAdherence: 50, overallScore: 50, withinTolerance: false },
+  }
+
+  it('keeps facts through read-only comparison retry failure, then applies fresh totals and score together', async () => {
+    const pending = deferred<Response>(); let days = 0
+    const fetcher = mockReads(async () => response(target), async () => ++days === 1
+      ? response({ ...daily, adherenceAvailability: 'unavailable', adherence: null })
+      : days === 2 ? pending.promise : response(revised))
+    render(<DailyProgressView date={date} />)
+    await screen.findByText('Target comparison is temporarily unavailable. Please try again.')
+    fireEvent.click(screen.getByRole('button', { name: 'Retry comparison' }))
+    expect(screen.getByRole('button', { name: 'Retry comparison' })).toBeDisabled()
+    assertTotals(); assertNoComparison()
+    await act(async () => pending.resolve(response({ error: 'Meal read unavailable' }, 500)))
+    await screen.findByText('Target comparison is temporarily unavailable. Please try again.')
+    assertTotals(); assertNoComparison()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry comparison' }))
+    await screen.findByText(/50% adherence for logged meals only/)
+    expect(summary().getByText('75.1g')).toBeInTheDocument()
+    expect(summary().queryByText('12.3g')).not.toBeInTheDocument()
+    expect(fetcher.mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true)
+    for (const [url, init] of fetcher.mock.calls.filter(([url]) => String(url).startsWith('/api/meals/daily'))) {
+      expect(new URL(String(url), 'http://local.invalid').searchParams.getAll('availability')).toEqual(['explicit'])
+      expect(init?.cache).toBe('no-store')
+    }
+  })
+
+  it.each(['success', 'error'])('a same-date correction supersedes an old comparison retry %s', async outcome => {
+    const pending = deferred<Response>(); let days = 0
+    const fetcher = mockReads(async () => response(target), async () => ++days === 1
+      ? response({ ...daily, adherenceAvailability: 'unavailable', adherence: null })
+      : days === 2 ? pending.promise : response(revised))
+    const read = fetcher.getMockImplementation()!
+    fetcher.mockImplementation((url, init) => String(url) === '/api/meals/meal-current' ? Promise.resolve(response({ meal })) : read(url, init))
+    corrections.send.mockResolvedValue(response({ meal: revised.meals[0] }))
+    render(<DailyProgressView date={date} />)
+    await screen.findByText('Target comparison is temporarily unavailable. Please try again.')
+    fireEvent.click(screen.getByRole('button', { name: 'Retry comparison' }))
+    await waitFor(() => expect(days).toBe(2))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit meal' }))
+    fireEvent.change(await screen.findByPlaceholderText('e.g., 6 oz, 1 cup, 150g'), { target: { value: '3 eggs' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+    await screen.findByText(/50% adherence for logged meals only/)
+    await act(async () => { if (outcome === 'success') pending.resolve(response(daily)); else pending.reject(new Error('Old comparison error')) })
+    expect(summary().getByText('75.1g')).toBeInTheDocument()
+    expect(screen.getByText(/50% adherence for logged meals only/)).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Edit Meal' })).not.toBeInTheDocument()
+    expect(corrections.send).toHaveBeenCalledOnce()
+  })
+
+  it('does not manufacture facts from a malformed successful daily response', async () => {
+    const fetcher = mockReads(async () => response(target), async () => response({ ...daily, dailyTotals: { protein: 12 } }))
+    render(<DailyProgressView date={date} />)
+    await screen.findByText('Unable to read daily meal facts. Please try again.')
+    expect(screen.queryByText('1 meal logged')).not.toBeInTheDocument()
+    expect(fetcher.mock.calls.filter(([url]) => url === '/api/targets')).toHaveLength(0)
   })
 })

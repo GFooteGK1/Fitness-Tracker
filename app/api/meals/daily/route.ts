@@ -6,10 +6,33 @@
 
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
-import { MealEntry, DailyMealsResponse, DailyTargets } from '@/app/lib/types/food-tracking'
+import { MealEntry, DailyMealsResponse, DailyTargets, DailyAdherenceResult, DailyMealsAvailabilityResponse } from '@/app/lib/types/food-tracking'
 import { calculateAdherenceStatus, calculateDailyTotals, isPhotoUrlValid } from '@/app/lib/adherence-calculator'
 import { calculateTargetCalories } from '@/app/lib/target-management'
 import { localDateToUTCStart, localDateToUTCEnd, isValidTimezoneOffset } from '@/app/lib/timezone-utils'
+
+const readResponse = (body: unknown, status = 200) => NextResponse.json(body, {
+  status, headers: { 'Cache-Control': 'private, no-store' }
+})
+
+function targetNumber(value: unknown): number | null {
+  if (typeof value !== 'number' && (typeof value !== 'string' ||
+    !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim()))) return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function comparisonTargets(value: unknown, owner: string): DailyTargets | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const row = value as Record<string, unknown>
+  const protein = targetNumber(row.target_protein), carbs = targetNumber(row.target_carbs)
+  const fat = targetNumber(row.target_fat), calories = targetNumber(row.target_calories)
+  const tolerance = targetNumber(row.tolerance_pct)
+  if (row.user_id !== owner || protein === null || protein <= 0 || carbs === null || carbs <= 0 ||
+    fat === null || fat <= 0 || calories === null || calories <= 0 || tolerance === null || tolerance < 0 || tolerance > 100) return null
+  return { userId: owner, targetProtein: protein, targetCarbs: carbs, targetFat: fat,
+    targetCalories: calories, tolerancePct: tolerance, updatedAt: new Date(row.updated_at as string) }
+}
 
 export async function GET(request: Request) {
   try {
@@ -19,10 +42,7 @@ export async function GET(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return readResponse({ error: 'Unauthorized' }, 401)
     }
 
     const { searchParams } = new URL(request.url)
@@ -31,19 +51,13 @@ export async function GET(request: Request) {
 
     // Validate date parameter
     if (!dateStr) {
-      return NextResponse.json(
-        { error: 'date parameter is required (YYYY-MM-DD format)' },
-        { status: 400 }
-      )
+      return readResponse({ error: 'date parameter is required (YYYY-MM-DD format)' }, 400)
     }
 
     // Validate date format
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/
     if (!dateRegex.test(dateStr)) {
-      return NextResponse.json(
-        { error: 'Invalid date format. Use YYYY-MM-DD' },
-        { status: 400 }
-      )
+      return readResponse({ error: 'Invalid date format. Use YYYY-MM-DD' }, 400)
     }
 
     // Parse and validate timezone offset
@@ -53,12 +67,12 @@ export async function GET(request: Request) {
     }
     
     if (!isValidTimezoneOffset(tzOffset)) {
-      return NextResponse.json(
+      return readResponse(
         { 
           error: 'Invalid timezone offset',
           details: 'Offset must be between -720 and 840 minutes'
         },
-        { status: 400 }
+        400
       )
     }
 
@@ -76,9 +90,9 @@ export async function GET(request: Request) {
 
     if (mealsError) {
       console.error('Error fetching meals:', mealsError)
-      return NextResponse.json(
+      return readResponse(
         { error: `Failed to fetch meals: ${mealsError.message}` },
-        { status: 500 }
+        500
       )
     }
 
@@ -111,13 +125,34 @@ export async function GET(request: Request) {
     const dailyTotals = calculateDailyTotals(mealsData)
 
     // Fetch user's daily targets for adherence calculation
-    const { data: targetsData, error: targetsError } = await supabase
-      .from('daily_targets')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
+    let comparison: DailyAdherenceResult = { adherenceAvailability: 'unavailable', adherence: null }
+    try {
+      const { data: rows, error } = await supabase
+        .from('daily_targets')
+        .select('*')
+        .eq('user_id', user.id)
+        .limit(2)
+      if (!error && Array.isArray(rows)) {
+        if (rows.length === 0) comparison = { adherenceAvailability: 'not_configured', adherence: null }
+        else if (rows.length === 1) {
+          const targets = comparisonTargets(rows[0], user.id)
+          if (targets) comparison = { adherenceAvailability: 'available', adherence: calculateAdherenceStatus(dailyTotals, targets) }
+        }
+      }
+    } catch {
+      // Target failures do not erase successfully read meal facts in opt-in mode.
+    }
 
-    let adherence = {
+    const availability = searchParams.getAll('availability')
+    if (availability.length === 1 && availability[0] === 'explicit') {
+      const response: DailyMealsAvailabilityResponse = { meals, dailyTotals, ...comparison }
+      return readResponse(response)
+    }
+    if (comparison.adherenceAvailability === 'unavailable') {
+      return readResponse({ error: 'Unable to load your daily targets. Please try again.' }, 500)
+    }
+
+    const adherence = comparison.adherence ?? {
       proteinAdherence: 0,
       carbsAdherence: 0,
       fatAdherence: 0,
@@ -126,37 +161,19 @@ export async function GET(request: Request) {
       withinTolerance: false
     }
 
-    // Calculate adherence if targets exist
-    if (!targetsError && targetsData) {
-      const targets: DailyTargets = {
-        userId: targetsData.user_id,
-        targetProtein: parseFloat(targetsData.target_protein),
-        targetCarbs: parseFloat(targetsData.target_carbs),
-        targetFat: parseFloat(targetsData.target_fat),
-        targetCalories: parseFloat(targetsData.target_calories),
-        tolerancePct: parseFloat(targetsData.tolerance_pct),
-        updatedAt: new Date(targetsData.updated_at)
-      }
-
-      adherence = calculateAdherenceStatus(dailyTotals, targets)
-    } else if (targetsError && targetsError.code !== 'PGRST116') {
-      // Log error if it's not a "no rows returned" error
-      console.warn('Error fetching daily targets:', targetsError)
-    }
-
     const response: DailyMealsResponse = {
       meals,
       dailyTotals,
       adherence
     }
 
-    return NextResponse.json(response)
+    return readResponse(response)
 
   } catch (error) {
     console.error('Unexpected error in daily meals API:', error)
-    return NextResponse.json(
+    return readResponse(
       { error: error instanceof Error ? error.message : 'Unknown error occurred' },
-      { status: 500 }
+      500
     )
   }
 }

@@ -3,7 +3,8 @@
 import { sendCaptureCorrection, assertCaptureOwner } from '@/app/lib/client/logging-request'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { MealEntry, DailyTargets, MacroTotals, AdherenceStatus, DailyMealsResponse } from '@/app/lib/types/food-tracking'
+import { MealEntry, DailyTargets, MacroTotals, DailyMealsResponse, DailyMealsAvailabilityResponse } from '@/app/lib/types/food-tracking'
+import { isDailyTotals, readDailyComparison, type DailyComparison } from '@/app/lib/client/daily-meals'
 import MealEntryCard from './MealEntryCard'
 import MealEditModal from './MealEditModal'
 import { useToast } from './Toast'
@@ -32,7 +33,7 @@ async function fetchJsonWithTimeout<T>(url: string, timeoutMessage: string, sign
   const timeoutId = window.setTimeout(() => controller.abort(), DAILY_PROGRESS_FETCH_TIMEOUT_MS)
 
   try {
-    const response = await fetch(url, { signal: controller.signal })
+    const response = await fetch(url, { signal: controller.signal, cache: 'no-store' })
     if (!response.ok) {
       let errorMessage = 'Request failed'
       try {
@@ -60,20 +61,15 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
   const { user } = useAuth()
   const [meals, setMeals] = useState<MealEntry[]>([])
   const [dailyTotals, setDailyTotals] = useState<MacroTotals>({ protein: 0, carbs: 0, fat: 0, calories: 0 })
-  const [adherence, setAdherence] = useState<AdherenceStatus>({
-    proteinAdherence: 0,
-    carbsAdherence: 0,
-    fatAdherence: 0,
-    caloriesAdherence: 0,
-    overallScore: 0,
-    withinTolerance: false
-  })
+  const [comparison, setComparison] = useState<DailyComparison>({ adherenceAvailability: 'unverified', adherence: null })
+  const [comparisonPending, setComparisonPending] = useState(false)
   const [targets, setTargets] = useState<DailyTargets | null>(null)
   const [targetStatus, setTargetStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const scope = `${user?.id ?? ''}:${getLocalDate(date)}`
   const [readScope, setReadScope] = useState('')
   const dailyRead = useRef<AbortController | null>(null)
   const targetRead = useRef<AbortController | null>(null)
+  const factsScope = useRef('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null)
@@ -104,15 +100,18 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
     }
   }, [user])
 
-  const fetchDailyData = useCallback(async () => {
+  const fetchDailyData = useCallback(async (preserveFacts = false) => {
     if (!user) return
+    const retainingFacts = preserveFacts && factsScope.current === scope
     dailyRead.current?.abort()
     targetRead.current?.abort()
     const controller = new AbortController()
     dailyRead.current = controller
 
     try {
-      setLoading(true)
+      setLoading(!retainingFacts)
+      setComparisonPending(true)
+      setComparison({ adherenceAvailability: 'unverified', adherence: null })
       setError('')
       setReadScope(scope)
       setTargets(null)
@@ -121,15 +120,19 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
       const dateStr = getLocalDate(date)
       // Send timezone offset so server can query correct UTC range
       const tzOffset = getTimezoneOffset()
-      const data = await fetchJsonWithTimeout<DailyMealsResponse>(
-        `/api/meals/daily?date=${dateStr}&tzOffset=${tzOffset}`,
+      const data = await fetchJsonWithTimeout<DailyMealsResponse | DailyMealsAvailabilityResponse>(
+        `/api/meals/daily?date=${dateStr}&tzOffset=${tzOffset}&availability=explicit`,
         'Nutrition data request timed out. Please try again.',
         controller.signal
       )
       if (controller.signal.aborted) return
+      if (!data || !Array.isArray(data.meals) || !isDailyTotals(data.dailyTotals)) {
+        throw new Error('Unable to read daily meal facts. Please try again.')
+      }
       setMeals(data.meals)
       setDailyTotals(data.dailyTotals)
-      setAdherence(data.adherence)
+      setComparison(readDailyComparison(data))
+      factsScope.current = scope
       // Confirmed meal facts stay readable while the independent target read settles.
       setLoading(false)
 
@@ -137,9 +140,13 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
       void fetchTargets()
     } catch (err) {
       if (controller.signal.aborted) return
-      setError(err instanceof Error ? err.message : 'Failed to load daily data')
+      if (retainingFacts) setComparison({ adherenceAvailability: 'unavailable', adherence: null })
+      else setError(err instanceof Error ? err.message : 'Failed to load daily data')
     } finally {
-      if (!controller.signal.aborted) setLoading(false)
+      if (!controller.signal.aborted) {
+        setLoading(false)
+        setComparisonPending(false)
+      }
     }
   }, [date, fetchTargets, scope, user])
 
@@ -187,7 +194,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
     return `${Math.round(value * 10) / 10}${unit}`
   }
 
-  const configuredTargets = targetStatus === 'ready' && targets &&
+  const configuredTargets = comparison.adherenceAvailability === 'available' && targetStatus === 'ready' && targets &&
     targets.targetProtein > 0 &&
     targets.targetCarbs > 0 &&
     targets.targetFat > 0 &&
@@ -211,7 +218,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
         <div className="text-4xl sm:text-6xl mb-4">⚠️</div>
         <p className="text-red-600 dark:text-red-400 mb-4 text-sm sm:text-base px-4">{error}</p>
         <button
-          onClick={fetchDailyData}
+          onClick={() => fetchDailyData()}
           className="app-primary transition-colors text-sm sm:text-base touch-target"
         >
           Try Again
@@ -260,18 +267,24 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
             </div>
           ))}
         </div>
-        {targetStatus !== 'ready' && <div className="mt-4">
-          <p role={targetStatus === 'error' ? 'alert' : 'status'} className="app-muted text-sm">
-            {targetStatus === 'error' ? 'Daily targets are temporarily unavailable. Please try again.' : 'Loading daily targets…'}
+        {(comparisonPending || (comparison.adherenceAvailability !== 'not_configured' && !configuredTargets)) && <div className="mt-4">
+          <p role={comparisonPending || (comparison.adherenceAvailability === 'available' && targetStatus === 'loading') ? 'status' : 'alert'} className="app-muted text-sm">
+            {comparisonPending || (comparison.adherenceAvailability === 'available' && targetStatus === 'loading')
+              ? 'Loading target comparison…'
+              : comparison.adherenceAvailability === 'available'
+                ? 'Daily targets are temporarily unavailable. Please try again.'
+                : comparison.adherenceAvailability === 'unverified'
+                  ? 'Target comparison could not be verified. Please try again.'
+                  : 'Target comparison is temporarily unavailable. Please try again.'}
           </p>
-          <button type="button" disabled={targetStatus === 'loading'} onClick={() => fetchTargets()} className="app-primary mt-2 transition-colors touch-target disabled:opacity-50">
-            Retry Targets
+          <button type="button" disabled={comparisonPending || (comparison.adherenceAvailability === 'available' && targetStatus === 'loading')} onClick={() => fetchDailyData(true)} className="app-primary mt-2 transition-colors touch-target disabled:opacity-50">
+            Retry comparison
           </button>
         </div>}
-        {targetStatus === 'ready' && !configuredTargets && <p className="app-muted mt-4 text-sm"><span>No Daily Targets Set</span>. <Link className="underline inline-flex min-h-11 items-center" href="/food-progress?view=targets">Set Targets</Link></p>}
-        {configuredTargets && meals.length > 0 && <details className="mt-4 border-t border-[var(--line)] pt-2">
+        {!comparisonPending && comparison.adherenceAvailability === 'not_configured' && <p className="app-muted mt-4 text-sm"><span>No Daily Targets Set</span>. <Link className="underline inline-flex min-h-11 items-center" href="/food-progress?view=targets">Set Targets</Link></p>}
+        {!comparisonPending && configuredTargets && comparison.adherence && meals.length > 0 && <details className="mt-4 border-t border-[var(--line)] pt-2">
           <summary className="min-h-11 flex items-center cursor-pointer font-medium">Target comparison</summary>
-          <p className="app-muted text-sm">{Math.round(adherence.overallScore)}% adherence for logged meals only. Unlogged meals may change this comparison.</p>
+          <p className="app-muted text-sm">{Math.round(comparison.adherence.overallScore)}% adherence for logged meals only. Unlogged meals may change this comparison.</p>
         </details>}
       </section>
 

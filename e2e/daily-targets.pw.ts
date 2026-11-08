@@ -12,8 +12,8 @@ test('daily targets preserve mobile meal facts through retry, interruption and c
   let meal = { id: '33333333-3333-4333-8333-333333333333', userId: owner, captureRevision: 7,
     mealTimestamp: '2026-11-02T12:00:00Z', items: [{ food: 'Synthetic eggs', portion: '2 eggs', protein: 12.25, carbs: 0, fat: 3.75, calories: 82.75 }],
     totalProtein: 12.25, totalCarbs: 0, totalFat: 3.75, totalCalories: 82.75, needsReview: false, manualOverride: true }
-  const daily = { meals: [meal], dailyTotals: { protein: 12.25, carbs: 0, fat: 3.75, calories: 82.75 },
-    adherence: { overallScore: 4.5, withinTolerance: false } }
+  const daily = { adherenceAvailability: 'available', meals: [meal], dailyTotals: { protein: 12.25, carbs: 0, fat: 3.75, calories: 82.75 },
+    adherence: { proteinAdherence: 8, carbsAdherence: 0, fatAdherence: 6, caloriesAdherence: 4, overallScore: 4.5, withinTolerance: false } }
   let phase: 'initial' | 'retry' | 'success' | 'post-save' | 'interrupted' | 'latest' = 'initial'
   const initial = latch(), retry = latch(), postSave = latch(), interrupted = latch()
   let held = 0
@@ -60,24 +60,24 @@ test('daily targets preserve mobile meal facts through retry, interruption and c
   const summary = page.getByRole('region', { name: 'Daily nutrition summary' })
   await expect(page.getByText('1 meal logged')).toBeVisible()
   for (const text of ['12.3g', '0g', '3.8g', '82.8']) await expect(summary.getByText(text, { exact: true })).toBeVisible()
-  await expect(page.getByRole('status').filter({ hasText: 'Loading daily targets' })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Loading target comparison' })).toBeVisible()
   await expect(page.getByText('No Daily Targets Set')).toHaveCount(0)
   initial.release()
   await expect(page.getByRole('alert').filter({ hasText: 'Daily targets are temporarily unavailable' })).toBeVisible()
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false)
-    expect((await page.getByRole('button', { name: 'Retry Targets' }).boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    expect((await page.getByRole('button', { name: 'Retry comparison' }).boundingBox())!.height).toBeGreaterThanOrEqual(44)
     await page.screenshot({ path: info.outputPath('daily-unavailable-' + width + '.png'), fullPage: true })
   }
   phase = 'retry'
-  await page.getByRole('button', { name: 'Retry Targets' }).click()
-  await expect(page.getByRole('button', { name: 'Retry Targets' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Retry comparison' }).click()
+  await expect(page.getByRole('button', { name: 'Retry comparison' })).toBeDisabled()
   await expect(summary.getByText('12.3g', { exact: true })).toBeVisible()
   retry.release()
   await expect(page.getByRole('alert').filter({ hasText: 'Daily targets are temporarily unavailable' })).toBeVisible()
   phase = 'success'
-  await page.getByRole('button', { name: 'Retry Targets' }).click()
+  await page.getByRole('button', { name: 'Retry comparison' }).click()
   await expect(summary.getByText('of 150.3g target')).toBeVisible()
   await summary.getByText('Target comparison', { exact: true }).click()
   await expect(summary.getByText(/5% adherence for logged meals only/)).toBeVisible()
@@ -89,7 +89,7 @@ test('daily targets preserve mobile meal facts through retry, interruption and c
   await expect(page.getByText('Correction remains unconfirmed. Retry the unchanged correction.', { exact: true })).toBeVisible()
   await expect(page.getByPlaceholder('e.g., 6 oz, 1 cup, 150g')).toHaveValue('3 eggs')
   await page.getByRole('button', { name: 'Save Changes' }).click()
-  await expect(summary.getByRole('status').filter({ hasText: 'Loading daily targets' })).toBeVisible()
+  await expect(summary.getByRole('status').filter({ hasText: 'Loading target comparison' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Edit Meal' })).toHaveCount(0, { timeout: 2000 })
   expect(corrections).toHaveLength(2)
   expect(corrections[1]).toEqual(corrections[0])

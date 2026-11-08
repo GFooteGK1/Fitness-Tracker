@@ -69,6 +69,7 @@ type FetchHandler = (input: RequestInfo | URL, init?: RequestInit) => Promise<Re
 
 interface PageFetchOptions {
   agent?: FetchHandler
+  daily?: FetchHandler
   whoop?: unknown
   meals?: unknown
   targets?: unknown
@@ -111,7 +112,7 @@ function stubPageFetch(options: PageFetchOptions = {}) {
     }
 
     if (url.startsWith('/api/meals/daily')) {
-      return makeResponse(options.meals ?? {
+      return options.daily?.(input, init) ?? makeResponse(options.meals ?? {
         dailyTotals: { protein: 25, carbs: 50, fat: 10, calories: 390 },
       })
     }
@@ -207,6 +208,37 @@ describe('V2Page', () => {
   })
 
   describe('initial data loading', () => {
+    it.each([0, 25.25])('opts in and keeps partial target-outage totals including protein %s', async protein => {
+      const mockFetch = stubPageFetch({ meals: {
+        meals: [], dailyTotals: { protein, carbs: 10.5, fat: 2.25, calories: 163.25 },
+        adherenceAvailability: 'unavailable', adherence: null,
+      } })
+      await act(async () => { render(<V2Page />) })
+      await waitFor(() => expect(screen.getByText('Protein').parentElement).toHaveTextContent(`${Math.round(protein)}/180g`))
+      const call = mockFetch.mock.calls.find(([url]) => requestUrl(url).startsWith('/api/meals/daily'))!
+      expect(new URL(requestUrl(call[0]), 'http://local.invalid').searchParams.getAll('availability')).toEqual(['explicit'])
+      expect(call[1]?.cache).toBe('no-store')
+    })
+
+    it('refreshes confirmed totals after a log even when comparison targets are unavailable', async () => {
+      let dailyReads = 0
+      stubPageFetch({
+        daily: () => {
+          dailyReads++
+          return makeResponse({ dailyTotals: { protein: dailyReads === 1 ? 0 : 25.25, carbs: 10.5, fat: 2.25, calories: 163.25 },
+            adherenceAvailability: 'unavailable', adherence: null })
+        },
+        agent: () => makeResponse({ messages: [{ role: 'nutritionist', domain: 'nutritionist', content: 'Synthetic meal saved' }],
+          classification: { input_type: 'food_log', domains: ['nutritionist'], confidence: 1, context: {} }, processing_time_ms: 1 }),
+      })
+      await act(async () => { render(<V2Page />) })
+      await waitFor(() => expect(dailyReads).toBe(1))
+      fireEvent.change(screen.getByLabelText('Message input'), { target: { value: 'Synthetic meal' } })
+      fireEvent.click(screen.getByLabelText('Send message'))
+      await waitFor(() => expect(screen.getByText('Protein').parentElement).toHaveTextContent('25/180g'))
+      expect(dailyReads).toBe(2)
+    })
+
     it('fetches chat history from chat_messages table on mount', async () => {
       const now = new Date().toISOString()
       chatChain = buildChain([

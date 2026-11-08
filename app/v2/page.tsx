@@ -19,6 +19,7 @@ import { createClient } from '@/app/lib/auth/supabase-client'
 import type { AgentRequest, AgentResponse } from '@/app/lib/agents/types'
 import { getLocalDate, getTimezoneOffset, getMealTimestamp } from '@/app/lib/timezone-utils'
 import { fetchWithTimeout } from '@/app/lib/client/fetch-with-timeout'
+import { isDailyTotals } from '@/app/lib/client/daily-meals'
 import { prepareImageUpload } from '@/app/lib/imageUtils'
 
 // ============================================================
@@ -280,16 +281,17 @@ export default function V2Page() {
       const today = getLocalDate()
       // /api/meals/daily expects the raw Date#getTimezoneOffset() convention.
       const tzOffset = getTimezoneOffset()
-      const mealsRes = await fetch(`/api/meals/daily?date=${today}&tzOffset=${tzOffset}`)
+      const mealsRes = await fetch(`/api/meals/daily?date=${today}&tzOffset=${tzOffset}&availability=explicit`, { cache: 'no-store' })
       if (mealsRes.ok) {
         const mealsData = await mealsRes.json()
+        if (!isDailyTotals(mealsData?.dailyTotals)) throw new Error('Daily meal totals are unavailable.')
         setMacros(prev => ({
           ...prev,
           consumed: {
-            protein:  Math.round(mealsData.dailyTotals?.protein  || 0),
-            carbs:    Math.round(mealsData.dailyTotals?.carbs    || 0),
-            fat:      Math.round(mealsData.dailyTotals?.fat      || 0),
-            calories: Math.round(mealsData.dailyTotals?.calories || 0)
+            protein:  Math.round(mealsData.dailyTotals.protein),
+            carbs:    Math.round(mealsData.dailyTotals.carbs),
+            fat:      Math.round(mealsData.dailyTotals.fat),
+            calories: Math.round(mealsData.dailyTotals.calories)
           }
         }))
       }
