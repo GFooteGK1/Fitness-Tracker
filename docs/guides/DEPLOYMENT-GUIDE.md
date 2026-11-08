@@ -8,6 +8,12 @@
 
 ## 📋 Step-by-Step Deployment
 
+Before a push, merge or release that could trigger database work, follow the
+[migration release procedure](../migrations/README.md#migration-release-procedure).
+Provider-managed migration integrations can run independently of repository CI
+and the application build; verify the intended target, complete pending SQL set,
+runner/settings and approval before triggering them.
+
 ### 1. Push Code to GitHub
 
 First, create a GitHub repository and push your fitness-tracker code:
@@ -73,10 +79,12 @@ Once deployed, you can access your app from anywhere:
 
 ## 🔄 Automatic Deployments
 
-Every time you push to GitHub:
-1. Vercel automatically rebuilds
-2. New version goes live in ~2 minutes
-3. Zero downtime deployments
+Git-linked application deployments depend on the configured branch and provider
+settings. Verify those bindings and the release result rather than assuming every
+push reaches production. Database automation is a separate release concern: use
+the [migration release procedure](../migrations/README.md#migration-release-procedure)
+and inspect workflow, ledger and catalog state before considering manual SQL
+application. A successful build alone does not establish the database outcome.
 
 ## 🛠️ Troubleshooting
 

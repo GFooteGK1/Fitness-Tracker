@@ -233,10 +233,19 @@ SELECT auth.uid(), auth.email();
 
 ## Migration Best Practices
 
-1. Write migration SQL in `docs/migrations/`
-2. Test in Supabase SQL Editor first
-3. Apply to database
-4. Update TypeScript types if needed
-5. Document in session notes
-6. Add RLS policies for new tables
-7. Create indexes for user_id columns
+Use the maintained
+[migration release procedure](../../docs/migrations/README.md#migration-release-procedure).
+Do not treat SQL Editor access or a source file as authority to apply a change.
+
+- Use the checked-in migration chain and its source-owned prerequisites; preserve
+  dated SQL, receipts and manifests instead of rewriting migration history.
+- Test installation, upgrades, idempotence and verification in disposable fixtures.
+  Never repeat a production migration as an apply-twice test.
+- Before a triggering merge/release, reconcile the complete pending SQL set and
+  intended target, inspect runner/settings and obtain approval for the exact scope.
+  Provider-managed integrations can operate independently of CI and the app build.
+- After release, inspect workflow, ledger and catalog before manual application;
+  do not apply an already recorded matching migration or manually repair history.
+- Maintain types, owner-scoped RLS, grants and indexes required by the reviewed
+  change. Application rollback does not undo SQL; use a migration-specific
+  compatibility and forward/recovery plan.
