@@ -27,20 +27,20 @@ export async function GET() {
       
       // Simple query to test connection
       const { error } = await supabase.from('user_profiles').select('count').limit(1)
-      health.services.database = error ? `error: ${error.message}` : 'connected'
-    } catch (dbError) {
-      health.services.database = `error: ${dbError instanceof Error ? dbError.message : 'unknown'}`
+      health.services.database = error ? 'error: Database unavailable' : 'connected'
+    } catch {
+      health.services.database = 'error: Database unavailable'
     }
 
-    return NextResponse.json(health)
-  } catch (error) {
+    return NextResponse.json(health, { headers: { 'Cache-Control': 'private, no-store' } })
+  } catch {
     return NextResponse.json(
       { 
         status: 'unhealthy', 
-        error: error instanceof Error ? error.message : 'unknown error',
+        error: 'Health check failed',
         timestamp: new Date().toISOString()
       },
-      { status: 500 }
+      { status: 500, headers: { 'Cache-Control': 'private, no-store' } }
     )
   }
 }
