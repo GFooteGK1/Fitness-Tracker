@@ -1,7 +1,7 @@
 'use client'
 
 import { sendCaptureCorrection, assertCaptureOwner } from '@/app/lib/client/logging-request'
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { MealEntry, DailyTargets, MacroTotals, AdherenceStatus, DailyMealsResponse } from '@/app/lib/types/food-tracking'
 import MealEntryCard from './MealEntryCard'
@@ -24,8 +24,11 @@ function isAbortError(error: unknown): boolean {
     error.name === 'AbortError'
 }
 
-async function fetchJsonWithTimeout<T>(url: string, timeoutMessage: string): Promise<T> {
+async function fetchJsonWithTimeout<T>(url: string, timeoutMessage: string, signal?: AbortSignal): Promise<T> {
   const controller = new AbortController()
+  const abort = () => controller.abort()
+  signal?.addEventListener('abort', abort)
+  if (signal?.aborted) controller.abort()
   const timeoutId = window.setTimeout(() => controller.abort(), DAILY_PROGRESS_FETCH_TIMEOUT_MS)
 
   try {
@@ -49,6 +52,7 @@ async function fetchJsonWithTimeout<T>(url: string, timeoutMessage: string): Pro
     throw error
   } finally {
     window.clearTimeout(timeoutId)
+    signal?.removeEventListener('abort', abort)
   }
 }
 
@@ -65,6 +69,11 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
     withinTolerance: false
   })
   const [targets, setTargets] = useState<DailyTargets | null>(null)
+  const [targetStatus, setTargetStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const scope = `${user?.id ?? ''}:${getLocalDate(date)}`
+  const [readScope, setReadScope] = useState('')
+  const dailyRead = useRef<AbortController | null>(null)
+  const targetRead = useRef<AbortController | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null)
@@ -73,48 +82,74 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
 
   const fetchTargets = useCallback(async () => {
     if (!user) return
+    targetRead.current?.abort()
+    const controller = new AbortController()
+    targetRead.current = controller
+    setTargets(null)
+    setTargetStatus('loading')
 
     try {
       const targetsData = await fetchJsonWithTimeout<DailyTargets>(
         '/api/targets',
-        'Nutrition targets request timed out. Progress targets may be temporarily unavailable.'
+        'Nutrition targets request timed out. Progress targets may be temporarily unavailable.',
+        controller.signal
       )
+      if (controller.signal.aborted) return
       setTargets(targetsData)
+      setTargetStatus('ready')
     } catch (err) {
+      if (controller.signal.aborted) return
       console.warn('Failed to fetch targets:', err)
+      setTargetStatus('error')
     }
   }, [user])
 
   const fetchDailyData = useCallback(async () => {
     if (!user) return
+    dailyRead.current?.abort()
+    targetRead.current?.abort()
+    const controller = new AbortController()
+    dailyRead.current = controller
 
     try {
       setLoading(true)
       setError('')
+      setReadScope(scope)
+      setTargets(null)
+      setTargetStatus('loading')
 
       const dateStr = getLocalDate(date)
       // Send timezone offset so server can query correct UTC range
       const tzOffset = getTimezoneOffset()
       const data = await fetchJsonWithTimeout<DailyMealsResponse>(
         `/api/meals/daily?date=${dateStr}&tzOffset=${tzOffset}`,
-        'Nutrition data request timed out. Please try again.'
+        'Nutrition data request timed out. Please try again.',
+        controller.signal
       )
+      if (controller.signal.aborted) return
       setMeals(data.meals)
       setDailyTotals(data.dailyTotals)
       setAdherence(data.adherence)
+      // Confirmed meal facts stay readable while the independent target read settles.
+      setLoading(false)
 
       // Fetch targets separately if not included in response
-      await fetchTargets()
+      void fetchTargets()
     } catch (err) {
+      if (controller.signal.aborted) return
       setError(err instanceof Error ? err.message : 'Failed to load daily data')
     } finally {
-      setLoading(false)
+      if (!controller.signal.aborted) setLoading(false)
     }
-  }, [date, fetchTargets, user])
+  }, [date, fetchTargets, scope, user])
 
   useEffect(() => {
     if (user) {
       fetchDailyData()
+    }
+    return () => {
+      dailyRead.current?.abort()
+      targetRead.current?.abort()
     }
   }, [fetchDailyData, user])
 
@@ -132,8 +167,8 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
     if (!editingMeal || !user) return
     const response = await sendCaptureCorrection(`/api/meals/${editingMeal.id}`, 'PUT', updates as Record<string, unknown>, user.id)
     if (!response.ok) { const data = await response.json(); throw new Error(data.error ?? 'Correction remains unconfirmed. Retry the unchanged correction.') }
-    await fetchDailyData()
     setEditingMeal(null)
+    await fetchDailyData()
   }
   const handleDeleteMeal = async (mealId: string) => {
     if (!user) return
@@ -152,7 +187,7 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
     return `${Math.round(value * 10) / 10}${unit}`
   }
 
-  const configuredTargets = targets &&
+  const configuredTargets = targetStatus === 'ready' && targets &&
     targets.targetProtein > 0 &&
     targets.targetCarbs > 0 &&
     targets.targetFat > 0 &&
@@ -160,7 +195,9 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
     ? targets
     : null
 
-  if (loading) {
+  if (!user) return null
+
+  if (loading || readScope !== scope) {
     return (
       <div className="flex items-center justify-center py-8 sm:py-12">
         <div className="inline-block animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-[var(--accent-line)] mb-3"></div>
@@ -223,7 +260,15 @@ export default function DailyProgressView({ date, onAddMeal }: DailyProgressView
             </div>
           ))}
         </div>
-        {!configuredTargets && <p className="app-muted mt-4 text-sm"><span>No Daily Targets Set</span>. <Link className="underline inline-flex min-h-11 items-center" href="/food-progress?view=targets">Set Targets</Link></p>}
+        {targetStatus !== 'ready' && <div className="mt-4">
+          <p role={targetStatus === 'error' ? 'alert' : 'status'} className="app-muted text-sm">
+            {targetStatus === 'error' ? 'Daily targets are temporarily unavailable. Please try again.' : 'Loading daily targets…'}
+          </p>
+          <button type="button" disabled={targetStatus === 'loading'} onClick={() => fetchTargets()} className="app-primary mt-2 transition-colors touch-target disabled:opacity-50">
+            Retry Targets
+          </button>
+        </div>}
+        {targetStatus === 'ready' && !configuredTargets && <p className="app-muted mt-4 text-sm"><span>No Daily Targets Set</span>. <Link className="underline inline-flex min-h-11 items-center" href="/food-progress?view=targets">Set Targets</Link></p>}
         {configuredTargets && meals.length > 0 && <details className="mt-4 border-t border-[var(--line)] pt-2">
           <summary className="min-h-11 flex items-center cursor-pointer font-medium">Target comparison</summary>
           <p className="app-muted text-sm">{Math.round(adherence.overallScore)}% adherence for logged meals only. Unlogged meals may change this comparison.</p>
