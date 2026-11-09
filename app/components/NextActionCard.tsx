@@ -135,7 +135,7 @@ function OwnedNextAction({ owner }: { owner: string }) {
       </>}
     {message && <p role="status" className="app-notice text-sm">{message}</p>}
     {adjustHref && <Link className="app-primary" href={adjustHref}>Review what to adjust →</Link>}
-    <PendingResponseRecovery owner={owner} currentId={rowId} coverageVisible={view?.status === 'ready' && loadedScope === scope && !!view.refreshState} onResolved={load} />
+    <PendingResponseRecovery owner={owner} currentId={rowId} coverageVisible={view?.status === 'ready' && loadedScope === scope && !!view.refreshState} responsePending={busy} onResolved={load} />
     <div className="flex flex-wrap gap-x-5 gap-y-2"><Link className="min-h-11 inline-flex items-center underline" href="/program">Your plan</Link><Link className="min-h-11 inline-flex items-center underline" href="/log">Log activity</Link></div>
     {!captureUncertain && view?.status === 'ready' && loadedScope === scope && view.refreshState && <CoverageControl key={`${owner}:${scope}:${view.refreshState.sourceRevision}`} owner={owner} sourceRevision={view.refreshState.sourceRevision} coverage={view.coverage} onReview={load} />}
     {!!view?.outcomes?.length && loadedScope === scope && <details><summary className="min-h-11 flex items-center cursor-pointer font-medium">Recent follow-up</summary><ul className="space-y-4 mt-2">{view.outcomes.map(outcome => <li key={outcome.id} className="app-surface rounded-xl p-3 space-y-2"><p className="font-medium">{outcome.title}</p><p className="text-sm">{outcome.invalidated ? 'Unknown · source records changed' : `${outcome.payload.adherence === 'reported' ? 'Reported by you' : outcome.payload.adherence === 'observed' ? 'Observed in records' : 'Unknown'}`}</p>{outcome.invalidated ? <details><summary className="min-h-11 flex items-center cursor-pointer text-sm">Earlier observation</summary><p className="app-muted text-sm">{outcome.payload.summary}</p></details> : <p className="app-muted text-sm">{outcome.payload.summary}</p>}<p className="app-muted text-sm">{outcome.payload.attributionLimits.join(' ')}</p></li>)}</ul></details>}
@@ -164,12 +164,13 @@ function describeFacts(facts: Record<string, unknown>): string {
   return parts.join(' · ') || 'Used as context for this action. Open its plan or logging record to review it.'
 }
 
-function PendingResponseRecovery({ owner, currentId, coverageVisible, onResolved }: { owner: string; currentId?: string; coverageVisible: boolean; onResolved: () => Promise<void> }) {
+function PendingResponseRecovery({ owner, currentId, coverageVisible, responsePending, onResolved }: { owner: string; currentId?: string; coverageVisible: boolean; responsePending: boolean; onResolved: () => Promise<void> }) {
   const [entries, setEntries] = useState(() => pendingRecommendationEvents(owner))
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const alive = useRef(true)
-  useEffect(() => { alive.current = true; setEntries(pendingRecommendationEvents(owner)); return () => { alive.current = false } }, [owner, currentId, coverageVisible])
+  // The current-card request can persist after a different action becomes visible.
+  useEffect(() => { alive.current = true; setEntries(pendingRecommendationEvents(owner)); return () => { alive.current = false } }, [owner, currentId, coverageVisible, responsePending])
   const pending = entries.filter(entry => entry.kind === 'response' ? entry.id !== currentId : !coverageVisible || entry.id !== getLocalDate())
   if (!pending.length) return null
   return <div className="app-surface rounded-xl p-3 space-y-3"><p>Earlier responses need confirmation. Retrying cannot log an activity.</p>{pending.map(entry => <div key={`${entry.kind}:${entry.id}`}><p className="app-muted text-sm">{entry.kind === 'coverage' ? 'Earlier meal coverage report' : `Earlier response: ${String(entry.payload.response).replaceAll('_', ' ')}`}</p><button className="app-secondary mt-2" disabled={busy} onClick={async () => { setBusy(true); try { await sendRecommendationEvent(owner, entry.id, entry.kind, entry.payload); if (alive.current) { setEntries(pendingRecommendationEvents(owner)); setMessage('Earlier response confirmed.'); await onResolved() } } catch (error) { if (alive.current) { setEntries(pendingRecommendationEvents(owner)); setMessage(error instanceof Error ? error.message : 'Still unconfirmed.') } } finally { if (alive.current) setBusy(false) } }}>Retry earlier response</button></div>)}{message && <p role="status">{message}</p>}</div>
