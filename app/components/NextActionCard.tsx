@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import { getLocalDate, getTimezoneOffset } from '@/app/lib/timezone-utils'
@@ -72,7 +72,8 @@ function OwnedNextAction({ owner }: { owner: string }) {
   const row = view && mayPublishRecommendation({ captureNeedsReconciliation: captureUncertain || offlineUncertain === null, serverStatus: view.status }) && loadedScope === scope ? view.recommendations.find(item => item.lifecycle === 'active'
     && item.decision.localDate === getLocalDate() && item.decision.tzOffset === getTimezoneOffset() && Date.parse(item.decision.validUntil) > clock) : undefined
   const rowId = row?.id
-  useEffect(() => { setResponse(rowId ? pendingRecommendationEvent(owner, rowId, 'response') : null) }, [owner, rowId])
+  // A later passive read could overwrite a response selected before hydration.
+  useLayoutEffect(() => { setResponse(rowId ? pendingRecommendationEvent(owner, rowId, 'response') : null) }, [owner, rowId])
   useEffect(() => {
     if (!rowId || !card.current) return
     let inView = false
