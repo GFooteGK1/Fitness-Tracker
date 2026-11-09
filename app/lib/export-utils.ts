@@ -314,5 +314,7 @@ export async function generatePdf(
     doc.text(`Page ${i} of ${pageCount}`, pageWidth - 14, pageHeight - 6, { align: 'right' })
   }
 
-  return doc.output('arraybuffer') as unknown as Uint8Array
+  const output = doc.output('arraybuffer')
+  if (!(output instanceof ArrayBuffer)) throw new Error('PDF generation failed')
+  return new Uint8Array(output)
 }
