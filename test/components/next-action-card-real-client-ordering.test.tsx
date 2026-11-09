@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { RecommendationView } from '@/app/lib/client/recommendations'
@@ -30,13 +30,15 @@ let mutationObserver: MutationObserver | undefined
 const sends: Array<{ url: string; body: string }> = []
 let fetchMode: 'lost' | 'success' | 'stale' = 'lost'
 let releaseTransport: ((value: Response) => void) | undefined
+let rejectTransport: ((reason: Error) => void) | undefined
+const transports = new Map<string, { resolve: (value: Response) => void; reject: (reason: Error) => void }>()
 let holdTransport = false
 const rowOwners: Record<string, string> = {}
 
 beforeEach(() => {
-  state.owner = 'athlete-a'; state.trace = []; observerReady = false; releaseAuth = undefined; releaseTransport = undefined; holdTransport = false; fetchMode = 'lost'; sends.length = 0
+  state.owner = 'athlete-a'; state.trace = []; observerReady = false; releaseAuth = undefined; releaseTransport = undefined; rejectTransport = undefined; holdTransport = false; fetchMode = 'lost'; sends.length = 0; transports.clear()
   vi.resetAllMocks(); sessionStorage.clear(); localStorage.clear()
-  Object.assign(rowOwners, { 'decision-a': 'athlete-a', 'decision-b': 'athlete-b' })
+  Object.assign(rowOwners, { 'decision-a': 'athlete-a', 'decision-b': 'athlete-b', 'decision-c': 'athlete-a' })
   vi.stubGlobal('IntersectionObserver', class { constructor() { observerReady = true; state.trace.push('observer:ready') }; observe() {}; disconnect() {} })
   state.getUser.mockImplementation(async () => { state.trace.push(`auth:start:ready:${state.owner}`); return { data: { user: state.owner ? { id: state.owner } : null }, error: null } })
   state.getUser.mockImplementationOnce(() => {
@@ -51,7 +53,7 @@ beforeEach(() => {
   })
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
-    if (!/^\/api\/recommendations\/decision-[ab]\/response$/.test(url) || init?.method !== 'POST' || typeof init.body !== 'string') throw new Error('Offline probe forbids unexpected request')
+    if (!/^\/api\/recommendations\/decision-[abc]\/response$/.test(url) || init?.method !== 'POST' || typeof init.body !== 'string') throw new Error('Offline probe forbids unexpected request')
     const body = JSON.parse(init.body), id = url.split('/')[3]
     expect(new Headers(init.headers).get('Content-Type')).toBe('application/json')
     expect(Object.keys(body).sort()).toEqual(['expectedUserId', 'requestId', 'response', 'tzOffset'].sort())
@@ -59,7 +61,7 @@ beforeEach(() => {
     expect(body.response).toBe('done_reported'); expect(body.tzOffset).toBe(getTimezoneOffset())
     expect(body.requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
     sends.push({ url, body: init.body }); state.trace.push(`fetch:${url}`)
-    if (holdTransport) return new Promise<Response>(resolveResponse => { releaseTransport = resolveResponse })
+    if (holdTransport) return new Promise<Response>((resolveResponse, rejectResponse) => { releaseTransport = resolveResponse; rejectTransport = rejectResponse; transports.set(id, { resolve: resolveResponse, reject: rejectResponse }) })
     if (fetchMode === 'lost') { state.trace.push('transport:lost'); throw new Error('Synthetic response lost') }
     if (fetchMode === 'stale') return new Response(JSON.stringify({ error: 'Synthetic sources changed', noWriteConfirmed: true, refreshRequired: true }), { status: 409 })
     return new Response(JSON.stringify({ event: 'saved' }))
@@ -69,6 +71,7 @@ afterEach(async () => {
   mutationObserver?.disconnect(); mutationObserver = undefined; cleanup(); state.owner = null
   if (releaseAuth) await act(async () => releaseAuth?.())
   if (releaseTransport) await act(async () => releaseTransport?.(new Response(JSON.stringify({ event: 'saved' }))))
+  await act(async () => { for (const transport of transports.values()) transport.resolve(new Response(JSON.stringify({ event: 'saved' }))) })
   vi.restoreAllMocks(); vi.unstubAllGlobals()
 })
 
@@ -192,4 +195,144 @@ it('a changed action before persistence cannot inherit the old response or retry
   await waitFor(() => expect(pendingRecommendationEvents('athlete-a')).toEqual([]))
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Retry earlier response' })).not.toBeInTheDocument())
   expect(sends).toHaveLength(2); expect(sends[1]).toEqual(first)
+})
+
+function seedPending(owner: string, id: string, kind: 'response' | 'coverage', payload: Record<string, unknown>) {
+  const key = `socius-recommendation:${owner}:${kind}:${id}`
+  const body = JSON.stringify({ ...payload, requestId: crypto.randomUUID(), expectedUserId: owner, tzOffset: getTimezoneOffset() })
+  const stored = JSON.stringify({ signature: JSON.stringify(payload), body })
+  sessionStorage.setItem(key, stored)
+  return { key, stored, body }
+}
+function showSecondAction() {
+  rowOwners['decision-b'] = 'athlete-a'; state.refresh.mockResolvedValue(view('decision-b'))
+  act(() => window.dispatchEvent(new CustomEvent('recommendations-updated', { detail: { owner: 'athlete-a', scope: recommendationScopeKey(), view: view('decision-b') } })))
+}
+async function changeBeforePersistence() {
+  holdTransport = true
+  const mounted = await mountAndClick('settled')
+  showSecondAction(); await screen.findByText('Review decision-b')
+  expect(sends).toEqual([]); expect(pendingRecommendationEvents('athlete-a')).toEqual([])
+  await act(async () => releaseAuth?.())
+  await waitFor(() => expect(releaseTransport).toBeTypeOf('function'))
+  expect(sends).toHaveLength(1)
+  expect(sends[0].url).toBe('/api/recommendations/decision-a/response')
+  expect(pendingRecommendationEvents('athlete-a')).toEqual([{ id: 'decision-a', kind: 'response', payload: { response: 'done_reported' } }])
+  return mounted
+}
+it.each(['unconfirmed', 'transport'] as const)('late persistence followed by %s exposes the original earlier retry on the existing mount', async mode => {
+  await changeBeforePersistence()
+  const section = screen.getByRole('region', { name: 'Next action' }), first = { ...sends[0] }
+  const unrelated = seedPending('athlete-a', 'decision-c', 'response', { response: 'not_applicable' })
+  const otherOwner = seedPending('athlete-b', 'decision-b', 'response', { response: 'done_reported' })
+  const coverage = seedPending('athlete-a', getLocalDate(), 'coverage', { domain: 'nutrition', localDate: getLocalDate(), status: 'partial', coverageThrough: new Date().toISOString(), expectedSourceRevision: 4 })
+  const refreshCalls = state.refresh.mock.calls.length
+  await act(async () => {
+    if (mode === 'transport') rejectTransport?.(new Error('Synthetic response lost'))
+    else releaseTransport?.(new Response(JSON.stringify({ error: 'Synthetic response lost' }), { status: 503 }))
+  })
+  await screen.findByText('Synthetic response lost')
+  // No pending/update event, remount, focus, tick or refresh may discover this entry.
+  expect(screen.getByRole('region', { name: 'Next action' })).toBe(section)
+  expect(screen.getByText('Review decision-b')).toBeInTheDocument()
+  const earlier = await screen.findByText('Earlier response: done reported')
+  const retry = within(earlier.parentElement!).getByRole('button', { name: 'Retry earlier response' })
+  expect(retry).toBeEnabled(); expect(screen.queryByRole('button', { name: 'Retry same response' })).not.toBeInTheDocument()
+  expect(screen.queryByText('Earlier meal coverage report')).not.toBeInTheDocument()
+  expect(state.refresh).toHaveBeenCalledTimes(refreshCalls); expect(sends).toHaveLength(1)
+  holdTransport = false; fetchMode = 'success'; fireEvent.click(retry)
+  await waitFor(() => expect(sessionStorage.getItem('socius-recommendation:athlete-a:response:decision-a')).toBeNull())
+  expect(sends).toHaveLength(2); expect(sends[1]).toEqual(first)
+  for (const entry of [unrelated, otherOwner, coverage]) expect(sessionStorage.getItem(entry.key)).toBe(entry.stored)
+})
+it.each(['success', 'stale'] as const)('late %s settlement clears only the original entry and preserves unrelated pending state', async mode => {
+  await changeBeforePersistence()
+  const unrelated = seedPending('athlete-a', 'decision-c', 'response', { response: 'not_applicable' })
+  const otherOwner = seedPending('athlete-b', 'decision-b', 'response', { response: 'done_reported' })
+  await act(async () => releaseTransport?.(mode === 'success' ? new Response(JSON.stringify({ event: 'saved' })) : new Response(JSON.stringify({ error: 'Synthetic sources changed', noWriteConfirmed: true, refreshRequired: true }), { status: 409 })))
+  if (mode === 'success') await screen.findByText('Done recorded as your report. No meal or workout was logged.')
+  else await screen.findByRole('button', { name: 'Check again' })
+  expect(sessionStorage.getItem('socius-recommendation:athlete-a:response:decision-a')).toBeNull()
+  expect(sessionStorage.getItem(unrelated.key)).toBe(unrelated.stored); expect(sessionStorage.getItem(otherOwner.key)).toBe(otherOwner.stored)
+  expect(screen.queryByText('Earlier response: done reported')).not.toBeInTheDocument(); expect(sends).toHaveLength(1)
+})
+it('late owner change cannot expose old recovery; returning to that owner retains the exact request', async () => {
+  holdTransport = true; const mounted = await mountAndClick('settled'); await act(async () => releaseAuth?.())
+  await waitFor(() => expect(releaseTransport).toBeTypeOf('function'))
+  const first = { ...sends[0] }, oldEntry = sessionStorage.getItem('socius-recommendation:athlete-a:response:decision-a')
+  state.owner = 'athlete-b'; mounted.rerender(<NextActionCard />); await screen.findByText('Review decision-b')
+  const refreshCalls = state.refresh.mock.calls.length
+  await act(async () => rejectTransport?.(new Error('Synthetic old owner response lost')))
+  expect(screen.queryByText('Synthetic old owner response lost')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Retry earlier response' })).not.toBeInTheDocument()
+  expect(pendingRecommendationEvents('athlete-b')).toEqual([]); expect(state.refresh).toHaveBeenCalledTimes(refreshCalls)
+  expect(sessionStorage.getItem('socius-recommendation:athlete-a:response:decision-a')).toBe(oldEntry); expect(sends).toHaveLength(1)
+  state.owner = 'athlete-a'; mounted.rerender(<NextActionCard />); await screen.findByText('Review decision-a')
+  holdTransport = false; fetchMode = 'success'; fireEvent.click(await screen.findByRole('button', { name: 'Retry same response' }))
+  await waitFor(() => expect(pendingRecommendationEvents('athlete-a')).toEqual([]))
+  expect(sends).toHaveLength(2); expect(sends[1]).toEqual(first)
+})
+it('unmount before owner verification preserves a later uncertain request for read-only remount recovery', async () => {
+  holdTransport = true; const mounted = await mountAndClick('settled'); mounted.unmount()
+  const refreshCalls = state.refresh.mock.calls.length
+  await act(async () => releaseAuth?.()); await waitFor(() => expect(rejectTransport).toBeTypeOf('function'))
+  await act(async () => rejectTransport?.(new Error('Synthetic unmounted response lost')))
+  expect(state.refresh).toHaveBeenCalledTimes(refreshCalls); expect(sends).toHaveLength(1)
+  const first = { ...sends[0] }; expect(pendingRecommendationEvents('athlete-a')).toHaveLength(1)
+  showSecondAction(); await act(async () => { render(<NextActionCard />) })
+  await screen.findByText('Review decision-b')
+  expect(sends).toHaveLength(1); holdTransport = false; fetchMode = 'success'
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry earlier response' }))
+  await waitFor(() => expect(pendingRecommendationEvents('athlete-a')).toEqual([]))
+  expect(sends).toHaveLength(2); expect(sends[1]).toEqual(first)
+})
+it('recovery enumeration excludes the current row, visible current-day coverage and another owner', async () => {
+  const current = seedPending('athlete-a', 'decision-a', 'response', { response: 'not_applicable' })
+  const earlier = seedPending('athlete-a', 'decision-c', 'response', { response: 'done_reported' })
+  const otherOwner = seedPending('athlete-b', 'decision-b', 'response', { response: 'done_reported' })
+  const coverage = seedPending('athlete-a', getLocalDate(), 'coverage', { localDate: getLocalDate(), status: 'partial', expectedSourceRevision: 4 })
+  await act(async () => { render(<NextActionCard />) }); await screen.findByText('Review decision-a')
+  expect(screen.getAllByRole('button', { name: 'Retry earlier response' })).toHaveLength(1)
+  expect(screen.getByRole('button', { name: 'Retry same response' })).toBeEnabled()
+  expect(screen.queryByText('Earlier response: not applicable')).not.toBeInTheDocument()
+  expect(screen.queryByText('Earlier meal coverage report')).not.toBeInTheDocument(); expect(globalThis.fetch).not.toHaveBeenCalled()
+  for (const entry of [current, earlier, otherOwner, coverage]) expect(sessionStorage.getItem(entry.key)).toBe(entry.stored)
+})
+it('parent settlement does not release an in-flight earlier retry or replace either frozen request', async () => {
+  const earlier = seedPending('athlete-a', 'decision-c', 'response', { response: 'done_reported' })
+  holdTransport = true; await act(async () => { render(<NextActionCard />) }); await screen.findByText('Review decision-a')
+  fireEvent.click(screen.getByRole('button', { name: 'Retry earlier response' }))
+  await waitFor(() => expect(releaseAuth).toBeTypeOf('function')); await act(async () => releaseAuth?.())
+  await waitFor(() => expect(transports.has('decision-c')).toBe(true))
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+  await waitFor(() => expect(transports.has('decision-a')).toBe(true))
+  const current = { ...sends[1] }
+  await act(async () => transports.get('decision-a')!.reject(new Error('Synthetic current response lost')))
+  await screen.findByText('Synthetic current response lost')
+  expect(screen.getByRole('button', { name: 'Retry earlier response' })).toBeDisabled(); expect(sends).toHaveLength(2)
+  expect(sessionStorage.getItem(earlier.key)).toBe(earlier.stored)
+  const refreshCalls = state.refresh.mock.calls.length
+  await act(async () => transports.get('decision-c')!.resolve(new Response(JSON.stringify({ event: 'saved' }))))
+  await waitFor(() => expect(sessionStorage.getItem(earlier.key)).toBeNull())
+  await waitFor(() => expect(state.refresh).toHaveBeenCalledTimes(refreshCalls + 1))
+  expect(sessionStorage.getItem(earlier.key)).toBeNull(); expect(sends[0].body).toBe(earlier.body)
+  expect(await screen.findByRole('button', { name: 'Retry same response' })).toBeEnabled()
+  expect(pendingRecommendationEvents('athlete-a')).toEqual([{ id: 'decision-a', kind: 'response', payload: { response: 'done_reported' } }])
+  holdTransport = false; fetchMode = 'success'; fireEvent.click(screen.getByRole('button', { name: 'Retry same response' }))
+  await waitFor(() => expect(pendingRecommendationEvents('athlete-a')).toEqual([]))
+  expect(sends).toHaveLength(3); expect(sends[2]).toEqual(current)
+})
+it('an earlier retry settling after unmount does not refresh or change another owner mount', async () => {
+  seedPending('athlete-a', 'decision-c', 'response', { response: 'done_reported' })
+  holdTransport = true; const mounted = render(<NextActionCard />); await screen.findByText('Review decision-a')
+  fireEvent.click(screen.getByRole('button', { name: 'Retry earlier response' }))
+  await waitFor(() => expect(releaseAuth).toBeTypeOf('function')); await act(async () => releaseAuth?.())
+  await waitFor(() => expect(transports.has('decision-c')).toBe(true)); mounted.unmount()
+  state.owner = 'athlete-b'; await act(async () => { render(<NextActionCard />) }); await screen.findByText('Review decision-b')
+  const refreshCalls = state.refresh.mock.calls.length
+  await act(async () => transports.get('decision-c')!.resolve(new Response(JSON.stringify({ event: 'saved' }))))
+  expect(screen.queryByText('Earlier response confirmed.')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Retry earlier response' })).not.toBeInTheDocument()
+  expect(state.refresh).toHaveBeenCalledTimes(refreshCalls); expect(sends).toHaveLength(1)
+  expect(pendingRecommendationEvents('athlete-a')).toHaveLength(1); expect(pendingRecommendationEvents('athlete-b')).toEqual([])
 })
