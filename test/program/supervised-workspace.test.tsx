@@ -98,7 +98,8 @@ describe('supervised workspace flow', () => {
       contentHash: h.candidate.contentHash, sourceHash: h.candidate.sourceHash,
     } })
     render(<SupervisedWorkspace userId={userId} />)
-    await screen.findByText('No supervised programs are assigned to this account.')
+    await screen.findByText('No coach-managed programs are assigned to this account.')
+    expect(screen.getByRole('link', { name: 'Review your next week' }).getAttribute('href')).toBe('/program/first-reviewed')
     fireEvent.click(await screen.findByRole('button', { name: 'Verify saved request' }))
     expect(await screen.findByText('Your review decision is confirmed.')).toBeTruthy()
     expect(readSupervisedPending(localStorage, userId, programId)).toBeNull()

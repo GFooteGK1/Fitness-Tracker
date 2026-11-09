@@ -8,6 +8,9 @@ import { readFirstReviewSetupPending } from '@/app/lib/coach/first-reviewed-setu
 import { parseFirstReviewSetupRequest,type FirstReviewSetupRequest } from '@/app/lib/coach/first-reviewed-setup-request'
 import { firstReviewedProgram } from '../fixtures/first-reviewed-program'
 import { firstReviewSetupEditorSeed,firstReviewSetupRequest,firstReviewSetupSaved } from '../fixtures/first-reviewed-setup-request'
+import { currentSetupBindings,declarationSeed } from '../fixtures/first-reviewed-setup'
+import { reviewedRollingWeek } from '../fixtures/reviewed-rolling-week'
+import { firstReviewedSetupProfile } from '@/app/lib/coach/first-reviewed-setup-profile'
 const p=firstReviewedProgram(),actor=p.athleteId,program=p.programId
 beforeEach(()=>{
   localStorage.clear();vi.stubGlobal('crypto',webcrypto)
@@ -28,6 +31,13 @@ function transport(options:{declared?:boolean;lost?:boolean;unavailable?:boolean
     if(options.unavailable)return Response.json({kind:'unavailable'},{status:503})
     if(path==='/api/coach/first-reviewed/programs')return Response.json({kind:'programs',page:{schemaVersion:1,actorId:actor,programs:[p],nextAfterProgramId:null}})
     if(path.endsWith('/setup-editor'))return Response.json({kind:'setup_editor',seed,writesEnabled:!options.disabled})
+    if(path.includes('/setup?')){
+      const built=firstReviewedSetupProfile(reviewedRollingWeek().input.context.profile,currentSetupBindings(),p.latestDesignation!.targetWindowStart)
+      if(built.kind!=='setup_ready')throw Error('Synthetic setup must be ready')
+      return Response.json({kind:'setup',seed:{...declarationSeed(built.profile),userId:actor,programId:program,
+        basePlanVersionId:p.legacyBase.planVersionId,designationId:p.latestDesignation!.designationId,
+        historyDays:Number(new URL(path,'https://example.invalid').searchParams.get('historyDays'))}})
+    }
     if(path.endsWith('/profiles'))return Response.json({kind:'snapshots',page:{schemaVersion:1,actorId:actor,programId:program,snapshots:[],nextAfterSnapshotId:null}})
     if(path===`/api/coach/first-reviewed/programs/${program}`)return Response.json({kind:'workspace',page:{schemaVersion:1,actorId:actor,program:p,candidates:[],nextAfterCandidateId:null},writesEnabled:!options.disabled})
     throw Error(`Unexpected request ${path}`)
@@ -35,6 +45,36 @@ function transport(options:{declared?:boolean;lost?:boolean;unavailable?:boolean
   return {posts,seed}
 }
 describe('first-reviewed root setup saves (component transport, not real Auth/browser)',()=>{
+  it.each([1,180])('binds explicit lookback %s and invalidates previously loaded setup without writing',async(days)=>{
+    const h=transport();render(<FirstReviewedWorkspace userId={actor}/>)
+    const read=await screen.findByRole('button',{name:'Read current saved setup'})
+    await waitFor(()=>expect(read.hasAttribute('disabled')).toBe(false))
+    const control=screen.getByLabelText('Training history lookback (days)') as HTMLInputElement
+    expect(control.value).toBe('90');fireEvent.click(read)
+    await screen.findByRole('button',{name:'Load fresh training facts'})
+    fireEvent.change(control,{target:{value:String(days)}})
+    expect(screen.queryByRole('button',{name:'Load fresh training facts'})).toBeNull()
+    fireEvent.click(read);await screen.findByRole('button',{name:'Load fresh training facts'})
+    expect((vi.mocked(fetch).mock.calls.at(-1)![0] as string)).toContain(`historyDays=${days}&`)
+    expect(h.posts).toEqual([])
+  })
+  it.each(['0','181','1.5',''])('blocks an invalid lookback %s before a read',async(value)=>{
+    transport();render(<FirstReviewedWorkspace userId={actor}/>)
+    const read=await screen.findByRole('button',{name:'Read current saved setup'})
+    await waitFor(()=>expect(read.hasAttribute('disabled')).toBe(false))
+    fireEvent.change(screen.getByLabelText('Training history lookback (days)'),{target:{value}})
+    expect(read.hasAttribute('disabled')).toBe(true)
+    expect(vi.mocked(fetch).mock.calls.every(([url])=>!String(url).includes('/setup?'))).toBe(true)
+  })
+  it('protects the exact retained setup request when changing the history window is attempted',async()=>{
+    const q=firstReviewSetupRequest();localStorage.setItem(`first-reviewed-setup-pending:${actor}:${program}`,JSON.stringify(q));transport()
+    render(<FirstReviewedWorkspace userId={actor}/>)
+    const control=await screen.findByLabelText('Training history lookback (days)')
+    expect(control.hasAttribute('disabled')).toBe(true)
+    fireEvent.change(control,{target:{value:'7'}})
+    expect((control as HTMLInputElement).value).toBe('90')
+    expect(readFirstReviewSetupPending(localStorage,actor,program)).toEqual(q)
+  })
   it('opens structured missing declarations without assumed days, goal, equipment or constraints',async()=>{
     const h=transport({declared:false});render(<FirstReviewedWorkspace userId={actor}/>)
     fireEvent.click(await screen.findByRole('button',{name:'Review or update current setup'}))

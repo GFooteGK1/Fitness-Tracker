@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import AuthLayout from '@/app/components/auth/AuthLayout'
 import SignInForm from '@/app/components/auth/SignInForm'
+import { signInProgramDestination } from '@/app/lib/auth/program-return'
 
 export default function SignInPage() {
   const { user, loading, hasCompletedOnboarding, profileStatus } = useAuth()
@@ -16,7 +17,7 @@ export default function SignInPage() {
       if (profileStatus === 'ready' && !hasCompletedOnboarding) {
         router.push('/onboarding')
       } else if (profileStatus !== 'loading') {
-        router.push('/dashboard')
+        router.push(signInProgramDestination(window.location.search))
       }
     }
   }, [user, loading, hasCompletedOnboarding, profileStatus, router])
