@@ -1,8 +1,9 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHmac, generateKeyPairSync, randomBytes, sign, timingSafeEqual } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import { LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js'
 import { authorizeCoachingBearer, coachingOAuthConfig, type CoachingOAuthConfig } from '../../app/lib/auth/coaching-oauth'
 import { handleCoachingMcp } from '../../app/lib/coach/coaching-mcp-http'
 import { decideCoachingConsent, readCoachingConsent, coachingConsentRedirect, coachingConsentSuccessRedirect } from '../../app/lib/auth/coaching-consent'
@@ -140,6 +141,82 @@ describe('owner OAuth bearer verification with real SDK JWT signatures and synth
       await expect(client.callTool({ name: 'get_coaching_reference', arguments: {} })).rejects.toThrow()
       expect(fixture.query.writes).not.toHaveBeenCalled()
     } finally { await client.close() }
+  })
+})
+
+describe('production stateless MCP transport boundaries with synthetic OAuth only', () => {
+  beforeEach(() => vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('Unexpected external network') })))
+  afterEach(() => {
+    try { expect(fetch).not.toHaveBeenCalled() } finally { vi.unstubAllGlobals() }
+  })
+
+  const initialize = (protocolVersion = '2025-03-26', name = 'synthetic-byte-probe') => ({
+    jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion, capabilities: {}, clientInfo: { name, version: '1' } },
+  })
+  function paddedInitialize(bytes: number, multibyte = false) {
+    const body = JSON.stringify(initialize('2025-03-26', multibyte ? 'é'.repeat(16_000) : undefined))
+    const padded = body + ' '.repeat(bytes - Buffer.byteLength(body, 'utf8'))
+    expect(Buffer.byteLength(padded, 'utf8')).toBe(bytes)
+    return padded
+  }
+  async function post(body: string, extraHeaders: Record<string, string> = {}) {
+    const fixture = provider()
+    const response = await handleCoachingMcp(new Request(config.resource, { method: 'POST', body, headers: {
+      Authorization: `Bearer ${token()}`, Accept: 'application/json, text/event-stream', 'Content-Type': 'application/json', ...extraHeaders,
+    } }), config, fixture.dependencies)
+    expect(fixture.calls).toContain('/auth/v1/user')
+    expect(fixture.query.db.from).not.toHaveBeenCalled()
+    expect(fixture.query.writes).not.toHaveBeenCalled()
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
+    expect(response.headers.get('vary')).toBe('Authorization, Cookie')
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer')
+    expect(response.headers.get('mcp-session-id')).toBeNull()
+    return response
+  }
+
+  it('HC-01 accepts exactly 65,536 UTF8 bytes at the actual handler', async () => {
+    const response = await post(paddedInitialize(65_536))
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toContain('application/json')
+    expect(await response.json()).toMatchObject({ jsonrpc: '2.0', id: 1, result: { protocolVersion: '2025-03-26' } })
+  })
+  it('HC-02 rejects byte 65,537 even when Content-Length understates the body', async () => {
+    const response = await post(paddedInitialize(65_537), { 'Content-Length': '1' })
+    expect(response.status).toBe(413)
+    expect(await response.json()).toMatchObject({ jsonrpc: '2.0', id: null, error: { code: -32000, message: expect.stringContaining('65536') } })
+  })
+  it('HC-03 enforces UTF8 bytes rather than JavaScript character count', async () => {
+    const body = paddedInitialize(65_537, true)
+    expect(body.length).toBeLessThan(65_536)
+    const response = await post(body)
+    expect(response.status).toBe(413)
+    const result = await response.json()
+    expect(result).toMatchObject({ jsonrpc: '2.0', id: null, error: { code: -32000 } })
+    expect(JSON.stringify(result)).not.toContain('é')
+  })
+  it.each(['2025-03-26', 'synthetic-unsupported'])('HC-04 negotiates initialize version %s without inventing a rejection policy', async version => {
+    const response = await post(JSON.stringify(initialize(version)))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ result: { protocolVersion: version === '2025-03-26' ? version : LATEST_PROTOCOL_VERSION } })
+  })
+  it.each([true, false])('HC-05 validates a noninitialize protocol header (supported=%s)', async supported => {
+    const response = await post(JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }), {
+      'MCP-Protocol-Version': supported ? '2025-03-26' : 'synthetic-unsupported',
+    })
+    expect(response.status).toBe(supported ? 200 : 400)
+    const result = await response.json()
+    if (supported) expect(result).toMatchObject({ id: 2, result: { tools: expect.arrayContaining([expect.objectContaining({ name: 'get_coaching_reference' })]) } })
+    else expect(result).toMatchObject({ jsonrpc: '2.0', error: { code: -32000 } })
+  })
+  it.each(['GET', 'DELETE'])('HC-06 rejects %s without even consulting the provider', async method => {
+    const fixture = provider()
+    const response = await handleCoachingMcp(new Request(config.resource, { method }), config, fixture.dependencies)
+    expect(response.status).toBe(405); expect(response.headers.get('allow')).toBe('POST')
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
+    expect(response.headers.get('vary')).toBe('Authorization, Cookie')
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer')
+    expect(await response.text()).toBe('')
+    expect(fixture.calls).toEqual([]); expect(fixture.query.db.from).not.toHaveBeenCalled(); expect(fixture.query.writes).not.toHaveBeenCalled()
   })
 })
 
