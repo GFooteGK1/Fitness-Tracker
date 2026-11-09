@@ -215,6 +215,19 @@ describe('inactive prepared selected-photo pilot: real PostgreSQL, synthetic byt
     const normalized=await preparePilotPhoto(metadataPhoto,'image/jpeg'),meta=await sharp(normalized.bytes).metadata()
     expect(meta.exif).toBeUndefined();expect(meta.orientation).toBeUndefined()
   })
+  it.each(['image/jpeg','image/png'])('rejects a real decoded SVG labeled %s before admission or providers',async mediaType=>{
+    const svg=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="#3399aa"/></svg>')
+    expect(svg.length).toBeGreaterThan(100)
+    expect(await sharp(svg).metadata()).toMatchObject({format:'svg',width:16,height:16})
+    const rendered=await sharp(svg).png().toBuffer()
+    expect(await sharp(rendered).metadata()).toMatchObject({format:'png',width:16,height:16})
+    console.info('Synthetic native image runtime',JSON.stringify({platform:process.platform,arch:process.arch,node:process.version,
+      sharp:sharp.versions.sharp,vips:sharp.versions.vips,rsvg:sharp.versions.rsvg}))
+    const admission=vi.spyOn(client,'rpc')
+    await expect(capturePilotPhoto(typed(),input({bytes:svg,mediaType}))).rejects.toMatchObject({status:422})
+    expect(admission).not.toHaveBeenCalled();expect(client.objects.size).toBe(0)
+    expect(screening).not.toHaveBeenCalled();expect(complete).not.toHaveBeenCalled()
+  })
 })
 
 it('retains a second default-off database gate even if the application gate changes',async()=>{
