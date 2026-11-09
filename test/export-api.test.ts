@@ -85,7 +85,7 @@ vi.mock('jspdf', () => {
     addPage() {}
     getNumberOfPages() { return 1 }
     setPage() {}
-    output() { return new Uint8Array([37, 80, 68, 70]) } // %PDF
+    output() { return new Uint8Array([37, 80, 68, 70]).buffer } // jsPDF's actual arraybuffer return type
   }
   return { default: MockJsPDF }
 })

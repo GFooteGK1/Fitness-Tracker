@@ -25,9 +25,8 @@ describe('real PDF generation', () => {
         type,
         '2026-04-03'
       )
-      // Inspect the generator's actual bytes; API response-buffer conversion is a separate contract.
-      const bytes = result instanceof ArrayBuffer ? new Uint8Array(result) : result
-      const pdf = Buffer.from(bytes).toString('latin1')
+      expect(result).toBeInstanceOf(Uint8Array)
+      const pdf = Buffer.from(result).toString('latin1')
       expect(pdf).toMatch(/^%PDF-\d\.\d/)
       expect(pdf).toContain('/Type /Page')
       const trailer = /startxref\s+(\d+)\s+%%EOF\s*$/.exec(pdf)
