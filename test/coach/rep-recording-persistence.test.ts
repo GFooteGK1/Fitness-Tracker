@@ -186,7 +186,7 @@ it('joins exact local source bytes to actual canonical saved readback and retain
   const packet = await prepareLocalQwikCapture({ ownerId: owner, requestId: randomUUID(), expectedRevision: 1, snapshot: current.record, artifact, selections })
   const before = await projections(), saved = await call('amend_workout', packet.command)
   const joined = await joinLocalQwikReadback(packet, artifact, saved)
-  expect(joined.originalBytes).toEqual(raw); expect(joined.sources[0].rawSet).toEqual(rows[0])
+  expect(Buffer.compare(joined.originalBytes, raw)).toBe(0); expect(joined.sources[0].rawSet).toEqual(rows[0])
   expect(joined.sources[0].recording).toEqual(saved.savedRecord.blocks[2].segments[0].events[0].performed.sets[3].velocity.recording)
   expect(joined).toMatchObject({ revision: 2, currentRevisionNotAsserted: true, observationsPromoted: false, rawUploaded: false })
   expect(await projections()).toEqual(before)
@@ -213,7 +213,7 @@ it('joins exact local source bytes to actual canonical saved readback and retain
     inputPacket.ownerId = other; inputPacket.command.changes.setRecordings[0].setIndex = 99
     inputSaved.receipt.revision = 99; inputSaved.savedRecord.user_id = other; inputArtifact.name = 'mutated.json'
     release(); const stable = await pending
-    expect(stable.revision).toBe(2); expect(stable.originalBytes).toEqual(raw)
+    expect(stable.revision).toBe(2); expect(Buffer.compare(stable.originalBytes, raw)).toBe(0)
     expect(stable.sources[0].canonicalAddress.setIndex).toBe(3)
   } finally { release(); spy.mockRestore() }
   const revised = structuredClone(rows); revised[0].exercise_repetitions[0].concentricRepetition.average_velocity = 0.44
@@ -226,7 +226,7 @@ it('joins exact local source bytes to actual canonical saved readback and retain
   const corrected = await call('amend_workout', next.command)
   expect(corrected.receipt.revision).toBe(3)
   expect((await joinLocalQwikReadback(next, nextArtifact, corrected)).sources[0].recording.repetitions[0].concentricRepetition?.average_velocity).toBe(0.44)
-  expect((await joinLocalQwikReadback(packet, artifact, await call('amend_workout', packet.command))).originalBytes).toEqual(raw)
+  expect(Buffer.compare((await joinLocalQwikReadback(packet, artifact, await call('amend_workout', packet.command))).originalBytes, raw)).toBe(0)
   const snapshots = await sql.query<any>('SELECT revision,record FROM activity_revisions WHERE original_entity_id=$1 ORDER BY revision', [seeded.id])
   expect(snapshots.rows.map(r => r.revision)).toEqual([1, 2, 3])
   expect(snapshots.rows[1].record.blocks[2].segments[0].events[0].performed.sets[3].velocity.recording.source.file.sha256).toBe(artifact.sha256)
