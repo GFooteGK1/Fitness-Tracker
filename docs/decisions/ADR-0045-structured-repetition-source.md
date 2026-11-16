@@ -21,6 +21,15 @@ Add a bounded versioned `velocity.recording` source object through a typed revis
 - Raw traces remain in the user-retained original artifact. This avoids duplicating large, incompletely specified traces in every workout revision; durable artifact upload/retention and analytical observation promotion remain separate slices.
 - Legacy 1.10 import and scalar velocity tools remain supported. New recording amendments do not promote adaptive programming evidence or alter accepted plans, goals or numeric coaching policy.
 
+## Local exact-source preparation follow-up (2026-11-16)
+
+A separate inactive local adapter now captures exact input bytes before decoding,
+prepares explicit owner/revision-bound set amendments and joins verified saved
+readback to the locally retained original. It does not upload or durably store raw
+exports on the server. Workout-local source-ID overlap now fails conservatively
+across re-export file hashes; namespace/global identity remain unresolved gates.
+See [the bounded design and future retention/reconciliation boundary](../plans/qwik-exact-local-capture-2026-11-16.md).
+
 ## Alternatives considered
 
 1. Extend the existing observation import tables: useful for future reviewed evidence promotion, but requires a larger transactional link to an existing set, new array adapter semantics and missing device/export-time handling.

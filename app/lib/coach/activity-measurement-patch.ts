@@ -40,7 +40,10 @@ export function patchSetMeasurements(blocks: unknown, patches: Record<string, an
   return { blocks: updated, provenance: { ...provenance, fields } }
 }
 
-const identity = (r: RepRecording) => `${r.source.file.sha256}:${r.set.id}`
+// A re-export changes file bytes, not necessarily the source set. Without an
+// established device namespace, equal source IDs are conservatively ambiguous.
+// This is a workout-local conflict check, not owner-wide identity reconciliation.
+const identity = (r: RepRecording) => JSON.stringify([r.source.system, r.source.format, r.set.id])
 function leaves(value: unknown, path: string, visit: (path: string) => void) {
   if (Array.isArray(value)) value.forEach((v, i) => leaves(v, `${path}[${i}]`, visit))
   else if (contextObject(value)) Object.entries(value).forEach(([k, v]) => leaves(v, `${path}.${k}`, visit))
@@ -88,7 +91,7 @@ export function patchSetRecordings(blocks: unknown, patches: Record<string, any>
     for (const collection of ['sets', 'set_details']) if (Array.isArray(event?.performed?.[collection])) for (const set of event.performed[collection]) {
       const r = set?.velocity?.recording
       if (!isRepRecording(r)) continue
-      if (seen.has(identity(r))) throw new CoachingContextError(409, 'Source recording already attached to another set in this workout')
+      if (seen.has(identity(r))) throw new CoachingContextError(409, 'Source set identity overlaps another set in this workout; explicit reconciliation is required')
       seen.add(identity(r))
     }
   }

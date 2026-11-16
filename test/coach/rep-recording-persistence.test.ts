@@ -9,6 +9,7 @@ import { buildExternalPerformedWorkContext } from '@/app/lib/coach/external-perf
 import { parseQwikArrayRecordings, type RepRecording } from '@/app/lib/coach/rep-recording'
 import { qwikArrayFixture, recordingOptions, recordingBlocks, recordingPatches, recordingProvenance } from './rep-recording-fixture'
 import { measurement } from './activity-measurement-fixture'
+import { joinLocalQwikReadback, prepareLocalQwikCapture, retainLocalQwikArtifact, type QwikSetSelection } from '@/app/lib/coach/qwik-exact-capture'
 
 let sql: PGlite, recordings: RepRecording[]
 const owner = randomUUID(), other = randomUUID()
@@ -159,6 +160,88 @@ it('does not traverse or replace unrelated malformed legacy segment/event contai
   const seeded = await seed(blocks), saved = await call('amend_workout', command(seeded.id))
   expect(saved.savedRecord.blocks.slice(0, 2)).toEqual(blocks.slice(0, 2))
   expect(saved.savedRecord.blocks[2].segments[0].events[0].performed.sets).toHaveLength(8)
+})
+
+it('rejects an overlapping re-export source set at another canonical set despite a changed file hash', async () => {
+  const seeded = await seed()
+  await call('amend_workout', command(seeded.id, 1, [recordingPatches(recordings)[2]]))
+  const reexport = structuredClone(recordings[2])
+  reexport.source.file.sha256 = 'f'.repeat(64)
+  reexport.source.file.reference = 'synthetic:overlapping-reexport'
+  const patch = recordingPatches([reexport])[0]; patch.setIndex = 6
+  await expect(call('amend_workout', command(seeded.id, 2, [patch]))).rejects.toMatchObject({ status: 409 })
+  const current = await call('get_activity_record', { kind: 'workout', entityId: seeded.id })
+  expect(current.record.capture_revision).toBe(2)
+  expect(current.record.blocks[2].segments[0].events[0].performed.sets[6].velocity).toBeUndefined()
+})
+
+it('joins exact local source bytes to actual canonical saved readback and retains correction lineage', async () => {
+  const rows: any = qwikArrayFixture(); rows[0].bar_path = Array.from({ length: 50000 }, (_, i) => i / 1000)
+  rows[0].unknown = { numericString: '001.20', nullValue: null }
+  const raw = new TextEncoder().encode('\ufeff' + JSON.stringify(rows, null, 2) + '\n')
+  const artifact = await retainLocalQwikArtifact(raw, owner, 'synthetic.json')
+  const seeded = await seed(), current = await call('get_activity_record', { kind: 'workout', entityId: seeded.id })
+  const selections: QwikSetSelection[] = [{ sourceSetId: rows[0].id, blockIndex: 2, segmentIndex: 0, eventIndex: 0,
+    collection: 'sets', setIndex: 3, expectedSetId: null, expectedRecording: null }]
+  const packet = await prepareLocalQwikCapture({ ownerId: owner, requestId: randomUUID(), expectedRevision: 1, snapshot: current.record, artifact, selections })
+  const before = await projections(), saved = await call('amend_workout', packet.command)
+  const joined = await joinLocalQwikReadback(packet, artifact, saved)
+  expect(joined.originalBytes).toEqual(raw); expect(joined.sources[0].rawSet).toEqual(rows[0])
+  expect(joined.sources[0].recording).toEqual(saved.savedRecord.blocks[2].segments[0].events[0].performed.sets[3].velocity.recording)
+  expect(joined).toMatchObject({ revision: 2, currentRevisionNotAsserted: true, observationsPromoted: false, rawUploaded: false })
+  expect(await projections()).toEqual(before)
+  expect(saved.savedRecord.blocks[2].segments[0].events[0].prescribed).toEqual(seeded.record.blocks[2].segments[0].events[0].prescribed)
+  for (const mutate of [
+    (s: any) => { s.savedRecord.user_id = other },
+    (s: any) => { s.receipt.revision = 3; s.savedRecord.capture_revision = 3 },
+    (s: any) => { s.savedRecord.blocks[2].segments[0].events[0].performed.sets[3].velocity.recording.source.setIndex = 1 },
+    (s: any) => { s.savedRecord.blocks[2].segments[0].events[0].performed.sets[3].velocity.recording.repetitions[0].eccentricRepetition.peak_velocity = 1.12 },
+  ]) { const invalid = structuredClone(saved); mutate(invalid); await expect(joinLocalQwikReadback(packet, artifact, invalid)).rejects.toMatchObject({ status: 409 }) }
+  await expect(joinLocalQwikReadback(packet, { ...artifact, ownerId: other }, saved)).rejects.toMatchObject({ status: 409 })
+  for (const mutate of [
+    (p: any) => { p.command.changes.setRecordings[0].setIndex = 4 },
+    (p: any) => { p.selections = [] },
+    (p: any) => { p.normalizedRecordings = [] },
+    (p: any) => { p.command.requestId = randomUUID() },
+  ]) { const invalid = structuredClone(packet); mutate(invalid); await expect(joinLocalQwikReadback(invalid, artifact, saved)).rejects.toMatchObject({ status: 409 }) }
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve }), digest = crypto.subtle.digest.bind(crypto.subtle)
+  const spy = vi.spyOn(crypto.subtle, 'digest').mockImplementationOnce(async (...args) => { await gate; return digest(...args) })
+  try {
+    const inputPacket = structuredClone(packet), inputSaved = structuredClone(saved), inputArtifact = structuredClone(artifact)
+    const pending = joinLocalQwikReadback(inputPacket, inputArtifact, inputSaved)
+    inputPacket.ownerId = other; inputPacket.command.changes.setRecordings[0].setIndex = 99
+    inputSaved.receipt.revision = 99; inputSaved.savedRecord.user_id = other; inputArtifact.name = 'mutated.json'
+    release(); const stable = await pending
+    expect(stable.revision).toBe(2); expect(stable.originalBytes).toEqual(raw)
+    expect(stable.sources[0].canonicalAddress.setIndex).toBe(3)
+  } finally { release(); spy.mockRestore() }
+  const revised = structuredClone(rows); revised[0].exercise_repetitions[0].concentricRepetition.average_velocity = 0.44
+  const nextArtifact = await retainLocalQwikArtifact(new TextEncoder().encode(JSON.stringify(revised)), owner, 'synthetic-correction.json')
+  const nextSelections = [{ ...selections[0], expectedRecording: { fileSha256: artifact.sha256, sourceSetId: rows[0].id } }]
+  const next = await prepareLocalQwikCapture({ ownerId: owner, requestId: randomUUID(), expectedRevision: 2, snapshot: (await call('get_activity_record', { kind: 'workout', entityId: seeded.id })).record,
+    artifact: nextArtifact, selections: nextSelections })
+  nextSelections[0].expectedRecording.fileSha256 = 'e'.repeat(64)
+  expect(next.command.changes.setRecordings[0].expectedRecording?.fileSha256).toBe(artifact.sha256)
+  const corrected = await call('amend_workout', next.command)
+  expect(corrected.receipt.revision).toBe(3)
+  expect((await joinLocalQwikReadback(next, nextArtifact, corrected)).sources[0].recording.repetitions[0].concentricRepetition?.average_velocity).toBe(0.44)
+  expect((await joinLocalQwikReadback(packet, artifact, await call('amend_workout', packet.command))).originalBytes).toEqual(raw)
+  const snapshots = await sql.query<any>('SELECT revision,record FROM activity_revisions WHERE original_entity_id=$1 ORDER BY revision', [seeded.id])
+  expect(snapshots.rows.map(r => r.revision)).toEqual([1, 2, 3])
+  expect(snapshots.rows[1].record.blocks[2].segments[0].events[0].performed.sets[3].velocity.recording.source.file.sha256).toBe(artifact.sha256)
+  expect(snapshots.rows[2].record.blocks[2].segments[0].events[0].performed.sets[3].velocity.recording.source.file.sha256).toBe(nextArtifact.sha256)
+})
+
+it('preserves legitimate distinct source IDs with identical measurements and rejects a malformed final batch path atomically', async () => {
+  const r1 = structuredClone(recordings[2]), r2 = structuredClone(r1); r2.set.id = 'synthetic-distinct-real-set'
+  const seeded = await seed(), patches = recordingPatches([r1, r2]); patches[0].setIndex = 5; patches[1].setIndex = 6
+  const invalid = structuredClone(patches); invalid[1].setIndex = 99
+  await expect(call('amend_workout', command(seeded.id, 1, invalid))).rejects.toMatchObject({ status: 400 })
+  expect((await call('get_activity_record', { kind: 'workout', entityId: seeded.id })).record.capture_revision).toBe(1)
+  const saved = await call('amend_workout', command(seeded.id, 1, patches))
+  expect(saved.receipt.revision).toBe(2)
+  expect(saved.savedRecord.blocks[2].segments[0].events[0].performed.sets.slice(5, 7).map((s: any) => s.velocity.recording.set.id)).toEqual([r1.set.id, r2.set.id])
 })
 
 it('reports malformed and oversized reader evidence without silently inventing or dropping other sets', async () => {
