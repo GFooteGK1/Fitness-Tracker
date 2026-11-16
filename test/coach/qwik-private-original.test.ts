@@ -5,20 +5,29 @@ import { createPrivateQwikOriginalClient, type PrivateQwikSql } from '@/app/lib/
 import { retainLocalQwikArtifact, prepareLocalQwikCapture, type QwikSetSelection } from '@/app/lib/coach/qwik-exact-capture'
 import { createActivityRecordTool } from '@/app/lib/coach/activity-record-tools'
 import { mcpOwnerClient } from '../database/mcp-activity-fixture'
-import { qwikPrivateFixture, seedPrivateOwner, privateActor, seedPrivateRecording } from '../database/qwik-private-fixture'
+import { qwikPrivateFixture, seedPrivateOwner, privateActor, canonicalActor, seedPrivateRecording } from '../database/qwik-private-fixture'
 import { qwikArrayFixture } from './rep-recording-fixture'
 
 let db: PGlite, owner: string, other: string, namespace: string
 const expires = () => new Date(Date.now()+3600000).toISOString()
+const finite = (expiresAt = expires()) => ({mode:'finite_until' as const, expiresAt})
 const textBytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value))
 const client = (id = owner, port = db as unknown as PrivateQwikSql) => createPrivateQwikOriginalClient(port,id,{quotaBytes:1000000})
 const artifact = (raw = textBytes(qwikArrayFixture()), id = owner) => retainLocalQwikArtifact(raw,id,'synthetic.json')
-const count = async (table: string) => (await db.query<any>(`SELECT count(id)::integer n FROM qwik_private.${table}`)).rows[0].n
+const count = async (table: string) => {
+  await db.exec('RESET ROLE')
+  try { return (await db.query<any>(`SELECT count(id)::integer n FROM qwik_private.${table} WHERE user_id=$1`, [owner])).rows[0].n }
+  finally { await privateActor(db, owner) }
+}
 async function capture(raw = JSON.stringify(qwikArrayFixture())) {
   const seeded = await seedPrivateRecording(db, owner, raw, {attachRecordings:false})
   const canonical = mcpOwnerClient(db,owner), policy = {clientId:'synthetic-private',issuer:'https://synthetic.invalid',resource:'https://synthetic.invalid/mcp'}
-  const call = async (name: 'amend_workout' | 'get_activity_record', input: unknown): Promise<any> => (await createActivityRecordTool(async () => ({db:canonical.db,
-    principal:{...policy,subject:owner,role:'authenticated',expiresAt:Date.now()+60000}}),policy,name).call(input)).structuredContent.activity
+  const call = async (name: 'amend_workout' | 'get_activity_record', input: unknown): Promise<any> => {
+    await canonicalActor(db, owner)
+    try { return (await createActivityRecordTool(async () => ({db:canonical.db,
+      principal:{...policy,subject:owner,role:'authenticated',expiresAt:Date.now()+60000}}),policy,name).call(input)).structuredContent.activity }
+    finally { await privateActor(db, owner) }
+  }
   const original = await artifact(seeded.bytes), current = await call('get_activity_record',{kind:'workout',entityId:seeded.entityId})
   const selections: QwikSetSelection[] = [{sourceSetId:'synthetic-set-0',blockIndex:2,segmentIndex:0,eventIndex:0,collection:'sets',setIndex:3,expectedSetId:null,expectedRecording:null}]
   const packet = await prepareLocalQwikCapture({ownerId:owner,requestId:randomUUID(),expectedRevision:1,snapshot:current.record,artifact:original,selections})
@@ -36,7 +45,7 @@ it('retains exact large bytes privately and independently checks actual retrieve
   const rows: any = qwikArrayFixture(); rows[0].bar_path = Array.from({length:50000},(_,i)=>i/1000)
   rows[0].unknown = {typedString:'001.20',nullable:null}
   const raw = new TextEncoder().encode('\ufeff'+JSON.stringify(rows,null,2)+'\n'), a = await artifact(raw), key = randomUUID()
-  const saved = await client().persist({requestId:key,artifact:a,expiresAt:expires()})
+  const saved = await client().persist({requestId:key,artifact:a,retention:finite()})
   expect(saved.raw).toEqual({state:'available',verifiedSha256:createHash('sha256').update(raw).digest('hex'),byteLength:raw.length})
   const read = await client().readOriginal(String(saved.receipt.artifactId))
   expect(read.state).toBe('available'); if (read.state !== 'available') throw new Error('Missing original')
@@ -59,13 +68,13 @@ it('recovers a lost committed response using the same request and never duplicat
     if (statement.includes('persist_original') && lose) { lose=false; throw new Error('Synthetic response loss after actual SQL commit') }
     return result as {rows:T[]}
   } }
-  await expect(client(owner,port).persist({requestId:key,artifact:a,expiresAt:deadline})).rejects.toMatchObject({status:503})
+  await expect(client(owner,port).persist({requestId:key,artifact:a,retention:finite(deadline)})).rejects.toMatchObject({status:503})
   const recovered = await client().recover(key); expect(recovered.state).toBe('saved')
   if (recovered.state !== 'saved') throw new Error('Missing durable receipt')
-  const replay = await client().persist({requestId:key,artifact:a,expiresAt:deadline})
+  const replay = await client().persist({requestId:key,artifact:a,retention:finite(deadline)})
   expect(replay.receipt).toEqual(recovered.receipt); expect(await count('artifacts')).toBe(1)
   const changed = await artifact(textBytes({different:'source'}))
-  await expect(client().persist({requestId:key,artifact:changed,expiresAt:deadline})).rejects.toThrow()
+  await expect(client().persist({requestId:key,artifact:changed,retention:finite(deadline)})).rejects.toThrow()
   expect((await client().recover(randomUUID())).state).toBe('unconfirmed')
 })
 
@@ -91,7 +100,7 @@ it('does not treat externally completed public ledger responses as private reten
 })
 
 it('recovers a lost deletion response with exact same-key replay, isolation and immutable private provenance', async () => {
-  const a = await artifact(), retained = await client().persist({requestId:randomUUID(),artifact:a,expiresAt:expires()})
+  const a = await artifact(), retained = await client().persist({requestId:randomUUID(),artifact:a,retention:finite()})
   const key = randomUUID(), artifactId = String(retained.receipt.artifactId), reason = 'Synthetic approved byte clearing'
   let lose = true
   const port: PrivateQwikSql = {async query<T>(statement: string,params: unknown[]) {
@@ -119,21 +128,25 @@ it('recovers a lost deletion response with exact same-key replay, isolation and 
 })
 
 it('enforces actual SQL owner/function/column boundaries and refuses session/principal mismatch before mutation', async () => {
-  const a = await artifact(), saved = await client().persist({requestId:randomUUID(),artifact:a,expiresAt:expires()})
+  const a = await artifact(), saved = await client().persist({requestId:randomUUID(),artifact:a,retention:finite()})
   await privateActor(db,other)
   expect((await client(other).readOriginal(String(saved.receipt.artifactId))).state).toBe('missing_or_unauthorized')
+  await expect(db.query('SELECT id FROM qwik_private.artifacts')).rejects.toMatchObject({code:'42501'})
+  await expect(db.query('SELECT original_bytes FROM qwik_private.artifacts')).rejects.toMatchObject({code:'42501'})
+  await canonicalActor(db,other) // Metadata RLS is distinct from the trusted executor's table ACL denial.
   expect((await db.query('SELECT id FROM qwik_private.artifacts')).rows).toHaveLength(0)
   await expect(db.query('SELECT original_bytes FROM qwik_private.artifacts')).rejects.toMatchObject({code:'42501'})
+  await privateActor(db,other)
   const otherArtifact = await artifact(textBytes({synthetic:true}),other)
   await privateActor(db,owner)
-  await expect(client(other).persist({requestId:randomUUID(),artifact:otherArtifact,expiresAt:expires()})).rejects.toMatchObject({status:403})
+  await expect(client(other).persist({requestId:randomUUID(),artifact:otherArtifact,retention:finite()})).rejects.toMatchObject({status:403})
   expect(await count('artifacts')).toBe(1)
-  await expect(client().persist({requestId:randomUUID(),artifact:{...a,sha256:'f'.repeat(64)},expiresAt:expires()})).rejects.toMatchObject({status:400})
+  await expect(client().persist({requestId:randomUUID(),artifact:{...a,sha256:'f'.repeat(64)},retention:finite()})).rejects.toMatchObject({status:400})
 })
 
 it('links only an already-saved exact canonical revision and rejects overlapping exports across workouts', async () => {
   const first = await capture(), deadline = expires()
-  const registered = await client().persist({requestId:randomUUID(),artifact:first.original,expiresAt:deadline,
+  const registered = await client().persist({requestId:randomUUID(),artifact:first.original,retention:finite(deadline),
     binding:{namespaceId:namespace,capture:first.packet,savedCapture:first.saved}})
   expect(registered.raw.state).toBe('available')
   expect((registered.receipt.claims as any[])).toHaveLength(1)
@@ -141,13 +154,13 @@ it('links only an already-saved exact canonical revision and rejects overlapping
   expect(before.record.capture_revision).toBe(2)
   const rows: any = qwikArrayFixture(); rows.push({...structuredClone(rows[0]),id:'synthetic-unselected-extra'})
   const second = await capture(JSON.stringify(rows))
-  await expect(client().persist({requestId:randomUUID(),artifact:second.original,expiresAt:deadline,
+  await expect(client().persist({requestId:randomUUID(),artifact:second.original,retention:finite(deadline),
     binding:{namespaceId:namespace,capture:second.packet,savedCapture:second.saved}})).rejects.toMatchObject({status:409})
   expect(await count('source_claims')).toBe(1)
   expect(await count('artifacts')).toBe(1) // Loser's new bytes and metadata rolled back together.
   expect((await first.call('get_activity_record',{kind:'workout',entityId:first.entityId})).record).toEqual(before.record)
   expect((await second.call('get_activity_record',{kind:'workout',entityId:second.entityId})).record.capture_revision).toBe(2)
-  await expect(client().persist({requestId:randomUUID(),artifact:first.original,expiresAt:deadline,
+  await expect(client().persist({requestId:randomUUID(),artifact:first.original,retention:finite(deadline),
     binding:{namespaceId:randomUUID(),capture:first.packet,savedCapture:first.saved}})).rejects.toThrow()
 })
 
@@ -168,7 +181,7 @@ it('refuses forged canonical/raw phase agreement at the trusted adapter before a
     if (statement.includes('persist_original')) privateWrites++
     return await db.query<any>(statement,params) as {rows:T[]}
   }}
-  await expect(client(owner,observed).persist({requestId:randomUUID(),artifact:first.original,expiresAt:expires(),
+  await expect(client(owner,observed).persist({requestId:randomUUID(),artifact:first.original,retention:finite(),
     binding:{namespaceId:namespace,capture:fakePacket,savedCapture:actual}})).rejects.toMatchObject({status:409})
   expect(privateWrites).toBe(0); expect(await count('artifacts')).toBe(0); expect(await count('source_claims')).toBe(0)
   expect((await first.call('get_activity_record',{kind:'workout',entityId:first.entityId})).record.capture_revision).toBe(3)
@@ -176,7 +189,7 @@ it('refuses forged canonical/raw phase agreement at the trusted adapter before a
 
 it('retains permanent source identity and receipt history after explicit byte clearing, without reconstructing raw', async () => {
   const first = await capture(), key = randomUUID(), deadline = expires()
-  const saved = await client().persist({requestId:key,artifact:first.original,expiresAt:deadline,
+  const saved = await client().persist({requestId:key,artifact:first.original,retention:finite(deadline),
     binding:{namespaceId:namespace,capture:first.packet,savedCapture:first.saved}})
   const id = String(saved.receipt.artifactId)
   await expect(client().deleteOriginal({requestId:randomUUID(),artifactId:id,reason:'synthetic',consent:'wrong' as any})).rejects.toMatchObject({status:400})
@@ -186,8 +199,61 @@ it('retains permanent source identity and receipt history after explicit byte cl
   const recovered = await client().recover(key)
   expect(recovered.state).toBe('saved'); if (recovered.state !== 'saved') throw new Error('Receipt lost')
   expect(recovered.raw.state).toBe('deleted'); expect(recovered.receipt).toEqual(saved.receipt)
-  expect((await client().persist({requestId:key,artifact:first.original,expiresAt:deadline,
+  expect((await client().persist({requestId:key,artifact:first.original,retention:finite(deadline),
     binding:{namespaceId:namespace,capture:first.packet,savedCapture:first.saved}})).raw.state).toBe('deleted')
   expect((await client().recover(clearKey,'delete')).state).toBe('saved')
   expect(await client().readClaims()).toHaveLength(1)
+})
+
+it('requires explicit unambiguous client retention modes before any private write', async () => {
+  const a = await artifact(); let writes = 0
+  const observed: PrivateQwikSql = { async query<T>(sql: string, params: unknown[]) {
+    if (sql.includes('persist_original')) writes++
+    return db.query<T>(sql, params)
+  } }
+  for (const retention of [undefined, null, {mode:'unknown'}, {mode:'until_explicit_clear',expiresAt:null},
+    {mode:'finite_until'}, {mode:'finite_until',expiresAt:'infinity'}, {...finite(),extra:true}]) {
+    await expect(client(owner,observed).persist({requestId:randomUUID(),artifact:a,retention} as any)).rejects.toMatchObject({status:400})
+  }
+  await expect(client(owner,observed).persist({requestId:randomUUID(),artifact:a,retention:finite(),expiresAt:expires()} as any))
+    .rejects.toMatchObject({status:400})
+  expect(writes).toBe(0); expect(await count('artifacts')).toBe(0)
+})
+
+it('preserves the exact client five-million-byte bound with explicit until-clear storage and no expiry', async () => {
+  await db.exec('RESET ROLE')
+  await db.query("UPDATE qwik_private.owner_policies SET retention_mode='until_explicit_clear',max_retention_seconds=NULL WHERE user_id=$1",[owner])
+  await privateActor(db,owner)
+  const original = new Uint8Array(5000000).fill(32); original[0]=91; original[1]=93
+  const a = await artifact(original), selected = createPrivateQwikOriginalClient(db as unknown as PrivateQwikSql,owner,{quotaBytes:20000000})
+  const saved = await selected.persist({requestId:randomUUID(),artifact:a,retention:{mode:'until_explicit_clear'}})
+  expect(saved.receipt).toMatchObject({retentionMode:'until_explicit_clear',expiresAt:null,byteLength:5000000})
+  const read = await selected.readOriginal(String(saved.receipt.artifactId))
+  expect(read.state).toBe('available'); if(read.state!=='available')throw new Error('Missing synthetic original')
+  expect(Buffer.compare(read.originalBytes,original)).toBe(0)
+  const larger = new Uint8Array(5000001).fill(32)
+  await expect(selected.persist({requestId:randomUUID(),artifact:{...a,bytes:larger,byteLength:larger.length,
+    sha256:createHash('sha256').update(larger).digest('hex')},retention:{mode:'until_explicit_clear'}})).rejects.toMatchObject({status:400})
+  expect(await count('artifacts')).toBe(1)
+},15000)
+
+it('rejects inconsistent retention readback and reconciles an altered response without replaying its write', async () => {
+  const a = await artifact(), requestId = randomUUID(); let writes = 0
+  const altered: PrivateQwikSql = { async query<T>(sql: string, params: unknown[]) {
+    const result = await db.query<any>(sql, params)
+    if(sql.includes('persist_original')) { writes++; result.rows[0].receipt.retentionMode='until_explicit_clear'; result.rows[0].receipt.expiresAt=null }
+    return result as {rows:T[]}
+  } }
+  await expect(client(owner,altered).persist({requestId,artifact:a,retention:finite()})).rejects.toMatchObject({status:503})
+  const recovered = await client().recover(requestId)
+  expect(recovered.state).toBe('saved'); if(recovered.state!=='saved')throw new Error('Missing synthetic receipt')
+  expect(recovered.receipt.retentionMode).toBe('finite_until'); expect(writes).toBe(1)
+  const inconsistent: PrivateQwikSql = {async query<T>(sql: string, params: unknown[]) {
+    const result = await db.query<any>(sql,params)
+    if(sql.includes('read_original')) { result.rows[0].metadata.retentionMode='until_explicit_clear'; result.rows[0].metadata.expiresAt=null;
+      result.rows[0].metadata.state='expired'; result.rows[0].bytes=null }
+    return result as {rows:T[]}
+  }}
+  await expect(client(owner,inconsistent).readOriginal(String(recovered.receipt.artifactId))).rejects.toMatchObject({status:503})
+  expect((await client().readOriginal(String(recovered.receipt.artifactId))).state).toBe('available')
 })

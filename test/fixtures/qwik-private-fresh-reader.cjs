@@ -22,8 +22,8 @@ async function main() {
       const bytes = fs.readFileSync(source);
       if (bytes.length < 2 || bytes.length > 5000000) throw new Error('Unexpected synthetic source size');
       const digest = crypto.createHash('sha256').update(bytes).digest('hex');
-      const result = await db.query('SELECT qwik_private.persist_original($1::uuid,$2::text,$3::bytea,$4::text,$5::text,$6::timestamptz,$7::bigint) receipt',
-        [owner,crypto.randomUUID(),bytes,digest,'synthetic.json',new Date(Date.now()+3600000).toISOString(),1000000]);
+      const result = await db.query('SELECT qwik_private.persist_original($1::uuid,$2::text,$3::bytea,$4::text,$5::text,$6::text,$7::timestamptz,$8::bigint) receipt',
+        [owner,crypto.randomUUID(),bytes,digest,'synthetic.json','finite_until',new Date(Date.now()+3600000).toISOString(),1000000]);
       const receipt = result.rows[0].receipt;
       process.stdout.write(JSON.stringify({pid:process.pid,artifactId:receipt.artifactId,sha256:receipt.sha256,byteLength:receipt.byteLength})); return;
     }

@@ -1,7 +1,15 @@
 import { expect, it, vi } from 'vitest'
 import { PGlite } from '@electric-sql/pglite'
-import { collectPrivateNativePlan, nativeSql } from './qwik-private-native-fixture'
+import { collectPrivateNativePlan, nativeSql, requirePostgres17 } from './qwik-private-native-fixture'
 import { sqlFile } from './fixture'
+
+it('requires the actual PostgreSQL 17 server-version number and rejects missing or substituted engines', () => {
+  for (const value of [170000, '170012', 179999]) expect(requirePostgres17(value)).toBe(Number(value))
+  for (const value of [169999, 180000, 180006, undefined, null, '', '17.12', '170012x', '0170012',
+    170000.5, Number.NaN, Number.POSITIVE_INFINITY, {}, '170012\n']) {
+    expect(() => requirePostgres17(value)).toThrow('Actual native PostgreSQL 17 required')
+  }
+})
 
 it('serializes synthetic native parameters once without confusing $1 and $10 or quoting data as SQL', () => {
   const values = ["owner's $10\\path\nline", null, true, false, new Uint8Array([0, 255]),

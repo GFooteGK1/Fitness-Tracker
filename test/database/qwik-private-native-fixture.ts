@@ -13,6 +13,16 @@ export const nativeEligible = process.platform === 'linux' && process.env.GITHUB
   && process.env.SOCIUS_QWIK_NATIVE_POSTGRES === 'true'
 const digest = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex')
 
+/** A directory name/version string is not engine qualification. The caller must
+ * pass the actual server_version_num read from its connected coordinator. */
+export function requirePostgres17(value: unknown): number {
+  const version = typeof value === 'string' && value.length === 6 && /^\d{6}$/.test(value) ? Number(value) : value
+  if (typeof version !== 'number' || !Number.isSafeInteger(version) || version < 170000 || version >= 180000) {
+    throw new Error('Actual native PostgreSQL 17 required; no version fallback')
+  }
+  return version
+}
+
 /** Record and FORWARD the actual maintained fixture, including its intentional
  * repeated recommendation migration. Restore interception before closing every
  * observed preparer, also if a migration throws. No SQL is rewritten. */
@@ -185,13 +195,22 @@ export class PrivateNativeFixture {
   private readonly sessions = new Set<NativeSession>()
   private args() { return ['-X', '-q', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose',
     '-h', this.socket, '-p', '55433', '-U', 'qwik_test_admin', '-d', 'postgres'] }
+  /** Synthetic driver qualification only. No DSN, host/env fallbacks or secrets. */
+  executorConnection() {
+    if (!nativeEligible || !this.metadata.setupComplete || !this.socket.startsWith(this.root + '/')) {
+      throw new Error('Owned native fixture is not ready')
+    }
+    return { host: this.socket, port: 55433, user: 'qwik_private_test_executor', database: 'postgres',
+      // pg treats an empty password as an environment fallback. This public,
+      // unused marker prevents credential lookup; local trust needs no password.
+      password: 'synthetic-unused', ssl: false as const, connectionTimeoutMillis: 1500, application_name: 'synthetic-qwik-private-driver' }
+  }
   async start() {
     if (!nativeEligible || process.getuid?.() === 0) throw new Error('Native fixture requires nonroot disposable Linux CI')
     const setupDeadline = performance.now() + 25000, base = '/usr/lib/postgresql'
-    const versions = existsSync(base) ? readdirSync(base).filter(value => /^\d+$/.test(value) && Number(value) >= 17)
-      .sort((a, b) => a === b ? 0 : a === '17' ? -1 : b === '17' ? 1 : Number(b) - Number(a)) : []
+    const versions = existsSync(base) ? readdirSync(base).filter(value => value === '17') : []
     const found = versions.map(version => join(base, version, 'bin')).find(path => ['postgres', 'initdb', 'psql'].every(name => existsSync(join(path, name))))
-    if (!found) throw new Error('Preinstalled PostgreSQL >=17 unavailable; no installation attempted')
+    if (!found) throw new Error('Preinstalled PostgreSQL 17 unavailable; no installation or fallback attempted')
     this.bin = realpathSync(found)
     if (!/^\/usr\/lib\/postgresql\/\d+\/bin$/.test(this.bin)) throw new Error('Unexpected native executable provenance')
     const temp = realpathSync(tmpdir())
@@ -229,27 +248,35 @@ export class PrivateNativeFixture {
     }
     if (!ready) throw new Error('Native fixture server did not become ready')
     this.admin = await this.session(setupDeadline)
+    const serverVersionNum = requirePostgres17((await this.admin.query<{ value: number }>(
+      "SELECT current_setting('server_version_num')::integer value")).rows[0]?.value)
+    if ((await this.admin.query<{ private: boolean }>("SELECT current_setting('listen_addresses')='' private")).rows[0]?.private !== true) {
+      throw new Error('Native fixture must not listen on TCP')
+    }
     for (const statement of plan.statements) await this.admin.exec(statement)
     const version = (await this.admin.query<{ version: string }>("SELECT current_setting('server_version') version")).rows[0]?.version
     const git = async (revision: string) => (await run('git', ['rev-parse', revision],
       { env: this.env, timeout: Math.min(2000, Math.max(1, setupDeadline - performance.now())), maxBuffer: 4096 })).stdout.trim()
     const actualHead = await git('HEAD'), actualTree = await git('HEAD^{tree}')
     if (!/^[a-f0-9]{40}$/.test(actualHead) || !/^[a-f0-9]{40}$/.test(actualTree)) throw new Error('Native checkout identity unavailable')
-    const sourceFiles = ['package-lock.json', 'app/lib/coach/qwik-exact-capture.ts', 'app/lib/coach/activity-measurement-patch.ts',
+    const sourceFiles = ['package.json', 'package-lock.json', 'app/lib/coach/qwik-exact-capture.ts', 'app/lib/coach/activity-measurement-patch.ts',
       'app/lib/coach/qwik-private-original.ts', 'docs/architecture/ARCHITECTURE-MAP.md',
+      'app/lib/coach/qwik-private-owner-transaction.ts',
       'docs/migrations/qwik-private-original-preparation.sql', 'docs/plans/qwik-private-original-preparation-2026-11-16.md',
       'test/coach/rep-recording-persistence.test.ts', 'test/coach/qwik-private-durability.test.ts',
       'test/coach/qwik-private-original.test.ts', 'test/fixtures/qwik-private-fresh-reader.cjs', 'test/database/qwik-private-fixture.ts',
       'test/database/qwik-private-persistence.test.ts',
       'test/database/qwik-private-native-fixture.ts', 'test/database/qwik-private-native-fixture.test.ts',
-      'test/database/qwik-private-postgres-concurrency.test.ts']
+      'test/database/qwik-private-postgres-concurrency.test.ts', 'test/database/qwik-private-pg17-transport.test.ts',
+      'test/database/qwik-private-pg-driver.ts', 'test/fixtures/qwik-private-require-executor-before-owner-guard.sql',
+      'scripts/prepare-qwik-postgres17-ci.sh', '.github/workflows/ci.yml']
     const expected = (key: string) => /^[a-f0-9]{40}$/.test(process.env[key] ?? '') ? process.env[key] : null
     const postgresSha256 = digest(readFileSync(join(this.bin, 'postgres')))
     this.metadata = { schemaVersion: 1, kind: 'qwik-private-native-qualification', setupComplete: true, node: process.version,
       actualCheckoutHead: actualHead, actualCheckoutTree: actualTree,
       expectedPullRequestHead: expected('SOCIUS_QWIK_PR_HEAD_SHA'), expectedPullRequestBase: expected('SOCIUS_QWIK_PR_BASE_SHA'),
       sourceSHA256: Object.fromEntries(sourceFiles.map(path => [path, digest(readFileSync(path))])),
-      serverVersion: version, targetMajor: 17, fallbackMajor: !String(version).startsWith('17.'),
+      serverVersion: version, serverVersionNum, targetMajor: 17, fallbackMajor: false,
       embeddedServerVersion: plan.embeddedServerVersion, sqlPlanSHA256: plan.sha256, statementCount: plan.statements.length,
       preparersClosed: plan.closedPreparers, engine: { bin: this.bin, postgresSha256, transport: 'private Unix socket; TCP disabled' } }
     console.info('[qwik-native-setup] ' + JSON.stringify({ version, transport: 'private Unix socket; TCP disabled',

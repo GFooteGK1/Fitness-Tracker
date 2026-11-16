@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { PrivateNativeFixture, NativeSession, fixtureDb, nativeEligible, type NativeSqlError } from './qwik-private-native-fixture'
-import { privateActor, seedPrivateOwner, seedPrivateRecording, persistPrivate } from './qwik-private-fixture'
+import { privateActor, canonicalActor, seedPrivateOwner, seedPrivateRecording, persistPrivate } from './qwik-private-fixture'
 import { mcpOwnerClient } from './mcp-activity-fixture'
 import { qwikArrayFixture, recordingOptions } from '../coach/rep-recording-fixture'
 import { parseQwikArrayRecordings } from '@/app/lib/coach/rep-recording'
@@ -185,7 +185,7 @@ describe.skipIf(!nativeEligible)('private QWIK: seven genuine independent-sessio
     const nextRaw = JSON.stringify(raw), nextBytes = new TextEncoder().encode(nextRaw)
     const recordings = await parseQwikArrayRecordings(nextRaw, recordingOptions), blocks = structuredClone(old.value.blocks)
     recordings.forEach((recording, index) => { blocks[2].segments[0].events[0].performed.sets[index + 3].velocity.recording = recording })
-    await privateActor(fixtureDb(fixture.admin), owner)
+    await canonicalActor(fixtureDb(fixture.admin), owner)
     const client = mcpOwnerClient(fixtureDb(fixture.admin), owner).db
     const request = await client.rpc('begin_logging_request', { p_key: 'synthetic-native-correction:' + randomUUID(), p_fingerprint: 'd'.repeat(64) })
     expect(request.error).toBeNull()

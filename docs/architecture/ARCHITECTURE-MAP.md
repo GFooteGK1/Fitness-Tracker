@@ -1,5 +1,15 @@
 # SociusFit Architecture Map
 
+Inactive private QWIK preparation keeps responsibilities separate: verified Auth
+supplies the principal; `qwik-private-owner-transaction` owns a generation-fenced
+SQL lease, transaction-local owner context and cleanup; `qwik-private-original`
+verifies exact source/projection/readback; private SQL owns bounded original
+bytes, immutable library claims, authoritative quota and commit proof. Explicit
+retention modes have no seeded production default. No driver, public route,
+policy or migration is activated. See the
+[inactive private-original decision](../plans/qwik-private-original-preparation-2026-11-16.md)
+for privileged-definer/RLS boundaries and unqualified hosted/PG17 gates.
+
 The inactive local `qwik-exact-capture` adapter separates original bytes from the
 bounded per-set recording projection and verifies source joins against canonical
 saved revisions. It reuses existing amendment/receipt SQL; no raw upload or

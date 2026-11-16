@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest'
 import { randomUUID, createHash } from 'node:crypto'
 import type { PGlite } from '@electric-sql/pglite'
-import { qwikPrivateFixture, grantPrivateFixtureAccess, privatePreparation, privateActor, seedPrivateOwner, seedPrivateRecording, persistPrivate } from './qwik-private-fixture'
+import { qwikPrivateFixture, grantPrivateFixtureAccess, privatePreparation, privateActor, canonicalActor, seedPrivateOwner, seedPrivateRecording, persistPrivate } from './qwik-private-fixture'
 import { sqlFile } from './fixture'
 import { qwikArrayFixture, recordingOptions } from '../coach/rep-recording-fixture'
 import { parseQwikArrayRecordings } from '@/app/lib/coach/rep-recording'
@@ -24,10 +24,14 @@ async function persist(source: Awaited<ReturnType<typeof seeded>>, overrides = {
 async function original(id: string, actor = owner) {
   return (await db.query<{ metadata: Record<string, any>; bytes: Uint8Array | null }>('SELECT * FROM qwik_private.read_original($1,$2)', [actor,id])).rows
 }
-async function count(table: string) { return Number((await db.query<any>(`SELECT count(*) n FROM qwik_private.${table}`)).rows[0].n) }
-async function canonical() { return (await db.query<any>('SELECT to_jsonb(w) value FROM workouts w ORDER BY id')).rows }
+async function inspect<T = any>(sql: string, params: unknown[] = []) {
+  await db.exec('RESET ROLE')
+  try { return await db.query<T>(sql,params) } finally { await privateActor(db,owner) }
+}
+async function count(table: string) { return Number((await inspect<any>(`SELECT count(*) n FROM qwik_private.${table} WHERE user_id=$1`,[owner])).rows[0].n) }
+async function canonical() { return (await inspect<any>('SELECT to_jsonb(w) value FROM workouts w WHERE user_id=$1 ORDER BY id',[owner])).rows }
 async function completePublic(key: string, fingerprint: string, response: unknown) {
-  await db.exec('RESET ROLE; SET ROLE authenticated')
+  await canonicalActor(db,owner)
   try {
     const row = (await db.query<any>('SELECT public.begin_logging_request($1,$2) value',[key,fingerprint])).rows[0].value
     await db.query('SELECT public.finish_logging_request($1,$2,$3)',[row.id,JSON.stringify(response),200])
@@ -35,7 +39,7 @@ async function completePublic(key: string, fingerprint: string, response: unknow
 }
 async function unboundFingerprint(bytes: Uint8Array, expiresAt: string) {
   return (await db.query<any>(`SELECT encode(sha256(convert_to(jsonb_build_object(
-    'sha',$1::text,'length',$2::integer,'name','synthetic.json','expiryEpoch',extract(epoch FROM $3::timestamptz),
+    'sha',$1::text,'length',$2::integer,'name','synthetic.json','retentionMode','finite_until','expiryEpoch',extract(epoch FROM $3::timestamptz),
     'quota',20000000::bigint,'namespace',NULL::uuid,'entity',NULL::uuid,'revision',NULL::integer,'claims','[]'::jsonb)::text,'UTF8')),'hex') value`,
     [hash(bytes),bytes.length,expiresAt])).rows[0].value as string
 }
@@ -81,7 +85,7 @@ it('checks stored original digest/length and faithfully reads original bytes; re
   expect(hash(read.bytes!)).toBe(source.sha256)
   expect(await persist(source,{key})).toEqual(saved)
   expect(await canonical()).toEqual(before)
-  expect(Number((await db.query<any>('SELECT count(*) n FROM qwik_private.source_claims WHERE id=$1',[saved.claims[0].claimId])).rows[0].n)).toBe(1)
+  expect(Number((await inspect<any>('SELECT count(*) n FROM qwik_private.source_claims WHERE id=$1',[saved.claims[0].claimId])).rows[0].n)).toBe(1)
   await expect(persist(source,{key,name:'changed-request.json'})).rejects.toMatchObject({code:'22023'})
   await expect(persist(source,{key:randomUUID(),sha256:'f'.repeat(64)})).rejects.toMatchObject({code:'22023'})
 })
@@ -89,11 +93,12 @@ it('checks stored original digest/length and faithfully reads original bytes; re
 it('rejects an external authenticated session even after accidental private API execute grants', async () => {
   const namespaceId = await seedPrivateOwner(privilegeDb,owner)
   const source = await seedPrivateRecording(privilegeDb,owner,raw())
+  await canonicalActor(privilegeDb,owner)
   const canonicalRows = async () => (await privilegeDb.query<any>('SELECT to_jsonb(w) value FROM workouts w ORDER BY id')).rows
   const before = await canonicalRows()
   const artifactCount = Number((await privilegeDb.query<any>('SELECT count(id) n FROM qwik_private.artifacts')).rows[0].n)
   const signatures = [
-    'persist_original(uuid,text,bytea,text,text,timestamptz,bigint,uuid,uuid,integer,jsonb)',
+    'persist_original(uuid,text,bytea,text,text,text,timestamptz,bigint,uuid,uuid,integer,jsonb)',
     'read_original(uuid,uuid)', 'delete_original(uuid,text,uuid,text,boolean)', 'read_claims(uuid)', 'read_receipt(uuid,text,text)',
   ]
   await privilegeDb.exec('RESET ROLE')
@@ -102,7 +107,7 @@ it('rejects an external authenticated session even after accidental private API 
     await privilegeDb.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [owner])
     const role = (await privilegeDb.query<any>("SELECT session_user::text session_user,current_user::text current_user,current_setting('role') active_role,pg_has_role('authenticated','qwik_private_test_executor','MEMBER') member")).rows[0]
     expect(role).toEqual({session_user:'authenticated',current_user:'authenticated',active_role:'none',member:false})
-    expect((await privilegeDb.query<any>("SELECT has_function_privilege('authenticated','qwik_private.persist_original(uuid,text,bytea,text,text,timestamptz,bigint,uuid,uuid,integer,jsonb)','EXECUTE') allowed")).rows[0].allowed).toBe(true)
+    expect((await privilegeDb.query<any>("SELECT has_function_privilege('authenticated','qwik_private.persist_original(uuid,text,bytea,text,text,text,timestamptz,bigint,uuid,uuid,integer,jsonb)','EXECUTE') allowed")).rows[0].allowed).toBe(true)
     await expect(persistPrivate(privilegeDb,owner,{...source,namespaceId,expiresAt:expiry(),revision:1,claims:[source.claims[0]]})).rejects.toMatchObject({code:'42501',message:'Trusted private executor required'})
     await expect(privilegeDb.query('SELECT * FROM qwik_private.read_original($1,$2)',[owner,randomUUID()])).rejects.toMatchObject({code:'42501',message:'Trusted private executor required'})
     await expect(privilegeDb.query('SELECT qwik_private.read_claims($1)',[owner])).rejects.toMatchObject({code:'42501'})
@@ -124,7 +129,9 @@ it('enforces owner correlation, actual raw-storage access and namespace/canonica
   await expect(db.query('SELECT original_bytes FROM qwik_private.artifacts')).rejects.toMatchObject({code:'42501'})
   await privateActor(db,other)
   expect(await original(saved.artifactId,other)).toEqual([])
+  await canonicalActor(db,other)
   expect((await db.query('SELECT id FROM qwik_private.artifacts')).rows).toEqual([])
+  await privateActor(db,other)
   await expect(original(saved.artifactId,owner)).rejects.toMatchObject({code:'42501'})
   await expect(persistPrivate(db,other,{...source,revision:1,claims:[source.claims[0]]})).rejects.toMatchObject({code:'42501'})
   await privateActor(db,owner)
@@ -146,8 +153,8 @@ it('requires configured policy and finite expiry; stored policy limits caller qu
 it('refuses available metadata without bytes and prevents foreign-owner composite links', async () => {
   const source=await seeded(), saved=await persist(source)
   await db.exec('RESET ROLE')
-  await expect(db.query(`INSERT INTO qwik_private.artifacts(user_id,sha256,byte_length,original_bytes,name,expires_at)
-    VALUES($1,$2,2,NULL,'synthetic-missing',now()+interval '1 day')`,[owner,'f'.repeat(64)])).rejects.toMatchObject({code:'23514'})
+  await expect(db.query(`INSERT INTO qwik_private.artifacts(user_id,sha256,byte_length,original_bytes,name,retention_mode,expires_at)
+    VALUES($1,$2,2,NULL,'synthetic-missing','finite_until',now()+interval '1 day')`,[owner,'f'.repeat(64)])).rejects.toMatchObject({code:'23514'})
   const otherNamespace=await seedPrivateOwner(db,other), otherSource=await seedPrivateRecording(db,other,raw())
   const otherSaved=await persistPrivate(db,other,{...otherSource,namespaceId:otherNamespace,revision:1,claims:[otherSource.claims[0]],expiresAt:expiry()})
   await db.exec('RESET ROLE')
@@ -293,23 +300,25 @@ it('rolls back retention and clearing when private commit provenance cannot be w
   expect(await canonical()).toEqual(before); expect((await original(saved.artifactId))[0].bytes).toEqual(existing.bytes)
   for(const [request,operation] of [[key,'retain'],[deleteKey,'delete']]) {
     expect((await db.query<any>('SELECT qwik_private.read_receipt($1,$2,$3) value',[owner,request,operation])).rows[0].value).toBeNull()
-    expect((await db.query('SELECT id FROM public.logging_requests WHERE request_key=$1',['qwik-private:'+operation+':'+request])).rows).toHaveLength(0)
+    expect((await inspect('SELECT id FROM public.logging_requests WHERE request_key=$1',['qwik-private:'+operation+':'+request])).rows).toHaveLength(0)
   }
 })
 
 it('marks old links stale after canonical correction and appends explicit source version lineage', async () => {
-  const source=await seeded(), original=await persist(source), before=(await db.query<any>('SELECT to_jsonb(w) value FROM workouts w WHERE id=$1',[source.entityId])).rows[0].value
+  const source=await seeded(), original=await persist(source), before=(await inspect<any>('SELECT to_jsonb(w) value FROM workouts w WHERE id=$1',[source.entityId])).rows[0].value
   const changed:any=JSON.parse(source.raw); changed[0].ignored_vendor_metadata.changed='new raw unknown value'
   changed[0].exercise_repetitions[0].eccentricRepetition.peak_velocity=-1.2
   const nextRaw=JSON.stringify(changed), nextBytes=new TextEncoder().encode(nextRaw), nextSha=hash(nextBytes)
   const recordings=await parseQwikArrayRecordings(nextRaw,recordingOptions), blocks=structuredClone(before.blocks)
   recordings.forEach((r,i)=>{blocks[2].segments[0].events[0].performed.sets[i+3].velocity={...(blocks[2].segments[0].events[0].performed.sets[i+3].velocity??{}),recording:r}})
   const client=mcpOwnerClient(db,owner).db
+  await canonicalActor(db,owner)
   const request=await client.rpc('begin_logging_request',{p_key:'synthetic-private-correction:'+randomUUID(),p_fingerprint:'d'.repeat(64)})
   const normalized=normalizeActivity('workout',{...before,blocks})
   const corrected=await client.rpc('amend_logged_activity',{p_kind:'workout',p_entity_id:source.entityId,p_expected_revision:1,p_request_id:request.data.id,
     p_record:normalized.record,p_blocks:normalized.blocks,p_provenance:source.provenance})
   expect(corrected.error).toBeNull(); expect(corrected.data.revision).toBe(2)
+  await privateActor(db,owner)
   const stale=(await db.query<any>('SELECT qwik_private.read_claims($1) value',[owner])).rows[0].value.find((c:any)=>c.claimId===original.claims[0].claimId)
   expect(stale.canonicalState).toBe('stale_or_deleted')
   const nextClaim={...source.claims[0],recording:recordings[0]}
@@ -317,10 +326,10 @@ it('marks old links stale after canonical correction and appends explicit source
   await expect(persist(next,{revision:2,claims:[nextClaim]})).rejects.toMatchObject({code:'40001'})
   const updated=await persist(next,{revision:2,claims:[{...nextClaim,expectedClaimVersion:1,correctionReason:'Synthetic explicit source correction'}]})
   expect(updated.claims[0].version).toBe(2); expect(updated.claims[0].payloadSha256).not.toBe(original.claims[0].payloadSha256)
-  const history=(await db.query<any>('SELECT version,payload_sha256,artifact_id FROM qwik_private.claim_versions WHERE claim_id=$1 ORDER BY version',[original.claims[0].claimId])).rows
+  const history=(await inspect<any>('SELECT version,payload_sha256,artifact_id FROM qwik_private.claim_versions WHERE claim_id=$1 ORDER BY version',[original.claims[0].claimId])).rows
   expect(history.map((r:any)=>r.version)).toEqual([1,2]); expect(history[0].artifact_id).toBe(original.artifactId); expect(history[1].artifact_id).toBe(updated.artifactId)
   await expect(db.query('UPDATE qwik_private.claim_versions SET payload_sha256=$1 WHERE claim_id=$2',['f'.repeat(64),original.claims[0].claimId])).rejects.toMatchObject({code:'42501'})
-  const current=(await db.query<any>('SELECT to_jsonb(w) value FROM workouts w WHERE id=$1',[source.entityId])).rows[0].value
+  const current=(await inspect<any>('SELECT to_jsonb(w) value FROM workouts w WHERE id=$1',[source.entityId])).rows[0].value
   expect(current.blocks[2].segments[0].events[0].prescribed).toEqual(before.blocks[2].segments[0].events[0].prescribed)
   expect(current.notes).toBe(before.notes)
 })
@@ -337,6 +346,6 @@ it('expiry denies raw read without deletion or freeing source identity; consente
   const deleted=(await db.query<any>('SELECT qwik_private.delete_original($1,$2,$3,$4,$5) value',[owner,randomUUID(),saved.artifactId,'synthetic explicit delete',true])).rows[0].value
   expect(deleted.physicalErasureAsserted).toBe(false)
   const after=(await original(saved.artifactId))[0]; expect(after.metadata.state).toBe('deleted'); expect(after.bytes).toBeNull()
-  expect((await db.query('SELECT id FROM qwik_private.source_claims WHERE id=$1',[saved.claims[0].claimId])).rows).toHaveLength(1)
-  expect((await db.query('SELECT version FROM qwik_private.claim_versions WHERE claim_id=$1',[saved.claims[0].claimId])).rows).toHaveLength(1)
+  expect((await inspect('SELECT id FROM qwik_private.source_claims WHERE id=$1',[saved.claims[0].claimId])).rows).toHaveLength(1)
+  expect((await inspect('SELECT version FROM qwik_private.claim_versions WHERE claim_id=$1',[saved.claims[0].claimId])).rows).toHaveLength(1)
 })

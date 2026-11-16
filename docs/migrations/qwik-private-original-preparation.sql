@@ -17,7 +17,10 @@ CREATE TABLE qwik_private.owner_policies (
  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE RESTRICT,
  executor_role NAME NOT NULL CHECK(executor_role::text NOT IN ('PUBLIC','anon','authenticated','authenticator','service_role','none')),
  byte_quota BIGINT NOT NULL CHECK(byte_quota>0),
- max_retention_seconds BIGINT NOT NULL CHECK(max_retention_seconds>0)
+ retention_mode TEXT NOT NULL CHECK(retention_mode IN ('until_explicit_clear','finite_until')),
+ max_retention_seconds BIGINT,
+ CHECK((retention_mode='until_explicit_clear' AND max_retention_seconds IS NULL)
+  OR (retention_mode='finite_until' AND max_retention_seconds IS NOT NULL AND max_retention_seconds>0))
 );
 -- No policies are seeded here. Aggregate quota/retention policy needs approval.
 CREATE TABLE qwik_private.namespaces (
@@ -25,12 +28,14 @@ CREATE TABLE qwik_private.namespaces (
  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
  source_system TEXT NOT NULL DEFAULT 'qwik_vbt' CHECK(source_system='qwik_vbt'),
  source_reference TEXT NOT NULL CHECK(length(btrim(source_reference)) BETWEEN 1 AND 500),
- basis TEXT NOT NULL CHECK(basis IN ('unresolved','owner_attested_source_account_device')),
+ basis TEXT NOT NULL CHECK(basis IN ('unresolved','owner_attested_source_library')),
  state TEXT NOT NULL DEFAULT 'unresolved' CHECK(state IN ('unresolved','confirmed')),
  confirmed_at TIMESTAMPTZ,
+ confirmed_by UUID REFERENCES auth.users(id) ON DELETE RESTRICT,
  UNIQUE(id,user_id), UNIQUE(user_id,source_reference),
- CHECK((state='unresolved' AND confirmed_at IS NULL) OR
-       (state='confirmed' AND basis='owner_attested_source_account_device' AND confirmed_at IS NOT NULL))
+ CHECK((state='unresolved' AND basis='unresolved' AND confirmed_at IS NULL AND confirmed_by IS NULL) OR
+       (state='confirmed' AND basis='owner_attested_source_library' AND confirmed_at IS NOT NULL
+        AND confirmed_by IS NOT NULL AND confirmed_by=user_id))
 );
 CREATE TABLE qwik_private.artifacts (
  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -41,10 +46,12 @@ CREATE TABLE qwik_private.artifacts (
  name TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 255),
  state TEXT NOT NULL DEFAULT 'retained' CHECK(state IN ('retained','deleted')),
  retained_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
- expires_at TIMESTAMPTZ NOT NULL CHECK(isfinite(expires_at)),
+ retention_mode TEXT NOT NULL CHECK(retention_mode IN ('until_explicit_clear','finite_until')),
+ expires_at TIMESTAMPTZ,
  deleted_at TIMESTAMPTZ, deletion_reason TEXT,
  UNIQUE(id,user_id), UNIQUE(user_id,sha256),
- CHECK(expires_at>retained_at),
+ CHECK((retention_mode='until_explicit_clear' AND expires_at IS NULL)
+  OR (retention_mode='finite_until' AND expires_at IS NOT NULL AND isfinite(expires_at) AND expires_at>retained_at)),
  CONSTRAINT artifact_content_complete CHECK(
   (state='retained' AND original_bytes IS NOT NULL AND octet_length(original_bytes)=byte_length
    AND encode(sha256(original_bytes),'hex')=sha256 AND deleted_at IS NULL AND deletion_reason IS NULL)
@@ -122,6 +129,16 @@ CREATE TRIGGER immutable_claim_versions BEFORE UPDATE OR DELETE ON qwik_private.
  FOR EACH ROW EXECUTE FUNCTION qwik_private.immutable_history();
 CREATE TRIGGER immutable_commit_receipts BEFORE UPDATE OR DELETE ON qwik_private.commit_receipts
  FOR EACH ROW EXECUTE FUNCTION qwik_private.immutable_history();
+CREATE FUNCTION qwik_private.namespace_identity_transition() RETURNS trigger
+LANGUAGE plpgsql SET search_path='' AS $$ BEGIN
+ IF OLD.state='confirmed' THEN
+  RAISE EXCEPTION 'Confirmed QWIK source library identity is immutable' USING ERRCODE='55000';
+ END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER immutable_confirmed_namespace BEFORE UPDATE OR DELETE ON qwik_private.namespaces
+ FOR EACH ROW EXECUTE FUNCTION qwik_private.namespace_identity_transition();
 CREATE FUNCTION qwik_private.artifact_transition() RETURNS trigger
 LANGUAGE plpgsql SET search_path='' AS $$ BEGIN
  IF TG_OP<>'UPDATE' THEN RAISE EXCEPTION 'Original history cannot be deleted' USING ERRCODE='55000'; END IF;
@@ -140,21 +157,35 @@ CREATE TRIGGER immutable_original BEFORE UPDATE OR DELETE ON qwik_private.artifa
 -- source-to-projection join. No trusted role or owner policy is provisioned here.
 CREATE FUNCTION qwik_private.require_executor(p_owner_id UUID) RETURNS UUID
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE u UUID:=auth.uid(); allowed_role NAME; invoking_role TEXT;
+DECLARE u UUID; allowed_role NAME; invoking_role TEXT; caller RECORD; definer RECORD; definer_oid OID;
 BEGIN
+ -- This explicit catalog guard precedes owner-policy access. It does not rely
+ -- on replanning RLS after a role attribute transition.
+ SELECT oid,rolsuper,rolbypassrls INTO definer FROM pg_catalog.pg_roles WHERE rolname=current_user;
+ IF NOT FOUND OR definer.rolsuper OR NOT definer.rolbypassrls THEN
+  RAISE EXCEPTION 'Private definer capability unavailable' USING ERRCODE='42501';
+ END IF;
+ definer_oid:=definer.oid;
+ u:=auth.uid();
  IF u IS NULL OR u IS DISTINCT FROM p_owner_id THEN
   RAISE EXCEPTION 'Unavailable owner context' USING ERRCODE='42501';
  END IF;
  SELECT executor_role INTO allowed_role FROM qwik_private.owner_policies WHERE user_id=u;
  invoking_role:=coalesce(nullif(current_setting('role',true),'none'),session_user::text);
- IF allowed_role IS NULL OR invoking_role IS DISTINCT FROM allowed_role::text THEN
+ SELECT oid,rolsuper,rolbypassrls INTO caller FROM pg_catalog.pg_roles WHERE rolname=allowed_role;
+ IF allowed_role IS NULL OR NOT FOUND OR invoking_role IS DISTINCT FROM allowed_role::text
+  OR caller.rolsuper OR caller.rolbypassrls
+  OR pg_catalog.pg_has_role(caller.oid,definer_oid,'MEMBER')
+  OR EXISTS(SELECT 1 FROM pg_catalog.pg_roles e WHERE e.rolname IN ('anon','authenticated','authenticator','service_role')
+   AND (pg_catalog.pg_has_role(caller.oid,e.oid,'MEMBER') OR pg_catalog.pg_has_role(e.oid,caller.oid,'MEMBER')
+    OR pg_catalog.pg_has_role(e.oid,definer_oid,'MEMBER'))) THEN
   RAISE EXCEPTION 'Trusted private executor required' USING ERRCODE='42501';
  END IF;
  RETURN u;
 END $$;
 
 CREATE FUNCTION qwik_private.persist_original(
- p_owner_id UUID,p_key TEXT,p_bytes BYTEA,p_sha256 TEXT,p_name TEXT,p_expires_at TIMESTAMPTZ,
+ p_owner_id UUID,p_key TEXT,p_bytes BYTEA,p_sha256 TEXT,p_name TEXT,p_retention_mode TEXT,p_expires_at TIMESTAMPTZ,
  p_owner_quota_bytes BIGINT,p_namespace_id UUID DEFAULT NULL,p_entity_id UUID DEFAULT NULL,
  p_expected_revision INTEGER DEFAULT NULL,p_claims JSONB DEFAULT '[]') RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
@@ -167,6 +198,7 @@ DECLARE u UUID:=auth.uid(); n INTEGER; v_fingerprint TEXT; ledger JSONB; a qwik_
 BEGIN
  u:=qwik_private.require_executor(p_owner_id);
  IF p_key IS NULL OR length(p_key) NOT BETWEEN 8 AND 150 OR p_bytes IS NULL OR p_sha256 IS NULL
+  OR p_retention_mode IS NULL OR p_retention_mode NOT IN ('until_explicit_clear','finite_until')
   OR p_name IS NULL OR length(p_name) NOT BETWEEN 1 AND 255 OR p_claims IS NULL
   OR jsonb_typeof(p_claims) IS DISTINCT FROM 'array' OR jsonb_array_length(p_claims)>20 THEN
   RAISE EXCEPTION 'Invalid private retention request' USING ERRCODE='22023'; END IF;
@@ -175,7 +207,7 @@ BEGIN
   OR encode(sha256(p_bytes),'hex') IS DISTINCT FROM p_sha256 THEN
   RAISE EXCEPTION 'Original byte integrity mismatch' USING ERRCODE='22023'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('capture-owner:'||u::text,0));
- v_fingerprint:=encode(sha256(convert_to(jsonb_build_object('sha',p_sha256,'length',n,'name',p_name,'expiryEpoch',extract(epoch FROM p_expires_at),
+ v_fingerprint:=encode(sha256(convert_to(jsonb_build_object('sha',p_sha256,'length',n,'name',p_name,'retentionMode',p_retention_mode,'expiryEpoch',extract(epoch FROM p_expires_at),
   'quota',p_owner_quota_bytes,'namespace',p_namespace_id,'entity',p_entity_id,'revision',p_expected_revision,'claims',p_claims)::text,'UTF8')),'hex');
  ledger:=public.begin_logging_request('qwik-private:retain:'||p_key,v_fingerprint);
  SELECT to_jsonb(q) INTO STRICT ledger FROM public.logging_requests q
@@ -190,19 +222,22 @@ BEGIN
  END IF;
  SELECT * INTO policy FROM qwik_private.owner_policies WHERE user_id=u;
  IF NOT FOUND THEN RAISE EXCEPTION 'Private retention policy unavailable' USING ERRCODE='42501'; END IF;
- IF p_owner_quota_bytes IS NULL OR p_owner_quota_bytes<1 OR p_expires_at IS NULL OR NOT isfinite(p_expires_at)
-  OR p_expires_at<=clock_timestamp() OR p_expires_at>clock_timestamp()+make_interval(secs=>policy.max_retention_seconds::double precision) THEN
-  RAISE EXCEPTION 'Explicit finite retention/quota required' USING ERRCODE='22023'; END IF;
+ IF p_owner_quota_bytes IS NULL OR p_owner_quota_bytes<1 OR p_retention_mode IS DISTINCT FROM policy.retention_mode
+  OR (p_retention_mode='until_explicit_clear' AND p_expires_at IS NOT NULL)
+  OR (p_retention_mode='finite_until' AND (p_expires_at IS NULL OR NOT isfinite(p_expires_at)
+   OR p_expires_at<=clock_timestamp() OR p_expires_at>clock_timestamp()+make_interval(secs=>policy.max_retention_seconds::double precision))) THEN
+  RAISE EXCEPTION 'Explicit configured retention/quota required' USING ERRCODE='22023'; END IF;
  SELECT * INTO a FROM qwik_private.artifacts WHERE user_id=u AND sha256=p_sha256 FOR UPDATE;
  IF FOUND THEN
-  IF a.state<>'retained' OR a.expires_at<=clock_timestamp() OR a.expires_at IS DISTINCT FROM p_expires_at THEN
+  IF a.state<>'retained' OR (a.retention_mode='finite_until' AND a.expires_at<=clock_timestamp())
+   OR a.retention_mode IS DISTINCT FROM p_retention_mode OR a.expires_at IS DISTINCT FROM p_expires_at THEN
    RAISE EXCEPTION 'Original is unavailable or retention differs; no implicit renewal' USING ERRCODE='55000'; END IF;
   IF a.byte_length<>n OR a.original_bytes IS DISTINCT FROM p_bytes THEN RAISE EXCEPTION 'Original byte conflict' USING ERRCODE='22023'; END IF;
  ELSE
   SELECT coalesce(sum(octet_length(original_bytes)),0) INTO used_bytes FROM qwik_private.artifacts WHERE user_id=u;
   IF used_bytes+n>least(policy.byte_quota,p_owner_quota_bytes) THEN RAISE EXCEPTION 'Private retention quota exceeded' USING ERRCODE='54000'; END IF;
-  INSERT INTO qwik_private.artifacts(user_id,sha256,byte_length,original_bytes,name,expires_at)
-   VALUES(u,p_sha256,n,p_bytes,p_name,p_expires_at) RETURNING * INTO a;
+  INSERT INTO qwik_private.artifacts(user_id,sha256,byte_length,original_bytes,name,retention_mode,expires_at)
+   VALUES(u,p_sha256,n,p_bytes,p_name,p_retention_mode,p_expires_at) RETURNING * INTO a;
  END IF;
  IF jsonb_array_length(p_claims)=0 THEN
   IF p_namespace_id IS NOT NULL OR p_entity_id IS NOT NULL OR p_expected_revision IS NOT NULL THEN
@@ -211,7 +246,7 @@ BEGIN
   IF p_namespace_id IS NULL OR p_entity_id IS NULL OR p_expected_revision IS NULL OR p_expected_revision<1 THEN
    RAISE EXCEPTION 'Complete explicit binding required' USING ERRCODE='22023'; END IF;
   SELECT * INTO ns FROM qwik_private.namespaces WHERE id=p_namespace_id AND user_id=u;
-  IF NOT FOUND OR ns.state<>'confirmed' OR ns.basis<>'owner_attested_source_account_device' THEN
+  IF NOT FOUND OR ns.state<>'confirmed' OR ns.basis<>'owner_attested_source_library' OR ns.confirmed_by IS DISTINCT FROM u THEN
    RAISE EXCEPTION 'Source namespace unavailable' USING ERRCODE='42501'; END IF;
   SELECT to_jsonb(w) INTO prior FROM public.workouts w WHERE w.id=p_entity_id AND w.user_id=u FOR UPDATE;
   IF prior IS NULL THEN RAISE EXCEPTION 'Canonical binding unavailable' USING ERRCODE='42501'; END IF;
@@ -280,7 +315,7 @@ BEGIN
   END LOOP;
  END IF;
  response:=jsonb_build_object('kind','qwik_private_retention','schemaVersion',1,'artifactId',a.id,'userId',u,'sha256',a.sha256,
-  'byteLength',a.byte_length,'expiresAt',a.expires_at,'retainedAt',a.retained_at,'storage','private_postgres_bytea',
+  'byteLength',a.byte_length,'retentionMode',a.retention_mode,'expiresAt',a.expires_at,'retainedAt',a.retained_at,'storage','private_postgres_bytea',
   'artifactStateAtCommit','retained','canonicalRevision',p_expected_revision,'claims',links);
  response:=public.finish_logging_request((ledger->>'id')::uuid,response,200);
  INSERT INTO qwik_private.commit_receipts(ledger_id,user_id,operation,request_key,fingerprint,artifact_id,response)
@@ -295,10 +330,10 @@ BEGIN
  u:=qwik_private.require_executor(p_owner_id);
  SELECT * INTO a FROM qwik_private.artifacts WHERE id=p_id AND user_id=u;
  IF NOT FOUND THEN RETURN; END IF;
- s:=CASE WHEN a.state='deleted' THEN 'deleted' WHEN a.expires_at<=clock_timestamp() THEN 'expired'
+ s:=CASE WHEN a.state='deleted' THEN 'deleted' WHEN a.retention_mode='finite_until' AND a.expires_at<=clock_timestamp() THEN 'expired'
   WHEN a.original_bytes IS NULL OR octet_length(a.original_bytes)<>a.byte_length OR encode(sha256(a.original_bytes),'hex') IS DISTINCT FROM a.sha256 THEN 'corrupt' ELSE 'available' END;
  RETURN QUERY SELECT jsonb_build_object('artifactId',a.id,'userId',u,'sha256',a.sha256,'byteLength',a.byte_length,'name',a.name,
-  'path',u::text||'/'||a.id::text||'/'||a.sha256||'.qwik','expiresAt',a.expires_at,'retainedAt',a.retained_at,'state',s),
+  'path',u::text||'/'||a.id::text||'/'||a.sha256||'.qwik','retentionMode',a.retention_mode,'expiresAt',a.expires_at,'retainedAt',a.retained_at,'state',s),
   CASE WHEN s='available' THEN a.original_bytes ELSE NULL::bytea END;
 END $$;
 
@@ -342,7 +377,7 @@ BEGIN
  SELECT coalesce(jsonb_agg(jsonb_build_object('claimId',c.id,'namespaceId',c.namespace_id,'sourceSetId',c.source_set_id,
   'artifactId',c.artifact_id,'version',c.version,'payloadSha256',c.payload_sha256,'entityId',c.entity_id,'canonicalRevision',c.canonical_revision,
   'canonicalPath',c.canonical_path,'canonicalState',CASE WHEN w.capture_revision=c.canonical_revision THEN 'current' ELSE 'stale_or_deleted' END,
-  'artifactState',CASE WHEN a.state='deleted' THEN 'deleted' WHEN a.expires_at<=clock_timestamp() THEN 'expired' ELSE 'retained' END)
+  'artifactState',CASE WHEN a.state='deleted' THEN 'deleted' WHEN a.retention_mode='finite_until' AND a.expires_at<=clock_timestamp() THEN 'expired' ELSE 'retained' END)
   ORDER BY c.id),'[]') INTO result
  FROM qwik_private.source_claims c JOIN qwik_private.artifacts a ON a.id=c.artifact_id AND a.user_id=c.user_id
  LEFT JOIN public.workouts w ON w.id=c.entity_id AND w.user_id=c.user_id WHERE c.user_id=u;
