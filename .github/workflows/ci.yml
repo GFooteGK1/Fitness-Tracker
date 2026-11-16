@@ -62,3 +62,65 @@ jobs:
           name: browser-failure-evidence
           path: output/playwright/app-quality-results/
           retention-days: 7
+
+  qwik-private-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      CI: true
+      NODE_ENV: test
+      NEXT_TELEMETRY_DISABLED: 1
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-key
+      SOCIUS_QWIK_NATIVE_POSTGRES: 'true'
+      SOCIUS_QWIK_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      SOCIUS_QWIK_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+
+    steps:
+      - name: Check out integrated source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify seven independent-session races
+        run: >-
+          node node_modules/vitest/vitest.mjs run
+          test/database/qwik-private-postgres-concurrency.test.ts
+          --maxWorkers=1 --no-file-parallelism --retry=0
+          --reporter=json --reporter=default
+          --outputFile=output/qwik-private-native/results.json
+
+      - name: Require executed races and owned-cluster cleanup
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const results = JSON.parse(readFileSync('output/qwik-private-native/results.json', 'utf8'));
+          const proof = JSON.parse(readFileSync('output/qwik-private-native/qualification.json', 'utf8'));
+          if (results.numTotalTests !== 7 || results.numPassedTests !== 7 || results.numFailedTests !== 0 || results.numPendingTests !== 0)
+            throw new Error('All seven native PostgreSQL cases must execute and pass');
+          if (proof.cases?.length !== 7 || proof.cases.some(value => value.status !== 'passed') || proof.ownedClientsClosed !== true || proof.clusterStopped !== true)
+            throw new Error('Native race proof or owned-cluster cleanup is incomplete');
+          console.log('Seven native PostgreSQL races passed; owned clients and cluster closed');
+          NODE
+
+      - name: Retain synthetic concurrency qualification
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: qwik-private-native-qualification
+          path: |
+            output/qwik-private-native/results.json
+            output/qwik-private-native/qualification.json
+          if-no-files-found: warn
+          retention-days: 7

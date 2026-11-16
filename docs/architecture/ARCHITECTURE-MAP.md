@@ -1383,3 +1383,20 @@ revision fence. `signal-evidence-readback.ts` validates the optional persisted
 context for shared decision readback. It does not supply a physiological
 reconciliation policy or promote working sets into direct assessments. See
 [ADR-0027](../decisions/ADR-0027-signal-facts-before-prescription-changes.md).
+
+## Prepared private QWIK original boundary (inactive)
+
+`app/lib/coach/qwik-private-original.ts` is an unwired trusted-server adapter.
+It verifies the complete raw-to-recording join before the prepared private SQL
+port registers an original against an already saved canonical revision. The
+preparation in `docs/migrations/qwik-private-original-preparation.sql` owns bounded
+BYTEA originals, owner/namespace source claims and immutable private commit proof
+in one transaction. It does not own canonical workout writes or observation
+promotion. Public logging request prefixes alone are not private commit proof.
+
+The SQL requires an explicit dedicated executor/owner policy; ordinary
+authenticated execution remains denied even after an accidental function grant.
+No route, production grant, policy default or active migration is installed.
+Registered private claims do not deduplicate every public activity write, and
+renewal/re-retention/relinking are not provided. See the
+[inactive preparation decision and activation gates](../plans/qwik-private-original-preparation-2026-11-16.md).
