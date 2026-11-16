@@ -1,5 +1,15 @@
 # SociusFit Architecture Map
 
+Inactive private QWIK preparation keeps responsibilities separate: verified Auth
+supplies the principal; `qwik-private-owner-transaction` owns a generation-fenced
+SQL lease, transaction-local owner context and cleanup; `qwik-private-original`
+verifies exact source/projection/readback; private SQL owns bounded original
+bytes, immutable library claims, authoritative quota and commit proof. Explicit
+retention modes have no seeded production default. No driver, public route,
+policy or migration is activated. See the
+[inactive private-original decision](../plans/qwik-private-original-preparation-2026-11-16.md)
+for privileged-definer/RLS boundaries and unqualified hosted/PG17 gates.
+
 The inactive local `qwik-exact-capture` adapter separates original bytes from the
 bounded per-set recording projection and verifies source joins against canonical
 saved revisions. It reuses existing amendment/receipt SQL; no raw upload or
@@ -1383,3 +1393,20 @@ revision fence. `signal-evidence-readback.ts` validates the optional persisted
 context for shared decision readback. It does not supply a physiological
 reconciliation policy or promote working sets into direct assessments. See
 [ADR-0027](../decisions/ADR-0027-signal-facts-before-prescription-changes.md).
+
+## Prepared private QWIK original boundary (inactive)
+
+`app/lib/coach/qwik-private-original.ts` is an unwired trusted-server adapter.
+It verifies the complete raw-to-recording join before the prepared private SQL
+port registers an original against an already saved canonical revision. The
+preparation in `docs/migrations/qwik-private-original-preparation.sql` owns bounded
+BYTEA originals, owner/namespace source claims and immutable private commit proof
+in one transaction. It does not own canonical workout writes or observation
+promotion. Public logging request prefixes alone are not private commit proof.
+
+The SQL requires an explicit dedicated executor/owner policy; ordinary
+authenticated execution remains denied even after an accidental function grant.
+No route, production grant, policy default or active migration is installed.
+Registered private claims do not deduplicate every public activity write, and
+renewal/re-retention/relinking are not provided. See the
+[inactive preparation decision and activation gates](../plans/qwik-private-original-preparation-2026-11-16.md).

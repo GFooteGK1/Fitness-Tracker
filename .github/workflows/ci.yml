@@ -62,3 +62,77 @@ jobs:
           name: browser-failure-evidence
           path: output/playwright/app-quality-results/
           retention-days: 7
+
+  qwik-private-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      CI: true
+      NODE_ENV: test
+      NEXT_TELEMETRY_DISABLED: 1
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-key
+      SOCIUS_QWIK_NATIVE_POSTGRES: 'true'
+      SOCIUS_QWIK_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      SOCIUS_QWIK_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+
+    steps:
+      - name: Check out integrated source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Provision signed PostgreSQL 17 binaries on this disposable VM
+        run: bash scripts/prepare-qwik-postgres17-ci.sh
+
+      - name: Verify PostgreSQL 17 races, role changes and pooled transport
+        run: >-
+          node node_modules/vitest/vitest.mjs run
+          test/database/qwik-private-postgres-concurrency.test.ts
+          test/database/qwik-private-pg17-transport.test.ts
+          --maxWorkers=1 --no-file-parallelism --retry=0
+          --reporter=json --reporter=default
+          --outputFile=output/qwik-private-native/results.json
+
+      - name: Require executed races and owned-cluster cleanup
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const results = JSON.parse(readFileSync('output/qwik-private-native/results.json', 'utf8'));
+          const proof = JSON.parse(readFileSync('output/qwik-private-native/qualification.json', 'utf8'));
+          const transport = JSON.parse(readFileSync('output/qwik-private-native/transport-qualification.json', 'utf8'));
+          if (results.numTotalTests !== 15 || results.numPassedTests !== 15 || results.numFailedTests !== 0 || results.numPendingTests !== 0)
+            throw new Error('All fifteen native PostgreSQL cases must execute and pass');
+          if (proof.cases?.length !== 7 || proof.cases.some(value => value.status !== 'passed') || proof.ownedClientsClosed !== true || proof.clusterStopped !== true)
+            throw new Error('Native race proof or owned-cluster cleanup is incomplete');
+          if (!(proof.serverVersionNum >= 170000 && proof.serverVersionNum < 180000) || proof.fallbackMajor !== false)
+            throw new Error('Native race engine must be actual PostgreSQL 17 without fallback');
+          if (transport.cases?.length !== 8 || transport.cases.some(value => value.status !== 'passed' || value.clientsClosed !== true || value.clusterStopped !== true || !(value.serverVersionNum >= 170000 && value.serverVersionNum < 180000)))
+            throw new Error('PostgreSQL 17 role/transport proof or cleanup incomplete');
+          if (transport.driver !== '8.23.1' || transport.cases.some(value => value.fixture?.actualCheckoutHead !== proof.actualCheckoutHead || value.fixture?.actualCheckoutTree !== proof.actualCheckoutTree))
+            throw new Error('Native driver or checkout binding differs across qualification suites');
+          console.log('Seven races and eight role/transport controls passed on actual PostgreSQL 17; owned clients and clusters closed');
+          NODE
+
+      - name: Retain synthetic concurrency qualification
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: qwik-private-native-qualification
+          path: |
+            output/qwik-private-native/results.json
+            output/qwik-private-native/qualification.json
+            output/qwik-private-native/transport-qualification.json
+          if-no-files-found: warn
+          retention-days: 7

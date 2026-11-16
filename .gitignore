@@ -64,6 +64,7 @@ scripts/eval/manifest.*.json
 /focused-results.json
 /audit-current.json
 /output/playwright/app-quality-results/
+/output/qwik-private-native/
 /output/playwright/app-quality-report/
 
 /output/app-quality-release/

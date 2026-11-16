@@ -1,4 +1,6 @@
 # Preserve the exact migration bytes pinned in the reviewed production packet.
+# Keep the inactive private-original SQL identical across local/hosted qualification.
+docs/migrations/qwik-private-original-preparation.sql text eol=lf
 supabase/migrations/20260923010000_coaching_write_pause.sql text eol=lf
 # This reviewed file has mixed line endings; preserve its exact pinned bytes.
 supabase/migrations/20260921010000_coach_proposal_context_revision.sql -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
