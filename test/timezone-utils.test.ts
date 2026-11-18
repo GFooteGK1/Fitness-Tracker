@@ -25,7 +25,30 @@ import {
   formatUTCAsLocalDateWithOffset,
   getMealTimestamp,
   localDateTimeToUTC,
+  getZonedDateWindow,
 } from '@/app/lib/timezone-utils'
+
+describe('getZonedDateWindow', () => {
+  it.each([
+    ['2026-03-08', 'America/Chicago', '2026-03-08T06:00:00.000Z', '2026-03-09T05:00:00.000Z'],
+    ['2026-11-01', 'America/Chicago', '2026-11-01T05:00:00.000Z', '2026-11-02T06:00:00.000Z'],
+    ['2026-11-01', 'Asia/Kathmandu', '2026-10-31T18:15:00.000Z', '2026-11-01T18:15:00.000Z'],
+    ['2011-12-30', 'Pacific/Apia', '2011-12-30T10:00:00.000Z', '2011-12-30T10:00:00.000Z'],
+    ['0001-01-01', 'UTC', '0001-01-01T00:00:00.000Z', '0001-01-02T00:00:00.000Z'],
+  ])('resolves %s in %s at each civil boundary', (date, timezone, startUtc, endUtcExclusive) => {
+    expect(getZonedDateWindow(date, date, timezone, 7)).toMatchObject({ days: 1, startUtc, endUtcExclusive })
+  })
+
+  it('includes both dates in a window spanning a transition', () => {
+    expect(getZonedDateWindow('2026-10-31', '2026-11-02', 'America/Chicago', 7)).toMatchObject({
+      days: 3, startUtc: '2026-10-31T05:00:00.000Z', endUtcExclusive: '2026-11-03T06:00:00.000Z',
+    })
+  })
+
+  it('rejects a historical date boundary that crosses midnight twice', () => {
+    expect(() => getZonedDateWindow('2009-11-01', '2009-11-01', 'America/St_Johns', 7)).toThrow('non-contiguous')
+  })
+})
 
 describe('getLocalDate', () => {
   it('returns YYYY-MM-DD format', () => {
