@@ -75,8 +75,15 @@ export function resolveHistorySnapshot(input: {
 export function historyFieldProvenance(value: unknown, path: string, fallback = 'blocks'): {
   origin: string; reviewState: string
 } {
-  if (!object(value) || value.schemaVersion !== 1 || !object(value.fields)) return { origin: 'legacy_unknown', reviewState: 'unreviewed' }
-  const field = value.fields[path] ?? value.fields[fallback]
+  return readProvenance(object(value) && value.schemaVersion === 1 && object(value.fields)
+    ? value.fields[path] ?? value.fields[fallback] : null)
+}
+
+export function historyOccurrenceProvenance(value: unknown) {
+  return readProvenance(object(value) && value.schemaVersion === 1 ? value.occurrence : null)
+}
+
+function readProvenance(field: unknown) {
   if (!object(field) || !['athlete_reported', 'model_estimated', 'copied_template', 'imported_unverified', 'legacy_unknown'].includes(String(field.origin))
     || !['unreviewed', 'athlete_confirmed', 'corrected'].includes(String(field.reviewState))) return { origin: 'legacy_unknown', reviewState: 'unreviewed' }
   return { origin: String(field.origin), reviewState: String(field.reviewState) }

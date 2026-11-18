@@ -136,6 +136,78 @@ export function localDateToUTCStart(dateStr: DateString, tzOffset: TimezoneOffse
   return utcTime.toISOString()
 }
 
+const DAY_MS = 86_400_000
+
+export function localDateToUTCNextStart(date: DateString, tzOffset: TimezoneOffset): UTCTimestamp {
+  return new Date(Date.parse(localDateToUTCStart(date, tzOffset)) + DAY_MS).toISOString()
+}
+
+function zonedDateFormatter(timezone: string) {
+  // Intl also accepts numeric offsets in newer runtimes. This contract needs
+  // a named zone with transition rules.
+  if (!/^[A-Za-z][A-Za-z0-9_+/-]{0,99}$/.test(timezone)) throw new RangeError('Invalid time zone')
+  return new Intl.DateTimeFormat('en', { timeZone: timezone, calendar: 'gregory', numberingSystem: 'latn',
+    year: 'numeric', month: '2-digit', day: '2-digit', era: 'short', timeZoneName: 'longOffset' })
+}
+
+function dateInZone(formatter: Intl.DateTimeFormat, instant: number): DateString {
+  const parts = formatter.formatToParts(instant)
+  const part = (type: string) => parts.find(value => value.type === type)!.value
+  // The window contract uses positive ISO years. BCE only occurs in the search bracket.
+  if (part('era') === 'BC') return '0000-01-01'
+  return `${part('year').padStart(4, '0')}-${part('month')}-${part('day')}`
+}
+
+export function formatUTCAsLocalDateInZone(timestamp: UTCTimestamp, timezone: string): DateString {
+  return dateInZone(zonedDateFormatter(timezone), Date.parse(timestamp))
+}
+
+/** Inclusive civil dates, represented by independently resolved UTC boundaries. */
+export function getZonedDateWindow(startDate: DateString, endDate: DateString, timezone: string, maxDays: number) {
+  const dateAnchor = (date: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date.startsWith('0000')) throw new RangeError('Invalid calendar date')
+    const timestamp = date + 'T00:00:00.000Z'
+    const instant = Date.parse(timestamp)
+    if (!Number.isFinite(instant) || new Date(instant).toISOString() !== timestamp) throw new RangeError('Invalid calendar date')
+    return instant
+  }
+  const start = dateAnchor(startDate)
+  const end = dateAnchor(endDate)
+  const days = (end - start) / DAY_MS + 1
+  if (days < 1 || days > maxDays || endDate === '9999-12-31') throw new RangeError('Invalid window length')
+  const formatter = zonedDateFormatter(timezone)
+  const midnight = (anchor: number, day: string) => {
+    // Find the first instant of the civil day. If a transition skips midnight
+    // (or a whole date), this resolves to the first valid instant after the gap.
+    const start = anchor - 2 * DAY_MS
+    const end = anchor + 2 * DAY_MS
+    const firstAfter = (beforeBoundary: (instant: number) => boolean) => {
+      let before = start
+      let after = end
+      while (after - before > 1) {
+        const candidate = before + Math.floor((after - before) / 2)
+        if (beforeBoundary(candidate)) before = candidate
+        else after = candidate
+      }
+      return after
+    }
+    const offset = (instant: number) => formatter.formatToParts(instant).find(part => part.type === 'timeZoneName')!.value
+    const dayNumber = Number(day.replaceAll('-', ''))
+    const beforeDay = (instant: number) => Number(dateInZone(formatter, instant).replaceAll('-', '')) < dayNumber
+    const beforeOffset = offset(start)
+    if (beforeOffset !== offset(end)) {
+      const transition = firstAfter(instant => offset(instant) === beforeOffset)
+      if (!beforeDay(transition - 1) && beforeDay(transition)) {
+        throw new RangeError('This historical time-zone transition makes the date window non-contiguous')
+      }
+    }
+    return new Date(firstAfter(beforeDay)).toISOString()
+  }
+  const next = end + DAY_MS
+  return { startDate, endDate, timezone, days,
+    startUtc: midnight(start, startDate), endUtcExclusive: midnight(next, new Date(next).toISOString().slice(0, 10)) }
+}
+
 /**
  * Converts a local date string to UTC end-of-day timestamp
  * 
