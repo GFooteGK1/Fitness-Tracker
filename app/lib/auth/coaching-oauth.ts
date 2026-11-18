@@ -59,7 +59,8 @@ export interface CoachingBearerDependencies {
 
 /** getClaims verifies the signature; these comparisons enforce this connection's
  * issuer/resource/client/owner policy. No decoded or user_metadata claim is trusted.
- * A provider grant read catches revocation while a signed access token is unexpired.
+ * The OAuth UserInfo endpoint checks the live provider session even while the
+ * signed access token is unexpired. Revoking a grant deletes its sessions.
  */
 export async function authorizeCoachingBearer(request: Request, config: CoachingOAuthConfig,
   dependencies: CoachingBearerDependencies = { client: bearerUserClient, fetch }): Promise<AuthorizedContextRequest> {
@@ -78,24 +79,25 @@ export async function authorizeCoachingBearer(request: Request, config: Coaching
     if (claims.iss !== config.issuer || !Array.isArray(audience) || !audience.includes(config.resource)
       || audience.some(value => typeof value !== 'string') || claims.client_id !== config.clientId
       || claims.role !== 'authenticated' || claims.scope !== 'email' || claims.is_anonymous === true || !uuid.test(claims.sub)
+      || typeof claims.session_id !== 'string' || !uuid.test(claims.session_id)
+      || claims.session_id === '00000000-0000-0000-0000-000000000000'
       || !Number.isFinite(claims.exp) || claims.exp <= now
       || (claims.nbf !== undefined && (typeof claims.nbf !== 'number' || claims.nbf > now))
       || (claims.iat !== undefined && (typeof claims.iat !== 'number' || claims.iat > now + 60))) throw unauthorized()
     const owner = await db.auth.getUser(token)
     if (owner.error || !owner.data.user || owner.data.user.id !== claims.sub || owner.data.user.is_anonymous) throw unauthorized()
-    // These SDK OAuth methods require a browser/cookie session. The bearer-only
-    // client therefore uses the same documented grant GET endpoint directly,
-    // without inventing a refresh token or fabricating a stored SDK session.
-    const response = await dependencies.fetch(`${config.issuer}/user/oauth/grants`, {
+    // Grant management is first-party-session-only and rejects OAuth access tokens.
+    // UserInfo accepts OAuth bearers and validates their live session. Requiring a
+    // non-nil signed session_id above prevents the provider's sessionless fallback.
+    const response = await dependencies.fetch(`${config.issuer}/oauth/userinfo`, {
       headers: { Authorization: `Bearer ${token}`, apikey: config.publicKey },
       redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(10_000),
     })
     if (response.status === 401 || response.status === 403) throw unauthorized()
     if (!response.ok) throw new CoachingContextError(503, 'Socius authorization is unavailable')
-    const grants: unknown = await response.json()
-    if (!Array.isArray(grants)) throw new CoachingContextError(503, 'Socius authorization is unavailable')
-    if (!grants.some(grant => contextObject(grant) && contextObject(grant.client) && grant.client.id === config.clientId
-      && Array.isArray(grant.scopes) && grant.scopes.length === 1 && grant.scopes[0] === 'email')) throw unauthorized()
+    const user: unknown = await response.json()
+    if (!contextObject(user) || typeof user.sub !== 'string') throw new CoachingContextError(503, 'Socius authorization is unavailable')
+    if (user.sub !== claims.sub) throw unauthorized()
     return { db, principal: { subject: claims.sub, clientId: config.clientId, issuer: config.issuer,
       resource: config.resource, expiresAt: claims.exp * 1000, role: 'authenticated' } }
   } catch (error) {

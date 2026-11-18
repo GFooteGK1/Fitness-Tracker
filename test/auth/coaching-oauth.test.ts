@@ -27,7 +27,7 @@ function token(patch: Record<string, unknown> = {}) {
   const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url')
   const message = `${encode({ alg: 'ES256', kid: 'synthetic-key', typ: 'JWT' })}.${encode({ iss: config.issuer,
     aud: config.resource, sub: owner, client_id: clientId, role: 'authenticated', scope: 'email', exp: Math.floor(Date.now() / 1000) + 600,
-    iat: Math.floor(Date.now() / 1000), ...patch })}`
+    iat: Math.floor(Date.now() / 1000), session_id: '30000000-0000-4000-8000-000000000001', ...patch })}`
   return `${message}.${sign('sha256', Buffer.from(message), { key: keys.privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url')}`
 }
 function hmacToken(patch: Record<string, unknown> = {}, secret = hmacSecret) {
@@ -39,15 +39,18 @@ function provider(legacyHmac = false) {
   const rows = contextRows()
   for (const records of Object.values(rows)) for (const row of records) row.user_id = owner
   const query = contextClient(rows)
-  const state = { active: true, user: owner, unavailable: false, grantScopes: ['email'] }
+  const state = { active: true, user: owner, unavailable: false }
   const calls: string[] = []
   const fakeFetch: typeof fetch = async (input, init) => {
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
     if (url.origin !== config.supabaseUrl) throw new Error('External network blocked')
     calls.push(url.pathname)
     if (url.pathname.endsWith('/.well-known/jwks.json')) return Response.json({ keys: legacyHmac ? [] : [publicJwk] })
-    if (url.pathname.endsWith('/user/oauth/grants')) return state.unavailable ? new Response(null, { status: 503 })
-      : Response.json(state.active ? [{ client: { id: clientId }, scopes: state.grantScopes }] : [])
+    // Reproduce the live provider restriction, rather than mocking an endpoint
+    // that OAuth client access tokens are not authorized to call.
+    if (url.pathname.endsWith('/user/oauth/grants')) return Response.json({ msg: 'OAuth client access tokens are not allowed to access this endpoint' }, { status: 403 })
+    if (url.pathname.endsWith('/oauth/userinfo')) return state.unavailable ? new Response(null, { status: 503 })
+      : state.active ? Response.json({ sub: state.user }) : new Response(null, { status: 403 })
     if (url.pathname.endsWith('/user')) {
       if (legacyHmac) {
         // Real SDK getClaims delegates HS256 verification to Auth getUser. This
@@ -79,11 +82,12 @@ function provider(legacyHmac = false) {
 const request = (jwt: string) => new Request(config.resource, { headers: { Authorization: `Bearer ${jwt}` } })
 
 describe('owner OAuth bearer verification with real SDK JWT signatures and synthetic provider', () => {
-  it('verifies signature, issuer, resource audience, client, owner and active grant', async () => {
+  it('verifies signature, issuer, resource audience, client, owner and live session', async () => {
     const fixture = provider()
     const result = await authorizeCoachingBearer(request(token()), config, fixture.dependencies)
     expect(result.principal).toMatchObject({ subject: owner, clientId, resource: config.resource, role: 'authenticated' })
-    expect(fixture.calls).toContain('/auth/v1/user/oauth/grants')
+    expect(fixture.calls).toContain('/auth/v1/oauth/userinfo')
+    expect(fixture.calls).not.toContain('/auth/v1/user/oauth/grants')
     expect(fixture.query.db.from).not.toHaveBeenCalled()
   })
   it.each([
@@ -91,6 +95,7 @@ describe('owner OAuth bearer verification with real SDK JWT signatures and synth
     { client_id: other }, { role: 'service_role' }, { role: 'anon' }, { is_anonymous: true },
     { exp: 1 }, { sub: 'not-an-owner-uuid' }, { nbf: 9999999999 }, { iat: 9999999999 },
     { scope: undefined }, { scope: 'openid email' }, { scope: 'profile' },
+    { session_id: undefined }, { session_id: null }, { session_id: 123 }, { session_id: 'invalid' }, { session_id: '00000000-0000-0000-0000-000000000000' },
   ])('rejects signed but unauthorized claims %j before domain reads', async patch => {
     const fixture = provider()
     await expect(authorizeCoachingBearer(request(token(patch)), config, fixture.dependencies)).rejects.toMatchObject({ status: 401 })
@@ -114,9 +119,47 @@ describe('owner OAuth bearer verification with real SDK JWT signatures and synth
     await expect(authorizeCoachingBearer(request(jwt), config, fixture.dependencies)).rejects.toMatchObject({ status: 401 })
     expect(fixture.query.db.from).not.toHaveBeenCalled()
   })
-  it('fails closed on grant-check outage', async () => {
+  it('fails closed on UserInfo outage', async () => {
     const fixture = provider(); fixture.state.unavailable = true
     await expect(authorizeCoachingBearer(request(token()), config, fixture.dependencies)).rejects.toMatchObject({ status: 503 })
+  })
+  it.each([null, [], {}, { sub: 42 }])('fails closed on malformed UserInfo %j', async body => {
+    const fixture = provider()
+    fixture.dependencies.fetch = async () => Response.json(body)
+    await expect(authorizeCoachingBearer(request(token()), config, fixture.dependencies)).rejects.toMatchObject({ status: 503 })
+    expect(fixture.query.db.from).not.toHaveBeenCalled()
+  })
+  it.each([401, 403, 500, 503])('fails closed on UserInfo HTTP %s', async status => {
+    const fixture = provider()
+    fixture.dependencies.fetch = async () => new Response(null, { status })
+    await expect(authorizeCoachingBearer(request(token()), config, fixture.dependencies)).rejects.toMatchObject({ status: status < 500 ? 401 : 503 })
+    expect(fixture.query.db.from).not.toHaveBeenCalled()
+  })
+  it('rejects mismatched UserInfo despite a matching getUser identity', async () => {
+    const fixture = provider()
+    fixture.dependencies.fetch = async () => Response.json({ sub: other })
+    await expect(authorizeCoachingBearer(request(token()), config, fixture.dependencies)).rejects.toMatchObject({ status: 401 })
+    expect(fixture.query.db.from).not.toHaveBeenCalled()
+  })
+  it.each(['network', 'timeout', 'invalid JSON'])('fails closed on UserInfo %s failure', async failure => {
+    const fixture = provider()
+    fixture.dependencies.fetch = async () => {
+      if (failure === 'invalid JSON') return new Response('not-json', { status: 200 })
+      throw new DOMException('Synthetic provider failure', failure === 'timeout' ? 'TimeoutError' : 'NetworkError')
+    }
+    await expect(authorizeCoachingBearer(request(token()), config, fixture.dependencies)).rejects.toMatchObject({ status: 503 })
+    expect(fixture.query.db.from).not.toHaveBeenCalled()
+  })
+  it('bounds the UserInfo request without caching or following redirects', async () => {
+    const fixture = provider(), jwt = token()
+    fixture.dependencies.fetch = vi.fn(async (_input, init) => {
+      expect(init).toMatchObject({ redirect: 'error', cache: 'no-store' })
+      expect(init?.signal).toBeInstanceOf(AbortSignal)
+      expect(init?.headers).toMatchObject({ apikey: config.publicKey, Authorization: `Bearer ${jwt}` })
+      return Response.json({ sub: owner })
+    })
+    await expect(authorizeCoachingBearer(request(jwt), config, fixture.dependencies)).resolves.toHaveProperty('principal')
+    expect(fixture.dependencies.fetch).toHaveBeenCalledOnce()
   })
   it('runs initialized/list/call through the authenticated stateless HTTP handler and refuses reuse after revocation', async () => {
     const fixture = provider(), jwt = token()
@@ -164,7 +207,8 @@ describe('production stateless MCP transport boundaries with synthetic OAuth onl
     const response = await handleCoachingMcp(new Request(config.resource, { method: 'POST', body, headers: {
       Authorization: `Bearer ${token()}`, Accept: 'application/json, text/event-stream', 'Content-Type': 'application/json', ...extraHeaders,
     } }), config, fixture.dependencies)
-    expect(fixture.calls).toContain('/auth/v1/user')
+    expect(fixture.calls).toContain('/auth/v1/oauth/userinfo')
+    expect(fixture.calls).not.toContain('/auth/v1/user/oauth/grants')
     expect(fixture.query.db.from).not.toHaveBeenCalled()
     expect(fixture.query.writes).not.toHaveBeenCalled()
     expect(response.headers.get('cache-control')).toBe('private, no-store')
@@ -227,7 +271,8 @@ describe('access-token-only email OAuth with real SDK HS256 Auth verification fa
     expect(result.principal).toMatchObject({ subject: owner, clientId, resource: config.resource })
     expect(fixture.calls.filter(path => path === '/auth/v1/user')).toHaveLength(2)
     expect(fixture.calls).not.toContain('/auth/v1/.well-known/jwks.json')
-    expect(fixture.calls).toContain('/auth/v1/user/oauth/grants')
+    expect(fixture.calls).toContain('/auth/v1/oauth/userinfo')
+    expect(fixture.calls).not.toContain('/auth/v1/user/oauth/grants')
     expect(fixture.query.db.from).not.toHaveBeenCalled()
   })
   it('accepts the strict resource binding alongside the preserved native audience', async () => {
@@ -249,15 +294,14 @@ describe('access-token-only email OAuth with real SDK HS256 Auth verification fa
     for (const jwt of [hmacToken({}, randomBytes(32)), parts.join('.')]) {
       await expect(authorizeCoachingBearer(request(jwt), config, fixture.dependencies)).rejects.toMatchObject({ status: 401 })
     }
-    expect(fixture.calls).not.toContain('/auth/v1/user/oauth/grants')
+    expect(fixture.calls).not.toContain('/auth/v1/oauth/userinfo')
     expect(fixture.query.db.from).not.toHaveBeenCalled()
   })
-  it('refuses a broader active grant and a revoked grant with the same still-valid token', async () => {
+  it('refuses broader token scopes and revoked sessions with the same still-valid token', async () => {
     const fixture = provider(true), jwt = hmacToken()
     await expect(authorizeCoachingBearer(request(jwt), config, fixture.dependencies)).resolves.toHaveProperty('principal')
-    fixture.state.grantScopes = ['email', 'openid']
-    await expect(authorizeCoachingBearer(request(jwt), config, fixture.dependencies)).rejects.toMatchObject({ status: 401 })
-    fixture.state.grantScopes = ['email']; fixture.state.active = false
+    await expect(authorizeCoachingBearer(request(hmacToken({ scope: 'email openid' })), config, fixture.dependencies)).rejects.toMatchObject({ status: 401 })
+    fixture.state.active = false
     await expect(authorizeCoachingBearer(request(jwt), config, fixture.dependencies)).rejects.toMatchObject({ status: 401 })
     expect(fixture.query.db.from).not.toHaveBeenCalled()
   })
