@@ -14,7 +14,8 @@ export async function handleCoachingMcp(request: Request, config: CoachingOAuthC
       throw new CoachingContextError(400, 'Unexpected connection origin')
     }
     const authorized = await authorizeCoachingBearer(request, config, dependencies)
-    const server = createCoachingContextMcpServer(async () => authorized, config)
+    const todayEnabled = authorized.principal.subject === process.env.SOCIUS_MCP_TODAY_OWNER_ID
+    const server = createCoachingContextMcpServer(async () => authorized, config, { todayEnabled })
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true, maxRequestBodySize: 65_536 })
     try {
       await server.connect(transport)
