@@ -97,6 +97,9 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       const tools = (await client.listTools()).tools
       expect(tools).toEqual(expect.arrayContaining([expect.objectContaining({
         name: today({}).name, annotations: expect.objectContaining({ readOnlyHint: true }),
+        icons: ['light', 'dark'].map(theme => ({
+          src: expect.stringMatching(/^data:image\/svg\+xml;base64,[A-Za-z0-9+/]+=*$/), mimeType: 'image/svg+xml', sizes: ['any'], theme,
+        })),
         _meta: expect.objectContaining({
           securitySchemes: [{ type: 'oauth2', scopes: ['email'] }],
           ui: expect.objectContaining({ resourceUri }),
