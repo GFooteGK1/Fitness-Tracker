@@ -60,33 +60,40 @@ function toolParams(input: unknown) {
   return params
 }
 
+export function createOwnedCoachingContextReader(authorize: AuthorizeContextRequest, policy: ContextToolPolicy) {
+  return async (input: unknown) => {
+    try {
+      const { principal, db } = await authorize()
+      assertVerifiedContextPrincipal(principal, policy)
+      const params = toolParams(input)
+      const result = await db.auth.getUser()
+      if (result.error || result.data.user?.id !== principal.subject) {
+        throw new CoachingContextError(401, 'Authenticated subject mismatch')
+      }
+      // Pin the verified subject for this call rather than resolve a mutable
+      // session again. The underlying request-scoped database must enforce it too.
+      const scoped = new Proxy(db, {
+        get(target, key) {
+          if (key === 'auth') return { getUser: async () => result }
+          const value = Reflect.get(target, key)
+          return typeof value === 'function' ? value.bind(target) : value
+        },
+      })
+      return await readCoachingContext(scoped, params)
+    } catch (error) {
+      if (error instanceof CoachingContextError) throw error
+      throw new CoachingContextError(503, 'Coaching context is unavailable')
+    }
+  }
+}
+
 export function createCoachingContextTool(authorize: AuthorizeContextRequest, policy: ContextToolPolicy) {
+  const read = createOwnedCoachingContextReader(authorize, policy)
   return {
     descriptor: coachingContextTool,
     async call(input: unknown) {
-      try {
-        const { principal, db } = await authorize()
-        assertVerifiedContextPrincipal(principal, policy)
-        const params = toolParams(input)
-        const result = await db.auth.getUser()
-        if (result.error || result.data.user?.id !== principal.subject) {
-          throw new CoachingContextError(401, 'Authenticated subject mismatch')
-        }
-        // Pin the verified subject for this call rather than resolve a mutable
-        // session again. The underlying request-scoped database must enforce it too.
-        const scoped = new Proxy(db, {
-          get(target, key) {
-            if (key === 'auth') return { getUser: async () => result }
-            const value = Reflect.get(target, key)
-            return typeof value === 'function' ? value.bind(target) : value
-          },
-        })
-        const context = await readCoachingContext(scoped, params)
-        return { structuredContent: { context }, content: [{ type: 'text' as const, text: JSON.stringify({ context }) }], isError: false }
-      } catch (error) {
-        if (error instanceof CoachingContextError) throw error
-        throw new CoachingContextError(503, 'Coaching context is unavailable')
-      }
+      const context = await read(input)
+      return { structuredContent: { context }, content: [{ type: 'text' as const, text: JSON.stringify({ context }) }], isError: false }
     },
   }
 }
