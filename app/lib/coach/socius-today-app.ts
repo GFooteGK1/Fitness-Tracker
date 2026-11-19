@@ -9,10 +9,24 @@ export const sociusTodayResource = {
   mimeType: 'text/html;profile=mcp-app',
 } as const
 
+const todayIcons = [
+  { theme: 'light', stroke: '#216b55' },
+  { theme: 'dark', stroke: '#84dbc2' },
+].map(({ theme, stroke }) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none"
+    stroke="${stroke}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="5.5" width="3" height="9" rx="1"/>
+    <rect x="13" y="5.5" width="3" height="9" rx="1"/>
+    <path d="M7 10h6M4 10H2m0-2v4m14-2h2m0-2v4"/>
+  </svg>`
+  return { src: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`, mimeType: 'image/svg+xml', sizes: ['any'], theme }
+})
+
 export const sociusTodayTool = {
   name: 'open_socius_today',
   title: 'SociusFit',
   description: 'Open the private read-only SociusFit Today dashboard.',
+  icons: todayIcons,
   inputSchema: {
     type: 'object',
     properties: { tzOffset: { type: 'integer', minimum: -720, maximum: 840 } },
