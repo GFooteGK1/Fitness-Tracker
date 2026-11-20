@@ -185,7 +185,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         },
         recentStatus: expect.any(String), recentWork: expect.arrayContaining([expect.any(Object)]),
         recovery: { status: 'stale', lastSyncAt: '2026-10-18T11:00:00.000Z', storedDate: '2026-10-18',
-          recoveryScore: 71, sleepPerformance: 82 },
+          recoveryScore: 71, sleepPerformance: 82, strainScore: 3, strainStatus: 'stale', strainStoredDate: '2026-10-18' },
       })
       expect(JSON.stringify(dashboard)).toContain('Barbell floor press')
       expect(JSON.stringify(dashboard)).not.toContain('private workout')

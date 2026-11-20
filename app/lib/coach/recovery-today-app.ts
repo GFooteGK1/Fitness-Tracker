@@ -74,20 +74,26 @@ function metricNumber(row: ContextRow | null, key: string, max = Infinity) {
  * training readiness or a causal effect from one paired session. */
 export function projectTodayRecovery(recovery: ReturnType<typeof projectContextRecovery>,
   workout?: WorkoutRecoveryEvidence | null, pairedScore?: RecoveryBeforeWorkout | null) {
-  const { recovery: metric, sleep } = recovery.metrics
+  const { recovery: metric, sleep, strain } = recovery.metrics
   const canDisplay = recovery.connected !== false
   const storedMetric = canDisplay && metric.source.status === 'available' && !['invalid', 'future'].includes(metric.status)
     ? metric.record : null
   const storedSleep = canDisplay && sleep.source.status === 'available' && !['invalid', 'future'].includes(sleep.status)
     ? sleep.record : null
+  const storedStrain = canDisplay && strain.source.status === 'available' && !['invalid', 'future'].includes(strain.status)
+    ? strain.record : null
   const recoveryScore = metricNumber(storedMetric, 'recovery_score', 100)
   const hrvMs = metricNumber(storedMetric, 'hrv_rmssd_milli')
   const restingHeartRate = metricNumber(storedMetric, 'resting_heart_rate')
   const sleepPerformance = metricNumber(storedSleep, 'sleep_performance_percentage', 100)
   const sleepInBedMs = metricNumber(storedSleep, 'total_sleep_duration_ms')
+  const strainScore = metricNumber(storedStrain, 'strain', 21)
+  const strainStatus = strainScore === null ? 'unavailable' : strain.status === 'stale' ? 'stale' : 'stored'
+  const hasRecoveryOrSleep = [recoveryScore, hrvMs, restingHeartRate, sleepPerformance, sleepInBedMs].some(value => value !== null)
+  const stale = (metric.status === 'stale' && storedMetric !== null) || (!hasRecoveryOrSleep && strainStatus === 'stale')
   const status = recovery.connected === false ? 'disconnected'
-    : metric.status === 'stale' && storedMetric ? 'stale'
-      : recoveryScore === null && hrvMs === null && restingHeartRate === null && sleepPerformance === null && sleepInBedMs === null ? 'unavailable'
+    : stale ? 'stale'
+      : !hasRecoveryOrSleep && strainScore === null ? 'unavailable'
         : recovery.syncEligible && metric.providerTiming.scoreSnapshotMatches ? 'saved' : 'unverified'
   const rpe = reportedRpe(workout)
   const at = workoutTime(workout)
@@ -101,6 +107,9 @@ export function projectTodayRecovery(recovery: ReturnType<typeof projectContextR
     restingHeartRate,
     sleepPerformance,
     sleepInBedMinutes: sleepInBedMs === null ? null : Math.round(sleepInBedMs / 60_000),
+    strainScore,
+    strainStatus,
+    strainStoredDate: strainScore === null ? null : strain.storedDate,
     recoveryUpdatedAt: storedMetric && metric.providerTiming.scoreSnapshotMatches ? metric.providerUpdatedAt : null,
     sleepEndedAt: storedSleep && sleep.providerTiming.status === 'recorded' ? sleep.intervalEnd : null,
     syncStatus: recovery.syncStatus,

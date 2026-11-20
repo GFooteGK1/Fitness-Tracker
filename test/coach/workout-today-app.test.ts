@@ -120,6 +120,67 @@ describe('Workout Today source projection', () => {
     ])
   })
 
+  it('separates recorded warm-up from main work and groups the same movement across saved blocks', async () => {
+    const rows = contextRows()
+    rows.workouts = [workout(latest, localDate, { blocks: { blocks: [
+      { title: 'Warm-up and quad isometrics', block_type: 'STRENGTH', segments: [{ events: [
+        { movement_name: 'Bike', performed: { time_s: 120 } },
+        { movement_name: 'Quad isometrics', performed: { sets: 2, time_s: 30 } },
+        { movement_name: 'Wall sit, hold 1', performed: { time_s: 20 } },
+        { movement_name: 'Wall sit, hold 2', performed: { time_s: 20 } },
+        { movement_name: 'Wall sit, hold 3', performed: { time_s: 30 } },
+      ] }] },
+      { role: 'specific_preparation', segments: [{ events: [
+        { movement_name: 'Bench press', performed: { sets: 1, reps: 5, load: { value: 65, unit: 'lb' } } },
+      ] }] },
+      { title: 'Bench press warm-up', block_type: 'STRENGTH', segments: [
+        { events: [{ movement_name: 'Bench Press', performed: { sets: 1, reps: 5, load: { value: 155, unit: 'lb' } } }] },
+        { events: [{ movement_name: 'Bench press', performed: { sets: 1, reps: 3, load: { value: 175, unit: 'lb' } } }] },
+      ] },
+      { block_type: 'STRENGTH', segments: [{ events: [
+        { movement_name: 'bench  press', performed: { sets: 1, reps: 5, load: { value: 155, unit: 'lb' } } },
+        { movement_name: 'Incline bench press', performed: { sets: 1, reps: 8 } },
+      ] }] },
+      { title: 'Conditioning after warm-up', block_type: 'CARDIO', segments: [{ events: [
+        { movement_name: 'Bike', performed: { time_s: 300 } },
+      ] }] },
+    ] } })]
+
+    expect((await read(rows)).lastWorkout.movements).toEqual([
+      { name: 'Bike', phase: 'warmup', measurements: ['120 s'] },
+      { name: 'Quad isometrics', phase: 'warmup', measurements: ['2 sets · 30 s'] },
+      { name: 'Wall sit', phase: 'warmup', measurements: ['2 holds × 20 s', '1 hold × 30 s'] },
+      { name: 'Bench press', phase: 'warmup', measurements: ['1 set × 5 reps at 65 lb'] },
+      { name: 'Bench Press', measurements: ['2 sets × 5 reps at 155 lb', '1 set × 3 reps at 175 lb'] },
+      { name: 'Incline bench press', measurements: ['1 set × 8 reps'] },
+      { name: 'Bike', measurements: ['300 s'] },
+    ])
+  })
+
+  it('keeps differently named reviewed movements separate when they share a broad catalog ID', async () => {
+    const rows = contextRows()
+    const movements = [
+      { name: 'Acceleration runs', movementId: 'run', sets: 1, durationSeconds: 6, setReportId: 'acceleration' },
+      { name: 'Upright sprints', movementId: 'run', sets: 1, durationSeconds: 10, setReportId: 'upright' },
+    ]
+    const blocks = [{ movements }]
+    const setReportIds = movements.map(movement => movement.setReportId)
+    const occurredAt = `${localDate}T10:30:00.000Z`
+    rows.workouts = [workout(latest, localDate, { blocks, execution_source: 'program_runner', execution_revision: 0, capture_revision: 1 })]
+    rows.coach_checkins = [{ id: 'reviewed-completion', user_id: contextOwner, prescribed_session_id: 'session-one',
+      occurred_at: occurredAt, created_at: occurredAt, responses: { workoutId: latest, completionContractVersion: 3,
+        resultStatus: 'completed', setReportIds, performedBlocks: blocks,
+        completionRequest: { contractVersion: 3, status: 'completed', sessionId: 'session-one', occurredAt,
+          workoutDate: localDate, setReportIds },
+      },
+    }]
+
+    expect((await read(rows)).lastWorkout.movements).toEqual([
+      { name: 'Acceleration runs', measurements: ['1 set · 6 s'] },
+      { name: 'Upright sprints', measurements: ['1 set · 10 s'] },
+    ])
+  })
+
   it('uses the usable set-list alias without combining two representations of the same work', async () => {
     const rows = contextRows()
     const set = { reps: 6, load: { value: 25, unit: 'lb' } }
