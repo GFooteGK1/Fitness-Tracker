@@ -19,8 +19,8 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v2.html'
-const legacyResourceUri = 'ui://socius/today.html'
+const resourceUri = 'ui://socius/today-v4.html'
+const legacyResourceUris = ['ui://socius/today.html', 'ui://socius/today-v2.html']
 const activityUri = 'ui://socius/activity.html'
 const title = 'Saved easy session'
 const today = (args: Record<string, unknown>) => ({ name: 'open_socius_today', arguments: args })
@@ -87,7 +87,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         .rejects.toMatchObject({ code: -32602 })
       await expect(client.callTool({ name: 'read_socius_nutrition', arguments: { timezone: 'America/Chicago' } }))
         .rejects.toMatchObject({ code: -32602 })
-      for (const uri of [resourceUri, legacyResourceUri]) {
+      for (const uri of [resourceUri, ...legacyResourceUris]) {
         const resource = await request(config.resource, {
           method: 'POST',
           headers: { Authorization: 'Bearer synthetic-token', 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
@@ -122,11 +122,14 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       const resource = await client.readResource({ uri: resourceUri })
       expect(resource.contents).toMatchObject([{
         uri: resourceUri, mimeType: 'text/html;profile=mcp-app', text: expect.stringContaining('id="whoop-gauges"'),
+        _meta: { ui: { permissions: { clipboardWrite: {} } } },
       }])
       expect(JSON.stringify(resource)).not.toContain(title)
       expect(JSON.stringify(resource)).not.toContain(owner)
-      const legacy = await client.readResource({ uri: legacyResourceUri })
-      expect(legacy.contents).toEqual(resource.contents.map(content => ({ ...content, uri: legacyResourceUri })))
+      for (const uri of legacyResourceUris) {
+        const legacy = await client.readResource({ uri })
+        expect(legacy.contents).toEqual(resource.contents.map(content => ({ ...content, uri })))
+      }
       await expect(client.readResource({ uri: 'ui://socius/other.html' })).rejects.toThrow()
 
       const launch = await client.callTool(today({}))
