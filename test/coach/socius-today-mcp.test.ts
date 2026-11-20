@@ -19,7 +19,8 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today.html'
+const resourceUri = 'ui://socius/today-v2.html'
+const legacyResourceUri = 'ui://socius/today.html'
 const activityUri = 'ui://socius/activity.html'
 const title = 'Saved easy session'
 const today = (args: Record<string, unknown>) => ({ name: 'open_socius_today', arguments: args })
@@ -86,12 +87,14 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         .rejects.toMatchObject({ code: -32602 })
       await expect(client.callTool({ name: 'read_socius_nutrition', arguments: { timezone: 'America/Chicago' } }))
         .rejects.toMatchObject({ code: -32602 })
-      const resource = await request(config.resource, {
-        method: 'POST',
-        headers: { Authorization: 'Bearer synthetic-token', 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 42, method: 'resources/read', params: { uri: resourceUri } }),
-      })
-      expect(await resource.json()).toMatchObject({ id: 42, error: { code: -32601 } })
+      for (const uri of [resourceUri, legacyResourceUri]) {
+        const resource = await request(config.resource, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer synthetic-token', 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 42, method: 'resources/read', params: { uri } }),
+        })
+        expect(await resource.json()).toMatchObject({ id: 42, error: { code: -32601 } })
+      }
       expect(db.from).not.toHaveBeenCalled()
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
@@ -117,9 +120,13 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       expect(tools.every(tool => tool.annotations?.readOnlyHint === true)).toBe(true)
       expect(await client.listResources()).toMatchObject({ resources: [{ uri: resourceUri, mimeType: 'text/html;profile=mcp-app' }] })
       const resource = await client.readResource({ uri: resourceUri })
-      expect(resource.contents).toMatchObject([{ uri: resourceUri, mimeType: 'text/html;profile=mcp-app', text: expect.stringContaining('<html') }])
+      expect(resource.contents).toMatchObject([{
+        uri: resourceUri, mimeType: 'text/html;profile=mcp-app', text: expect.stringContaining('id="whoop-gauges"'),
+      }])
       expect(JSON.stringify(resource)).not.toContain(title)
       expect(JSON.stringify(resource)).not.toContain(owner)
+      const legacy = await client.readResource({ uri: legacyResourceUri })
+      expect(legacy.contents).toEqual(resource.contents.map(content => ({ ...content, uri: legacyResourceUri })))
       await expect(client.readResource({ uri: 'ui://socius/other.html' })).rejects.toThrow()
 
       const launch = await client.callTool(today({}))
