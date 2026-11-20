@@ -19,11 +19,11 @@ function recoveryRow() {
 
 const source = (rows: Array<Record<string, unknown>>): ContextSource => ({ status: rows.length ? 'available' : 'missing', rows, count: rows.length })
 
-function recoveryContext(recovery = source([recoveryRow()])) {
+function recoveryContext(recovery = source([recoveryRow()]), strain = source([]), sleep?: ContextSource) {
   const rows = contextRows()
   return projectContextRecovery({
     connection: source(rows.whoop_tokens), sync: source([{ status: 'idle', last_sync_at: timingNow }]),
-    recovery, sleep: source([{ ...rows.whoop_sleep[0], total_sleep_duration_ms: 28_800_000 }]), strain: source([]),
+    recovery, sleep: sleep ?? source([{ ...rows.whoop_sleep[0], total_sleep_duration_ms: 28_800_000 }]), strain,
   }, later, '2026-10-19')
 }
 
@@ -40,6 +40,37 @@ describe('WHOOP Today and retained recovery before a logged workout', () => {
       status: 'unverified', recoveryScore: 71.25, recoveryUpdatedAt: null,
     })
     expect(projectTodayRecovery({ ...context, connected: false })).toMatchObject({ status: 'disconnected', recoveryScore: null, sleepPerformance: null })
+  })
+
+  it.each([0, 12.45, 21])('retains the WHOOP cycle strain score %s on its native scale', strain => {
+    const cycle = { ...contextRows().whoop_cycles[0], date: '2026-10-19', strain }
+    const context = recoveryContext(source([]), source([cycle]), source([]))
+    expect(projectTodayRecovery(context)).toMatchObject({ status: 'unverified',
+      strainScore: strain, strainStatus: 'stored', strainStoredDate: '2026-10-19', sessionEffort: { status: 'no_workout' },
+    })
+    expect(projectTodayRecovery({ ...context, connected: false })).toMatchObject({ status: 'disconnected',
+      strainScore: null, strainStatus: 'unavailable', strainStoredDate: null,
+    })
+  })
+
+  it('identifies a stale saved cycle score independently and uses it as a stale-only read', () => {
+    const strain = source([{ ...contextRows().whoop_cycles[0], strain: 0 }])
+    const projection = { strainScore: 0, strainStatus: 'stale', strainStoredDate: '2026-10-18' }
+    expect(projectTodayRecovery(recoveryContext(undefined, strain))).toMatchObject({ status: 'saved', ...projection })
+    expect(projectTodayRecovery(recoveryContext(source([]), strain, source([])))).toMatchObject({ status: 'stale', ...projection })
+  })
+
+  it('does not display invalid or future cycle strain as a score', () => {
+    const cycle = { ...contextRows().whoop_cycles[0], date: '2026-10-19', strain: 3 }
+    const rows = [
+      ...[null, '0', -0.1, 21.01, Infinity, NaN].map(strain => ({ ...cycle, strain })),
+      { ...cycle, date: 'invalid' }, { ...cycle, date: '2026-10-20' }, { ...cycle, created_at: '2026-10-19T16:00:00Z' },
+    ]
+    for (const row of rows) {
+      expect(projectTodayRecovery(recoveryContext(source([]), source([row]), source([])))).toMatchObject({
+        status: 'unavailable', strainScore: null, strainStatus: 'unavailable', strainStoredDate: null,
+      })
+    }
   })
 
   it('pairs the exact earlier provider score even when a later sync re-ingests it within the read time', () => {

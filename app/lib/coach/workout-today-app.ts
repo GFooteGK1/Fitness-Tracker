@@ -32,7 +32,7 @@ export interface LastCompletedWorkout {
   status: 'available' | 'partial' | 'empty' | 'unavailable'
   date: string | null
   timing: 'exact' | 'date_only' | 'same_day_order_unknown' | null
-  movements: Array<{ name: string; measurements: string[] }>
+  movements: Array<{ name: string; measurements: string[]; phase?: 'warmup' }>
   sessionRpe: number | null
 }
 
@@ -129,40 +129,79 @@ function recordLines(record: WorkRecord, nested: Work['nestedSetContexts']): Set
     perSide: record.unilateralConvention === true || record.unilateralConvention === 'per_side' }]
 }
 
-function renderMovements(work: Work, workoutId: string) {
-  const buckets = new Map<string, { name: string; notes: string[]; amounts: Map<string, SetLine & { effortValues: Set<number> }> }>()
+function warmupBlocks(blocks: unknown) {
+  const entries = Array.isArray(blocks) ? blocks : contextObject(blocks) && Array.isArray(blocks.blocks) ? blocks.blocks : []
+  const marked = new Set<number>()
+  for (const [index, block] of entries.entries()) {
+    if (!contextObject(block)) continue
+    if (block.role === 'specific_preparation' || [block.role, block.block_type].some(value =>
+      typeof value === 'string' && /^warm[ _-]*up$/i.test(value.trim()))
+      || typeof block.title === 'string' && /^warm[ _-]*up\b/i.test(block.title.trim())) marked.add(index)
+  }
+  return marked
+}
+
+function renderMovements(work: Work, workoutId: string, blocks: unknown) {
+  const warmups = warmupBlocks(blocks)
+  type Amount = SetLine & { isHold: boolean; effortValues: Set<number>; notes: string[] }
+  type Bucket = { name: string; isWarmup: boolean; notes: Set<string>; amounts: Map<string, Amount> }
+  const buckets = new Map<string, Bucket>()
   for (const record of work.records) {
     if (record.workoutId !== workoutId || record.completionState === 'explicitly_not_completed') continue
-    const name = record.recordedName?.trim().slice(0, 100) || 'Recorded movement'
-    const blockPath = /^(?:blocks\.blocks|blocks)\[\d+\]/.exec(record.sourcePath)?.[0] ?? record.sourcePath
+    const savedName = record.recordedName?.trim().replace(/\s+/g, ' ')
+    const timedHold = 'recordedEvent' in record && finite(record.recordedEvent.performed.time_s) !== null
+      ? /^(.+?),\s*hold [1-9]\d*$/i.exec(savedName ?? '') : null
+    const recordedName = timedHold?.[1].trim() ?? savedName
+    const name = recordedName?.slice(0, 100) || 'Recorded movement'
+    const block = /^(?:blocks\.blocks|blocks)\[(\d+)\]/.exec(record.sourcePath)
+    const isWarmup = record.role === 'preparation' || (block !== null && warmups.has(Number(block[1])))
     const segment = 'segmentContext' in record ? record.segmentContext : null
     const metadata = 'protocol' in record ? [record.role, record.protocol, record.equipment, record.unilateralConvention] : null
-    const key = JSON.stringify([blockPath, segment?.sourcePath ?? null, name.toLowerCase(), record.movementId, metadata, record.basis, record.completionState])
+    // A catalog ID can cover differently named recorded work, such as separate running drills.
+    const identity = recordedName
+      ? ['name', recordedName.toLowerCase(), record.movementId, !record.movementId && 'equipment' in record ? record.equipment : null]
+      : ['source', record.sourcePath]
+    const key = JSON.stringify([isWarmup, identity])
     const notes = [...(record.basis === 'estimated_work' ? ['Estimated'] : []),
       ...(record.completionState === 'uncertain' ? ['Completion uncertain'] : [])]
-    const bucket = buckets.get(key) ?? { name, notes, amounts: new Map<string, SetLine & { effortValues: Set<number> }>() }
+    const bucket: Bucket = buckets.get(key) ?? { name, isWarmup, notes: new Set(), amounts: new Map() }
     buckets.set(key, bucket)
-    for (const line of recordLines(record, work.nestedSetContexts)) {
+    // A recorded round count belongs to its segment. It can group rows under a
+    // movement heading, but it cannot establish a set total across segments.
+    const roundScope = segment && segment.recordedRounds !== null && segment.recordedRounds !== 1 ? segment.sourcePath : null
+    let hasAmount = false
+    for (const savedLine of recordLines(record, work.nestedSetContexts)) {
+      // A timed event explicitly numbered as a hold represents one hold. Keep
+      // hold counts local to the segment and do not multiply by its rounds.
+      const isHold = Boolean(timedHold && savedLine.count === null && savedLine.extra)
+      const line = isHold ? { ...savedLine, count: 1 } : savedLine
       if (line.count === null && !line.reps && !line.load && !line.extra && line.effort === null) continue
-      const lineKey = JSON.stringify([line.count === null, line.reps, line.load, line.extra, line.perSide])
+      hasAmount = true
+      const doseScope = line.count === null || isHold ? segment?.sourcePath ?? block?.[0] ?? record.sourcePath : null
+      const lineKey = JSON.stringify([roundScope, doseScope, isHold, metadata, record.basis, record.completionState,
+        line.reps, line.load, line.extra, line.perSide])
       const matching = bucket.amounts.get(lineKey)
       if (matching) {
         if (matching.count !== null && line.count !== null && Number.isSafeInteger(matching.count + line.count)) matching.count += line.count
         if (line.effort !== null) matching.effortValues.add(line.effort)
-      } else bucket.amounts.set(lineKey, { ...line, effortValues: new Set(line.effort === null ? [] : [line.effort]) })
+      } else bucket.amounts.set(lineKey, { ...line, isHold, notes, effortValues: new Set(line.effort === null ? [] : [line.effort]) })
     }
+    if (!hasAmount) for (const note of notes) bucket.notes.add(note)
   }
   const groups = [...buckets.values()]
   const movements: LastCompletedWorkout['movements'] = groups.slice(0, MOVEMENT_LIMIT).map(bucket => ({
     name: bucket.name,
+    ...(bucket.isWarmup ? { phase: 'warmup' as const } : {}),
     measurements: [...bucket.amounts.values()].slice(0, 8).map(line => {
       const reps = line.reps ? `${line.reps} reps${line.perSide ? ' per side' : ''}` : null
-      const count = line.count !== null ? `${line.count} ${line.count === 1 ? 'set' : 'sets'}` : null
+      const countUnit = line.isHold ? 'hold' : 'set'
+      const count = line.count !== null ? `${line.count} ${countUnit}${line.count === 1 ? '' : 's'}` : null
       const dose = [count, reps].filter(Boolean).join(' × ')
       const strength = [dose, line.load].filter(Boolean).join(' at ')
+      const amount = [strength, line.extra].filter(Boolean).join(line.isHold ? ' × ' : ' · ')
       const effort = [...line.effortValues]
-      return [strength, line.extra, effort.length ? `Set RPE ${effort.join(', ')}` : null].filter(Boolean).join(' · ')
-    }).concat(bucket.notes),
+      return [amount, effort.length ? `Set RPE ${effort.join(', ')}` : null, ...line.notes].filter(Boolean).join(' · ')
+    }).concat([...bucket.notes]),
   }))
   return { movements, truncated: groups.length > MOVEMENT_LIMIT || groups.some(bucket => bucket.amounts.size > 8) }
 }
@@ -238,7 +277,7 @@ async function readLastCompletedWorkout(db: SupabaseClient, owner: string, conte
         userId: owner, asOf: readCompletedAt, startsOn: current.workout_date, endsOn: current.workout_date,
         mode: 'current', workouts: [current], available: true, complete: true,
       }) : null
-    const { movements, truncated } = work ? renderMovements(work, latest.id) : { movements: [], truncated: false }
+    const { movements, truncated } = work ? renderMovements(work, latest.id, current.blocks) : { movements: [], truncated: false }
     const partial = !work || !movements.length || truncated || timing === 'same_day_order_unknown'
       || work.coverage.additionalOmissions > 0
       || work.coverage.issues.some(issue => issue.sourceId === latest.id || issue.sourceId === `workout:${latest.id}`)

@@ -91,6 +91,84 @@ export const sociusTodayHtml = String.raw`<!doctype html>
       color: var(--warning);
       background: var(--warning-soft);
     }
+    .whoop-gauges {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .4rem;
+      margin-top: 1rem;
+    }
+    .whoop-gauge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      text-align: center;
+      --gauge-color: var(--accent);
+    }
+    .whoop-gauge.sleep { --gauge-color: light-dark(#2a6397, #89c0f4); }
+    .whoop-gauge.strain { --gauge-color: light-dark(#66509d, #c7a9f8); }
+    .whoop-gauge[data-zone="moderate"] { --gauge-color: var(--warning); }
+    .whoop-gauge[data-zone="low"] { --gauge-color: var(--danger); }
+    .whoop-dial {
+      display: grid;
+      order: -1;
+      width: min(100%, 5.25rem);
+      aspect-ratio: 1;
+      place-items: center;
+      border-radius: 50%;
+      background: conic-gradient(from 202deg, var(--gauge-color) var(--gauge-angle, 0deg), var(--line) 0 316deg, transparent 0);
+      color: var(--foreground);
+      font-variant-numeric: tabular-nums;
+    }
+    .whoop-dial strong {
+      display: grid;
+      width: calc(100% - .65rem);
+      aspect-ratio: 1;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--surface);
+      font-size: clamp(1rem, 4.5vw, 1.35rem);
+      line-height: 1;
+    }
+    .whoop-gauge dt { margin-top: .15rem; }
+    .whoop-gauge-note { display: block; color: var(--warning); font-weight: 400; font-size: .85rem; }
+    .whoop-gauge-alternative {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .recovery-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.75rem), 1fr));
+      gap: .45rem;
+      margin-top: .85rem;
+    }
+    .recovery-metrics > div {
+      min-width: 0;
+      margin: 0;
+      padding: .6rem .65rem;
+      border: 1px solid var(--line);
+      border-radius: .6rem;
+    }
+    .recovery-metrics dd, .workout-recovery dd {
+      color: var(--foreground);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .recovery-metrics dt { color: var(--muted); }
+    .workout-recovery { margin-top: .9rem; padding-top: .8rem; border-top: 1px solid var(--line); }
+    .workout-recovery > p { margin-top: .35rem; }
+    .workout-recovery dd time { display: block; font-weight: 400; }
+    .recovery-timing { margin-top: .7rem; }
+    .recovery-timing > summary {
+      min-height: 44px;
+      padding-block: .55rem;
+      cursor: pointer;
+    }
+    .recovery-timing > summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     dl { margin: .55rem 0 0; }
     dl > div { margin-top: .5rem; }
     dt { font-weight: 600; }
@@ -117,7 +195,12 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     #recommendation-title:not(:empty) { margin-top: .45rem; font-size: clamp(1.25rem, 4vw, 1.65rem); }
     #accepted-plan-label { margin-top: 1rem; }
     #workout-date { margin-top: .45rem; }
-    #nutrition-log, #nutrition-retry, #nutrition-load:not(:empty), #nutrition-ask-status:not(:empty) { margin-top: .65rem; }
+    .workout-phase { margin-top: 1rem; }
+    .workout-phase h4 { margin: 0; font-size: 1rem; }
+    .chat-actions { margin-block: .65rem 1rem; }
+    .chat-actions > p { margin-top: .35rem; }
+    .secondary-action { color: var(--accent); border-color: var(--line); background: var(--surface); }
+    #nutrition-refresh, #nutrition-retry, #nutrition-load:not(:empty) { margin-top: .65rem; }
     #load-error { color: var(--danger); background: var(--danger-soft); }
     footer { color: var(--muted); }
     @media (min-width: 42rem) {
@@ -156,19 +239,54 @@ ${nutritionStyles}
         <button id="ask" type="button" hidden>Ask about today</button>
         <p id="ask-status" class="muted" role="status"></p>
       </section>
+      <div id="workout-log-area" class="chat-actions" hidden>
+        <button id="workout-log" class="secondary-action" type="button" aria-describedby="workout-log-help">Log workout in chat</button>
+        <p id="workout-log-help" class="muted">Type, add a photo, or dictate in this chat.</p>
+        <p id="workout-ask-status" class="muted" role="status" hidden></p>
+      </div>
       <div class="secondary">
         <section class="panel" aria-labelledby="recent-title">
           <h2 id="recent-title">Last completed workout</h2>
           <time id="workout-date" hidden></time>
           <p id="workout-rpe" class="muted section-note" hidden></p>
           <p id="recent-note" class="muted section-note" hidden></p>
-          <ul id="recent"></ul>
+          <section id="workout-warmup" class="workout-phase" aria-labelledby="workout-warmup-title" hidden>
+            <h3 id="workout-warmup-title">Warm-up</h3>
+            <ul id="recent-warmup"></ul>
+          </section>
+          <section id="workout-main" class="workout-phase" aria-labelledby="workout-main-title" hidden>
+            <h3 id="workout-main-title">Main work</h3>
+            <ul id="recent"></ul>
+          </section>
         </section>
         <section class="panel" aria-labelledby="recovery-title">
-          <h2 id="recovery-title">WHOOP recovery</h2>
+          <h2 id="recovery-title">WHOOP</h2>
           <p id="recovery-status" class="recovery-state"></p>
           <p id="recovery-note" class="muted status-label" hidden></p>
-          <dl id="recovery-dates"></dl>
+          <dl id="whoop-gauges" class="whoop-gauges">
+            <div class="whoop-gauge sleep">
+              <dt>Sleep</dt>
+              <dd class="whoop-dial"><strong id="sleep-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
+            </div>
+            <div id="recovery-overview" class="whoop-gauge">
+              <dt>Recovery</dt>
+              <dd class="whoop-dial"><strong id="recovery-percent"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
+            </div>
+            <div class="whoop-gauge strain">
+              <dt>Strain<span id="strain-note" class="whoop-gauge-note" hidden>Stale</span></dt>
+              <dd class="whoop-dial"><strong id="strain-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
+            </div>
+          </dl>
+          <details id="whoop-details" class="recovery-timing" hidden>
+            <summary>WHOOP details</summary>
+            <dl id="recovery-metrics" class="recovery-metrics" hidden></dl>
+            <dl id="recovery-dates"></dl>
+            <section id="workout-recovery" class="workout-recovery" aria-labelledby="workout-recovery-title" hidden>
+              <h3 id="workout-recovery-title">Last workout comparison</h3>
+              <p id="workout-recovery-note" class="muted" hidden></p>
+              <dl id="workout-recovery-metrics" hidden></dl>
+            </section>
+          </details>
         </section>
       </div>
       <footer>Read from SociusFit <time id="read-at"></time></footer>
@@ -191,8 +309,12 @@ ${activityCardMarkup}
       <p id="nutrition-load" class="muted" role="status"></p>
       <button id="nutrition-retry" type="button" hidden>Try again</button>
 ${nutritionCardMarkup}
-      <button id="nutrition-log" type="button" hidden>Log food in chat</button>
-      <p id="nutrition-ask-status" class="muted" role="status" hidden></p>
+      <div id="nutrition-log-area" class="chat-actions" hidden>
+        <button id="nutrition-log" type="button" aria-describedby="nutrition-log-help">Log food in chat</button>
+        <p id="nutrition-log-help" class="muted">Type, add a photo, or dictate in this chat.</p>
+        <p id="nutrition-ask-status" class="muted" role="status" hidden></p>
+      </div>
+      <button id="nutrition-refresh" class="secondary-action" type="button" hidden>Refresh totals</button>
     </section>
   </main>
   <script>
@@ -212,7 +334,7 @@ ${mcpHostBridgeScript}
       let nutritionRefresh = null;
       let nutritionInFlight = false;
       let nutritionSignInRequired = false;
-      let nutritionCanLog = false;
+      let canLogActivity = false;
 
       function element(tag, text, className) {
         const node = document.createElement(tag);
@@ -285,16 +407,23 @@ ${mcpHostBridgeScript}
         const date = byId('workout-date');
         date.hidden = !setTime(date, workout?.date, true);
         setNote('workout-rpe', Number.isFinite(workout?.sessionRpe) ? 'Session RPE ' + workout.sessionRpe + ' / 10' : null);
-        byId('recent').replaceChildren(...(workout?.movements ?? []).map(work => {
+        const renderMovement = work => {
           const item = element('li', null, 'entry');
-          item.append(element('h3', work.name));
+          item.append(element('h4', work.name));
           if (work.measurements.length) {
             const metrics = element('ul', null, 'metrics');
             metrics.append(...work.measurements.map(value => element('li', value)));
             item.append(metrics);
           }
           return item;
-        }));
+        };
+        const movements = workout?.movements ?? [];
+        const warmup = movements.filter(work => work.phase === 'warmup');
+        const main = movements.filter(work => work.phase !== 'warmup');
+        byId('recent-warmup').replaceChildren(...warmup.map(renderMovement));
+        byId('recent').replaceChildren(...main.map(renderMovement));
+        byId('workout-warmup').hidden = !warmup.length;
+        byId('workout-main').hidden = !main.length;
       }
 
       function renderRecovery(recovery) {
@@ -311,39 +440,81 @@ ${mcpHostBridgeScript}
         state.dataset.state = recovery.status;
         setNote('recovery-note', recovery.status === 'stale' ? 'Recovery data may be out of date.'
           : recovery.status === 'unverified' ? 'The timestamp or sync could not be verified.' : null);
-        const dates = byId('recovery-dates');
-        dates.replaceChildren();
-        function addMetric(label, detail) {
+        function addMetric(list, label, detail) {
           const row = element('div');
           const value = element('dd');
           value.append(detail);
           row.append(element('dt', label), value);
-          dates.append(row);
+          list.append(row);
+          return value;
+        }
+        function isScore(value, max) {
+          return Number.isFinite(value) && value >= 0 && value <= max;
+        }
+        function setGauge(id, value, max, format) {
+          const node = byId(id);
+          const available = isScore(value, max);
+          node.textContent = available ? format(value) : '—';
+          node.setAttribute('aria-hidden', String(!available));
+          node.nextElementSibling.hidden = available;
+          node.parentElement.style.setProperty('--gauge-angle', (available ? value / max * 316 : 0) + 'deg');
+        }
+        const percent = value => value + '%';
+        setGauge('sleep-score-value', recovery.sleepPerformance, 100, percent);
+        setGauge('recovery-percent', recovery.recoveryScore, 100, percent);
+        setGauge('strain-score-value', recovery.strainScore, 21, value => value.toFixed(1));
+        byId('strain-note').hidden = recovery.strainStatus !== 'stale' || !isScore(recovery.strainScore, 21);
+
+        const score = recovery.recoveryScore;
+        const zone = !isScore(score, 100) ? '' : score >= 67 ? 'high' : score >= 34 ? 'moderate' : 'low';
+        byId('recovery-overview').dataset.zone = zone;
+        const metrics = byId('recovery-metrics');
+        metrics.replaceChildren();
+        if (zone) {
+          addMetric(metrics, 'Recovery zone', { high: 'High', moderate: 'Moderate', low: 'Low' }[zone]).id = 'recovery-zone';
         }
         for (const [label, value, unit] of [
-          ['Recovery score', recovery.recoveryScore, '%'],
-          ['Heart rate variability', recovery.hrvMs, ' ms'],
+          ['HRV', recovery.hrvMs, ' ms'],
           ['Resting heart rate', recovery.restingHeartRate, ' bpm'],
-          ['Sleep performance', recovery.sleepPerformance, '%'],
           ['Time in bed', recovery.sleepInBedMinutes, ' min'],
         ]) {
-          if (Number.isFinite(value)) addMetric(label, String(value) + unit);
+          if (Number.isFinite(value)) addMetric(metrics, label, String(value) + unit);
         }
+        metrics.hidden = !metrics.childElementCount;
+
+        const dates = byId('recovery-dates');
+        dates.replaceChildren();
         for (const [label, value, dateOnly] of [
           ['Stored recovery date', recovery.storedDate, true],
           ['WHOOP score updated', recovery.recoveryUpdatedAt, false],
           ['Sleep ended', recovery.sleepEndedAt, false],
+          ['Stored day strain date', recovery.strainStoredDate, true],
           ['Last sync', recovery.lastSyncAt, false],
         ]) {
           const time = element('time');
           if (!setTime(time, value, dateOnly)) continue;
-          addMetric(label, time);
+          addMetric(dates, label, time);
         }
+        dates.hidden = !dates.childElementCount;
+
         const effort = recovery.sessionEffort;
-        if (effort?.status === 'paired' && Number.isFinite(effort.rpe) && Number.isFinite(effort.recoveryScore)) {
-          addMetric('Last workout comparison', 'Earlier WHOOP recovery ' + effort.recoveryScore + '% · Session RPE ' + effort.rpe + ' / 10');
-        } else if (Number.isFinite(effort?.rpe)) {
-          addMetric('Last workout comparison', 'No verified earlier recovery score for session RPE ' + effort.rpe + ' / 10.');
+        const comparison = byId('workout-recovery-metrics');
+        comparison.replaceChildren();
+        const hasRpe = Number.isFinite(effort?.rpe);
+        const paired = effort?.status === 'paired' && hasRpe && isScore(effort.recoveryScore, 100);
+        byId('workout-recovery').hidden = !hasRpe;
+        byId('whoop-details').hidden = metrics.hidden && dates.hidden && !hasRpe;
+        comparison.hidden = !hasRpe;
+        setNote('workout-recovery-note', hasRpe && !paired ? 'No verified recovery score from before this workout.' : null);
+        if (paired) {
+          const value = addMetric(comparison, 'Pre-workout WHOOP recovery', effort.recoveryScore + '%');
+          const updated = element('time');
+          if (setTime(updated, effort.recoveryUpdatedAt, false)) value.append(updated);
+        }
+        if (hasRpe) {
+          const value = addMetric(comparison, 'Session RPE', effort.rpe + ' / 10');
+          const workoutAt = element('time');
+          if (setTime(workoutAt, effort.workoutAt, false)) value.append(workoutAt);
         }
       }
 
@@ -358,12 +529,13 @@ ${mcpHostBridgeScript}
         renderRecovery(today.recovery);
         const readAt = byId('read-at');
         readAt.hidden = !setTime(readAt, today.readAt, false);
-        ask.hidden = !capabilities?.message?.text;
+        ask.hidden = false;
         byId('today-content').hidden = false;
         const activityAvailable = features.activityEnabled === true && timezone && !date.hidden;
         const nutritionAvailable = features.nutritionEnabled === true && timezone;
-        nutritionCanLog = features.nutritionWritesEnabled === true && Boolean(capabilities?.message?.text);
-        byId('nutrition-log').hidden = !nutritionCanLog;
+        // The dashboard advertises this flag only when the shared activity write tools are enabled.
+        canLogActivity = features.nutritionWritesEnabled === true;
+        byId('workout-log-area').hidden = !canLogActivity;
         byId('show-activity').hidden = !activityAvailable;
         byId('show-nutrition').hidden = !nutritionAvailable;
         byId('view-switch').hidden = !activityAvailable && !nutritionAvailable;
@@ -413,22 +585,26 @@ ${mcpHostBridgeScript}
         }
       }
 
-      async function askInChat(button, status, question) {
-        if (host.closed || !capabilities?.message?.text || button.disabled) return;
-        button.disabled = true;
+      async function askInChat(button, status, prompt, instructions) {
+        if (host.closed || button.disabled) return;
         status.hidden = false;
+        const fallback = 'Use this chat’s composer. ' + instructions;
+        if (!capabilities?.message?.text || !capabilities.experimental?.['openai/message']) {
+          status.textContent = fallback;
+          return;
+        }
+        button.disabled = true;
         status.textContent = '';
-        const canDraft = Boolean(capabilities.experimental?.['openai/message']);
         try {
           const result = await host.request('ui/message', {
             role: 'user',
-            content: [{ type: 'text', text: question }],
-            ...(canDraft ? { _meta: { 'openai/message': { target: 'new', send: false } } } : {}),
+            content: [{ type: 'text', text: prompt }],
+            _meta: { 'openai/message': { target: 'active', send: false } },
           });
           if (result?.isError) throw new Error('Chat unavailable');
-          status.textContent = canDraft ? 'Draft opened in ChatGPT.' : 'Sent to ChatGPT.';
+          status.textContent = 'Draft added to this chat. Send when ready.';
         } catch {
-          if (!host.closed) status.textContent = 'Could not open the question. You can ask in the ChatGPT composer.';
+          if (!host.closed) status.textContent = fallback;
         } finally {
           button.disabled = false;
         }
@@ -491,40 +667,47 @@ ${mcpHostBridgeScript}
         nutritionRefresh = null;
       }
 
-      async function loadNutrition(retry = false) {
+      async function loadNutrition(userRequested = false) {
         if (host.closed || activeView !== 'nutrition' || document.visibilityState === 'hidden' || nutritionInFlight) return;
-        if (retry) nutritionSignInRequired = false;
+        if (userRequested) nutritionSignInRequired = false;
         if (nutritionSignInRequired) return;
         const card = byId('nutrition-card');
         const status = byId('nutrition-load');
         const retryButton = byId('nutrition-retry');
+        const refreshButton = byId('nutrition-refresh');
         const alreadyLoaded = !card.hidden;
         nutritionInFlight = true;
         retryButton.hidden = true;
+        refreshButton.disabled = true;
         if (!alreadyLoaded) status.textContent = 'Loading saved nutrition…';
+        else if (userRequested) status.textContent = 'Refreshing totals…';
         try {
           const result = await host.request('tools/call', { name: 'read_socius_nutrition', arguments: { timezone } });
           if (host.closed) return;
           if (result?._meta?.['mcp/www_authenticate']) {
             nutritionSignInRequired = true;
             card.hidden = true;
-            byId('nutrition-log').hidden = true;
+            byId('nutrition-log-area').hidden = true;
+            refreshButton.hidden = true;
             status.textContent = 'Reconnect SociusFit in ChatGPT, then try again.';
             retryButton.hidden = false;
             return;
           }
           if (result?.isError || !result?._meta?.nutrition) throw new Error('Nutrition result missing');
           renderNutrition(result._meta.nutrition);
-          byId('nutrition-log').hidden = !nutritionCanLog;
-          status.textContent = '';
+          byId('nutrition-log-area').hidden = !canLogActivity;
+          refreshButton.hidden = false;
+          status.textContent = userRequested ? 'Nutrition totals refreshed.' : '';
         } catch {
           if (!host.closed) {
             status.textContent = alreadyLoaded
               ? 'Refresh unavailable. Showing the last loaded totals.' : 'Could not load saved nutrition.';
+            refreshButton.hidden = true;
             retryButton.hidden = false;
           }
         } finally {
           nutritionInFlight = false;
+          refreshButton.disabled = false;
         }
       }
 
@@ -560,21 +743,30 @@ ${mcpHostBridgeScript}
 
       ask.addEventListener('click', () => {
         void askInChat(ask, byId('ask-status'),
-          'Review my workout recommendation for today using my saved SociusFit context. Explain what you recommend and help me discuss any changes. Keep this read-only.');
+          'Review my workout recommendation for today using my saved SociusFit context. Explain what you recommend and help me discuss any changes. Keep this read-only.',
+          'Ask SociusFit to review today’s workout recommendation.');
       });
       activityAsk.addEventListener('click', () => {
         void askInChat(activityAsk, byId('activity-ask-status'),
           'Show my saved workouts and logged meals in the SociusFit Activity card for ' + activityDate.value
-          + ' (' + timezone + '). Use text if a card is unavailable. Keep this read-only.');
+          + ' (' + timezone + '). Use text if a card is unavailable. Keep this read-only.',
+          'Ask SociusFit to show saved activity for ' + activityDate.value + '.');
       });
-      byId('nutrition-log').addEventListener('click', () => {
-        void askInChat(byId('nutrition-log'), byId('nutrition-ask-status'),
-          'I want to log food I actually ate. Ask what I ate and how much, then record it in SociusFit once the details are ready. Tell me when the save is confirmed.');
+      byId('workout-log').addEventListener('click', event => {
+        void askInChat(event.currentTarget, byId('workout-ask-status'),
+          'I want to log a workout I completed. Use the details I include. Ask for any required details that are missing, then save the workout in SociusFit and confirm the save.',
+          'Describe the workout you completed and ask SociusFit to save it.');
+      });
+      byId('nutrition-log').addEventListener('click', event => {
+        void askInChat(event.currentTarget, byId('nutrition-ask-status'),
+          'I want to log food I ate. Use the details I include. Ask for any required details that are missing, then save the meal in SociusFit and confirm the save.',
+          'Describe what you ate and ask SociusFit to save it.');
       });
       for (const view of ['today', 'activity', 'nutrition']) {
         byId('show-' + view).addEventListener('click', () => openView(view));
       }
       byId('nutrition-retry').addEventListener('click', () => void loadNutrition(true));
+      byId('nutrition-refresh').addEventListener('click', () => void loadNutrition(true));
       document.addEventListener('visibilitychange', refreshNutrition);
       window.addEventListener('focus', refreshNutrition);
       activityDate.addEventListener('change', loadActivity);
