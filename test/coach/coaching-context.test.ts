@@ -104,6 +104,46 @@ describe('authenticated coaching context: requirements established before implem
     await expect(readCoachingContext(db, params())).rejects.toMatchObject({ status: 409 })
   })
 
+  it('overlaps independent first-pass reads and waits for them before comparing snapshots', async () => {
+    const profile = Promise.withResolvers<void>()
+    const history = Promise.withResolvers<void>()
+    const started = new Set<string>()
+    const { db, traces, writes } = contextClient()
+    const from = db.from.bind(db)
+    db.from = ((table: string) => {
+      const query = from(table)
+      const pause = table === 'user_profiles' ? profile : table === 'workouts' ? history : null
+      if (!pause) return query
+      const then = Reflect.get(query, 'then')
+      return Object.assign(query, { then: (...args: unknown[]) => {
+        started.add(table)
+        return pause.promise.then(() => Reflect.apply(then, query, args))
+      } })
+    }) as typeof db.from
+
+    const lookup = readCoachingContext(db, params())
+    const acceptedPlanRead = () => traces.some(trace => trace.table === 'training_plan_versions'
+      && trace.filters.some(([key, value]) => key === 'status' && value === 'accepted'))
+    try {
+      await vi.advanceTimersByTimeAsync(0)
+      expect(started).toEqual(new Set(['user_profiles', 'workouts']))
+      expect(traces.some(trace => trace.table === 'performance_observation_groups')).toBe(true)
+      expect(acceptedPlanRead()).toBe(false)
+
+      profile.resolve()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(acceptedPlanRead()).toBe(true)
+      expect(traces.filter(trace => trace.table === 'user_profiles')).toHaveLength(1)
+    } finally {
+      profile.resolve()
+      history.resolve()
+      await lookup
+    }
+    expect((await lookup).consistency.stable).toBe(true)
+    expect(traces.filter(trace => trace.table === 'user_profiles')).toHaveLength(2)
+    expect(writes).not.toHaveBeenCalled()
+  })
+
   it('keeps unavailable WHOOP distinct while factual history is readable with planning disabled', async () => {
     vi.stubEnv('COACH_HISTORY_CONTEXT_ENABLED', 'false')
     const result = await readCoachingContext(contextClient(undefined, { failTable: 'whoop_sleep' }).db, params())

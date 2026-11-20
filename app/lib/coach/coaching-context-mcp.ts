@@ -5,7 +5,7 @@ import { coachingContextTool, createCoachingContextTool, createOwnedCoachingCont
 import { coachingReferenceTool, createCoachingReferenceTool } from './coaching-reference-tool'
 import { activityRecordTools, createActivityRecordTool } from './activity-record-tools'
 import { activityHistoryTool, createActivityHistoryTool } from './activity-history-tool'
-import { createSociusTodayTool, sociusTodayResource, sociusTodayResourceContents, sociusTodayTool } from './socius-today-app'
+import { createSociusTodayTool, legacySociusTodayResourceUri, sociusTodayResource, sociusTodayResourceContents, sociusTodayTool } from './socius-today-app'
 import { createSociusActivityTool, sociusActivityResource, sociusActivityResourceContents, sociusActivityTool } from './socius-activity-app'
 import { createSociusNutritionTool, sociusNutritionTool } from './socius-nutrition-app'
 import { createWorkoutTodayReader } from './workout-today-app'
@@ -51,9 +51,12 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
       resources: [sociusTodayResource, ...(activity ? [sociusActivityResource] : [])],
     }))
     server.setRequestHandler(ReadResourceRequestSchema, async ({ params }) => {
-      if (activity && params.uri === sociusActivityResource.uri) return { contents: [sociusActivityResourceContents] }
-      if (params.uri !== sociusTodayResource.uri) throw new McpError(ErrorCode.InvalidParams, 'Unknown resource')
-      return { contents: [sociusTodayResourceContents] }
+      const { uri } = params
+      if (activity && uri === sociusActivityResource.uri) return { contents: [sociusActivityResourceContents] }
+      if (uri === sociusTodayResource.uri || uri === legacySociusTodayResourceUri) {
+        return { contents: [{ ...sociusTodayResourceContents, uri }] }
+      }
+      throw new McpError(ErrorCode.InvalidParams, 'Unknown resource')
     })
   }
   server.setRequestHandler(CallToolRequestSchema, async request => {

@@ -179,9 +179,6 @@ export async function readCoachingContext(client: SupabaseClient, params: URLSea
   let ownershipMismatch = false
   const db = selectOnlyClient(client, user.id, () => { ownershipMismatch = true }), readStartedAt = new Date().toISOString()
   const localDate = formatUTCAsLocalDateWithOffset(readStartedAt, tzOffset)
-  const sources = await readSources(db, user.id, readStartedAt, localDate)
-  const revision = sources.revision.rows[0]?.revision
-  const program = sources.program.rows.length === 1 && sources.program.status === 'available' ? sources.program.rows[0] : undefined
   // Authenticated factual reads have no planning/writer rollout authority. Keep
   // the shared history-planning flag unchanged; both context read surfaces use
   // the existing owner-bound SELECT-only reader with exact coverage counts.
@@ -190,12 +187,20 @@ export async function readCoachingContext(client: SupabaseClient, params: URLSea
   }).catch(() => null)
   const readEvidence = () => fetchCoachEvidenceContext(db, user.id, { purpose: 'general_coaching', asOf: readStartedAt, windowDays: days })
     .then(packet => projectEvidenceReasoningContext(packet, user.id)).catch(() => null)
-  const [programmingRead, proposals, evidence, history] = await Promise.all([
-    readProgramming(db, user.id, sources.program),
-    readProposals(db, user.id, program, revision),
+  const [initial, evidence, history] = await Promise.all([
+    readSources(db, user.id, readStartedAt, localDate).then(async sources => {
+      const revision = sources.revision.rows[0]?.revision
+      const program = sources.program.rows.length === 1 && sources.program.status === 'available' ? sources.program.rows[0] : undefined
+      const [programmingRead, proposals] = await Promise.all([
+        readProgramming(db, user.id, sources.program),
+        readProposals(db, user.id, program, revision),
+      ])
+      return { sources, revision, program, programmingRead, proposals }
+    }),
     readEvidence(),
     readHistory(),
   ])
+  const { sources, revision, program, programmingRead, proposals } = initial
   assertHistoryOwner(history, user.id)
   // Separate source generations: coach revisions alone do not cover WHOOP or plan activation.
   const [afterSources, afterProgramming, afterProposals, afterHistory, afterEvidence] = await Promise.all([
