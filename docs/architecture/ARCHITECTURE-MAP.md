@@ -1,5 +1,11 @@
 # SociusFit Architecture Map
 
+The inactive local `qwik-exact-capture` adapter separates original bytes from the
+bounded per-set recording projection and verifies source joins against canonical
+saved revisions. It reuses existing amendment/receipt SQL; no raw upload or
+recording-to-observation bridge is activated. See
+[exact QWIK local capture](../plans/qwik-exact-local-capture-2026-11-16.md).
+
 ADR-0044 adds typed external workout/meal create and amendment adapters over the
 installed capture RPCs, immutable revisions and receipts. ChatGPT remains the
 operating interface; Socius supplies deterministic persistence and retrieval.
