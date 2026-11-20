@@ -40,6 +40,11 @@ export function projectProviderTiming(kind: TimingKind, payload: unknown, legacy
   if (kind !== 'recovery' && (!start || !offset(payload.timezone_offset) || start.us > ingested.us
     || (!end && !(kind === 'cycle' && payload.end === null))
     || (end && (end.us < start.us || end.us > ingested.us)))) return null
+  const recoveryScore = kind === 'recovery' && payload.score_state === 'SCORED' && object(payload.score)
+    ? payload.score.recovery_score : null
+  const scoreSnapshot = typeof recoveryScore === 'number' && Number.isFinite(recoveryScore)
+    && recoveryScore >= 0 && recoveryScore <= 100 && recoveryScore === row.recovery_score
+    ? { recoveryScore } : null
   return {
     provider_created_at: created.raw, provider_updated_at: updated.raw,
     provider_interval_start: start?.raw ?? null, provider_interval_end: end?.raw ?? null,
@@ -47,7 +52,8 @@ export function projectProviderTiming(kind: TimingKind, payload: unknown, legacy
     provider_score_state: payload.score_state, timing_ingested_at: ingested.raw,
     timing_mapping_version: 'whoop_timing_owner_v1',
     timing_provenance: { source: 'provider_payload', intervalRole: kind === 'recovery' ? 'none' : kind,
-      legacyDate: 'unchanged_not_measurement_day', observationTime: 'not_assigned' },
+      legacyDate: 'unchanged_not_measurement_day', observationTime: 'not_assigned',
+      ...(scoreSnapshot ? { scoreSnapshot } : {}) },
     ...(kind === 'recovery' ? { provider_sleep_id: payload.sleep_id as string }
       : kind === 'sleep' ? { provider_cycle_id: String(payload.cycle_id) } : {}),
   }

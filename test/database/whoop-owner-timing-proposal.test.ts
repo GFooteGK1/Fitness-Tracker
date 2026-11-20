@@ -2,6 +2,7 @@ import { PGlite } from '@electric-sql/pglite'
 import { readFileSync } from 'node:fs'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { qualifiedRecoveryBefore } from '@/app/lib/coach/external-recovery-context'
 import { projectProviderTiming } from '@/app/lib/whoop/provider-timing'
 import { upsertWhoopTiming } from '@/app/lib/whoop/timing-upsert'
 import { legacyIdentity, providerPayload, syntheticOther, syntheticTimingOwner, timingNow } from '../fixtures/whoop-provider-timing'
@@ -43,9 +44,9 @@ async function security(db: PGlite) {
       AND column_name NOT LIKE 'provider_%' AND column_name NOT LIKE 'timing_%' ORDER BY table_name,column_name`,
   ].map(async q => (await db.query(q)).rows))
 }
-async function write(db: PGlite, values: Record<string, unknown>) {
+async function write(db: PGlite, values: Record<string, unknown>, table: 'whoop_cycles' | 'whoop_recovery' = 'whoop_cycles') {
   const keys = Object.keys(values)
-  await db.query(`INSERT INTO whoop_cycles(${keys.join(',')}) VALUES(${keys.map((_, i) => `$${i + 1}`).join(',')})
+  await db.query(`INSERT INTO ${table}(${keys.join(',')}) VALUES(${keys.map((_, i) => `$${i + 1}`).join(',')})
     ON CONFLICT(user_id,cycle_id) DO UPDATE SET ${keys.map(k => `${k}=EXCLUDED.${k}`).join(',')}`, Object.values(values))
 }
 async function timingSnapshot(db: PGlite) {
@@ -122,6 +123,33 @@ describe('data, schema and security', () => {
     await db.exec('ROLLBACK TO SAVEPOINT bad_write')
     expect(await timingSnapshot(db)).toEqual(first)
     expect((await db.query('SELECT strain::float8 AS score FROM whoop_cycles WHERE user_id=$1', [syntheticTimingOwner])).rows).toEqual([{ score: 17.125 }])
+  })
+  it('retains a timed WHOOP score for RPE pairing and detects a later legacy-only score change', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(timingNow)
+    try {
+      await db.query(`SELECT set_config('request.jwt.claim.sub',$1,true)`, [syntheticTimingOwner])
+      await db.exec('SET LOCAL ROLE authenticated')
+      const adapter = { from: (table: 'whoop_recovery') => ({ upsert: async (rows: Record<string, unknown>[]) => {
+        for (const row of rows) await write(db, row, table)
+        return { error: null }
+      } }) } as unknown as SupabaseClient
+      const original = { ...legacyIdentity('recovery'), recovery_score: 71.25 }
+      const payload = providerPayload('recovery')
+      expect(await upsertWhoopTiming(adapter, 'recovery', syntheticTimingOwner, [original], [payload])).toEqual({ error: null })
+      const read = async () => (await db.query<{ row: Record<string, unknown> }>(
+        `SELECT to_jsonb(r) AS row FROM whoop_recovery r WHERE user_id=$1 AND cycle_id='42'`, [syntheticTimingOwner])).rows[0].row
+      const workoutAt = '2026-10-19T13:00:00Z', asOf = '2026-10-19T15:00:00Z', windowMs = 86_400_000
+      expect(qualifiedRecoveryBefore(await read(), workoutAt, asOf, windowMs)).toMatchObject({ recoveryScore: 71.25 })
+      vi.setSystemTime('2026-10-19T14:15:00Z')
+      expect(await upsertWhoopTiming(adapter, 'recovery', syntheticTimingOwner, [original], [payload])).toEqual({ error: null })
+      expect(qualifiedRecoveryBefore(await read(), workoutAt, asOf, windowMs)).toMatchObject({ recoveryScore: 71.25 })
+
+      expect(await upsertWhoopTiming(adapter, 'recovery', syntheticTimingOwner, [{ ...original, recovery_score: 80 }],
+        [{ ...payload, created_at: 'unavailable' }])).toEqual({ error: null })
+      const changed = await read()
+      expect(changed).toMatchObject({ recovery_score: 80, timing_provenance: { scoreSnapshot: { recoveryScore: 71.25 } } })
+      expect(qualifiedRecoveryBefore(changed, workoutAt, asOf, windowMs)).toBeNull()
+    } finally { vi.useRealTimers() }
   })
   it('keeps duplicate conflict IDs atomic instead of splitting a rejected legacy bulk into successful health writes', async () => {
     const identity = { ...legacyIdentity('cycle'), strain: 17.125 }

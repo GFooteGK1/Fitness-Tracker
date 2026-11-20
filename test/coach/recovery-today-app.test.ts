@@ -1,0 +1,99 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { ContextSource } from '@/app/lib/coach/coaching-context'
+import { projectContextRecovery, qualifiedRecoveryBefore } from '@/app/lib/coach/external-recovery-context'
+import { createOwnedWorkoutRecoveryReader, projectTodayRecovery } from '@/app/lib/coach/recovery-today-app'
+import { projectProviderTiming } from '@/app/lib/whoop/provider-timing'
+import { contextClient, contextOwner, contextRows } from '../fixtures/coaching-context'
+import { providerPayload, timingNow } from '../fixtures/whoop-provider-timing'
+
+const workoutAt = '2026-10-19T13:00:00.000Z'
+const later = '2026-10-19T15:00:00.000Z'
+const workout = { performedAt: workoutAt, sessionRpe: 7.5, rpeOrigin: 'athlete_reported', rpeReviewState: 'corrected' }
+const policy = { clientId: 'synthetic-client', resource: 'https://socius.invalid/api/mcp', issuer: 'https://auth.invalid' }
+
+function recoveryRow() {
+  const row = { user_id: contextOwner, cycle_id: 42, date: '2026-10-19', recovery_score: 71.25,
+    hrv_rmssd_milli: 42.125, resting_heart_rate: 51.5, created_at: '2026-10-19T12:00:00Z' }
+  return { ...row, ...projectProviderTiming('recovery', providerPayload('recovery'), row, timingNow) }
+}
+
+const source = (rows: Array<Record<string, unknown>>): ContextSource => ({ status: rows.length ? 'available' : 'missing', rows, count: rows.length })
+
+function recoveryContext(recovery = source([recoveryRow()])) {
+  const rows = contextRows()
+  return projectContextRecovery({
+    connection: source(rows.whoop_tokens), sync: source([{ status: 'idle', last_sync_at: timingNow }]),
+    recovery, sleep: source([{ ...rows.whoop_sleep[0], total_sleep_duration_ms: 28_800_000 }]), strain: source([]),
+  }, later, '2026-10-19')
+}
+
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
+
+describe('WHOOP Today and retained recovery before a logged workout', () => {
+  it('shows saved scores, in-bed time and last sync without converting them into measurement age', () => {
+    const context = recoveryContext()
+    expect(context.metrics.recovery).toMatchObject({ usableAsCurrent: false, observedAt: null })
+    expect(projectTodayRecovery(context)).toMatchObject({ status: 'saved', lastSyncAt: timingNow, recoveryScore: 71.25, hrvMs: 42.125,
+      restingHeartRate: 51.5, sleepPerformance: 82, sleepInBedMinutes: 480,
+      recoveryUpdatedAt: '2026-10-19T11:30:00.123456Z', sleepEndedAt: null, sessionEffort: { status: 'no_workout' } })
+    expect(projectTodayRecovery(recoveryContext(source([{ ...recoveryRow(), timing_provenance: null }])))).toMatchObject({
+      status: 'unverified', recoveryScore: 71.25, recoveryUpdatedAt: null,
+    })
+    expect(projectTodayRecovery({ ...context, connected: false })).toMatchObject({ status: 'disconnected', recoveryScore: null, sleepPerformance: null })
+  })
+
+  it('pairs the exact earlier provider score even when a later sync re-ingests it within the read time', () => {
+    const row = recoveryRow()
+    const window = 24 * 60 * 60 * 1000
+    expect(qualifiedRecoveryBefore({ ...row, timing_ingested_at: '2026-10-19T14:00:00.000Z' }, workoutAt, later, window)).toMatchObject({ recoveryScore: 71.25,
+      recoveryUpdatedAt: '2026-10-19T11:30:00.123456Z' })
+    expect(qualifiedRecoveryBefore({ ...row, recovery_score: 75 }, workoutAt, later, window)).toBeNull()
+    expect(qualifiedRecoveryBefore({ ...row, timing_ingested_at: '2026-10-19T11:15:00.000Z' }, workoutAt, later, window)).toBeNull()
+    expect(qualifiedRecoveryBefore({ ...row, timing_ingested_at: '2026-10-19T16:00:00.000Z' }, workoutAt, later, window)).toBeNull()
+    expect(qualifiedRecoveryBefore({ ...row, provider_updated_at: '2026-10-19T13:30:00.000Z', timing_ingested_at: later }, workoutAt, later, window)).toBeNull()
+    expect(qualifiedRecoveryBefore(row, '2026-10-19', later, window)).toBeNull()
+    expect(qualifiedRecoveryBefore(row, '2026-10-20T15:00:00.000Z', '2026-10-20T16:00:00.000Z', window)).toBeNull()
+  })
+
+  it('chooses the qualifying older owner score and reports no pair when workout timing or athlete-reported RPE is missing', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(later)
+    const rows = contextRows()
+    rows.whoop_recovery = [
+      { ...recoveryRow(), cycle_id: 43, provider_updated_at: '2026-10-19T14:00:00.000Z', timing_ingested_at: later },
+      { ...recoveryRow(), timing_ingested_at: '2026-10-19T14:00:00.000Z' },
+    ]
+    const { db, traces, writes } = contextClient(rows)
+    const principal = { ...policy, subject: contextOwner, role: 'authenticated', expiresAt: Date.now() + 60000 }
+    const read = createOwnedWorkoutRecoveryReader(async () => ({ db, principal }), policy)
+    expect(await read({ ...workout, performedAt: null })).toBeNull()
+    expect(await read({ ...workout, rpeOrigin: 'model_estimated' })).toBeNull()
+    expect(traces).toHaveLength(0)
+    const pair = await read(workout)
+    expect(projectTodayRecovery(recoveryContext(), workout, pair).sessionEffort).toMatchObject({ status: 'paired',
+      rpe: 7.5, workoutAt, recoveryScore: 71.25, recoveryUpdatedAt: '2026-10-19T11:30:00.123456Z' })
+    expect(projectTodayRecovery(recoveryContext(), { ...workout, performedAt: null }, pair).sessionEffort.status).toBe('timing_unverified')
+    expect(traces[0]).toMatchObject({ table: 'whoop_recovery', filters: [['user_id', contextOwner], ['provider_score_state', 'SCORED']], limit: 20 })
+    expect(writes).not.toHaveBeenCalled()
+
+    rows.whoop_recovery[1].user_id = 'foreign-owner'
+    const foreign = contextClient(rows, { foreignRows: true })
+    const isolated = createOwnedWorkoutRecoveryReader(async () => ({ db: foreign.db, principal }), policy)
+    await expect(isolated(workout)).rejects.toMatchObject({ status: 503 })
+  })
+
+  it('keeps the dashboard usable after a historical read fault while rejecting mismatched authorization', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(later)
+    const { db } = contextClient()
+    db.from = vi.fn(() => { throw new Error('historical connection lost') })
+    const principal = { ...policy, subject: contextOwner, role: 'authenticated', expiresAt: Date.now() + 60000 }
+    const read = createOwnedWorkoutRecoveryReader(async () => ({ db, principal }), policy)
+    await expect(read(workout)).resolves.toBeNull()
+    expect(projectTodayRecovery(recoveryContext(), workout, null)).toMatchObject({ recoveryScore: 71.25,
+      sessionEffort: { status: 'recovery_unavailable', rpe: 7.5 } })
+
+    vi.mocked(db.from).mockClear()
+    const mismatched = createOwnedWorkoutRecoveryReader(async () => ({ db, principal: { ...principal, subject: 'foreign-owner' } }), policy)
+    await expect(mismatched(workout)).rejects.toMatchObject({ status: 401 })
+    expect(db.from).not.toHaveBeenCalled()
+  })
+})

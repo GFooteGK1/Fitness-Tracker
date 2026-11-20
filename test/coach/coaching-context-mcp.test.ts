@@ -55,7 +55,7 @@ describe('official SDK MCP over loopback Streamable HTTP, synthetic owner only',
       expect(host.client.getServerVersion()).toMatchObject({ name: 'socius-coaching-context', version: '1.0.0' })
       expect(host.clientTransport.sessionId).toBe('synthetic-session')
       const tools = await host.client.listTools()
-      expect(tools.tools.map(tool => tool.name)).toEqual(['get_coaching_context', 'get_coaching_reference', 'get_activity_record', 'get_activity_write_status'])
+      expect(tools.tools.map(tool => tool.name)).toEqual(['get_coaching_context', 'get_coaching_reference', 'get_activity_history', 'get_activity_record', 'get_activity_write_status'])
       expect(tools.tools.every(tool => tool.annotations?.readOnlyHint === true)).toBe(true)
       expect(tools.tools[0].annotations?.readOnlyHint).toBe(true)
       // The standard SDK strips host-specific top-level extensions; its

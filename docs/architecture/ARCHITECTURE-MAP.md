@@ -42,6 +42,19 @@ local-day claims remain conservative; provider links stay explicitly unjoined.
 See `docs/plans/retained-provider-timing-context-read-2026-10-20.md`. Publication
 and live-runtime qualification are separate from local verification.
 
+The private ChatGPT Today candidate uses the existing owner OAuth guard. Today
+reads the current saved workout recommendation and the latest completed workout.
+It displays the accepted session when a current recommendation is absent and an
+accepted session is scheduled. It groups saved workout sets without rewriting
+the workout. Latest WHOOP values remain separate from the qualifying earlier
+score used for an RPE comparison. ADR-0040 documents the timing boundary.
+
+Activity and Nutrition use the same owner-scoped local day and canonical meal
+records. Nutrition reads only macro totals and current targets when its tab opens
+or becomes visible and while it remains open. The dashboard performs read-only
+requests. Meal creation and correction continue through the existing capture
+and receipt paths.
+
 ADR-0041 adds the separately approved owner-only cron GET: the existing bearer
 secret is checked before privileged work; only an existing fixed-owner connection
 can reach incremental sync. GET is no-store, POST behavior and daily10:30UTC

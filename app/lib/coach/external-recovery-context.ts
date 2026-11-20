@@ -41,6 +41,14 @@ const positiveId = (v: unknown): boolean => {
   return Number.isSafeInteger(n) && Number(n) > 0
 }
 const zone = (v: unknown): v is string => typeof v === 'string' && v !== '-00:00' && /^(?:[+-](?:0\d|1[0-3]):[0-5]\d|[+-]14:00)$/.test(v)
+function boundRecoveryScore(row: ContextRow) {
+  const provenance = row.timing_provenance as ContextRow | undefined
+  const snapshot = provenance?.scoreSnapshot as ContextRow | undefined
+  const score = snapshot?.recoveryScore
+  return typeof score === 'number' && Number.isFinite(score) && score >= 0 && score <= 100 && score === row.recovery_score
+    ? score : null
+}
+
 function providerInstant(value: unknown) {
   const raw = timestamp(value)
   if (!raw || raw.startsWith('0000-')) return null
@@ -91,10 +99,30 @@ function retainedTiming(row: ContextRow | null, kind: keyof typeof fields, asOf:
     intervalStart: start?.raw ?? null, intervalEnd: end?.raw ?? null,
     providerTimezoneOffset: timezone, lastRecordIngestedAt: ingested?.raw ?? null,
     providerTiming: { status, mappingVersion, scoreState, provenance, issues: [...new Set(issues)],
+      scoreSnapshotMatches: kind === 'recovery' && status === 'recorded' && scoreState === 'SCORED' && boundRecoveryScore(r) !== null,
       sourceLink: { sleepId, cycleId, verification: 'not_joined' as const },
       ingestionMeaning: 'last_retained_timing_snapshot_not_every_health_upsert' as const,
       completenessMeaning: 'recognized_stored_fields_not_verified_provider_authenticity_or_atomic_generation' as const },
   }
+}
+
+/** A legacy-only upsert may change the health values without replacing the
+ * retained timing. Use a historical score only if the timed write saved it
+ * with that snapshot and the owner row still agrees with the saved value. */
+export function qualifiedRecoveryBefore(row: ContextRow, workoutAt: string, asOf: string, windowMs: number) {
+  const workout = providerInstant(workoutAt)
+  const read = providerInstant(asOf)
+  if (!workout || !read || workout.us > read.us) return null
+  const retained = retainedTiming(row, 'recovery', asOf)
+  if (retained.providerTiming.status !== 'recorded' || retained.providerTiming.scoreState !== 'SCORED') return null
+
+  const score = boundRecoveryScore(row)
+  if (score === null) return null
+
+  const updated = providerInstant(retained.providerUpdatedAt)
+  if (!updated || updated.us >= workout.us || workout.us - updated.us > BigInt(windowMs) * BigInt(1000)) return null
+
+  return { recoveryScore: score, recoveryUpdatedAt: updated.raw }
 }
 
 /** Expose retained provider facts separately from measurement freshness. Legacy

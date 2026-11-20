@@ -1,7 +1,8 @@
 import { CoachingContextError, contextObject } from './coaching-context'
 import type { readCoachingContext } from './coaching-context-server'
-import type { EvidenceQuantity } from './performed-dose-evidence'
+import { projectTodayRecovery, type createOwnedWorkoutRecoveryReader } from './recovery-today-app'
 import { sociusTodayHtml } from './today-app-ui'
+import type { createWorkoutTodayReader } from './workout-today-app'
 
 export const sociusTodayResource = {
   uri: 'ui://socius/today.html',
@@ -49,72 +50,36 @@ export const sociusTodayResourceContents = {
 }
 
 type CoachingContext = Awaited<ReturnType<typeof readCoachingContext>>
+type WorkoutToday = Awaited<ReturnType<ReturnType<typeof createWorkoutTodayReader>>>
+type WorkoutRecovery = Awaited<ReturnType<ReturnType<typeof createOwnedWorkoutRecoveryReader>>>
 
-function displayText(value: unknown, maxLength: number) {
-  return typeof value === 'string' ? value.trim().slice(0, maxLength) || null : null
-}
-
-function measurement(quantity: EvidenceQuantity, unit: string) {
-  if (quantity.kind === 'unknown') return []
-  const value = quantity.kind === 'exact' ? String(quantity.value) : `${quantity.min}–${quantity.max}`
-  return [`${value} ${unit}`]
-}
-
-function projectToday(context: CoachingContext) {
-  const programming = context.acceptedProgramming
-  const sessions = (programming?.todaySessions ?? []).slice(0, 6).flatMap(row => {
-    const { status, prescription } = row
-    if ((status !== 'planned' && status !== 'completed' && status !== 'skipped') || !contextObject(prescription)) return []
-    return [{
-      title: displayText(prescription.title, 100) ?? displayText(prescription.session_title, 100),
-      focus: displayText(prescription.intent, 180),
-      status,
-    }]
-  })
-  const work = context.performedWork
-  // The source provides movement/event records, not a count of workout sessions.
-  const recentWork = (work?.records ?? [])
-    .filter(record => record.completionState !== 'explicitly_not_completed')
-    .sort((a, b) => b.date.localeCompare(a.date) || String(b.capturedAt ?? '').localeCompare(String(a.capturedAt ?? '')))
-    .slice(0, 6)
-    .map(record => {
-      const quantities = record.quantities
-      const loadUnit = 'loadUnit' in record ? record.loadUnit : 'loadUnit' in quantities ? quantities.loadUnit : null
-      return {
-        date: record.date,
-        name: displayText(record.recordedName, 100) ?? 'Recorded movement',
-        measurements: [
-          ...measurement(quantities.sets, 'sets'),
-          ...measurement(quantities.repetitions, 'reps recorded'),
-          ...(loadUnit === 'lb' || loadUnit === 'kg' ? measurement(quantities.load, loadUnit) : []),
-          ...measurement(quantities.durationMinutes, 'min'),
-          ...(record.basis === 'estimated_work' ? ['Estimated'] : []),
-          ...(record.completionState === 'uncertain' ? ['Completion uncertain'] : []),
-        ],
-      }
-    })
-  const recovery = context.recovery
-  const metric = recovery.metrics.recovery
+function projectToday(context: CoachingContext, workout: WorkoutToday, pairedRecovery: WorkoutRecovery) {
+  const { workoutRecommendation, lastWorkout, workoutEvidence } = workout
+  const sessions = workoutRecommendation.sessions
   return {
     date: context.localDate,
     readAt: context.readCompletedAt,
-    sessionStatus: sessions.length ? 'scheduled' : programming ? 'none' : 'unavailable',
+    workoutRecommendation,
+    lastWorkout,
+    // Keep the prior payload keys usable while the host refreshes the installed resource.
+    sessionStatus: sessions.length ? 'scheduled' : context.acceptedProgramming ? 'none' : 'unavailable',
     sessions,
-    recentStatus: !work || work.status === 'unavailable' ? 'unavailable'
-      : work.status === 'partial' ? 'partial' : recentWork.length ? 'available' : 'empty',
-    recentWork,
-    recovery: {
-      status: recovery.connected === false ? 'disconnected' : metric.status === 'stale' ? 'stale'
-        : metric.status === 'timing_unverified' || metric.status === 'sync_ineligible' ? 'unverified' : 'unavailable',
-      lastSyncAt: recovery.batch.lastSuccessfulBatchAt && recovery.batch.timeStatus === 'recorded'
-        ? recovery.batch.lastSuccessfulBatchAt : null,
-      storedDate: metric.storedDateStatus === 'same_utc_label' || metric.storedDateStatus === 'historical_label'
-        ? metric.storedDate : null,
-    },
+    recentStatus: lastWorkout.status,
+    recentWork: lastWorkout.movements.map(record => ({ ...record, date: lastWorkout.date })),
+    recovery: projectTodayRecovery(context.recovery, workoutEvidence, pairedRecovery),
   }
 }
 
-export function createSociusTodayTool(readContext: (input: { tzOffset: number; days: number }) => Promise<CoachingContext>) {
+export function createSociusTodayTool(
+  readContext: (input: { tzOffset: number; days: number }) => Promise<CoachingContext>,
+  options: {
+    activityEnabled: boolean
+    nutritionEnabled: boolean
+    nutritionWritesEnabled: boolean
+    readWorkout: ReturnType<typeof createWorkoutTodayReader>
+    readWorkoutRecovery: ReturnType<typeof createOwnedWorkoutRecoveryReader>
+  },
+) {
   return {
     async call(input: unknown) {
       if (!contextObject(input) || Object.keys(input).some(key => key !== 'tzOffset')) {
@@ -127,7 +92,14 @@ export function createSociusTodayTool(readContext: (input: { tzOffset: number; d
       const { tzOffset } = input
       if (typeof tzOffset !== 'number' || !Number.isInteger(tzOffset)) throw new CoachingContextError(400, 'Invalid timezone offset')
       const context = await readContext({ tzOffset, days: 7 })
-      return { content, _meta: { today: projectToday(context) } }
+      const workout = await options.readWorkout(context)
+      const pairedRecovery = await options.readWorkoutRecovery(workout.workoutEvidence)
+      return { content, _meta: {
+        today: projectToday(context, workout, pairedRecovery),
+        ...(options.activityEnabled ? { activityEnabled: true } : {}),
+        ...(options.nutritionEnabled ? { nutritionEnabled: true } : {}),
+        ...(options.nutritionWritesEnabled ? { nutritionWritesEnabled: true } : {}),
+      } }
     },
   }
 }
