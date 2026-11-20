@@ -29,3 +29,23 @@ Enable the mapper globally because other users are inactive. Rejected because in
 Create an enrollment registry, account flags or new permissions. Rejected because a single fixed server filter is sufficient for this pilot and avoids changing account/security state.
 
 Read and merge old timing before every upsert, or add database merge triggers. Rejected for this bounded increment because it adds concurrency/trigger semantics. Separate homogeneous legacy-only and complete-snapshot upsert groups preserve omitted timing columns without new reads or database functions.
+
+## RPE comparison in the Today candidate
+
+Eligible timed recovery writes retain the score from the same WHOOP payload in
+`timing_provenance.scoreSnapshot`. The existing owner filter still governs those
+writes. A later legacy write can retain older timing while updating the score.
+The comparison reader checks that both saved values agree.
+
+The read-only Today view pairs confirmed or corrected athlete-reported session
+RPE with a saved recovery score only when the workout has a verified performed
+time. The provider must have updated the matching score in the preceding 24
+hours. The sync may have ingested the score later. This allows a retrospective
+comparison after normal sync retries. The card reports provider update and
+batch sync times separately. The pair only supports retrospective analysis.
+
+The view continues to show saved WHOOP values and their freshness when precise
+pairing is unavailable. Pairing by legacy date labels would imply an order those
+labels cannot establish. Copying recovery to each workout would create a second
+owner of those facts. The candidate reuses the existing records and applies no
+historical backfill.

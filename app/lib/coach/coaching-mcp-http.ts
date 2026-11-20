@@ -15,7 +15,8 @@ export async function handleCoachingMcp(request: Request, config: CoachingOAuthC
     }
     const authorized = await authorizeCoachingBearer(request, config, dependencies)
     const todayEnabled = authorized.principal.subject === process.env.SOCIUS_MCP_TODAY_OWNER_ID
-    const server = createCoachingContextMcpServer(async () => authorized, config, { todayEnabled })
+    const activityEnabled = todayEnabled && process.env.SOCIUS_MCP_ACTIVITY_UI_ENABLED === 'true'
+    const server = createCoachingContextMcpServer(async () => authorized, config, { todayEnabled, activityEnabled })
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true, maxRequestBodySize: 65_536 })
     try {
       await server.connect(transport)

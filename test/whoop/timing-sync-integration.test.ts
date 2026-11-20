@@ -54,7 +54,8 @@ describe('synthetic sync orchestration: providers/token/database fully stubbed',
     const { db, calls } = dbFixture(); const result = await fullSync(syntheticTimingOwner, db)
     expect(result.recordsSynced).toEqual({ recovery: 1, sleep: 1, cycles: 1, workouts: 0 })
     for (const call of calls.filter(c => c.table !== 'whoop_sync_status')) expect(call.rows[0]).toMatchObject({ date: '2026-10-19', timing_ingested_at: timingNow })
-    expect(calls.find(c => c.table === 'whoop_recovery')?.rows[0]).toMatchObject({ recovery_score: 71.25, provider_interval_start: null })
+    expect(calls.find(c => c.table === 'whoop_recovery')?.rows[0]).toMatchObject({ recovery_score: 71.25, provider_interval_start: null,
+      timing_provenance: { scoreSnapshot: { recoveryScore: 71.25 } } })
     expect(globalThis.fetch).not.toHaveBeenCalled()
   })
   it('empty ordinary results cause no health or timing upserts', async () => {

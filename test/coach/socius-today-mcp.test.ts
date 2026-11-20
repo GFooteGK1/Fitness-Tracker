@@ -20,12 +20,14 @@ const config: CoachingOAuthConfig = {
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
 const resourceUri = 'ui://socius/today.html'
+const activityUri = 'ui://socius/activity.html'
 const title = 'Saved easy session'
 const today = (args: Record<string, unknown>) => ({ name: 'open_socius_today', arguments: args })
 
 async function connect(subject = owner) {
   const rows = contextRows()
   rows.workouts = [{ ...workSnapshot().workouts[0], id: 'owner-saved-workout', workout_date: '2026-10-18',
+    execution_status: 'completed', rpe: 7.5,
     created_at: '2026-10-18T10:00:00.000Z', updated_at: '2026-10-18T10:00:00.000Z',
     notes: 'private workout notes', input_text: 'private workout attachment' }]
   for (const records of Object.values(rows)) for (const row of records) row.user_id = subject
@@ -65,19 +67,25 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(now)
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', undefined)
+    vi.stubEnv('SOCIUS_MCP_ACTIVITY_UI_ENABLED', undefined)
     vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'false')
   })
   afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs() })
 
   it.each([undefined, other])('hides Today from a valid connection unless the verified subject matches %s', async pilot => {
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', pilot)
+    vi.stubEnv('SOCIUS_MCP_ACTIVITY_UI_ENABLED', 'true')
     const { client, request, db, writes } = await connect()
     try {
       expect(client.getServerCapabilities()?.resources).toBeUndefined()
       expect((await client.listTools()).tools.map(tool => tool.name)).toEqual([
-        'get_coaching_context', 'get_coaching_reference', 'get_activity_record', 'get_activity_write_status',
+        'get_coaching_context', 'get_coaching_reference', 'get_activity_history', 'get_activity_record', 'get_activity_write_status',
       ])
       await expect(client.callTool(today({ tzOffset: 360, user_id: pilot }))).rejects.toMatchObject({ code: -32602 })
+      await expect(client.callTool({ name: 'show_socius_activity', arguments: { date: '2026-10-18', timezone: 'America/Chicago' } }))
+        .rejects.toMatchObject({ code: -32602 })
+      await expect(client.callTool({ name: 'read_socius_nutrition', arguments: { timezone: 'America/Chicago' } }))
+        .rejects.toMatchObject({ code: -32602 })
       const resource = await request(config.resource, {
         method: 'POST',
         headers: { Authorization: 'Bearer synthetic-token', 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
@@ -117,8 +125,38 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       const launch = await client.callTool(today({}))
       expect(launch.isError).not.toBe(true)
       expect(launch._meta?.today).toBeUndefined()
+      expect(launch._meta?.activityEnabled).toBeUndefined()
       expect(JSON.stringify(launch)).not.toContain(title)
       expect(db.from).not.toHaveBeenCalled()
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('exposes the same-owner Activity tool and static resource only with the Activity flag', async () => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    vi.stubEnv('SOCIUS_MCP_ACTIVITY_UI_ENABLED', 'true')
+    const { client, db, writes } = await connect()
+    try {
+      expect((await client.listTools()).tools).toContainEqual(expect.objectContaining({
+        name: 'show_socius_activity', annotations: expect.objectContaining({ readOnlyHint: true }),
+        _meta: expect.objectContaining({ ui: { resourceUri: activityUri, visibility: ['app', 'model'] } }),
+      }))
+      expect((await client.listTools()).tools).toContainEqual(expect.objectContaining({
+        name: 'read_socius_nutrition', annotations: expect.objectContaining({ readOnlyHint: true }),
+        _meta: expect.objectContaining({ ui: { visibility: ['app'] } }),
+      }))
+      expect((await client.listResources()).resources.map(({ uri }) => uri)).toEqual([resourceUri, activityUri])
+      const resource = await client.readResource({ uri: activityUri })
+      expect(resource.contents).toMatchObject([{
+        uri: activityUri, mimeType: 'text/html;profile=mcp-app',
+        _meta: { 'openai/ui': { availableDisplayModes: ['inline'] } },
+      }])
+      expect(JSON.stringify(resource)).not.toContain(owner)
+      expect(db.from).not.toHaveBeenCalled()
+      const result = await client.callTool(today({ tzOffset: 360 }))
+      expect(result._meta?.activityEnabled).toBe(true)
+      expect(result._meta?.nutritionEnabled).toBe(true)
+      expect(result._meta?.nutritionWritesEnabled).toBeUndefined()
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
@@ -140,8 +178,14 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       expect(dashboard).toMatchObject({
         date: '2026-10-18', readAt: now, sessionStatus: expect.any(String),
         sessions: [expect.objectContaining({ title })],
+        workoutRecommendation: { source: 'accepted_plan', status: 'planned', title },
+        lastWorkout: {
+          date: '2026-10-18', sessionRpe: 7.5,
+          movements: expect.arrayContaining([expect.objectContaining({ name: 'Barbell floor press' })]),
+        },
         recentStatus: expect.any(String), recentWork: expect.arrayContaining([expect.any(Object)]),
-        recovery: { status: 'stale', lastSyncAt: '2026-10-18T11:00:00.000Z', storedDate: '2026-10-18' },
+        recovery: { status: 'stale', lastSyncAt: '2026-10-18T11:00:00.000Z', storedDate: '2026-10-18',
+          recoveryScore: 71, sleepPerformance: 82 },
       })
       expect(JSON.stringify(dashboard)).toContain('Barbell floor press')
       expect(JSON.stringify(dashboard)).not.toContain('private workout')
