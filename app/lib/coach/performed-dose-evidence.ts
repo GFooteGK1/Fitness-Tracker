@@ -2,6 +2,7 @@ import { MOVEMENT_CATALOG } from './movement-catalog'
 import { stableStringify } from './rolling-weekly-contracts'
 import { historyFieldProvenance } from './planning-history'
 import { resolveReviewedMovementId } from './reviewed-movement-eligibility'
+import { readSegmentedWorkoutEvents } from './segmented-workout-events'
 
 type ObjectRecord = Record<string, unknown>
 const object = (v: unknown): v is ObjectRecord => Boolean(v && typeof v === 'object' && !Array.isArray(v))
@@ -63,6 +64,7 @@ export function normalizePerformedDoseEvidence(input: DoseEvidenceSnapshot) {
     capturedAt: string; snapshotId: string | null; origin: string; reviewState: string
     unilateralConvention: unknown; equipment: unknown; protocol: unknown; effort: unknown
     reviewedSessionRpe?: number | null
+    recordedEvent?: { performed: unknown; prescribed: unknown; segmentRounds: unknown; blockScore: unknown }
     quantityProvenance: Record<string, { origin: string; reviewState: string }>
     sets: EvidenceQuantity; repetitions: EvidenceQuantity; load: EvidenceQuantity; durationMinutes: EvidenceQuantity
     loadUnit: 'lb' | 'kg' | null; raw: ObjectRecord; limitations: string[]
@@ -130,16 +132,24 @@ export function normalizePerformedDoseEvidence(input: DoseEvidenceSnapshot) {
     for (const [bi, block] of blocks.entries()) {
       if (!object(block)) { issues.push({ sourceId: id, reason: `unsupported_block:${bi}` }); continue }
       // Mixed representations are ambiguous, not two separate exposures.
-      if (Array.isArray(block.exercises) && Array.isArray(block.movements)) {
+      const segmented = Object.hasOwn(block, 'segments')
+      if ((Array.isArray(block.exercises) && Array.isArray(block.movements))
+        || (segmented && (Object.hasOwn(block, 'exercises') || Object.hasOwn(block, 'movements')))) {
         issues.push({ sourceId: id, reason: `ambiguous_block_representation:${bi}` }); continue
       }
       const canonical = Array.isArray(block.exercises)
-      const entries = canonical ? block.exercises : block.movements
+      const segmentedEntries = segmented ? readSegmentedWorkoutEvents(block, `${root}[${bi}]`) : null
+      if (segmentedEntries) issues.push(...segmentedEntries.issues.map(reason => ({ sourceId: id, reason: `${reason}:${bi}` })))
+      const entries = segmentedEntries ? segmentedEntries.entries : canonical ? block.exercises : block.movements
       if (!Array.isArray(entries)) { issues.push({ sourceId: id, reason: `unsupported_block_entries:${bi}` }); continue }
-      for (const [ei, entry] of entries.entries()) {
+      for (const [ei, item] of entries.entries()) {
+        const location = segmentedEntries ? segmentedEntries.entries[ei] : null
+        const entry = location ? location.entry : item
         if (!object(entry)) { issues.push({ sourceId: id, reason: `unsupported_exercise:${bi}:${ei}` }); continue }
-        const path = `${root}[${bi}].${canonical ? 'exercises' : 'movements'}[${ei}]`
-        const name = typeof entry.name === 'string' ? entry.name.trim().toLowerCase() : null
+        const path = location?.path ?? `${root}[${bi}].${canonical ? 'exercises' : 'movements'}[${ei}]`
+        const recordedName = segmented ? entry.movement_name : entry.name
+        const name = typeof recordedName === 'string' ? recordedName.trim().toLowerCase() : null
+        const actual = segmented && object(entry.performed) ? entry.performed : null
         const reviewedId = reviewedActuals && typeof entry.movementId === 'string' ? resolveReviewedMovementId(entry.movementId) : null
         const byId = canonical || reviewedId ? MOVEMENT_CATALOG.find(m => m.id === (reviewedId ?? entry.movementId)) : undefined
         const byName = !canonical ? MOVEMENT_CATALOG.find(m => m.id === name || m.name.toLowerCase() === name) : undefined
@@ -149,14 +159,14 @@ export function normalizePerformedDoseEvidence(input: DoseEvidenceSnapshot) {
           ['priority_adaptation', 'secondary_adaptation', 'assistance_and_capacity', 'conditioning'].includes(String(roleValue)) ? 'working' : 'unknown'
         const dose = canonical && object(entry.dose) ? entry.dose : undefined
         const loadAnchor = canonical && object(entry.loadAnchor) && object(entry.loadAnchor.loadRange) ? entry.loadAnchor.loadRange : undefined
-        const unit = canonical ? loadAnchor?.unit : entry.unit
+        const unit = actual ? object(actual.load) ? actual.load.unit : null : canonical ? loadAnchor?.unit : entry.unit
         const provenance = historyFieldProvenance(row.capture_provenance, path)
         const basis = canonical ? confirmed ? 'confirmed_prescription' : 'unverified_prescription'
           : provenance.origin === 'athlete_reported' ? 'reported_work'
             : provenance.origin === 'legacy_unknown' ? 'legacy_unknown' : 'estimated_work'
-        const sets = quantity(canonical ? dose?.kind === 'sets_reps' ? dose.sets : undefined : entry.sets, `${path}.${canonical ? 'dose.sets' : 'sets'}`, true)
-        const repetitions = quantity(canonical ? dose?.kind === 'sets_reps' ? dose.repetitions : undefined : entry.reps, `${path}.${canonical ? 'dose.repetitions' : 'reps'}`, true)
-        const load = quantity(canonical ? loadAnchor : entry.load, `${path}.${canonical ? 'loadAnchor.loadRange' : 'load'}`)
+        const sets = quantity(actual ? actual.sets : canonical ? dose?.kind === 'sets_reps' ? dose.sets : undefined : entry.sets, `${path}.${actual ? 'performed.sets' : canonical ? 'dose.sets' : 'sets'}`, true)
+        const repetitions = quantity(actual ? actual.reps : canonical ? dose?.kind === 'sets_reps' ? dose.repetitions : undefined : entry.reps, `${path}.${actual ? 'performed.reps' : canonical ? 'dose.repetitions' : 'reps'}`, true)
+        const load = quantity(actual ? object(actual.load) ? actual.load.value : undefined : canonical ? loadAnchor : entry.load, `${path}.${actual ? 'performed.load.value' : canonical ? 'loadAnchor.loadRange' : 'load'}`)
         const durationMinutes = quantity(canonical && dose?.kind === 'continuous' ? dose.durationMinutes : undefined, `${path}.dose.durationMinutes`)
         exposures.push({ sourceId: `workout:${id}`, workoutId: id, completionId: candidate?.id ?? null,
           sessionId: candidate?.prescribed_session_id ?? null, date: row.workout_date,
@@ -164,7 +174,13 @@ export function normalizePerformedDoseEvidence(input: DoseEvidenceSnapshot) {
           capturedAt: capturedAt!, snapshotId: row.historySnapshotId ?? null, ...provenance,
           unilateralConvention: structuredClone(entry.unilateralConvention ?? entry.perSide ?? null),
           equipment: structuredClone(entry.equipment ?? null), protocol: structuredClone(entry.protocol ?? null),
-          effort: structuredClone(entry.effort ?? entry.rpe ?? null),
+          effort: structuredClone(actual ? actual.effort ?? actual.rpe ?? null : entry.effort ?? entry.rpe ?? null),
+          ...(location ? { recordedEvent: Object.fromEntries(Object.entries({
+            performed: [actual, `${path}.performed`], prescribed: [entry.prescribed ?? null, `${path}.prescribed`],
+            segmentRounds: [location.rounds ?? null, `${location.segmentPath}.rounds`], blockScore: [block.block_score ?? null, `${root}[${bi}].block_score`],
+          }).map(([key, [value, sourcePath]]) => [key, { value: structuredClone(value), sourcePath,
+            ...historyFieldProvenance(row.capture_provenance, String(sourcePath), 'quantities') }])) as
+            { performed: unknown; prescribed: unknown; segmentRounds: unknown; blockScore: unknown } } : {}),
           ...(reviewedActuals ? { reviewedSessionRpe: typeof feedback?.sessionRpe === 'number'
             && feedback.sessionRpe >= 1 && feedback.sessionRpe <= 10 ? feedback.sessionRpe : null } : {}),
           quantityProvenance: Object.fromEntries(Object.entries({ sets, repetitions, load, durationMinutes }).map(([key, value]) => [key,
@@ -175,6 +191,7 @@ export function normalizePerformedDoseEvidence(input: DoseEvidenceSnapshot) {
             'No protocol equivalence or complete weekly workload inferred.',
             ...(reviewedActuals ? ['Reviewed completion contains reported sets only; unreported prescribed work remains unknown.'] : []),
             ...(canonical ? ['Prescription ranges are not exact performed repetitions, load or effort.'] : ['Stored fields retain their capture origin and are not independently verified completed working sets.']),
+            ...(segmented ? ['Recorded event quantities do not establish per-set dose or totals across rounds. No round multiplication or allocation of block scores was performed.'] : []),
             ...(role === 'unknown' ? ['Working versus preparation role is unknown.'] : []),
             ...(!movement ? ['Movement identity is unresolved; no alias inference.'] : []),
           ] })

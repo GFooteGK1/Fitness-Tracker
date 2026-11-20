@@ -73,6 +73,8 @@ export function createFirstReviewedReviewService(options:{enabled:()=>boolean;cr
       const result=await db.rpc('decide_first_review_candidate',{p_id:q.candidateId,p_request_id:q.requestId,p_decision:q.decision,
         p_content_hash:q.contentHash,p_source_hash:q.sourceHash,p_designation_id:q.designationId})
       if(await actor(db)!==request.userId)return {kind:'account_changed' as const,request}
+      if(result.error&&['40001','55000'].includes(result.error.code))return {kind:'review_required' as const,request,
+        reasons:['Training context or reviewer scope changed. Recover the original result before refreshing this week.']}
       if(result.error)return result.error.code==='22023'?{kind:'request_conflict' as const,request}:retry()
       const r=parseFirstReviewedDecisionReceipt(result.data)
       if(!r||r.candidateId!==q.candidateId||r.requestId!==q.requestId||r.reviewerId!==request.userId
