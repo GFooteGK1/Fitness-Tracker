@@ -4,11 +4,14 @@ import { projectTodayRecovery, type createOwnedWorkoutRecoveryReader } from './r
 import { sociusTodayHtml } from './today-app-ui'
 import type { createWorkoutTodayReader } from './workout-today-app'
 
-export const legacySociusTodayResourceUri = 'ui://socius/today.html'
+export const legacySociusTodayResourceUris: readonly string[] = [
+  'ui://socius/today.html',
+  'ui://socius/today-v2.html',
+]
 
 export const sociusTodayResource = {
   // ChatGPT uses the URI as a cache key. Bump it when releasing changes to the widget.
-  uri: 'ui://socius/today-v2.html',
+  uri: 'ui://socius/today-v4.html',
   name: 'SociusFit Today',
   mimeType: 'text/html;profile=mcp-app',
 } as const
@@ -47,7 +50,7 @@ export const sociusTodayResourceContents = {
   ...sociusTodayResource,
   text: sociusTodayHtml,
   _meta: {
-    ui: { csp: { connectDomains: [], resourceDomains: [] } },
+    ui: { csp: { connectDomains: [], resourceDomains: [] }, permissions: { clipboardWrite: {} } },
     'openai/ui': { availableDisplayModes: ['fullscreen'] },
   },
 }
