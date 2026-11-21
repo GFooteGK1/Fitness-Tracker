@@ -13,7 +13,7 @@ import { PORTION_DEFAULTS } from './constants'
 import { complete } from '@/app/lib/llm/client'
 import { callAgentWithTools, type AgenticCallResult, type ToolCallRecord } from './tools/agentic-loop'
 import { NUTRITIONIST_TOOLS } from './tools/definitions'
-import { normalizeMealTiming } from './tools/executor'
+import { normalizeMealTiming } from '@/app/lib/nutrition/meal-timing'
 import {
   buildUserFriendlyError,
   cleanResponseForParsing,

@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import type { PGlite } from '@electric-sql/pglite'
 import { mcpActivityFixture, mcpOwnerClient } from '../database/mcp-activity-fixture'
 import { createActivityRecordTool } from '@/app/lib/coach/activity-record-tools'
 import { canonicalActivityJson, validateActivityToolInput, type ActivityToolName } from '@/app/lib/coach/activity-record-contract'
 import { buildExternalPerformedWorkContext } from '@/app/lib/coach/external-performed-work-context'
+import { normalizeActivity } from '@/app/lib/capture/normalize'
 import { sqlFile } from '../database/fixture'
 
 let sql: PGlite
@@ -64,16 +65,88 @@ describe('typed MCP persistence through installed owner RPCs and real PostgreSQL
   it('recomputes meal totals, retains estimates after corrections, handles offset timestamp and exact replays', async () => {
     const record = meal(), input = { requestId: randomUUID(), record, provenance: mealProvenance() }
     const first = await call('create_meal', input)
-    expect(first.savedRecord).toMatchObject({ total_protein: 26, total_carbs: 30, total_fat: 15, total_calories: 359, needs_review: true })
+    expect(first.savedRecord).toMatchObject({ meal_timing: 'general', total_protein: 26, total_carbs: 30, total_fat: 15, total_calories: 359, needs_review: true })
     expect(Date.parse(first.eventAt)).toBe(Date.parse(record.meal_timestamp))
     expect(first.receipt.eventAt).toBe(record.meal_timestamp)
     const items = structuredClone(record.items); items[1].protein = 8
     const amended = await call('amend_meal', { requestId: randomUUID(), entityId: first.receipt.entityId, expectedRevision: 1, changes: { items }, provenance: { fields: provenance(['items', 'quantities', 'macros'], 'model_estimated', 'corrected').fields } })
-    expect(amended.savedRecord).toMatchObject({ total_protein: 28, total_calories: 359, needs_review: false })
+    expect(amended.savedRecord).toMatchObject({ meal_timing: 'general', total_protein: 28, total_calories: 359, needs_review: false })
     expect(amended.provenance.fields.macros.origin).toBe('model_estimated')
     expect((await call('create_meal', input)).savedRecord.total_protein).toBe(26)
     await expect(call('amend_meal', { requestId: randomUUID(), entityId: first.receipt.entityId, expectedRevision: 2, changes: { items }, provenance: { fields: provenance(['items', 'quantities', 'macros']).fields } })).rejects.toThrow('estimated origin')
     const before = await count('meals'); await call('create_meal', { ...input, requestId: randomUUID() }); expect(await count('meals')).toBe(before + 1)
+  })
+
+  it.each([
+    ['PRE_WORKOUT', 'pre_workout'],
+    ['POST_WORKOUT', 'post_workout'],
+    ['BREAKFAST', 'general'],
+    ['LUNCH', 'general'],
+    ['DINNER', 'general'],
+    ['SNACK', 'general'],
+    [null, null],
+  ])('persists meal timing %s as %s on create and amendment', async (timing, storedTiming) => {
+    const input = { requestId: randomUUID(), record: { ...meal(), meal_timing: timing }, provenance: mealProvenance() }
+    const saved = await call('create_meal', input)
+    const entityId = saved.receipt.entityId
+    expect(saved).toMatchObject({ state: 'saved', readback: 'verified_saved_revision', savedRecord: { meal_timing: storedTiming } })
+
+    const differentTiming = timing === 'PRE_WORKOUT' ? 'POST_WORKOUT' : 'PRE_WORKOUT'
+    const differentStoredTiming = differentTiming === 'POST_WORKOUT' ? 'post_workout' : 'pre_workout'
+    const timingProvenance = { fields: provenance(['meal_timing'], 'model_estimated', 'corrected').fields }
+    const amendment = { entityId, expectedRevision: 1, requestId: randomUUID(), changes: { meal_timing: differentTiming }, provenance: timingProvenance }
+    expect((await call('amend_meal', amendment)).savedRecord.meal_timing).toBe(differentStoredTiming)
+    const amended = await call('amend_meal', { ...amendment, expectedRevision: 2, requestId: randomUUID(), changes: { meal_timing: timing } })
+    expect(amended).toMatchObject({ receipt: { entityId, revision: 3 }, savedRecord: { meal_timing: storedTiming } })
+    expect((await sql.query('SELECT meal_timing, capture_revision FROM meals WHERE id = $1', [entityId])).rows)
+      .toEqual([{ meal_timing: storedTiming, capture_revision: 3 }])
+    expect(await call('get_activity_write_status', { requestId: input.requestId })).toMatchObject({
+      receipt: saved.receipt, savedRecord: { meal_timing: storedTiming },
+    })
+  })
+
+  it('stores an omitted meal timing as null without requiring timing provenance', async () => {
+    const { meal_timestamp, items } = meal()
+    const saved = await call('create_meal', { requestId: randomUUID(), record: { meal_timestamp, items },
+      provenance: provenance(['meal_timestamp', 'items', 'quantities', 'macros']) })
+    expect(saved.savedRecord.meal_timing).toBeNull()
+    expect(saved.provenance.fields).not.toHaveProperty('meal_timing')
+  })
+
+  it('rejects changing the original timing input under the same request ID even when both labels map to general', async () => {
+    const input = { requestId: randomUUID(), record: meal(), provenance: mealProvenance() }
+    const before = await count('meals')
+    const saved = await call('create_meal', input)
+    await expect(call('create_meal', { ...input, record: { ...input.record, meal_timing: 'LUNCH' } })).rejects.toThrow('different input')
+    expect((await call('create_meal', input)).receipt).toEqual(saved.receipt)
+    expect(await count('meals')).toBe(before + 1)
+  })
+
+  it('leaves a previously prepared uppercase timing unchanged and directs recovery of the original request', async () => {
+    const input = { requestId: randomUUID(), record: meal(), provenance: mealProvenance() }
+    const db = mcpOwnerClient(sql, owner).db
+    const fingerprint = createHash('sha256').update(canonicalActivityJson({ name: 'create_meal', input })).digest('hex')
+    const request = await db.rpc('begin_logging_request', { p_key: `mcp-activity:${input.requestId}`, p_fingerprint: fingerprint })
+    expect(request.error).toBeNull()
+    const normalized = normalizeActivity('meal', input.record)
+    const prepared = await db.rpc('freeze_logging_request_items', { p_request_id: request.data.id, p_items: [{
+      sourceItemId: 'activity:0', kind: 'meal', ...normalized,
+      record: { ...normalized.record, needs_review: true, manual_override: false, reviewed_at: null },
+      provenance: { schemaVersion: 1, ...input.provenance }, inputMethod: 'manual',
+      eventAt: input.record.meal_timestamp, eventPrecision: 'timestamp',
+    }] })
+    expect(prepared.error).toBeNull()
+    const frozenState = () => sql.query('SELECT i.payload, i.status, i.receipt, d.normalized, d.status AS draft_status FROM logging_request_items i JOIN activity_drafts d ON d.id = i.draft_id WHERE i.request_id = $1', [request.data.id])
+    const original = (await frozenState()).rows
+    expect(original).toMatchObject([{ payload: { record: { meal_timing: 'DINNER' } }, status: 'pending', receipt: null, draft_status: 'draft' }])
+
+    const before = await count('meals')
+    const adapter = tool('create_meal')
+    await expect(adapter.call(input)).rejects.toMatchObject({ status: 409, message: expect.stringContaining('Check the original request status') })
+    expect(adapter.calls).not.toContain('commit_logging_request_item')
+    expect(await call('get_activity_write_status', { requestId: input.requestId })).toMatchObject({ state: 'unconfirmed', absenceProvesNoWrite: false })
+    expect((await frozenState()).rows).toEqual(original)
+    expect(await count('meals')).toBe(before)
   })
 
   it('rejects key reuse across payload/action, stale revision and ownership; keeps real RLS grants restrictive', async () => {
@@ -108,6 +181,54 @@ describe('typed MCP persistence through installed owner RPCs and real PostgreSQL
     expect(() => validateActivityToolInput('create_workout', { requestId: randomUUID(), record: w, provenance: workoutProvenance() })).toThrow('unique stable ID')
   })
 
+  it('rejects incomplete meal provenance before opening a request and accepts the corrected command', async () => {
+    const input = { requestId: randomUUID(), record: meal(), provenance: mealProvenance() }
+    const adapter = tool('create_meal')
+    const incomplete = provenance(['meal_timestamp', 'items', 'quantities', 'macros'])
+    const before = await count('meals')
+    await expect(adapter.call({ ...input, provenance: incomplete })).rejects.toMatchObject({
+      status: 400, message: expect.stringMatching(/^Meal was rejected before saving:.*meal_timing/),
+    })
+    expect(adapter.calls).toEqual([])
+    expect(await call('get_activity_write_status', { requestId: input.requestId })).toMatchObject({ state: 'unconfirmed' })
+    expect((await adapter.call(input)).structuredContent.activity).toMatchObject({ state: 'saved', receipt: { revision: 1 } })
+    expect(await count('meals')).toBe(before + 1)
+  })
+
+  it('emits only operation, outcome and reached durations in meal write timing', async () => {
+    const log = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const record = { ...meal(), input_text: 'Synthetic private meal text' }
+    const sourceKeys = ['meal_timestamp', 'items', 'quantities', 'macros', 'input_text']
+    const input = { requestId: randomUUID(), record, provenance: provenance([...sourceKeys, 'meal_timing']) }
+    try {
+      await expect(call('create_meal', { ...input, provenance: provenance(sourceKeys) })).rejects.toMatchObject({ status: 400 })
+      const saved = await call('create_meal', input)
+
+      const eventName = '[SociusFit] Meal write timing'
+      const authorization = { toolAuthorization: expect.any(Number), ownerCheck: expect.any(Number) }
+      const event = { operation: 'create_meal', totalMs: expect.any(Number) }
+      expect(log.mock.calls).toEqual([
+        [eventName, { ...event, outcome: 'rejected', stagesMs: authorization }],
+        [eventName, { ...event, outcome: 'saved', stagesMs: { ...authorization, requestLedger: expect.any(Number),
+          receiptLookup: expect.any(Number), freeze: expect.any(Number), commit: expect.any(Number),
+          savedReadback: expect.any(Number), finalize: expect.any(Number) } }],
+      ])
+      for (const [, sample] of log.mock.calls) {
+        for (const duration of [sample.totalMs, ...Object.values(sample.stagesMs)]) {
+          expect(Number.isFinite(duration)).toBe(true)
+          expect(duration).toBeGreaterThanOrEqual(0)
+        }
+      }
+      const serialized = JSON.stringify(log.mock.calls)
+      for (const privateValue of [input.requestId, owner, saved.receipt.entityId, record.input_text, record.items[0].food,
+        record.meal_timestamp, input.provenance.occurrence.sourceReferences[0]]) {
+        expect(serialized).not.toContain(privateValue)
+      }
+    } finally {
+      log.mockRestore()
+    }
+  })
+
   it('recovers response loss after a real commit, with no duplicate row or revision', async () => {
     const input = { requestId: randomUUID(), record: meal(), provenance: mealProvenance() }
     const ownerClient = mcpOwnerClient(sql, owner), original = ownerClient.db.rpc.bind(ownerClient.db)
@@ -126,6 +247,45 @@ describe('typed MCP persistence through installed owner RPCs and real PostgreSQL
     expect(await count('meals')).toBe(before + 1)
   })
 
+  it('recovers the committed meal when the immediate revision readback is unavailable', async () => {
+    const input = { requestId: randomUUID(), record: { ...meal(), meal_timing: null }, provenance: mealProvenance() }
+    const client = mcpOwnerClient(sql, owner)
+    const from = client.db.from.bind(client.db)
+    client.db.from = ((table: string) => {
+      if (table === 'activity_revisions') throw new Error('Synthetic revision read interruption')
+      return from(table)
+    }) as typeof client.db.from
+    const adapter = createActivityRecordTool(async () => ({ principal: principal(), db: client.db }), policy, 'create_meal')
+    const before = await count('meals')
+    await expect(adapter.call(input)).rejects.toThrow('unconfirmed')
+    expect(client.calls).toContain('commit_logging_request_item')
+    const recovered = await call('get_activity_write_status', { requestId: input.requestId })
+    expect(recovered).toMatchObject({ state: 'saved', readback: 'verified_saved_revision', receipt: { revision: 1 }, savedRecord: { meal_timing: null } })
+    expect((await call('create_meal', input)).receipt).toEqual(recovered.receipt)
+    expect(await count('meals')).toBe(before + 1)
+    expect((await sql.query('SELECT revision FROM activity_revisions WHERE original_entity_id = $1', [recovered.receipt.entityId])).rows)
+      .toEqual([{ revision: 1 }])
+  })
+
+  it('returns verified saved details when finalizing the request throws after readback', async () => {
+    const input = { requestId: randomUUID(), record: { ...meal(), meal_timing: null }, provenance: mealProvenance() }
+    const client = mcpOwnerClient(sql, owner)
+    const original = client.db.rpc.bind(client.db)
+    client.db.rpc = (name, ...args) => {
+      if (name === 'finish_logging_request') throw new Error('Synthetic finalization interruption')
+      return original(name, ...args)
+    }
+    const adapter = createActivityRecordTool(async () => ({ principal: principal(), db: client.db }), policy, 'create_meal')
+    const before = await count('meals')
+    const saved = (await adapter.call(input)).structuredContent.activity
+    expect(saved).toMatchObject({ state: 'saved', readback: 'verified_saved_revision', requestClosure: 'unconfirmed',
+      receipt: { revision: 1 }, savedRecord: { meal_timing: null } })
+    const recovered = await call('get_activity_write_status', { requestId: input.requestId })
+    expect(saved).toMatchObject({ receipt: recovered.receipt })
+    expect((await call('create_meal', input)).receipt).toEqual(recovered.receipt)
+    expect(await count('meals')).toBe(before + 1)
+  })
+
   it('fails closed for principal/DB owner mismatch before any query or RPC', async () => {
     const client = mcpOwnerClient(sql, other)
     const adapter = createActivityRecordTool(async () => ({ principal: principal(), db: client.db }), policy, 'create_meal')
@@ -134,15 +294,18 @@ describe('typed MCP persistence through installed owner RPCs and real PostgreSQL
   })
 
   it('rolls canonical insertion back if the audit snapshot fails, then resumes the same frozen request', async () => {
-    const input = { requestId: randomUUID(), record: meal(), provenance: mealProvenance() }, before = await count('meals')
+    const input = { requestId: randomUUID(), record: { ...meal(), meal_timing: null }, provenance: mealProvenance() }, before = await count('meals')
     await sql.exec(`RESET ROLE; CREATE FUNCTION synthetic_reject_snapshot() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic snapshot failure'; END $$;
       CREATE TRIGGER synthetic_snapshot_failure BEFORE INSERT ON activity_revisions FOR EACH ROW EXECUTE FUNCTION synthetic_reject_snapshot();`)
     await actor()
-    await expect(call('create_meal', input)).rejects.toMatchObject({ status: 503 })
-    expect(await count('meals')).toBe(before)
-    expect(await call('get_activity_write_status', { requestId: input.requestId })).toMatchObject({ state: 'unconfirmed' })
-    await sql.exec('RESET ROLE; DROP TRIGGER synthetic_snapshot_failure ON activity_revisions; DROP FUNCTION synthetic_reject_snapshot();')
-    await actor()
+    try {
+      await expect(call('create_meal', input)).rejects.toMatchObject({ status: 503 })
+      expect(await count('meals')).toBe(before)
+      expect(await call('get_activity_write_status', { requestId: input.requestId })).toMatchObject({ state: 'unconfirmed' })
+    } finally {
+      await sql.exec('RESET ROLE; DROP TRIGGER synthetic_snapshot_failure ON activity_revisions; DROP FUNCTION synthetic_reject_snapshot();')
+      await actor()
+    }
     const saved = await call('create_meal', input)
     expect(saved).toMatchObject({ state: 'saved', receipt: { revision: 1 } }); expect(await count('meals')).toBe(before + 1)
   })

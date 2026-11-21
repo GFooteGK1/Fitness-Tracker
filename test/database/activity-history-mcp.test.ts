@@ -250,8 +250,8 @@ it('saves and corrects real records through MCP, then recalls both latest revisi
         record: { workout_date: day, input_text: 'Synthetic squat', blocks: workoutBlocks(5) },
         provenance: { occurrence: source, fields: fields(['workout_date', 'input_text', 'blocks', 'quantities']) } }, 1)
       const firstMeal = await write('create_meal', { requestId: randomUUID(),
-        record: { meal_timestamp: `${day}T23:40:00-05:00`, items: mealItems(1) },
-        provenance: { occurrence: source, fields: fields(['meal_timestamp', 'items', 'quantities', 'macros']) } }, 1)
+        record: { meal_timestamp: `${day}T23:40:00-05:00`, meal_timing: 'DINNER', items: mealItems(1) },
+        provenance: { occurrence: source, fields: fields(['meal_timestamp', 'meal_timing', 'items', 'quantities', 'macros']) } }, 1)
       const correctWorkout = { requestId: randomUUID(), entityId: firstWorkout.entityId, expectedRevision: 1,
         changes: { blocks: workoutBlocks(4) }, provenance: { fields: fields(['blocks', 'quantities'], 'corrected') } }
       const correctMeal = { requestId: randomUUID(), entityId: firstMeal.entityId, expectedRevision: 1,
@@ -276,7 +276,7 @@ it('saves and corrects real records through MCP, then recalls both latest revisi
   expect(result.structuredContent).toMatchObject({ history: {
     workouts: { totalCount: 1, timingStatus: 'available', occurrences: [{ id: ids.workout, revision: 2, eventDate: day,
       details: { records: [{ recordedEvent: { performed: { set_details: [{ ...set, reps: 4 }] } } }] } }] },
-    meals: { totalCount: 1, intakeCoverage: 'unknown', occurrences: [{ id: ids.meal, revision: 2, eventDate: day,
+    meals: { totalCount: 1, intakeCoverage: 'unknown', occurrences: [{ id: ids.meal, revision: 2, eventDate: day, mealTiming: 'general',
       items: [{ portion: '2 servings' }], macros: { protein: 40, carbs: 60, fat: 20, calories: 580 } }] },
   } })
   const after = await history(owner, { timezone: 'America/Chicago' }, nutritionOptions)

@@ -6,6 +6,10 @@ import { sqlFile } from './fixture'
 /** Real PostgreSQL SQL/RLS behind the unmodified adapter; no success-shaped RPC mocks. */
 export async function mcpActivityFixture(corrections = true) {
   const db = await recommendationFixture()
+  const mealTimingCheck = sqlFile('docs/migrations/complete-holistic-migration.sql')
+    .match(/ALTER TABLE meals ADD CONSTRAINT check_valid_meal_timing[^;]+;/)?.[0]
+  if (!mealTimingCheck) throw new Error('Missing canonical meal timing constraint')
+  await db.exec(mealTimingCheck)
   await db.exec(sqlFile('supabase/migrations/20260926120000_workout_save_recovery.sql'))
   if (corrections) await db.exec(sqlFile('supabase/migrations/20261022164908_activity_measurement_corrections.sql'))
   return db
