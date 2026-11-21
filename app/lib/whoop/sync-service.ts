@@ -17,7 +17,7 @@ import type {
  * WHOOP Sync Service
  *
  * Handles fetching and storing WHOOP data from the API.
- * Supports both full sync (7 days history) and incremental sync (since last sync).
+ * Supports a seven-day full sync and overlapping incremental reconciliation.
  *
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 8.1
  */
@@ -55,6 +55,20 @@ export interface SyncOptions {
 
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff in milliseconds
+const DAY_MS = 24 * 60 * 60 * 1000;
+const FULL_HISTORY_MS = 7 * DAY_MS;
+const RECONCILIATION_MS = 3 * DAY_MS;
+
+function incrementalStart(lastSyncAt: Date | null, endDate: Date): Date {
+  const end = endDate.getTime();
+  const checkpoint = lastSyncAt?.getTime() ?? Number.NaN;
+  if (!Number.isFinite(checkpoint) || checkpoint > end) {
+    return new Date(end - FULL_HISTORY_MS);
+  }
+  // WHOOP filters collections by occurrence, so a score or edit can appear
+  // after a previous request even though the underlying activity is older.
+  return new Date(Math.min(checkpoint, end - RECONCILIATION_MS));
+}
 
 /**
  * Resolve the Supabase client to use for a sync.
@@ -76,14 +90,13 @@ export async function fullSync(userId: string, client?: SupabaseClient): Promise
 
   const supabase = await resolveSyncClient(client);
   const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - 7);
+  const startDate = new Date(endDate.getTime() - FULL_HISTORY_MS);
 
   return await syncDateRange(userId, startDate, endDate, supabase);
 }
 
 /**
- * Perform incremental sync - fetch data since last sync
+ * Perform incremental sync - recheck recent records and catch up after outages.
  */
 export async function incrementalSync(userId: string, client?: SupabaseClient): Promise<SyncResult> {
   console.log('[WHOOP Sync] Starting incremental sync for user:', userId);
@@ -91,14 +104,8 @@ export async function incrementalSync(userId: string, client?: SupabaseClient): 
   const supabase = await resolveSyncClient(client);
   const syncStatus = await getSyncStatus(userId, supabase);
 
-  if (!syncStatus.lastSyncAt) {
-    console.log('[WHOOP Sync] No previous sync found, performing full sync');
-    return await fullSync(userId, supabase);
-  }
-
-  const startDate = new Date(syncStatus.lastSyncAt);
   const endDate = new Date();
-
+  const startDate = incrementalStart(syncStatus.lastSyncAt, endDate);
   return await syncDateRange(userId, startDate, endDate, supabase);
 }
 
@@ -109,8 +116,7 @@ export async function incrementalOwnerCronSync(userId: string, client: SupabaseC
   }
   const status = await getSyncStatus(userId, client);
   const endDate = new Date();
-  const startDate = status.lastSyncAt ? new Date(status.lastSyncAt) : new Date(endDate);
-  if (!status.lastSyncAt) startDate.setDate(startDate.getDate() - 7);
+  const startDate = incrementalStart(status.lastSyncAt, endDate);
   return syncDateRange(userId, startDate, endDate, client, { ownerCron: true });
 }
 
@@ -181,7 +187,7 @@ async function syncDateRange(
     // Update sync status to 'idle' with success
     await updateSyncStatus(userId, {
       status: 'idle',
-      lastSyncAt: new Date(),
+      lastSyncAt: endDate,
       nextSyncAt: calculateNextSyncTime(),
       errorMessage: null,
       recordsSynced,
@@ -234,16 +240,18 @@ async function syncDateRange(
 /**
  * Transform and store recovery data
  */
-async function storeRecoveryData(
+export async function storeRecoveryData(
   userId: string,
-  recoveryData: any[],
-  supabase: SupabaseClient
+  recoveryData: unknown[],
+  supabase: SupabaseClient,
+  requireTiming = false,
 ): Promise<number> {
   const records = recoveryData.map(item => transformRecoveryData(userId, item));
 
-  const { error } = await upsertWhoopTiming(supabase, 'recovery', userId, records, recoveryData);
+  const { error } = await upsertWhoopTiming(supabase, 'recovery', userId, records, recoveryData, requireTiming);
 
   if (error) {
+    if (requireTiming) throw new Error('WHOOP recovery write failed');
     console.error('[WHOOP Sync] Failed to store recovery data:', error);
     throw error;
   }
@@ -282,16 +290,18 @@ function transformRecoveryData(userId: string, apiData: any): Partial<WhoopRecov
 /**
  * Transform and store sleep data
  */
-async function storeSleepData(
+export async function storeSleepData(
   userId: string,
-  sleepData: any[],
-  supabase: SupabaseClient
+  sleepData: unknown[],
+  supabase: SupabaseClient,
+  requireTiming = false,
 ): Promise<number> {
   const records = sleepData.map(item => transformSleepData(userId, item));
 
-  const { error } = await upsertWhoopTiming(supabase, 'sleep', userId, records, sleepData);
+  const { error } = await upsertWhoopTiming(supabase, 'sleep', userId, records, sleepData, requireTiming);
 
   if (error) {
+    if (requireTiming) throw new Error('WHOOP sleep write failed');
     console.error('[WHOOP Sync] Failed to store sleep data:', error);
     throw error;
   }
@@ -538,6 +548,7 @@ function isRetryableError(error: any): boolean {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
     return (
+      ('status' in error && error.status === 429) ||
       message.includes('rate limit') ||
       message.includes('timeout') ||
       message.includes('503') ||

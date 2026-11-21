@@ -8,6 +8,7 @@ const owner = process.env.WHOOP_BOUNDARY_OWNER_ID ?? '11111111-1111-4111-8111-11
 const other = '22222222-2222-4222-8222-222222222222'
 const now = '2026-10-20T11:28:56.000Z'
 const previous = '2026-10-18T22:44:23.325Z'
+const overlapStart = '2026-10-17T11:28:56.000Z'
 vi.mock('@/app/lib/whoop/timing-owner', async importOriginal => process.env.WHOOP_REAL_OWNER_SELECTOR === '1'
   ? await importOriginal()
   : { isWhoopTimingOwner: (id: unknown) => id === '11111111-1111-4111-8111-111111111111' })
@@ -154,7 +155,7 @@ describe('real owner GET → sync → token boundary (synthetic DB/crypto/provid
       expect(state.token).toMatchObject({ user_id: owner, access_token_encrypted: 'cipher-new-a', refresh_token_encrypted: 'cipher-new-r', expires_at: '2026-10-20T12:28:56.000Z', scope: 'read:recovery read:sleep' })
       expect(JSON.stringify(state.token)).not.toContain('synthetic-new-')
     } else expect(encryptTokens).not.toHaveBeenCalled()
-    dataFns.forEach(fn => expect(fn).toHaveBeenCalledExactlyOnceWith(refreshed ? 'synthetic-new-access' : 'synthetic-old-access', new Date(previous), new Date(now)))
+    dataFns.forEach(fn => expect(fn).toHaveBeenCalledExactlyOnceWith(refreshed ? 'synthetic-new-access' : 'synthetic-old-access', new Date(overlapStart), new Date(now)))
     for (const domain of ['whoop_recovery', 'whoop_sleep', 'whoop_cycles']) {
       expect(state.domains.filter(op => op.table === domain).flatMap(op => op.rows!)).toEqual([expect.objectContaining({ user_id: owner, timing_ingested_at: now, timing_mapping_version: 'whoop_timing_owner_v1', timing_provenance: expect.objectContaining({ source: 'provider_payload' }) })])
     }
@@ -166,6 +167,68 @@ describe('real owner GET → sync → token boundary (synthetic DB/crypto/provid
     expect((await (await GET(request())).json()).results.successful).toBe(1)
     dataFns.forEach(fn => expect(fn).toHaveBeenCalledExactlyOnceWith('synthetic-new-access', new Date('2026-10-13T11:28:56.000Z'), new Date(now)))
     expect(createServerClient).not.toHaveBeenCalled()
+  })
+  it.each(['invalid', '2026-10-21T11:28:56.000Z'])('uses the seven-day fallback for an unusable checkpoint (%s)', async checkpoint => {
+    const { state, dataFns } = fixture()
+    state.status!.last_sync_at = checkpoint
+    expect((await (await GET(request())).json()).results.successful).toBe(1)
+    for (const fn of dataFns) {
+      expect(fn).toHaveBeenCalledExactlyOnceWith('synthetic-new-access', new Date('2026-10-13T11:28:56.000Z'), new Date(now))
+    }
+  })
+  it('preserves outage catch-up when the previous checkpoint is older than the overlap', async () => {
+    const { state, dataFns } = fixture()
+    state.status!.last_sync_at = '2026-10-15T22:44:23.325Z'
+    expect((await (await GET(request())).json()).results.successful).toBe(1)
+    for (const fn of dataFns) {
+      expect(fn).toHaveBeenCalledExactlyOnceWith('synthetic-new-access', new Date('2026-10-15T22:44:23.325Z'), new Date(now))
+    }
+  })
+  it('imports late-scored sleep and recovery that occurred before the previous checkpoint', async () => {
+    const { state } = fixture()
+    const observed = '2026-10-18T11:00:00.000Z'
+    const scored = '2026-10-19T17:00:00.000Z'
+    vi.mocked(api.getRecovery).mockImplementation(async (_token, start) => start > new Date(observed) ? [] : [{
+      ...providerPayload('recovery'), created_at: observed, updated_at: scored,
+    }] as never)
+    vi.mocked(api.getSleep).mockImplementation(async (_token, start) => start > new Date(observed) ? [] : [{
+      ...providerPayload('sleep'), created_at: observed, updated_at: scored,
+      start: '2026-10-18T04:00:00.000Z', end: observed,
+    }] as never)
+    expect((await (await GET(request())).json()).results.successful).toBe(1)
+    for (const table of ['whoop_recovery', 'whoop_sleep']) {
+      expect(state.domains.filter(op => op.table === table).flatMap(op => op.rows!)).toEqual([
+        expect.objectContaining({ date: '2026-10-18', provider_updated_at: scored, provider_score_state: 'SCORED' }),
+      ])
+    }
+  })
+  it('records the frozen query end even when all streams are empty and the batch finishes later', async () => {
+    const { state, dataFns } = fixture()
+    for (const fn of dataFns) vi.mocked(fn).mockResolvedValue([])
+    vi.mocked(api.getWorkouts).mockImplementation(async () => {
+      vi.setSystemTime(new Date('2026-10-20T11:29:01.000Z'))
+      return []
+    })
+    expect((await (await GET(request())).json()).results.successful).toBe(1)
+    expect(state.domains).toEqual([])
+    expect(state.status).toMatchObject({
+      status: 'idle', last_sync_at: now, records_synced: { recovery: 0, sleep: 0, cycles: 0, workouts: 0 },
+    })
+  })
+  it('retries a provider rate limit with unchanged query bounds and preserves the checkpoint on exhaustion', async () => {
+    const { state, dataFns } = fixture()
+    vi.mocked(api.getSleep).mockRejectedValue(Object.assign(new Error('Failed to fetch sleep data: 429'), { status: 429 }))
+    const pending = GET(request())
+    await vi.runAllTimersAsync()
+    expect((await (await pending).json()).results).toMatchObject({ successful: 0, failed: 1 })
+    for (const fn of dataFns) {
+      expect(fn).toHaveBeenCalledTimes(4)
+      for (const args of vi.mocked(fn).mock.calls) {
+        expect(args).toEqual(['synthetic-new-access', new Date(overlapStart), new Date(now)])
+      }
+    }
+    expect(state.domains).toEqual([])
+    expect(state.status).toMatchObject({ status: 'error', last_sync_at: previous, records_synced: { recovery: 9 } })
   })
   it('awaits encrypted rotation persistence before any data fetch', async () => {
     const { state, dataFns } = fixture()
@@ -246,7 +309,7 @@ describe('real owner GET → sync → token boundary (synthetic DB/crypto/provid
     expect(state.operations.filter(op => op.table === 'whoop_tokens' && op.op === 'lookup')).toEqual([{ context:'cookie',table:'whoop_tokens',op:'lookup',owner }])
   })
   it('leaves authenticated user sync cookie-scoped and unauthorized requests rejected', async () => {
-    const { state, cookie } = fixture(); vi.mocked(createServerClient).mockResolvedValue(cookie as never)
+    const { state, cookie, dataFns } = fixture(); vi.mocked(createServerClient).mockResolvedValue(cookie as never)
     state.cookieUser = null
     expect((await sessionPOST(request('POST'))).status).toBe(401)
     expect(createServiceRoleClient).not.toHaveBeenCalled(); expect(state.operations).toEqual([])
@@ -254,5 +317,8 @@ describe('real owner GET → sync → token boundary (synthetic DB/crypto/provid
     expect((await sessionPOST(request('POST'))).status).toBe(200)
     expect(state.operations.every(op => op.context === 'cookie')).toBe(true)
     expect(createServiceRoleClient).not.toHaveBeenCalled(); expect(api.refreshAccessToken).not.toHaveBeenCalled()
+    for (const fn of dataFns) {
+      expect(fn).toHaveBeenCalledExactlyOnceWith('synthetic-old-access', new Date(overlapStart), new Date(now))
+    }
   })
 })

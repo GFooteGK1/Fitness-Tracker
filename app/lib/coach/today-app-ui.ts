@@ -345,18 +345,19 @@ ${nutritionStyles}
       <section id="whoop-panel" class="panel" aria-labelledby="recovery-title">
         <h2 id="recovery-title">WHOOP</h2>
         <p id="recovery-status" class="recovery-state"></p>
+        <p id="whoop-refresh-status" class="muted" role="status" hidden></p>
         <p id="recovery-note" class="muted status-label" hidden></p>
         <dl id="whoop-gauges" class="whoop-gauges">
           <div class="whoop-gauge sleep">
-            <dt>Sleep</dt>
+            <dt>Sleep<span id="sleep-note" class="whoop-gauge-note" hidden>Earlier saved date</span></dt>
             <dd class="whoop-dial"><strong id="sleep-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
           </div>
           <div id="recovery-overview" class="whoop-gauge">
-            <dt>Recovery</dt>
+            <dt>Recovery<span id="recovery-score-note" class="whoop-gauge-note" hidden>Earlier saved date</span></dt>
             <dd class="whoop-dial"><strong id="recovery-percent"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
           </div>
           <div class="whoop-gauge strain">
-            <dt>Strain<span id="strain-note" class="whoop-gauge-note" hidden>Stale</span></dt>
+            <dt>Strain<span id="strain-note" class="whoop-gauge-note" hidden>Earlier saved date</span></dt>
             <dd class="whoop-dial"><strong id="strain-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
           </div>
         </dl>
@@ -429,6 +430,10 @@ ${mcpHostBridgeScript}
       let dayTimer = null;
       let deviceDay = localDayKey(new Date());
       let dayRevision = 0;
+      let todayReadRevision = 0;
+      let whoopRefreshInFlight = false;
+      let lastWhoopReadAt = null;
+      const whoopRefreshIntervalMs = 30_000;
 
       function element(tag, text, className) {
         const node = document.createElement(tag);
@@ -576,6 +581,8 @@ ${mcpHostBridgeScript}
         setGauge('sleep-score-value', recovery.sleepPerformance, 100, percent);
         setGauge('recovery-percent', recovery.recoveryScore, 100, percent);
         setGauge('strain-score-value', recovery.strainScore, 21, value => value.toFixed(1));
+        byId('sleep-note').hidden = recovery.sleepScoreStatus !== 'stale' || !isScore(recovery.sleepPerformance, 100);
+        byId('recovery-score-note').hidden = recovery.recoveryScoreStatus !== 'stale' || !isScore(recovery.recoveryScore, 100);
         byId('strain-note').hidden = recovery.strainStatus !== 'stale' || !isScore(recovery.strainScore, 21);
 
         const score = recovery.recoveryScore;
@@ -599,24 +606,30 @@ ${mcpHostBridgeScript}
         dates.replaceChildren();
         for (const [label, value, dateOnly] of [
           ['Stored recovery date', recovery.storedDate, true],
-          ['WHOOP score updated', recovery.recoveryUpdatedAt, false],
+          ['Recovery score updated', recovery.recoveryUpdatedAt, false],
+          ['Stored sleep date', recovery.sleepStoredDate, true],
+          ['Sleep record updated', recovery.sleepUpdatedAt, false],
           ['Sleep ended', recovery.sleepEndedAt, false],
           ['Stored day strain date', recovery.strainStoredDate, true],
-          ['Last sync', recovery.lastSyncAt, false],
+          ['Strain record updated', recovery.strainUpdatedAt, false],
+          ['Last successful batch sync', recovery.lastSyncAt, false],
         ]) {
           const time = element('time');
           if (!setTime(time, value, dateOnly)) continue;
           addMetric(dates, label, time);
         }
         dates.hidden = !dates.childElementCount;
+        byId('whoop-details').hidden = metrics.hidden && dates.hidden && byId('workout-recovery').hidden;
+        lastWhoopReadAt = Date.now();
+        setNote('whoop-refresh-status', null);
+      }
 
-        const effort = recovery.sessionEffort;
+      function renderWorkoutRecovery(effort) {
         const comparison = byId('workout-recovery-metrics');
         comparison.replaceChildren();
         const hasRpe = Number.isFinite(effort?.rpe);
         const paired = effort?.status === 'paired' && hasRpe && isScore(effort.recoveryScore, 100);
         byId('workout-recovery').hidden = !hasRpe;
-        byId('whoop-details').hidden = metrics.hidden && dates.hidden && !hasRpe;
         comparison.hidden = !hasRpe;
         setNote('workout-recovery-note', hasRpe && !paired ? 'No verified recovery score from before this workout.' : null);
         if (paired) {
@@ -648,6 +661,7 @@ ${mcpHostBridgeScript}
         }
         renderAcceptedPlan(today);
         renderLastWorkout(today.lastWorkout);
+        renderWorkoutRecovery(today.recovery.sessionEffort);
         renderRecovery(today.recovery);
         const readAt = byId('read-at');
         readAt.hidden = !setTime(readAt, today.readAt, false);
@@ -687,6 +701,7 @@ ${mcpHostBridgeScript}
         const retry = byId('retry');
         if (retry.disabled || host.closed) return;
         const revision = dayRevision;
+        todayReadRevision += 1;
         retry.disabled = true;
         byId('error-message').textContent = '';
         syncTodayVisibility();
@@ -720,6 +735,42 @@ ${mcpHostBridgeScript}
         }
       }
 
+      async function refreshWhoop() {
+        const date = byId('today-date').dateTime;
+        if (host.closed || activeView !== 'today' || document.visibilityState === 'hidden'
+          || whoopRefreshInFlight || byId('retry').disabled || checkInSubmit.disabled
+          || !date || byId('error-message').textContent || lastWhoopReadAt === null
+          || Date.now() - lastWhoopReadAt < whoopRefreshIntervalMs) return;
+        const revision = todayReadRevision;
+        const canRender = () => !host.closed && revision === todayReadRevision
+          && activeView === 'today' && document.visibilityState !== 'hidden';
+        whoopRefreshInFlight = true;
+        lastWhoopReadAt = Date.now();
+        try {
+          const result = await host.request('tools/call', {
+            name: 'open_socius_today',
+            arguments: { tzOffset: new Date().getTimezoneOffset() },
+          });
+          if (refreshTodayIfDateChanged() || !canRender()) return;
+          if (result?._meta?.['mcp/www_authenticate']) {
+            setNote('whoop-refresh-status', 'Reconnect SociusFit in ChatGPT to refresh WHOOP.');
+            return;
+          }
+          const today = result?._meta?.today;
+          if (result?.isError || !today?.recovery || today.date !== date) {
+            setNote('whoop-refresh-status', 'Could not refresh saved WHOOP data.');
+            return;
+          }
+          renderRecovery(today.recovery);
+        } catch {
+          if (!refreshTodayIfDateChanged() && canRender()) {
+            setNote('whoop-refresh-status', 'Could not refresh saved WHOOP data.');
+          }
+        } finally {
+          whoopRefreshInFlight = false;
+        }
+      }
+
       function clearGuidance() {
         renderGuidance(null);
         setCheckInStatus('');
@@ -729,6 +780,7 @@ ${mcpHostBridgeScript}
         event.preventDefault();
         if (host.closed || refreshTodayIfDateChanged() || checkInSubmit.disabled || !checkInForm.reportValidity()) return;
         const revision = dayRevision;
+        todayReadRevision += 1;
 
         const checkIn = {
           stress: byId('check-in-stress').value,
@@ -905,7 +957,7 @@ ${mcpHostBridgeScript}
 
       function handleForeground() {
         if (document.visibilityState === 'hidden') return;
-        refreshTodayIfDateChanged();
+        if (!refreshTodayIfDateChanged()) void refreshWhoop();
         refreshNutrition();
       }
 
@@ -918,7 +970,7 @@ ${mcpHostBridgeScript}
           byId('show-' + key).setAttribute('aria-pressed', String(key === view));
           if (key !== 'today') byId(key + '-content').hidden = key !== view;
         }
-        if (view === 'today') refreshTodayIfDateChanged();
+        if (view === 'today' && !refreshTodayIfDateChanged()) void refreshWhoop();
         syncTodayVisibility();
         stopNutritionRefresh();
         if (view === 'activity') void loadActivity();

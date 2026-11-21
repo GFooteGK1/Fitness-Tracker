@@ -69,6 +69,10 @@ function metricNumber(row: ContextRow | null, key: string, max = Infinity) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= max ? value : null
 }
 
+function savedScoreStatus(score: number | null, sourceStatus: string) {
+  return score === null ? 'unavailable' : sourceStatus === 'stale' ? 'stale' : 'stored'
+}
+
 /** Dashboard-only saved WHOOP facts. The external context's conservative
  * freshness contract remains intact and the presentation does not infer risk,
  * training readiness or a causal effect from one paired session. */
@@ -88,7 +92,7 @@ export function projectTodayRecovery(recovery: ReturnType<typeof projectContextR
   const sleepPerformance = metricNumber(storedSleep, 'sleep_performance_percentage', 100)
   const sleepInBedMs = metricNumber(storedSleep, 'total_sleep_duration_ms')
   const strainScore = metricNumber(storedStrain, 'strain', 21)
-  const strainStatus = strainScore === null ? 'unavailable' : strain.status === 'stale' ? 'stale' : 'stored'
+  const strainStatus = savedScoreStatus(strainScore, strain.status)
   const hasRecoveryOrSleep = [recoveryScore, hrvMs, restingHeartRate, sleepPerformance, sleepInBedMs].some(value => value !== null)
   const stale = (metric.status === 'stale' && storedMetric !== null) || (!hasRecoveryOrSleep && strainStatus === 'stale')
   const status = recovery.connected === false ? 'disconnected'
@@ -103,15 +107,22 @@ export function projectTodayRecovery(recovery: ReturnType<typeof projectContextR
     lastSyncAt: recovery.batch.timeStatus === 'recorded' ? recovery.batch.lastSuccessfulBatchAt : null,
     storedDate: storedMetric ? metric.storedDate : null,
     recoveryScore,
+    recoveryScoreStatus: savedScoreStatus(recoveryScore, metric.status),
     hrvMs,
     restingHeartRate,
     sleepPerformance,
+    sleepScoreStatus: savedScoreStatus(sleepPerformance, sleep.status),
+    sleepStoredDate: sleepPerformance === null ? null : sleep.storedDate,
     sleepInBedMinutes: sleepInBedMs === null ? null : Math.round(sleepInBedMs / 60_000),
     strainScore,
     strainStatus,
     strainStoredDate: strainScore === null ? null : strain.storedDate,
     recoveryUpdatedAt: storedMetric && metric.providerTiming.scoreSnapshotMatches ? metric.providerUpdatedAt : null,
+    sleepUpdatedAt: sleepPerformance !== null && sleep.providerTiming.status === 'recorded'
+      && sleep.providerTiming.scoreState === 'SCORED' ? sleep.providerUpdatedAt : null,
     sleepEndedAt: storedSleep && sleep.providerTiming.status === 'recorded' ? sleep.intervalEnd : null,
+    strainUpdatedAt: strainScore !== null && strain.providerTiming.status === 'recorded'
+      && strain.providerTiming.scoreState === 'SCORED' ? strain.providerUpdatedAt : null,
     syncStatus: recovery.syncStatus,
     sessionEffort: {
       status: !workout ? 'no_workout' : rpe === null ? 'no_rpe' : !at ? 'timing_unverified' : pair ? 'paired' : 'recovery_unavailable',

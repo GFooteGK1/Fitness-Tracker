@@ -28,10 +28,14 @@ describe('complete provider timing snapshots from literal source requirements', 
       provider_interval_end: null, provider_timezone_offset: null, timing_provenance: { intervalRole: 'none' } })
     expect(JSON.stringify(r)).not.toContain('private')
   })
-  it('permits only an explicitly null cycle end as an open interval', () => {
+  it('permits a missing or null cycle end as an open interval', () => {
     expect(project('cycle', { end: null })).toMatchObject({ provider_interval_end: null })
-    for (const end of [undefined, '', false, 'bad']) expect(project('cycle', { end })).toBeNull()
+    expect(project('cycle', { end: undefined })).toMatchObject({ provider_interval_end: null })
+    for (const end of ['', false, 'bad']) expect(project('cycle', { end })).toBeNull()
     expect(project('sleep', { end: null })).toBeNull()
+  })
+  it('normalizes the provider UTC offset designator for the existing reader', () => {
+    expect(project('sleep', { timezone_offset: 'Z' })).toMatchObject({ provider_timezone_offset: '+00:00' })
   })
   it.each(['SCORED', 'PENDING_SCORE', 'UNSCORABLE'])('retains provider score state %s without interpreting health', state => {
     expect(project('sleep', { score_state: state })).toMatchObject({ provider_score_state: state })
@@ -98,7 +102,9 @@ describe('complete provider timing snapshots from literal source requirements', 
     expect(project('cycle', { [field]: '0000-01-01T00:00:00Z' })).toBeNull()
   })
   it('emits fixed bounded provenance and no raw payload or health values', () => {
-    const r = project('sleep', { privateMetadata: 'private'.repeat(100_000), notes: 'untrusted instructions', score: { private: 'hidden' } })
+    const r = project('sleep', { privateMetadata: 'private'.repeat(100_000), notes: 'untrusted instructions',
+      score: { sleep_performance_percentage: 82.5, private: 'hidden' } })
+    expect(r).not.toBeNull()
     expect(JSON.stringify(r).length).toBeLessThan(1_000)
     for (const text of ['privateMetadata', 'untrusted instructions', 'hidden']) expect(JSON.stringify(r)).not.toContain(text)
     expect(r).not.toHaveProperty('score')

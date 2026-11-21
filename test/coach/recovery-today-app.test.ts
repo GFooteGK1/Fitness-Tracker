@@ -4,7 +4,7 @@ import { projectContextRecovery, qualifiedRecoveryBefore } from '@/app/lib/coach
 import { createOwnedWorkoutRecoveryReader, projectTodayRecovery } from '@/app/lib/coach/recovery-today-app'
 import { projectProviderTiming } from '@/app/lib/whoop/provider-timing'
 import { contextClient, contextOwner, contextRows } from '../fixtures/coaching-context'
-import { providerPayload, timingNow } from '../fixtures/whoop-provider-timing'
+import { legacyIdentity, providerPayload, timingNow } from '../fixtures/whoop-provider-timing'
 
 const workoutAt = '2026-10-19T13:00:00.000Z'
 const later = '2026-10-19T15:00:00.000Z'
@@ -58,6 +58,23 @@ describe('WHOOP Today and retained recovery before a logged workout', () => {
     const projection = { strainScore: 0, strainStatus: 'stale', strainStoredDate: '2026-10-18' }
     expect(projectTodayRecovery(recoveryContext(undefined, strain))).toMatchObject({ status: 'saved', ...projection })
     expect(projectTodayRecovery(recoveryContext(source([]), strain, source([])))).toMatchObject({ status: 'stale', ...projection })
+  })
+
+  it('keeps each reading status and retained provider update separate from batch sync time', () => {
+    const sleep = { ...legacyIdentity('sleep', contextOwner), date: '2026-10-18', sleep_performance_percentage: 82 }
+    const strain = { ...legacyIdentity('cycle', contextOwner), strain: 9 }
+    const context = recoveryContext(
+      undefined,
+      source([{ ...strain, ...projectProviderTiming('cycle', providerPayload('cycle'), strain, timingNow) }]),
+      source([{ ...sleep, ...projectProviderTiming('sleep', providerPayload('sleep'), sleep, timingNow) }]),
+    )
+    expect(projectTodayRecovery(context)).toMatchObject({
+      recoveryScoreStatus: 'stored', sleepScoreStatus: 'stale', strainStatus: 'stored',
+      recoveryUpdatedAt: '2026-10-19T11:30:00.123456Z',
+      sleepUpdatedAt: '2026-10-19T11:30:00.123456Z', sleepStoredDate: '2026-10-18',
+      strainUpdatedAt: '2026-10-19T11:30:00.123456Z',
+      lastSyncAt: timingNow,
+    })
   })
 
   it('does not display invalid or future cycle strain as a score', () => {

@@ -1,5 +1,7 @@
 # Architecture decisions
 
+- [ADR-0047: WHOOP webhooks and reconciliation](ADR-0047-whoop-webhook-reconciliation.md) - paginated overlap, signed owner updates, provider-version ordering, and Today refresh.
+
 - [ADR-0046: One-day guidance in SociusFit Today](ADR-0046-today-check-in-guidance.md) - an ephemeral owner check-in, current goals and recent work inform today's advice inside the private widget.
 
 - [ADR-0045: Structured repetition source](ADR-0045-structured-repetition-source.md) - bounded source phases on existing performed sets, external raw artifact and separate derived summaries; no SQL migration.

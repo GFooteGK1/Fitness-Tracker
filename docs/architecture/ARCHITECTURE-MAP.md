@@ -1,5 +1,13 @@
 # SociusFit Architecture Map
 
+ADR-0047 gives WHOOP two ingestion paths into the existing canonical tables.
+Daily and manual sync reconcile an overlapping, paginated range. A signed
+owner-only webhook reads the exact changed sleep or recovery from WHOOP.
+Postgres preserves the newest retained provider version. Today can refresh
+the saved WHOOP section on foreground without changing training guidance.
+The receiver is off until its two server-side owner IDs are configured and
+the WHOOP app registers the v2 endpoint.
+
 ADR-0044 adds typed external workout/meal create and amendment adapters over the
 installed capture RPCs, immutable revisions and receipts. ChatGPT remains the
 operating interface; Socius supplies deterministic persistence and retrieval.
@@ -59,9 +67,9 @@ and receipt paths.
 
 ADR-0041 adds the separately approved owner-only cron GET: the existing bearer
 secret is checked before privileged work; only an existing fixed-owner connection
-can reach incremental sync. GET is no-store, POST behavior and daily10:30UTC
-schedule remain unchanged. No new credentials, permissions, provider window,
-health/date mappings or manual sync. Code release and actual scheduled retention
+can reach incremental sync. GET is no-store, POST authorization and the daily 10:30 UTC
+schedule remain unchanged. ADR-0047 extends the provider window while retaining
+health/date mappings and the manual sync entry point. Code release and actual scheduled retention
 have distinct acceptance gates; neither follows merely from synthetic tests.
 
 `get_coaching_context` exposes factual owner context through MCP; the cookie

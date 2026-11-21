@@ -59,6 +59,42 @@ describe('installed Supabase adapter timing groups (captured requests, no networ
     await expect(upsertWhoopTiming(db, 'cycle', syntheticTimingOwner, [legacyIdentity('cycle')], [])).rejects.toThrow('identity mismatch')
     expect(calls).toHaveLength(0)
   })
+  it('rejects a non-owner or incomplete provider timing before any webhook write', async () => {
+    const { db, calls } = adapter()
+    const nonOwner = legacyIdentity('sleep', syntheticOther)
+    await expect(upsertWhoopTiming(db, 'sleep', syntheticOther, [nonOwner], [providerPayload('sleep')], true))
+      .rejects.toThrow('timing owner required')
+    const owner = legacyIdentity('recovery')
+    await expect(upsertWhoopTiming(db, 'recovery', syntheticTimingOwner, [owner], [
+      { ...providerPayload('recovery'), updated_at: 'bad' },
+    ], true)).rejects.toThrow('Valid WHOOP provider timing required')
+    expect(calls).toEqual([])
+  })
+  it.each([
+    ['sleep', 'sleep_performance_percentage', 82.5],
+    ['recovery', 'recovery_score', 71.25],
+  ] as const)('only consumes a SCORED %s provider version after the score is available', async (kind, metric, score) => {
+    const { db, calls } = adapter()
+    const payload = providerPayload(kind)
+    const row = legacyIdentity(kind)
+    await expect(upsertWhoopTiming(db, kind, syntheticTimingOwner, [{ ...row, [metric]: null }], [
+      { ...payload, score: {} },
+    ], true)).rejects.toThrow()
+    expect(calls).toEqual([])
+
+    await expect(upsertWhoopTiming(db, kind, syntheticTimingOwner, [{ ...row, [metric]: score }], [payload], true))
+      .resolves.toEqual({ error: null })
+    expect(calls).toHaveLength(1)
+    expect(calls[0].body).toEqual([
+      expect.objectContaining({
+        ...row,
+        [metric]: score,
+        provider_updated_at: payload.updated_at,
+        timing_mapping_version: 'whoop_timing_owner_v1',
+        timing_ingested_at: timingNow,
+      }),
+    ])
+  })
   it('does not cache owner eligibility or leak timing to a subsequent non-owner', async () => {
     const { db, calls } = adapter()
     await upsertWhoopTiming(db, 'cycle', syntheticTimingOwner, [legacyIdentity('cycle')], [providerPayload('cycle')])

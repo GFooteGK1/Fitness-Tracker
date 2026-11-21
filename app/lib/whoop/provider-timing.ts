@@ -7,6 +7,19 @@ const cycleId = (value: unknown): value is number => Number.isSafeInteger(value)
 const offset = (value: unknown): value is string => typeof value === 'string' && value !== '-00:00'
   && /^[+-](?:0\d|1[0-3]):[0-5]\d$|^[+-]14:00$/.test(value)
 
+function validScoredPayload(kind: TimingKind, payload: Row): boolean {
+  if (!object(payload.score)) return false
+  const score = payload.score
+  if (kind === 'sleep' && payload.nap === true) {
+    const duration = object(score.stage_summary) && score.stage_summary.total_in_bed_time_milli
+    return typeof duration === 'number' && Number.isFinite(duration) && duration >= 0
+  }
+  const value = kind === 'recovery' ? score.recovery_score
+    : kind === 'sleep' ? score.sleep_performance_percentage : score.strain
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    && value <= (kind === 'cycle' ? 21 : 100)
+}
+
 /** Do not truncate microseconds or accept Date.parse's calendar normalization. */
 function instant(value: unknown): { raw: string; us: bigint } | null {
   if (typeof value !== 'string') return null
@@ -33,12 +46,17 @@ export function projectProviderTiming(kind: TimingKind, payload: unknown, legacy
   if (!idValid || (kind === 'recovery' && !uuid(payload.sleep_id))
     || (kind === 'sleep' && !cycleId(payload.cycle_id))
     || typeof payload.score_state !== 'string' || !['SCORED', 'PENDING_SCORE', 'UNSCORABLE'].includes(payload.score_state)) return null
+  // A malformed scored record cannot reserve a version that would block the
+  // complete payload with the same provider timestamp on a later fetch.
+  if (payload.score_state === 'SCORED' && !validScoredPayload(kind, payload)) return null
   const created = instant(payload.created_at), updated = instant(payload.updated_at), ingested = instant(ingestedAt)
   if (!created || !updated || !ingested || updated.us < created.us || updated.us > ingested.us) return null
   const start = kind === 'recovery' ? null : instant(payload.start)
-  const end = kind === 'recovery' || (kind === 'cycle' && payload.end === null) ? null : instant(payload.end)
-  if (kind !== 'recovery' && (!start || !offset(payload.timezone_offset) || start.us > ingested.us
-    || (!end && !(kind === 'cycle' && payload.end === null))
+  const openCycle = kind === 'cycle' && payload.end == null
+  const end = kind === 'recovery' || openCycle ? null : instant(payload.end)
+  const timezoneOffset = payload.timezone_offset === 'Z' ? '+00:00' : payload.timezone_offset
+  if (kind !== 'recovery' && (!start || !offset(timezoneOffset) || start.us > ingested.us
+    || (!end && !openCycle)
     || (end && (end.us < start.us || end.us > ingested.us)))) return null
   const recoveryScore = kind === 'recovery' && payload.score_state === 'SCORED' && object(payload.score)
     ? payload.score.recovery_score : null
@@ -48,7 +66,7 @@ export function projectProviderTiming(kind: TimingKind, payload: unknown, legacy
   return {
     provider_created_at: created.raw, provider_updated_at: updated.raw,
     provider_interval_start: start?.raw ?? null, provider_interval_end: end?.raw ?? null,
-    provider_timezone_offset: kind === 'recovery' ? null : payload.timezone_offset as string,
+    provider_timezone_offset: kind === 'recovery' ? null : timezoneOffset as string,
     provider_score_state: payload.score_state, timing_ingested_at: ingested.raw,
     timing_mapping_version: 'whoop_timing_owner_v1',
     timing_provenance: { source: 'provider_payload', intervalRole: kind === 'recovery' ? 'none' : kind,
