@@ -21,6 +21,9 @@ import { getCoachReference } from '@/app/lib/coach/reference'
 import { deriveStrengthAssessment } from '@/app/lib/coach/policy'
 import type { LoadUnit, SupportedRepMax } from '@/app/lib/coach/types'
 import { isValidTimezoneOffset, localDateTimeToUTC } from '@/app/lib/timezone-utils'
+import { normalizeMealTiming } from '@/app/lib/nutrition/meal-timing'
+
+export { normalizeMealTiming } from '@/app/lib/nutrition/meal-timing'
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -582,22 +585,6 @@ async function executeUpdateWorkout(
 }
 
 // ─── Meal Tools ────────────────────────────────────────────────────────
-
-/**
- * Normalize meal timing from agent format to DB constraint format.
- * DB constraint: 'pre_workout' | 'post_workout' | 'general' | 'recovery'
- * Agent sends: 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'SNACK' | 'PRE_WORKOUT' | 'POST_WORKOUT'
- */
-export function normalizeMealTiming(timing: string | undefined): string {
-  if (!timing) return 'general'
-  const upper = timing.toUpperCase()
-  switch (upper) {
-    case 'PRE_WORKOUT': return 'pre_workout'
-    case 'POST_WORKOUT': return 'post_workout'
-    case 'RECOVERY': return 'recovery'
-    default: return 'general' // BREAKFAST, LUNCH, DINNER, SNACK → general
-  }
-}
 
 async function executeLogMeal(
   input: Record<string, unknown>,
