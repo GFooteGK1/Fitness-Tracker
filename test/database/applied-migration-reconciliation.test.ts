@@ -7,8 +7,11 @@ import rollout from '../../docs/verification/llm-coaching-context/activity-measu
 
 const directory = 'supabase/migrations'
 const files = readdirSync(directory).filter(file => file.endsWith('.sql')).sort()
-// The dated rollout ledger stays immutable; this forward repair is not applied there.
-const newPending = ['20261107170516_target_tolerance_capacity.sql']
+// The dated rollout ledger stays immutable. Later forward migrations are pending in that snapshot.
+const newPending = [
+  '20261107170516_target_tolerance_capacity.sql',
+  '20261121195138_protect_whoop_provider_version.sql',
+]
 // Offline comparison only. This never connects to a database or repairs history.
 function pending(local: string[], applied: { version: string; name: string }[]) {
   const entries = local.map(file => {
@@ -95,7 +98,7 @@ describe('read-only historical migration source reconciliation', () => {
       expect(tail).toContain(manifest.recovered[0].path.split('/').at(-1))
       expect(tail).toContain(manifest.recovered[1].path.split('/').at(-1))
       expect(tail).toContain(rollout.migration.path.split('/').at(-1))
-      expect(tail.at(-1)).toBe(newPending[0])
+      expect(tail.slice(-newPending.length)).toEqual(newPending)
       // Only SQL actually executed above is considered applied in this local runner.
       const replay = tail.filter(file => !applied.has(file))
       expect(replay).toEqual([])

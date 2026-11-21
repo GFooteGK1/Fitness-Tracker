@@ -107,120 +107,73 @@ export async function refreshAccessToken(refreshToken: string): Promise<WhoopTok
   };
 }
 
-/**
- * Fetch recovery data for a date range
- * Note: Uses v2 API endpoint
- */
-export async function getRecovery(
-  accessToken: string,
-  startDate: Date,
-  endDate: Date
-): Promise<WhoopRecoveryResponse[]> {
-  const start = startDate.toISOString();
-  const end = endDate.toISOString();
+const WHOOP_PAGE_LIMIT = 25;
+const MAX_COLLECTION_PAGES = 100;
+const COLLECTION_TIMEOUT_MS = 15_000;
 
-  const response = await fetch(
-    `${WHOOP_API_HOSTNAME}/developer/v2/recovery?start=${start}&end=${end}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch recovery data: ${response.status}`);
+class WhoopCollectionError extends Error {
+  constructor(domain: string, readonly status: number) {
+    super(`Failed to fetch ${domain} data: ${status}`);
   }
-
-  const data = await response.json();
-  return data.records || [];
 }
 
-/**
- * Fetch sleep data for a date range
- * Note: Uses v2 API endpoint
- */
-export async function getSleep(
+/** A run succeeds only after every page for its fixed occurrence-time range is fetched. */
+async function getCollection<T>(
+  endpoint: string,
+  domain: string,
   accessToken: string,
   startDate: Date,
-  endDate: Date
-): Promise<WhoopSleepResponse[]> {
-  const start = startDate.toISOString();
-  const end = endDate.toISOString();
+  endDate: Date,
+): Promise<T[]> {
+  const params = new URLSearchParams({
+    start: startDate.toISOString(),
+    end: endDate.toISOString(),
+    limit: String(WHOOP_PAGE_LIMIT),
+  });
+  const records: T[] = [];
+  const tokens = new Set<string>();
+  const signal = AbortSignal.timeout(COLLECTION_TIMEOUT_MS);
 
-  const response = await fetch(
-    `${WHOOP_API_HOSTNAME}/developer/v2/activity/sleep?start=${start}&end=${end}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+  for (let page = 0; page < MAX_COLLECTION_PAGES; page++) {
+    const response = await fetch(`${WHOOP_API_HOSTNAME}/developer/v2/${endpoint}?${params}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+      signal,
+      redirect: 'error',
+    });
+    if (!response.ok) throw new WhoopCollectionError(domain, response.status);
+
+    const data = await response.json();
+    if (!Array.isArray(data?.records)) {
+      throw new Error(`Invalid WHOOP ${domain} collection response`);
     }
-  );
+    records.push(...data.records);
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch sleep data: ${response.status}`);
+    const nextToken = data.next_token;
+    if (nextToken == null || nextToken === '') return records;
+    if (typeof nextToken !== 'string' || tokens.has(nextToken)) {
+      throw new Error(`Invalid or repeated WHOOP ${domain} page token`);
+    }
+    tokens.add(nextToken);
+    params.set('nextToken', nextToken);
   }
-
-  const data = await response.json();
-  return data.records || [];
+  throw new Error(`WHOOP ${domain} collection exceeded the page limit`);
 }
 
-/**
- * Fetch cycle (strain) data for a date range
- * Note: Uses v2 API endpoint
- */
-export async function getCycles(
-  accessToken: string,
-  startDate: Date,
-  endDate: Date
-): Promise<WhoopCycleResponse[]> {
-  const start = startDate.toISOString();
-  const end = endDate.toISOString();
-
-  const response = await fetch(
-    `${WHOOP_API_HOSTNAME}/developer/v2/cycle?start=${start}&end=${end}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch cycle data: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.records || [];
+export function getRecovery(accessToken: string, startDate: Date, endDate: Date) {
+  return getCollection<WhoopRecoveryResponse>('recovery', 'recovery', accessToken, startDate, endDate);
 }
 
-/**
- * Fetch workout data for a date range
- * Note: Uses v2 API endpoint
- */
-export async function getWorkouts(
-  accessToken: string,
-  startDate: Date,
-  endDate: Date
-): Promise<WhoopWorkoutResponse[]> {
-  const start = startDate.toISOString();
-  const end = endDate.toISOString();
+export function getSleep(accessToken: string, startDate: Date, endDate: Date) {
+  return getCollection<WhoopSleepResponse>('activity/sleep', 'sleep', accessToken, startDate, endDate);
+}
 
-  const response = await fetch(
-    `${WHOOP_API_HOSTNAME}/developer/v2/activity/workout?start=${start}&end=${end}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
+export function getCycles(accessToken: string, startDate: Date, endDate: Date) {
+  return getCollection<WhoopCycleResponse>('cycle', 'cycle', accessToken, startDate, endDate);
+}
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch workout data: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.records || [];
+export function getWorkouts(accessToken: string, startDate: Date, endDate: Date) {
+  return getCollection<WhoopWorkoutResponse>('activity/workout', 'workout', accessToken, startDate, endDate);
 }
 
 /**

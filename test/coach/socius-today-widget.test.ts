@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { sociusTodayHtml } from '../../app/lib/coach/today-app-ui'
+import type { projectTodayRecovery } from '../../app/lib/coach/recovery-today-app'
 import type { TodayWorkoutRecommendation } from '../../app/lib/coach/today-workout-recommendation'
 
 const date = '2026-11-20'
@@ -17,7 +18,7 @@ const lastWorkout = {
     { name: 'Front squat', measurements: ['3 sets × 5 reps'] },
   ],
 }
-const recovery = { status: 'fresh', recoveryScore: 79, sleepPerformance: 82, strainScore: 6 }
+const recovery = { status: 'saved', recoveryScore: 79, sleepPerformance: 82, strainScore: 6 } as const
 const initialRecommendation: TodayWorkoutRecommendation = {
   status: 'recommended', source: 'saved_recommendation', title: 'Keep today easy',
   reason: 'Your saved review calls for recovery.',
@@ -53,6 +54,9 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   let mealCount = 0
   let nextAssessmentError = false
   let todayDate = date
+  let todayRecovery: Partial<ReturnType<typeof projectTodayRecovery>> = recovery
+  let holdNextToday = false
+  let respondToHeldToday: (() => void) | undefined
 
   vi.spyOn(host, 'postMessage').mockImplementation((request: HostRequest) => {
     requests.push(request)
@@ -70,7 +74,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
         result = { _meta: {
           today: {
             date: todayDate, readAt, workoutRecommendation, sessions: workoutRecommendation.sessions,
-            recentWork: [], lastWorkout, recovery,
+            recentWork: [], lastWorkout, recovery: todayRecovery,
             ...(checkIn && { assessmentGuidance: checkIn.fatigue === 'higher' ? easierGuidance : usualGuidance }),
           },
           activityEnabled: true,
@@ -90,9 +94,13 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
         totals: { protein: mealCount * 30, carbs: 0, fat: 0, calories: mealCount * 120 },
       } } }
     }
-    child.dispatchEvent(new MessageEvent('message', {
+    const respond = () => child.dispatchEvent(new MessageEvent('message', {
       source: host, data: { jsonrpc: '2.0', id: request.id, result },
     }))
+    if (holdNextToday && request.params?.name === 'open_socius_today') {
+      holdNextToday = false
+      respondToHeldToday = respond
+    } else respond()
   })
 
   widget.open()
@@ -105,6 +113,9 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
     requests,
     setMealCount: (count: number) => { mealCount = count },
     setTodayDate: (value: string) => { todayDate = value },
+    setRecovery: (values: Partial<ReturnType<typeof projectTodayRecovery>>) => { todayRecovery = { ...recovery, ...values } },
+    holdNextToday: () => { holdNextToday = true },
+    releaseHeldToday: () => { respondToHeldToday?.() },
     failNextAssessment: () => { nextAssessmentError = true },
   }
 }
@@ -238,6 +249,77 @@ describe('SociusFit dashboard', () => {
     expect(workout.open).toBe(false)
     expect(requests.filter(request => request.params?.name === 'open_socius_today').at(-1)?.params?.arguments)
       .toEqual({ tzOffset: expect.any(Number) })
+  })
+
+  it('refreshes only saved WHOOP data on same-day foreground and coalesces overlapping events', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 10, 20, 14))
+    const {
+      widget, element, requests, setRecovery, holdNextToday, releaseHeldToday,
+    } = mountWidget(initialRecommendation, Date)
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    const fields = ['stress', 'fatigue', 'sleep'].map(name => element('check-in-' + name) as HTMLSelectElement)
+    for (const field of fields) choose(field, 'usual')
+    element('check-in-submit').click()
+    await vi.waitFor(() => expect(element('recommendation-title').textContent).toBe(usualGuidance.title))
+    const workout = element('last-workout') as HTMLDetailsElement
+    const workoutRows = element('recent').firstChild
+    workout.open = true
+    const foreground = () => widget.defaultView!.dispatchEvent(new Event('focus'))
+    const todayCalls = () => requests.filter(request => request.params?.name === 'open_socius_today')
+
+    setRecovery({
+      recoveryScore: 64, sleepScoreStatus: 'stale',
+      recoveryUpdatedAt: '2026-11-20T12:30:00Z',
+      sleepUpdatedAt: '2026-11-19T13:30:00Z',
+      strainUpdatedAt: '2026-11-20T13:30:00Z',
+      lastSyncAt: '2026-11-20T14:00:00Z',
+    })
+    foreground()
+    expect(todayCalls()).toHaveLength(2)
+    holdNextToday()
+    vi.setSystemTime(new Date(2026, 10, 20, 14, 1))
+    foreground()
+    widget.dispatchEvent(new Event('visibilitychange'))
+    expect(todayCalls()).toHaveLength(3)
+    expect(element('today-content').hidden).toBe(false)
+    expect(element('recovery-percent').textContent).toBe('79%')
+    releaseHeldToday()
+
+    await vi.waitFor(() => expect(element('recovery-percent').textContent).toBe('64%'))
+    foreground()
+    expect(todayCalls()).toHaveLength(3)
+    expect(element('sleep-note').hidden).toBe(false)
+    expect(element('recovery-score-note').hidden).toBe(true)
+    expect(Array.from(element('recovery-dates').querySelectorAll('time')).map(time => time.dateTime)).toEqual([
+      '2026-11-20T12:30:00Z', '2026-11-19T13:30:00Z', '2026-11-20T13:30:00Z', '2026-11-20T14:00:00Z',
+    ])
+    expect(element('recommendation-title').textContent).toBe(usualGuidance.title)
+    expect(fields.map(field => field.value)).toEqual(['usual', 'usual', 'usual'])
+    expect(workout.open).toBe(true)
+    expect(element('recent').firstChild).toBe(workoutRows)
+    expect(todayCalls().at(-1)?.params?.arguments).toEqual({ tzOffset: expect.any(Number) })
+  })
+
+  it('retains a newer check-in snapshot when a foreground WHOOP refresh finishes late', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 10, 20, 14))
+    const { widget, element, setRecovery, holdNextToday, releaseHeldToday } = mountWidget(initialRecommendation, Date)
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    vi.setSystemTime(new Date(2026, 10, 20, 14, 1))
+    setRecovery({ recoveryScore: 65 })
+    holdNextToday()
+    widget.defaultView!.dispatchEvent(new Event('focus'))
+
+    setRecovery({ recoveryScore: 82 })
+    for (const name of ['stress', 'fatigue', 'sleep']) choose(element('check-in-' + name) as HTMLSelectElement, 'usual')
+    element('check-in-submit').click()
+    await vi.waitFor(() => expect(element('recovery-percent').textContent).toBe('82%'))
+    releaseHeldToday()
+    await Promise.resolve()
+
+    expect(element('recovery-percent').textContent).toBe('82%')
+    expect(element('recommendation-title').textContent).toBe(usualGuidance.title)
   })
 
   it('loads Activity and refreshes Nutrition without exposing dashboard chat actions', async () => {

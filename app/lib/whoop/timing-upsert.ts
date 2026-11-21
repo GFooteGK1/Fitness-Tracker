@@ -9,14 +9,17 @@ const targets = {
 } as const
 
 /** Keep legacy-only rows separate: bulk column unions would otherwise send
- * absent timing as null for malformed rows and erase their retained evidence.
- * The fixed owner filter changes no auth, account state, job or provider request.
+ * absent timing as null for malformed rows. The database guards updates to
+ * existing versioned owner snapshots.
  */
 export async function upsertWhoopTiming<T extends object>(db: SupabaseClient, kind: TimingKind,
-  userId: string, records: T[], payloads: unknown[]): Promise<{ error: unknown }> {
+  userId: string, records: T[], payloads: unknown[], requireTiming = false): Promise<{ error: unknown }> {
   const target = targets[kind]
   if (!records.length) return { error: null }
-  if (!isWhoopTimingOwner(userId)) return await db.from(target.table).upsert(records, { onConflict: target.conflict })
+  if (!isWhoopTimingOwner(userId)) {
+    if (requireTiming) throw new Error('WHOOP timing owner required')
+    return await db.from(target.table).upsert(records, { onConflict: target.conflict })
+  }
   if (records.length !== payloads.length || records.some(row => (row as Record<string, unknown>).user_id !== userId)) {
     throw new Error('WHOOP timing source identity mismatch')
   }
@@ -25,6 +28,7 @@ export async function upsertWhoopTiming<T extends object>(db: SupabaseClient, ki
   const idField = kind === 'sleep' ? 'sleep_id' : 'cycle_id'
   const identities = records.map(row => String((row as Record<string, unknown>)[idField]))
   if (new Set(identities).size !== records.length) {
+    if (requireTiming) throw new Error('Duplicate WHOOP records in collection')
     return await db.from(target.table).upsert(records, { onConflict: target.conflict })
   }
   const ingestedAt = new Date().toISOString()
@@ -34,6 +38,7 @@ export async function upsertWhoopTiming<T extends object>(db: SupabaseClient, ki
     if (timing) timed.push({ ...row, ...timing })
     else legacy.push(row)
   })
+  if (requireTiming && legacy.length) throw new Error('Valid WHOOP provider timing required')
   // At most two owner-only calls, no new reads and no cross-domain transaction.
   for (const group of [legacy, timed]) {
     if (!group.length) continue
