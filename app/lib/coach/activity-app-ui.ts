@@ -19,7 +19,7 @@ export const activityStyles = String.raw`
       font: inherit;
     }
     .activity-date-field input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-    #activity-load:not(:empty), #activity-ask-status:not(:empty), #activity-ask, #activity-retry { margin-top: .65rem; }
+    #activity-load:not(:empty), #activity-retry { margin-top: .65rem; }
     #activity-card { margin-top: .9rem; }
     #activity-card time { display: block; margin-bottom: .65rem; }
     #activity-card .entry h3 { margin-bottom: .25rem; }

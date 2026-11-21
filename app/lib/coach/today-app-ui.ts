@@ -190,30 +190,18 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     button:disabled { opacity: .7; cursor: wait; }
     #retry { margin-top: .65rem; }
-    #ask { margin-top: 1rem; }
-    #recommendation-title:not(:empty) { margin-top: .45rem; font-size: clamp(1.25rem, 4vw, 1.65rem); }
+    #recommendation-title {
+      margin-top: .45rem;
+      font-size: clamp(1.6rem, 6vw, 2.25rem);
+      line-height: 1.15;
+      letter-spacing: -.035em;
+    }
     #accepted-plan-label { margin-top: 1rem; }
+    #sessions .metrics { list-style: disc; padding-inline-start: 1.2rem; }
     #workout-date { margin-top: .45rem; }
     .workout-phase { margin-top: 1rem; }
     .workout-phase h4 { margin: 0; font-size: 1rem; }
-    .chat-actions { margin-block: .65rem 1rem; }
-    .chat-actions > p { margin-top: .35rem; }
     .secondary-action { color: var(--accent); border-color: var(--line); background: var(--surface); }
-    .chat-prompt { margin-top: .55rem; }
-    .chat-prompt textarea {
-      display: block;
-      width: 100%;
-      min-height: 6rem;
-      margin-top: .45rem;
-      padding: .55rem .65rem;
-      border: 1px solid var(--line);
-      border-radius: .6rem;
-      background: var(--surface);
-      color: var(--foreground);
-      font: inherit;
-    }
-    .chat-prompt textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-    .chat-prompt button { margin-top: .45rem; }
     #nutrition-refresh, #nutrition-retry, #nutrition-load:not(:empty) { margin-top: .65rem; }
     #load-error { color: var(--danger); background: var(--danger-soft); }
     footer { color: var(--muted); }
@@ -244,18 +232,13 @@ ${nutritionStyles}
     </section>
     <div id="today-content" hidden>
       <section class="panel session-panel" aria-labelledby="sessions-title">
-        <h2 id="sessions-title">Workout recommendation</h2>
+        <h2 id="sessions-title">Recommended plan</h2>
         <h3 id="recommendation-title" hidden></h3>
         <p id="recommendation-source" class="entry-state section-note" hidden></p>
         <p id="sessions-note" class="muted section-note" hidden></p>
         <h3 id="accepted-plan-label" hidden>Accepted plan for today</h3>
         <ul id="sessions"></ul>
-        <button id="ask" type="button" hidden>Ask about today</button>
       </section>
-      <div id="workout-log-area" class="chat-actions" hidden>
-        <button id="workout-log" class="secondary-action" type="button" aria-describedby="workout-log-help">Log workout in chat</button>
-        <p id="workout-log-help" class="muted">Type, add a photo, or dictate in this chat.</p>
-      </div>
       <div class="secondary">
         <section class="panel" aria-labelledby="recent-title">
           <h2 id="recent-title">Last completed workout</h2>
@@ -314,24 +297,13 @@ ${nutritionStyles}
       <p id="activity-load" class="muted" role="status"></p>
       <button id="activity-retry" type="button" hidden>Try again</button>
 ${activityCardMarkup}
-      <button id="activity-ask" type="button" hidden>Ask about this day</button>
     </section>
     <section id="nutrition-content" class="panel" aria-labelledby="view-title" hidden>
       <p id="nutrition-load" class="muted" role="status"></p>
       <button id="nutrition-retry" type="button" hidden>Try again</button>
 ${nutritionCardMarkup}
-      <div id="nutrition-log-area" class="chat-actions" hidden>
-        <button id="nutrition-log" type="button" aria-describedby="nutrition-log-help">Log food in chat</button>
-        <p id="nutrition-log-help" class="muted">Type, add a photo, or dictate in this chat.</p>
-      </div>
       <button id="nutrition-refresh" class="secondary-action" type="button" hidden>Refresh totals</button>
     </section>
-    <div id="chat-prompt" class="chat-prompt" hidden>
-      <p id="chat-status" class="muted" role="status"></p>
-      <textarea id="chat-prompt-text" aria-label="SociusFit prompt" rows="4" readonly hidden></textarea>
-      <button id="copy-prompt" class="secondary-action" type="button">Copy prompt</button>
-      <p id="copy-status" class="muted" role="status"></p>
-    </div>
   </main>
   <script>
     (() => {
@@ -340,22 +312,14 @@ ${activityRendererScript}
 ${nutritionRendererScript}
 ${mcpHostBridgeScript}
       const host = createMcpHostBridge({ onClosed: stopNutritionRefresh });
-      const ask = byId('ask');
       const activityDate = byId('activity-date');
-      const activityAsk = byId('activity-ask');
-      const chatPrompt = byId('chat-prompt');
-      const chatStatus = byId('chat-status');
-      const promptText = byId('chat-prompt-text');
-      const copyStatus = byId('copy-status');
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      let capabilities = null;
+      let initialized = false;
       let activityRequest = 0;
-      let chatRequest = 0;
       let activeView = 'today';
       let nutritionRefresh = null;
       let nutritionInFlight = false;
       let nutritionSignInRequired = false;
-      let canLogActivity = false;
 
       function element(tag, text, className) {
         const node = document.createElement(tag);
@@ -384,17 +348,12 @@ ${mcpHostBridgeScript}
 
       function renderRecommendation(today) {
         const recommendation = today.workoutRecommendation;
-        const sessions = recommendation?.sessions ?? today.sessions;
+        const sessions = recommendation?.sessions ?? today.sessions ?? [];
         const statusLabels = { planned: 'Planned', completed: 'Completed', skipped: 'Skipped' };
-        const labels = {
-          unscheduled: 'No workout recommendation is saved for today. Ask SociusFit what fits your schedule and recent training.',
-          unavailable: 'Your workout recommendation is currently unavailable.',
-        };
+        const emptyTitle = today.sessionStatus === 'none' ? 'No workout scheduled today' : 'No workout recommendation available';
         setNote('recommendation-title', recommendation?.title);
-        setNote('recommendation-source', recommendation?.source === 'saved_recommendation' ? 'SociusFit recommendation'
-          : recommendation?.source === 'accepted_plan' ? 'From your accepted plan' : null);
-        setNote('sessions-note', recommendation?.reason ?? labels[recommendation?.status]
-          ?? (sessions.length ? null : labels.unscheduled));
+        setNote('recommendation-source', recommendation?.source === 'accepted_plan' && sessions.length ? 'From your accepted plan' : null);
+        setNote('sessions-note', recommendation?.reason ?? (recommendation?.title || sessions.length ? null : emptyTitle));
         byId('accepted-plan-label').hidden = recommendation?.source !== 'saved_recommendation' || !sessions.length;
         byId('sessions').replaceChildren(...sessions.map(session => {
           const item = element('li', null, 'entry');
@@ -550,13 +509,9 @@ ${mcpHostBridgeScript}
         renderRecovery(today.recovery);
         const readAt = byId('read-at');
         readAt.hidden = !setTime(readAt, today.readAt, false);
-        ask.hidden = false;
         byId('today-content').hidden = false;
         const activityAvailable = features.activityEnabled === true && timezone && !date.hidden;
         const nutritionAvailable = features.nutritionEnabled === true && timezone;
-        // The dashboard advertises this flag only when the shared activity write tools are enabled.
-        canLogActivity = features.nutritionWritesEnabled === true;
-        byId('workout-log-area').hidden = !canLogActivity;
         byId('show-activity').hidden = !activityAvailable;
         byId('show-nutrition').hidden = !nutritionAvailable;
         byId('view-switch').hidden = !activityAvailable && !nutritionAvailable;
@@ -587,7 +542,10 @@ ${mcpHostBridgeScript}
             showError('Open SociusFit from ChatGPT to view your saved training.', false);
             return;
           }
-          if (!capabilities) capabilities = await host.initialize('SociusFit Today', 'fullscreen');
+          if (!initialized) {
+            await host.initialize('SociusFit Today', 'fullscreen');
+            initialized = true;
+          }
           const result = await host.request('tools/call', {
             name: 'open_socius_today',
             arguments: { tzOffset: new Date().getTimezoneOffset() },
@@ -606,60 +564,6 @@ ${mcpHostBridgeScript}
         }
       }
 
-      function clearChatPrompt() {
-        chatRequest++;
-        chatPrompt.hidden = true;
-      }
-
-      const pasteInstructions = 'Paste the prompt into ChatGPT with SociusFit enabled. Review it and send when ready.';
-
-      async function askInChat(button, prompt) {
-        if (host.closed || button.disabled) return;
-        const request = ++chatRequest;
-        button.after(chatPrompt);
-        chatPrompt.hidden = false;
-        promptText.value = prompt;
-        promptText.hidden = true;
-        copyStatus.textContent = '';
-        if (!capabilities?.message?.text || !capabilities.experimental?.['openai/message']) {
-          chatStatus.textContent = pasteInstructions;
-          promptText.hidden = false;
-          return;
-        }
-        button.disabled = true;
-        chatStatus.textContent = 'Opening a draft in ChatGPT…';
-        try {
-          const result = await host.request('ui/message', {
-            role: 'user',
-            content: [{ type: 'text', text: prompt }],
-            _meta: { 'openai/message': { target: 'active', send: false } },
-          });
-          if (result?.isError) throw new Error('Chat unavailable');
-          if (request === chatRequest) chatStatus.textContent = 'Check the ChatGPT composer for your draft. Review it and send when ready.';
-        } catch {
-          if (!host.closed && request === chatRequest) {
-            chatStatus.textContent = pasteInstructions;
-            promptText.hidden = false;
-          }
-        } finally {
-          button.disabled = false;
-        }
-      }
-
-      byId('copy-prompt').addEventListener('click', async () => {
-        const request = chatRequest;
-        try {
-          await navigator.clipboard.writeText(promptText.value);
-          if (request === chatRequest) copyStatus.textContent = 'Prompt copied. ' + pasteInstructions;
-        } catch {
-          if (request !== chatRequest) return;
-          promptText.hidden = false;
-          promptText.focus();
-          promptText.select();
-          copyStatus.textContent = 'Use your device’s Copy command, then paste into ChatGPT.';
-        }
-      });
-
       function moveDay(value, step) {
         // Work in UTC calendar days so navigation never skips or repeats a date at daylight-saving changes.
         const date = new Date(value + 'T12:00:00Z');
@@ -677,8 +581,6 @@ ${mcpHostBridgeScript}
         const status = byId('activity-load');
         const retry = byId('activity-retry');
         byId('activity-card').hidden = true;
-        activityAsk.hidden = true;
-        if (activityAsk.nextElementSibling === chatPrompt) clearChatPrompt();
         retry.hidden = true;
         byId('previous-day').disabled = !date || date <= activityDate.min;
         byId('next-day').disabled = !date || date >= activityDate.max;
@@ -703,7 +605,6 @@ ${mcpHostBridgeScript}
           if (activity?.date !== date) throw new Error('Activity date did not match');
           renderActivity(activity);
           status.textContent = '';
-          activityAsk.hidden = false;
         } catch {
           if (!host.closed && call === activityRequest) {
             status.textContent = 'Could not load saved activity. Try again.';
@@ -737,7 +638,6 @@ ${mcpHostBridgeScript}
           if (result?._meta?.['mcp/www_authenticate']) {
             nutritionSignInRequired = true;
             card.hidden = true;
-            byId('nutrition-log-area').hidden = true;
             refreshButton.hidden = true;
             status.textContent = 'Reconnect SociusFit in ChatGPT, then try again.';
             retryButton.hidden = false;
@@ -745,7 +645,6 @@ ${mcpHostBridgeScript}
           }
           if (result?.isError || !result?._meta?.nutrition) throw new Error('Nutrition result missing');
           renderNutrition(result._meta.nutrition);
-          byId('nutrition-log-area').hidden = !canLogActivity;
           refreshButton.hidden = false;
           status.textContent = userRequested ? 'Nutrition totals refreshed.' : '';
         } catch {
@@ -767,7 +666,6 @@ ${mcpHostBridgeScript}
 
       function openView(view) {
         if (activeView === view || byId('show-' + view).hidden) return;
-        clearChatPrompt();
         activeView = view;
         const views = { today: 'Today', activity: 'Activity', nutrition: 'Nutrition' };
         byId('view-title').textContent = views[view];
@@ -792,23 +690,6 @@ ${mcpHostBridgeScript}
         void loadActivity();
       }
 
-      ask.addEventListener('click', () => {
-        void askInChat(ask,
-          'Review my workout recommendation for today using my saved SociusFit context. Explain what you recommend and help me discuss any changes. Keep this read-only.');
-      });
-      activityAsk.addEventListener('click', () => {
-        void askInChat(activityAsk,
-          'Show my saved workouts and logged meals in the SociusFit Activity card for ' + activityDate.value
-          + ' (' + timezone + '). Use text if a card is unavailable. Keep this read-only.');
-      });
-      byId('workout-log').addEventListener('click', event => {
-        void askInChat(event.currentTarget,
-          'I want to log a workout I completed. Use the details I include. Ask for any required details that are missing, then save the workout in SociusFit and confirm the save.');
-      });
-      byId('nutrition-log').addEventListener('click', event => {
-        void askInChat(event.currentTarget,
-          'I want to log food I ate. Use the details I include. Ask for any required details that are missing, then save the meal in SociusFit and confirm the save.');
-      });
       for (const view of ['today', 'activity', 'nutrition']) {
         byId('show-' + view).addEventListener('click', () => openView(view));
       }
