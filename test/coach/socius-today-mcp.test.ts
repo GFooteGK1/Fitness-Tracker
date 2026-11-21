@@ -3,7 +3,8 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { handleCoachingMcp } from '../../app/lib/coach/coaching-mcp-http'
 import type { CoachingBearerDependencies, CoachingOAuthConfig } from '../../app/lib/auth/coaching-oauth'
-import { contextClient, contextRows } from '../fixtures/coaching-context'
+import { captureProvenance } from '../../app/lib/capture/contracts'
+import { contextClient, contextRows, type ContextRows } from '../fixtures/coaching-context'
 import { workSnapshot } from '../fixtures/coach-performed-work'
 
 const owner = '10000000-0000-4000-8000-000000000001'
@@ -19,18 +20,20 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v5.html'
-const legacyResourceUris = ['ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html']
+const resourceUri = 'ui://socius/today-v6.html'
+const legacyResourceUris = ['ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html', 'ui://socius/today-v5.html']
 const activityUri = 'ui://socius/activity.html'
 const title = 'Saved easy session'
 const today = (args: Record<string, unknown>) => ({ name: 'open_socius_today', arguments: args })
+const typical = { stress: 'usual', fatigue: 'usual', sleep: 'usual' }
 
-async function connect(subject = owner) {
+async function connect(subject = owner, setup?: (rows: ContextRows) => void) {
   const rows = contextRows()
   rows.workouts = [{ ...workSnapshot().workouts[0], id: 'owner-saved-workout', workout_date: '2026-10-18',
     execution_status: 'completed', rpe: 7.5,
     created_at: '2026-10-18T10:00:00.000Z', updated_at: '2026-10-18T10:00:00.000Z',
     notes: 'private workout notes', input_text: 'private workout attachment' }]
+  setup?.(rows)
   for (const records of Object.values(rows)) for (const row of records) row.user_id = subject
   const fixture = contextClient(rows)
 
@@ -60,7 +63,7 @@ async function connect(subject = owner) {
     requestInit: { headers: { Authorization: 'Bearer synthetic-token' } },
     fetch: request,
   }))
-  return { ...fixture, client, request, session }
+  return { ...fixture, client, request, rows, session }
 }
 
 describe('private Socius Today sidebar over authenticated stateless MCP', () => {
@@ -83,6 +86,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         'get_coaching_context', 'get_coaching_reference', 'get_activity_history', 'get_activity_record', 'get_activity_write_status',
       ])
       await expect(client.callTool(today({ tzOffset: 360, user_id: pilot }))).rejects.toMatchObject({ code: -32602 })
+      await expect(client.callTool(today({ tzOffset: 360, checkIn: typical }))).rejects.toMatchObject({ code: -32602 })
       await expect(client.callTool({ name: 'show_socius_activity', arguments: { date: '2026-10-18', timezone: 'America/Chicago' } }))
         .rejects.toMatchObject({ code: -32602 })
       await expect(client.callTool({ name: 'read_socius_nutrition', arguments: { timezone: 'America/Chicago' } }))
@@ -208,6 +212,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       expect(JSON.stringify(dashboard)).not.toContain('token-id-only')
       expect(JSON.stringify(dashboard)).not.toContain('owner-saved-workout')
       expect(JSON.stringify(dashboard)).not.toContain(owner)
+      expect(dashboard).not.toHaveProperty('assessmentGuidance')
       expect(JSON.stringify({ content: result.content, structuredContent: result.structuredContent })).not.toMatch(/Saved easy session|Barbell floor press/)
       expect(traces.length).toBeGreaterThan(0)
       expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner))).toBe(true)
@@ -216,6 +221,63 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       const reads = traces.length
       await expect(client.callTool(today({ tzOffset: 360 }))).rejects.toThrow()
       expect(traces).toHaveLength(reads)
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('validates the app-only check-in and recalculates advice from fresh owner reads without saving it', async () => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    const { client, rows, db, traces, writes } = await connect(owner, data => {
+      Object.assign(data.workouts[0], { workout_date: '2026-10-17', rpe: 9,
+        capture_provenance: captureProvenance('workout', 'model_estimated', 'unreviewed') })
+      data.whoop_recovery[0].recovery_score = 12
+    })
+    try {
+      for (const args of [{ checkIn: typical }, { tzOffset: 360, checkIn: null },
+        { tzOffset: 360, checkIn: { stress: 'usual', sleep: 'usual' } },
+        { tzOffset: 360, checkIn: { ...typical, sleep: 'higher' } },
+        { tzOffset: 360, checkIn: { ...typical, user_id: other } }]) {
+        const result = await client.callTool(today(args))
+        expect(result.isError).toBe(true)
+        expect(result._meta?.today).toBeUndefined()
+      }
+      expect(db.from).not.toHaveBeenCalled()
+
+      const initial = await client.callTool(today({ tzOffset: 360, checkIn: typical }))
+      expect(initial._meta?.today).toMatchObject({ assessmentGuidance: {
+        title: `Start with ${title}`,
+        reasons: expect.arrayContaining(['You have recent training logged.', expect.stringContaining('Improve 5000 meter time')]),
+      }, recovery: { recoveryScore: 12, status: 'stale' } })
+      expect(initial.content).toEqual([{ type: 'text', text: 'SociusFit Today opened.' }])
+      expect(initial.structuredContent).toBeUndefined()
+
+      const worse = await client.callTool(today({ tzOffset: 360, checkIn: { ...typical, sleep: 'worse' } }))
+      expect(worse._meta?.today).toMatchObject({ assessmentGuidance: { title: 'Start easy and reassess',
+        reasons: expect.arrayContaining(['You reported worse sleep compared with usual.']) } })
+
+      rows.workouts[0].capture_provenance = captureProvenance('workout', 'athlete_reported', 'corrected')
+      const reviewed = await client.callTool(today({ tzOffset: 360, checkIn: typical }))
+      expect(reviewed._meta?.today).toMatchObject({ assessmentGuidance: { title: 'Make today an easy day',
+        reasons: expect.arrayContaining(['You confirmed a recent session effort of 9/10.']) } })
+      expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner))).toBe(true)
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('offers training that fits a confirmed goal even without a scheduled session or WHOOP', async () => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    const { client, writes } = await connect(owner, rows => {
+      rows.prescribed_sessions = []
+      rows.workouts = []
+      rows.whoop_tokens = []
+    })
+    try {
+      const result = await client.callTool(today({ tzOffset: 360, checkIn: typical }))
+      expect(result._meta?.today).toMatchObject({ assessmentGuidance: {
+        title: 'Do a manageable session for your goal',
+        actions: expect.arrayContaining([expect.stringContaining('a familiar aerobic activity')]),
+        reasons: expect.arrayContaining([expect.stringContaining('limited recent workout evidence')]),
+      }, recovery: { status: 'disconnected' } })
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
