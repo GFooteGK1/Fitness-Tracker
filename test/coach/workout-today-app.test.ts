@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { captureProvenance } from '../../app/lib/capture/contracts'
 import { readCoachingContext } from '../../app/lib/coach/coaching-context-server'
+import { deriveTodayAssessmentGuidance } from '../../app/lib/coach/today-assessment-guidance'
 import { createWorkoutTodayReader } from '../../app/lib/coach/workout-today-app'
 import { recommendationScope } from '../../app/lib/recommendations/context'
 import { contextClient, contextNow, contextOwner, contextRows, type ContextRows } from '../fixtures/coaching-context'
@@ -46,7 +47,7 @@ async function read(rows: ContextRows) {
   const result = await readWorkout(context)
   expect(fixture.writes).not.toHaveBeenCalled()
   expect(fixture.traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === contextOwner))).toBe(true)
-  return result
+  return { ...result, context }
 }
 
 function addSavedTrainingRecommendation(rows: ContextRows) {
@@ -210,6 +211,17 @@ describe('Workout Today source projection', () => {
     rows.recommendation_suppressions = []
     rows.recommendation_refresh_state[0].source_revision = 4
     expect((await read(rows)).workoutRecommendation).toMatchObject({ status: 'unscheduled', source: 'accepted_plan', sessions: [] })
+  })
+
+  it('keeps a saved review ahead of a planned session even when the new check-in is favorable', async () => {
+    const rows = contextRows()
+    addSavedTrainingRecommendation(rows)
+    const workout = await read(rows)
+    expect(workout.workoutRecommendation).toMatchObject({ reviewBeforeTraining: true,
+      sessions: [expect.objectContaining({ status: 'planned', title: 'Saved easy session' })] })
+    expect(deriveTodayAssessmentGuidance({ stress: 'lower', fatigue: 'lower', sleep: 'better' }, workout.context, workout))
+      .toMatchObject({ title: 'Review your plan before training', summary: 'Your saved weekly review calls for recovery.',
+        actions: ['Review the saved guidance before choosing today’s training.'] })
   })
 
   it('shows validated reviewed session movements and preserves optional work', async () => {

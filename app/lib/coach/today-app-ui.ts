@@ -58,9 +58,10 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     #today-date { display: block; margin-top: .45rem; }
     .muted, time, dd { color: var(--muted); }
     .panel {
+      --panel-padding: clamp(1rem, 3vw, 1.5rem);
       min-width: 0;
       margin-bottom: 1rem;
-      padding: clamp(1rem, 3vw, 1.5rem);
+      padding: var(--panel-padding);
       border: 1px solid var(--line);
       border-radius: 1.1rem;
       background: var(--surface);
@@ -190,14 +191,68 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     button:disabled { opacity: .7; cursor: wait; }
     #retry { margin-top: .65rem; }
+    #check-in-form { margin-top: 1rem; }
+    .check-in-fields { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+    .check-in-fields legend { padding: 0; font-weight: 650; }
+    .check-in-grid { display: grid; gap: .6rem; margin-block: .65rem .8rem; }
+    .check-in-grid label { display: grid; gap: .2rem; font-weight: 600; }
+    .check-in-grid select {
+      width: 100%;
+      min-height: 44px;
+      padding: .5rem .6rem;
+      border: 1px solid var(--line);
+      border-radius: .6rem;
+      background: var(--surface);
+      color: var(--foreground);
+      font: inherit;
+      font-weight: 400;
+    }
+    .check-in-grid select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    #check-in-status:not(:empty) { margin-top: .55rem; }
+    #check-in-status[data-error] { color: var(--danger); }
     #recommendation-title {
       margin-top: .45rem;
       font-size: clamp(1.6rem, 6vw, 2.25rem);
       line-height: 1.15;
       letter-spacing: -.035em;
     }
-    #accepted-plan-label { margin-top: 1rem; }
-    #sessions .metrics { list-style: disc; padding-inline-start: 1.2rem; }
+    .bullets { list-style: disc; padding-inline-start: 1.2rem; }
+    .guidance-list { margin-block: .35rem 0; padding-inline-start: 1.2rem; }
+    .guidance-heading { margin: .8rem 0 0; font-size: 1rem; }
+    .guidance-list li + li { margin-top: .25rem; }
+    #saved-review {
+      margin-top: .8rem;
+      padding: .75rem;
+      border-inline-start: .25rem solid var(--warning);
+      border-radius: .45rem;
+      background: var(--warning-soft);
+    }
+    #accepted-plan-details { margin-top: .75rem; }
+    .workout-panel { padding: 0; }
+    .workout-panel > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .6rem;
+      min-height: 44px;
+      padding: var(--panel-padding);
+      border-radius: inherit;
+      cursor: pointer;
+      list-style: none;
+    }
+    .workout-panel > summary::-webkit-details-marker { display: none; }
+    .workout-panel > summary::after {
+      content: '';
+      flex: 0 0 .55rem;
+      height: .55rem;
+      margin-inline-end: .2rem;
+      border: solid var(--accent);
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+    .workout-panel[open] > summary::after { transform: rotate(225deg); }
+    .workout-panel > summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    .workout-content { padding: 0 var(--panel-padding) var(--panel-padding); }
     #workout-date { margin-top: .45rem; }
     .workout-phase { margin-top: 1rem; }
     .workout-phase h4 { margin: 0; font-size: 1rem; }
@@ -207,7 +262,7 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     footer { color: var(--muted); }
     @media (min-width: 42rem) {
       main { padding-inline: 1.75rem; padding-block: 2rem; }
-      .secondary { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 1rem; }
+      .check-in-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
 ${activityStyles}
 ${nutritionStyles}
@@ -233,15 +288,92 @@ ${nutritionStyles}
     <div id="today-content" hidden>
       <section class="panel session-panel" aria-labelledby="sessions-title">
         <h2 id="sessions-title">Recommended plan</h2>
-        <h3 id="recommendation-title" hidden></h3>
-        <p id="recommendation-source" class="entry-state section-note" hidden></p>
-        <p id="sessions-note" class="muted section-note" hidden></p>
-        <h3 id="accepted-plan-label" hidden>Accepted plan for today</h3>
-        <ul id="sessions"></ul>
+        <div id="recommendation-result" hidden>
+          <h3 id="recommendation-title" tabindex="-1"></h3>
+          <p id="recommendation-summary" class="section-note"></p>
+          <h4 class="guidance-heading">What to do</h4>
+          <ol id="recommendation-actions" class="guidance-list"></ol>
+          <h4 class="guidance-heading">What informed this</h4>
+          <ul id="recommendation-reasons" class="bullets guidance-list"></ul>
+          <p class="muted section-note">Use this as a starting point and adjust it to how you feel.</p>
+        </div>
+        <div id="saved-review" hidden>
+          <h3 id="saved-review-title"></h3>
+          <p id="saved-review-reason" class="section-note" hidden></p>
+        </div>
+        <form id="check-in-form" autocomplete="off">
+          <fieldset id="check-in-fields" class="check-in-fields" aria-describedby="check-in-instructions">
+            <legend>How do you feel today?</legend>
+            <p id="check-in-instructions" class="muted">Compare each with your usual.</p>
+            <div class="check-in-grid">
+              <label>Stress
+                <select id="check-in-stress" required>
+                  <option value="" selected disabled>Choose one</option>
+                  <option value="lower">Lower than usual</option>
+                  <option value="usual">Usual</option>
+                  <option value="higher">Higher than usual</option>
+                </select>
+              </label>
+              <label>Fatigue
+                <select id="check-in-fatigue" required>
+                  <option value="" selected disabled>Choose one</option>
+                  <option value="lower">Lower than usual</option>
+                  <option value="usual">Usual</option>
+                  <option value="higher">Higher than usual</option>
+                </select>
+              </label>
+              <label>Sleep
+                <select id="check-in-sleep" required>
+                  <option value="" selected disabled>Choose one</option>
+                  <option value="worse">Worse than usual</option>
+                  <option value="usual">Usual</option>
+                  <option value="better">Better than usual</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
+          <button id="check-in-submit" type="submit">Get recommendation</button>
+          <p id="check-in-status" role="status" class="muted"></p>
+        </form>
+        <details id="accepted-plan-details" class="recovery-timing" hidden>
+          <summary id="accepted-plan-summary">Accepted plan for today</summary>
+          <h3 id="saved-guidance-title" class="section-note" hidden></h3>
+          <p id="saved-guidance-reason" class="muted section-note" hidden></p>
+          <ul id="sessions"></ul>
+        </details>
       </section>
-      <div class="secondary">
-        <section class="panel" aria-labelledby="recent-title">
-          <h2 id="recent-title">Last completed workout</h2>
+      <section id="whoop-panel" class="panel" aria-labelledby="recovery-title">
+        <h2 id="recovery-title">WHOOP</h2>
+        <p id="recovery-status" class="recovery-state"></p>
+        <p id="recovery-note" class="muted status-label" hidden></p>
+        <dl id="whoop-gauges" class="whoop-gauges">
+          <div class="whoop-gauge sleep">
+            <dt>Sleep</dt>
+            <dd class="whoop-dial"><strong id="sleep-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
+          </div>
+          <div id="recovery-overview" class="whoop-gauge">
+            <dt>Recovery</dt>
+            <dd class="whoop-dial"><strong id="recovery-percent"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
+          </div>
+          <div class="whoop-gauge strain">
+            <dt>Strain<span id="strain-note" class="whoop-gauge-note" hidden>Stale</span></dt>
+            <dd class="whoop-dial"><strong id="strain-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
+          </div>
+        </dl>
+        <details id="whoop-details" class="recovery-timing" hidden>
+          <summary>WHOOP details</summary>
+          <dl id="recovery-metrics" class="recovery-metrics" hidden></dl>
+          <dl id="recovery-dates"></dl>
+          <section id="workout-recovery" class="workout-recovery" aria-labelledby="workout-recovery-title" hidden>
+            <h3 id="workout-recovery-title">Last workout comparison</h3>
+            <p id="workout-recovery-note" class="muted" hidden></p>
+            <dl id="workout-recovery-metrics" hidden></dl>
+          </section>
+        </details>
+      </section>
+      <details id="last-workout" class="panel workout-panel">
+        <summary><h2 id="recent-title">Last workout logged</h2></summary>
+        <div class="workout-content">
           <time id="workout-date" hidden></time>
           <p id="workout-rpe" class="muted section-note" hidden></p>
           <p id="recent-note" class="muted section-note" hidden></p>
@@ -253,37 +385,8 @@ ${nutritionStyles}
             <h3 id="workout-main-title">Main work</h3>
             <ul id="recent"></ul>
           </section>
-        </section>
-        <section class="panel" aria-labelledby="recovery-title">
-          <h2 id="recovery-title">WHOOP</h2>
-          <p id="recovery-status" class="recovery-state"></p>
-          <p id="recovery-note" class="muted status-label" hidden></p>
-          <dl id="whoop-gauges" class="whoop-gauges">
-            <div class="whoop-gauge sleep">
-              <dt>Sleep</dt>
-              <dd class="whoop-dial"><strong id="sleep-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
-            </div>
-            <div id="recovery-overview" class="whoop-gauge">
-              <dt>Recovery</dt>
-              <dd class="whoop-dial"><strong id="recovery-percent"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
-            </div>
-            <div class="whoop-gauge strain">
-              <dt>Strain<span id="strain-note" class="whoop-gauge-note" hidden>Stale</span></dt>
-              <dd class="whoop-dial"><strong id="strain-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
-            </div>
-          </dl>
-          <details id="whoop-details" class="recovery-timing" hidden>
-            <summary>WHOOP details</summary>
-            <dl id="recovery-metrics" class="recovery-metrics" hidden></dl>
-            <dl id="recovery-dates"></dl>
-            <section id="workout-recovery" class="workout-recovery" aria-labelledby="workout-recovery-title" hidden>
-              <h3 id="workout-recovery-title">Last workout comparison</h3>
-              <p id="workout-recovery-note" class="muted" hidden></p>
-              <dl id="workout-recovery-metrics" hidden></dl>
-            </section>
-          </details>
-        </section>
-      </div>
+        </div>
+      </details>
       <footer>Read from SociusFit <time id="read-at"></time></footer>
     </div>
     <section id="activity-content" class="panel" aria-labelledby="view-title" hidden>
@@ -311,8 +414,10 @@ ${nutritionCardMarkup}
 ${activityRendererScript}
 ${nutritionRendererScript}
 ${mcpHostBridgeScript}
-      const host = createMcpHostBridge({ onClosed: stopNutritionRefresh });
+      const host = createMcpHostBridge({ onClosed: stopRefreshTimers });
       const activityDate = byId('activity-date');
+      const checkInForm = byId('check-in-form');
+      const checkInSubmit = byId('check-in-submit');
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       let initialized = false;
       let activityRequest = 0;
@@ -320,6 +425,10 @@ ${mcpHostBridgeScript}
       let nutritionRefresh = null;
       let nutritionInFlight = false;
       let nutritionSignInRequired = false;
+      let savedRecommendation = null;
+      let dayTimer = null;
+      let deviceDay = localDayKey(new Date());
+      let dayRevision = 0;
 
       function element(tag, text, className) {
         const node = document.createElement(tag);
@@ -346,33 +455,57 @@ ${mcpHostBridgeScript}
         return true;
       }
 
-      function renderRecommendation(today) {
-        const recommendation = today.workoutRecommendation;
-        const sessions = recommendation?.sessions ?? today.sessions ?? [];
+      function renderAcceptedPlan(today) {
+        const sessions = today.workoutRecommendation?.sessions ?? today.sessions;
         const statusLabels = { planned: 'Planned', completed: 'Completed', skipped: 'Skipped' };
-        const emptyTitle = today.sessionStatus === 'none' ? 'No workout scheduled today' : 'No workout recommendation available';
-        setNote('recommendation-title', recommendation?.title);
-        setNote('recommendation-source', recommendation?.source === 'accepted_plan' && sessions.length ? 'From your accepted plan' : null);
-        setNote('sessions-note', recommendation?.reason ?? (recommendation?.title || sessions.length ? null : emptyTitle));
-        byId('accepted-plan-label').hidden = recommendation?.source !== 'saved_recommendation' || !sessions.length;
+        savedRecommendation = today.workoutRecommendation?.source === 'saved_recommendation' ? today.workoutRecommendation : null;
         byId('sessions').replaceChildren(...sessions.map(session => {
           const item = element('li', null, 'entry');
           const heading = element('div', null, 'entry-heading');
-          if (session.title !== recommendation?.title || sessions.length > 1) {
-            heading.append(element('h3', session.title || 'Training session'));
-          }
+          heading.append(element('h3', session.title || 'Training session'));
           if (statusLabels[session.status]) {
             heading.append(element('span', statusLabels[session.status], 'entry-state'));
           }
           item.append(heading);
           if (session.focus) item.append(element('p', session.focus, 'muted'));
           if (session.details?.length) {
-            const details = element('ul', null, 'metrics');
+            const details = element('ul', null, 'metrics bullets');
             details.append(...session.details.map(value => element('li', value)));
             item.append(details);
           }
           return item;
         }));
+        renderSavedGuidance(null);
+      }
+
+      function renderSavedGuidance(guidance) {
+        const savedTitle = savedRecommendation?.title;
+        const sameTitle = !!guidance && guidance.title.trim().toLowerCase() === savedTitle?.trim().toLowerCase();
+        const showReview = !!savedRecommendation?.reviewBeforeTraining && !!savedTitle && !sameTitle;
+        const showInDetails = !!savedTitle && !sameTitle && !showReview;
+        byId('saved-review').hidden = !showReview;
+        setNote('saved-review-title', showReview ? savedTitle : null);
+        setNote('saved-review-reason', showReview ? savedRecommendation.reason : null);
+        setNote('saved-guidance-title', showInDetails ? savedTitle : null);
+        setNote('saved-guidance-reason', showInDetails ? savedRecommendation.reason : null);
+        byId('accepted-plan-summary').textContent = showInDetails ? 'Saved plan and guidance' : 'Accepted plan for today';
+        byId('accepted-plan-details').hidden = !showInDetails && !byId('sessions').childElementCount;
+      }
+
+      function setCheckInStatus(text, isError = false) {
+        const status = byId('check-in-status');
+        status.textContent = text;
+        status.toggleAttribute('data-error', isError);
+      }
+
+      function renderGuidance(guidance) {
+        const result = byId('recommendation-result');
+        result.hidden = !guidance;
+        byId('recommendation-title').textContent = guidance?.title ?? '';
+        byId('recommendation-summary').textContent = guidance?.summary ?? '';
+        byId('recommendation-reasons').replaceChildren(...(guidance?.reasons ?? []).map(reason => element('li', reason)));
+        byId('recommendation-actions').replaceChildren(...(guidance?.actions ?? []).map(action => element('li', action)));
+        renderSavedGuidance(guidance);
       }
 
       function renderLastWorkout(workout) {
@@ -498,24 +631,37 @@ ${mcpHostBridgeScript}
         }
       }
 
-      function render(today, features) {
+      function renderToday(today) {
         if (!today || !Array.isArray(today.sessions) || !Array.isArray(today.recentWork) || !today.recovery) {
           throw new Error('Today result missing');
         }
         const date = byId('today-date');
-        date.hidden = !setTime(date, today.date, true);
-        renderRecommendation(today);
+        const hasDate = setTime(date, today.date, true);
+        if (!hasDate) date.removeAttribute('datetime');
+        if (hasDate && activityDate.max && activityDate.max !== today.date) {
+          activityDate.max = today.date;
+          if (activityDate.value > today.date) {
+            activityDate.value = today.date;
+            if (activeView === 'activity') void loadActivity();
+          }
+          byId('next-day').disabled = !activityDate.value || activityDate.value >= activityDate.max;
+        }
+        renderAcceptedPlan(today);
         renderLastWorkout(today.lastWorkout);
         renderRecovery(today.recovery);
         const readAt = byId('read-at');
         readAt.hidden = !setTime(readAt, today.readAt, false);
-        byId('today-content').hidden = false;
-        const activityAvailable = features.activityEnabled === true && timezone && !date.hidden;
+        return hasDate;
+      }
+
+      function render(today, features) {
+        const hasDate = renderToday(today);
+        const activityAvailable = features.activityEnabled === true && timezone && hasDate;
         const nutritionAvailable = features.nutritionEnabled === true && timezone;
         byId('show-activity').hidden = !activityAvailable;
         byId('show-nutrition').hidden = !nutritionAvailable;
         byId('view-switch').hidden = !activityAvailable && !nutritionAvailable;
-        if (activityAvailable) {
+        if (activityAvailable && !activityDate.max) {
           activityDate.max = today.date;
           activityDate.value = moveDay(today.date, -1) || today.date;
         }
@@ -523,20 +669,27 @@ ${mcpHostBridgeScript}
 
       function showError(message, canRetry = true) {
         byId('error-message').textContent = message;
-        byId('load-error').hidden = false;
         byId('retry').hidden = !canRetry;
+      }
+
+      function syncTodayVisibility() {
+        const isToday = activeView === 'today';
+        const loading = byId('retry').disabled;
+        const failed = !!byId('error-message').textContent;
+        byId('loading').hidden = !isToday || !loading;
+        byId('load-error').hidden = !isToday || !failed;
+        byId('today-content').hidden = !isToday || loading || failed;
+        const date = byId('today-date');
+        date.hidden = !isToday || loading || failed || !date.dateTime;
       }
 
       async function loadToday() {
         const retry = byId('retry');
         if (retry.disabled || host.closed) return;
+        const revision = dayRevision;
         retry.disabled = true;
-        byId('load-error').hidden = true;
         byId('error-message').textContent = '';
-        byId('today-content').hidden = true;
-        byId('today-date').hidden = true;
-        byId('view-switch').hidden = true;
-        byId('loading').hidden = false;
+        syncTodayVisibility();
         try {
           if (window.parent === window) {
             showError('Open SociusFit from ChatGPT to view your saved training.', false);
@@ -550,6 +703,8 @@ ${mcpHostBridgeScript}
             name: 'open_socius_today',
             arguments: { tzOffset: new Date().getTimezoneOffset() },
           });
+          refreshTodayIfDateChanged();
+          if (host.closed || revision !== dayRevision) return;
           if (result?.isError) {
             const reconnect = result._meta?.['mcp/www_authenticate'];
             showError(reconnect ? 'Reconnect SociusFit in ChatGPT, then try again.' : 'Your saved training is temporarily unavailable.');
@@ -557,11 +712,90 @@ ${mcpHostBridgeScript}
           }
           render(result?._meta?.today, result?._meta || {});
         } catch {
-          if (!host.closed) showError('Could not load your saved training. Try again to reconnect to the view.');
+          if (!host.closed && revision === dayRevision) showError('Could not load your saved training. Try again to reconnect to the view.');
         } finally {
           retry.disabled = false;
-          byId('loading').hidden = true;
+          if (!host.closed && revision !== dayRevision) void loadToday();
+          else syncTodayVisibility();
         }
+      }
+
+      function clearGuidance() {
+        renderGuidance(null);
+        setCheckInStatus('');
+      }
+
+      async function submitCheckIn(event) {
+        event.preventDefault();
+        if (host.closed || refreshTodayIfDateChanged() || checkInSubmit.disabled || !checkInForm.reportValidity()) return;
+        const revision = dayRevision;
+
+        const checkIn = {
+          stress: byId('check-in-stress').value,
+          fatigue: byId('check-in-fatigue').value,
+          sleep: byId('check-in-sleep').value,
+        };
+        const fields = byId('check-in-fields');
+        checkInSubmit.disabled = true;
+        fields.disabled = true;
+        renderGuidance(null);
+        setCheckInStatus('Reviewing today’s training…');
+        try {
+          const result = await host.request('tools/call', {
+            name: 'open_socius_today',
+            arguments: { tzOffset: new Date().getTimezoneOffset(), checkIn },
+          });
+          refreshTodayIfDateChanged();
+          if (host.closed || revision !== dayRevision) return;
+          if (result?._meta?.['mcp/www_authenticate']) {
+            setCheckInStatus('Reconnect SociusFit in ChatGPT, then try again.', true);
+            return;
+          }
+          const today = result?._meta?.today;
+          const guidance = today?.assessmentGuidance;
+          if (result?.isError || typeof guidance?.title !== 'string' || !guidance.title
+            || typeof guidance.summary !== 'string' || !Array.isArray(guidance.reasons)
+            || !Array.isArray(guidance.actions)) throw new Error('Recommendation result missing');
+          renderToday(today);
+          renderGuidance(guidance);
+          syncTodayVisibility();
+          setCheckInStatus('Recommendation ready.');
+          if (activeView === 'today' && (document.activeElement === document.body
+            || checkInForm.contains(document.activeElement))) byId('recommendation-title').focus();
+        } catch {
+          if (!host.closed && revision === dayRevision) setCheckInStatus('Could not get today’s recommendation. Try again.', true);
+        } finally {
+          if (revision === dayRevision) {
+            fields.disabled = false;
+            checkInSubmit.disabled = false;
+          }
+        }
+      }
+
+      function localDayKey(date) {
+        return [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-');
+      }
+
+      function refreshTodayIfDateChanged() {
+        if (host.closed) return false;
+        const now = new Date();
+        const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        window.clearTimeout(dayTimer);
+        dayTimer = window.setTimeout(refreshTodayIfDateChanged, nextDay.getTime() - now.getTime());
+        const currentDay = localDayKey(now);
+        if (deviceDay === currentDay) return false;
+
+        deviceDay = currentDay;
+        dayRevision += 1;
+        savedRecommendation = null;
+        clearGuidance();
+        checkInForm.reset();
+        byId('check-in-fields').disabled = false;
+        checkInSubmit.disabled = false;
+        byId('accepted-plan-details').open = false;
+        byId('last-workout').open = false;
+        void loadToday();
+        return true;
       }
 
       function moveDay(value, step) {
@@ -618,6 +852,11 @@ ${mcpHostBridgeScript}
         nutritionRefresh = null;
       }
 
+      function stopRefreshTimers() {
+        stopNutritionRefresh();
+        window.clearTimeout(dayTimer);
+      }
+
       async function loadNutrition(userRequested = false) {
         if (host.closed || activeView !== 'nutrition' || document.visibilityState === 'hidden' || nutritionInFlight) return;
         if (userRequested) nutritionSignInRequired = false;
@@ -664,6 +903,12 @@ ${mcpHostBridgeScript}
         void loadNutrition();
       }
 
+      function handleForeground() {
+        if (document.visibilityState === 'hidden') return;
+        refreshTodayIfDateChanged();
+        refreshNutrition();
+      }
+
       function openView(view) {
         if (activeView === view || byId('show-' + view).hidden) return;
         activeView = view;
@@ -671,10 +916,10 @@ ${mcpHostBridgeScript}
         byId('view-title').textContent = views[view];
         for (const key of Object.keys(views)) {
           byId('show-' + key).setAttribute('aria-pressed', String(key === view));
-          byId(key + '-content').hidden = key !== view;
+          if (key !== 'today') byId(key + '-content').hidden = key !== view;
         }
-        const date = byId('today-date');
-        date.hidden = view !== 'today' || !date.dateTime;
+        if (view === 'today') refreshTodayIfDateChanged();
+        syncTodayVisibility();
         stopNutritionRefresh();
         if (view === 'activity') void loadActivity();
         if (view === 'nutrition') {
@@ -695,14 +940,17 @@ ${mcpHostBridgeScript}
       }
       byId('nutrition-retry').addEventListener('click', () => void loadNutrition(true));
       byId('nutrition-refresh').addEventListener('click', () => void loadNutrition(true));
-      document.addEventListener('visibilitychange', refreshNutrition);
-      window.addEventListener('focus', refreshNutrition);
+      document.addEventListener('visibilitychange', handleForeground);
+      window.addEventListener('focus', handleForeground);
       activityDate.addEventListener('change', loadActivity);
       byId('previous-day').addEventListener('click', () => changeDay(-1));
       byId('next-day').addEventListener('click', () => changeDay(1));
       byId('activity-retry').addEventListener('click', loadActivity);
 
+      checkInForm.addEventListener('change', clearGuidance);
+      checkInForm.addEventListener('submit', submitCheckIn);
       byId('retry').addEventListener('click', loadToday);
+      refreshTodayIfDateChanged();
       void loadToday();
     })();
   </script>

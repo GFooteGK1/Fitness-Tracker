@@ -20,6 +20,7 @@ export interface TodayWorkoutRecommendation {
   source: 'saved_recommendation' | 'accepted_plan' | null
   title: string
   reason: string | null
+  reviewBeforeTraining?: boolean
   sessions: SessionPreview[]
 }
 
@@ -137,7 +138,7 @@ function currentState(state: ContextRow | undefined, scope: ReturnType<typeof re
  */
 export async function readCurrentWorkoutRecommendation(
   db: SupabaseClient, owner: string, context: TodayWorkoutContext,
-): Promise<Pick<TodayWorkoutRecommendation, 'title' | 'reason'> | null> {
+): Promise<Pick<TodayWorkoutRecommendation, 'title' | 'reason' | 'reviewBeforeTraining'> | null> {
   if (!personalizedCoachingCapabilities().recommendations) return null
   const ownership = authority(context)
   const scope = recommendationScope(context.timezoneOffset)
@@ -173,6 +174,7 @@ export async function readCurrentWorkoutRecommendation(
     if (!currentState(after, scope, ownership) || stableStringify(after) !== stableStringify(state)
       || !(Date.parse(row.valid_until) > Date.now())) return null
     const title = text(decision.title, 120)
-    return title ? { title, reason: text(decision.reason, 350) } : null
+    return title ? { title, reason: text(decision.reason, 350),
+      reviewBeforeTraining: decision.kind === 'action' && decision.destination.type === 'review' } : null
   } catch { return null }
 }

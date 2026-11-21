@@ -42,12 +42,14 @@ local-day claims remain conservative; provider links stay explicitly unjoined.
 See `docs/plans/retained-provider-timing-context-read-2026-10-20.md`. Publication
 and live-runtime qualification are separate from local verification.
 
-The private ChatGPT Today candidate uses the existing owner OAuth guard. Today
-reads the current saved workout recommendation and the latest completed workout.
-It displays the accepted session when a current recommendation is absent and an
-accepted session is scheduled. It groups saved workout sets without rewriting
-the workout. Latest WHOOP values remain separate from the qualifying earlier
-score used for an RPE comparison. ADR-0040 documents the timing boundary.
+The private ChatGPT Today view uses the existing owner OAuth guard. The local
+ADR-0046 candidate adds a read-only check-in that pairs the athlete's responses
+with confirmed goals, recent work, and the scheduled session for that local date.
+A current saved review takes precedence. The chosen LLM owns workout authoring.
+Saved WHOOP values appear second with their freshness and the comparison with a
+qualifying earlier score. WHOOP's local-day alignment is unverified and the
+check-in guidance does not use those values. The latest completed workout appears
+third in a collapsed card and groups saved sets without rewriting the workout.
 
 Activity and Nutrition use the same owner-scoped local day and canonical meal
 records. Nutrition reads only macro totals and current targets when its tab opens
