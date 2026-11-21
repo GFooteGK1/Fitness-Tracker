@@ -19,8 +19,8 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v4.html'
-const legacyResourceUris = ['ui://socius/today.html', 'ui://socius/today-v2.html']
+const resourceUri = 'ui://socius/today-v5.html'
+const legacyResourceUris = ['ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html']
 const activityUri = 'ui://socius/activity.html'
 const title = 'Saved easy session'
 const today = (args: Record<string, unknown>) => ({ name: 'open_socius_today', arguments: args })
@@ -122,8 +122,9 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       const resource = await client.readResource({ uri: resourceUri })
       expect(resource.contents).toMatchObject([{
         uri: resourceUri, mimeType: 'text/html;profile=mcp-app', text: expect.stringContaining('id="whoop-gauges"'),
-        _meta: { ui: { permissions: { clipboardWrite: {} } } },
+        _meta: { ui: { csp: { connectDomains: [], resourceDomains: [] } } },
       }])
+      expect(resource.contents[0]).not.toHaveProperty('_meta.ui.permissions')
       expect(JSON.stringify(resource)).not.toContain(title)
       expect(JSON.stringify(resource)).not.toContain(owner)
       for (const uri of legacyResourceUris) {
@@ -145,13 +146,18 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
   it('exposes the same-owner Activity tool and static resource only with the Activity flag', async () => {
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
     vi.stubEnv('SOCIUS_MCP_ACTIVITY_UI_ENABLED', 'true')
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
     const { client, db, writes } = await connect()
     try {
-      expect((await client.listTools()).tools).toContainEqual(expect.objectContaining({
+      const { tools } = await client.listTools()
+      expect(tools.map(tool => tool.name)).toEqual(expect.arrayContaining([
+        'create_workout', 'amend_workout', 'create_meal', 'amend_meal',
+      ]))
+      expect(tools).toContainEqual(expect.objectContaining({
         name: 'show_socius_activity', annotations: expect.objectContaining({ readOnlyHint: true }),
         _meta: expect.objectContaining({ ui: { resourceUri: activityUri, visibility: ['app', 'model'] } }),
       }))
-      expect((await client.listTools()).tools).toContainEqual(expect.objectContaining({
+      expect(tools).toContainEqual(expect.objectContaining({
         name: 'read_socius_nutrition', annotations: expect.objectContaining({ readOnlyHint: true }),
         _meta: expect.objectContaining({ ui: { visibility: ['app'] } }),
       }))

@@ -83,7 +83,7 @@ function sessionDetails(prescription: ContextRow): string[] {
 export function projectTodayWorkoutRecommendation(context: Pick<TodayWorkoutContext, 'acceptedProgramming' | 'localDate'>): TodayWorkoutRecommendation {
   const programming = context.acceptedProgramming
   if (!programming) return { status: 'unavailable', source: null, title: 'No workout recommendation available',
-    reason: 'Ask Socius to suggest a workout using your goals and recent training.', sessions: [] }
+    reason: null, sessions: [] }
   const sessions = programming.todaySessions.slice(0, 6).flatMap<SessionPreview>(row => {
     if (row.scheduled_date !== context.localDate || !contextObject(row.prescription)
       || (row.status !== 'planned' && row.status !== 'completed' && row.status !== 'skipped')) return []
@@ -94,13 +94,13 @@ export function projectTodayWorkoutRecommendation(context: Pick<TodayWorkoutCont
   const planned = sessions.filter(session => session.status === 'planned')
   if (planned.length) return { status: 'planned', source: 'accepted_plan',
     title: planned.length === 1 ? planned[0].title : 'Workouts from your accepted plan',
-    reason: 'Your accepted plan schedules this work for today.', sessions }
+    reason: null, sessions }
   if (sessions.some(session => session.status === 'completed')) return { status: 'completed', source: 'accepted_plan',
     title: 'Today’s workout is complete', reason: null, sessions }
   if (sessions.length) return { status: 'skipped', source: 'accepted_plan',
     title: 'Today’s scheduled workout was skipped', reason: null, sessions }
   return { status: 'unscheduled', source: 'accepted_plan', title: 'No workout scheduled today',
-    reason: 'Ask Socius whether to train or recover today.', sessions: [] }
+    reason: null, sessions: [] }
 }
 
 function ownedRows(value: { data: unknown; error: unknown }, owner: string, max: number): ContextRow[] {
