@@ -1,4 +1,4 @@
-import { activityCardMarkup, activityRendererScript, activityStyles, mcpHostBridgeScript } from './activity-app-ui'
+import { activityRendererScript, activityStyles, mcpHostBridgeScript, trainingHistoryCardMarkup } from './activity-app-ui'
 import { nutritionCardMarkup, nutritionRendererScript, nutritionStyles } from './nutrition-app-ui'
 
 function scaleOptions(labels: string[]) {
@@ -266,6 +266,13 @@ export const sociusTodayHtml = String.raw`<!doctype html>
       .check-in-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
 ${activityStyles}
+    @media (max-width: 29rem) {
+      #activity-content .activity-date-field { flex-basis: 100%; justify-items: start; }
+    }
+    @media (max-width: 23rem) {
+      .view-switch { gap: .35rem; }
+      .view-switch button { padding-inline: .35rem; }
+    }
 ${nutritionStyles}
   </style>
 </head>
@@ -277,7 +284,7 @@ ${nutritionStyles}
       <time id="today-date" hidden></time>
       <nav id="view-switch" class="view-switch" aria-label="SociusFit views" hidden>
         <button id="show-today" type="button" aria-pressed="true" aria-controls="today-content">Today</button>
-        <button id="show-activity" type="button" aria-pressed="false" aria-controls="activity-content" hidden>Activity</button>
+        <button id="show-activity" type="button" aria-pressed="false" aria-controls="activity-content" hidden>Training history</button>
         <button id="show-nutrition" type="button" aria-pressed="false" aria-controls="nutrition-content" hidden>Nutrition</button>
       </nav>
     </header>
@@ -393,7 +400,7 @@ ${nutritionStyles}
     </div>
     <section id="activity-content" class="panel" aria-labelledby="view-title" hidden>
       <div class="activity-date-controls">
-        <label class="activity-date-field" for="activity-date">Date
+        <label class="activity-date-field" for="activity-date">Workout date
           <input id="activity-date" type="date" min="0001-01-01" required>
         </label>
         <button id="previous-day" type="button">Previous day</button>
@@ -401,7 +408,7 @@ ${nutritionStyles}
       </div>
       <p id="activity-load" class="muted" role="status"></p>
       <button id="activity-retry" type="button" hidden>Try again</button>
-${activityCardMarkup}
+${trainingHistoryCardMarkup}
     </section>
     <section id="nutrition-content" class="panel" aria-labelledby="view-title" hidden>
       <p id="nutrition-load" class="muted" role="status"></p>
@@ -910,8 +917,10 @@ ${mcpHostBridgeScript}
         const date = byId('today-date').dateTime;
         const tzOffset = new Date().getTimezoneOffset();
         const revision = dayRevision;
+        const submittedAnswers = unconfirmedCheckIn?.answers ?? checkIn;
+        const answersStillMatch = matchesCheckIn(submittedAnswers, checkIn);
         const draftRequested = unconfirmedCheckIn
-          ? unconfirmedCheckIn.draftRequested && matchesCheckIn(unconfirmedCheckIn.answers, checkIn)
+          ? unconfirmedCheckIn.draftRequested && answersStillMatch
           : canRequestDraft();
         let confirmed = false;
         checkInBusy = true;
@@ -921,20 +930,24 @@ ${mcpHostBridgeScript}
         try {
           if (!unconfirmedCheckIn) {
             setCheckInStatus('Saving today’s check-in…');
+            let connectionRejected = false;
             const result = await host.request('tools/call', {
-              name: 'save_socius_today_check_in', arguments: { date, tzOffset, checkIn },
-            }).catch(() => null);
+              name: 'save_socius_today_check_in', arguments: { date, tzOffset, checkIn: submittedAnswers },
+            }).catch(error => {
+              connectionRejected = error.code === -32601 || error.code === -32602;
+              return null;
+            });
             if (!isCurrent()) return;
             if (result?._meta?.['mcp/www_authenticate']) {
               setCheckInStatus('Reconnect SociusFit in ChatGPT to save your check-in.', true);
               return;
             }
             const receipt = result?._meta?.savedCheckIn;
-            if (!result?.isError && receipt?.date === date && matchesCheckIn(receipt.checkIn, checkIn)) {
+            if (!result?.isError && receipt?.date === date && matchesCheckIn(receipt.checkIn, submittedAnswers)) {
               confirmed = true;
               return;
             }
-            unconfirmedCheckIn = { answers: checkIn, draftRequested };
+            unconfirmedCheckIn = { answers: submittedAnswers, draftRequested, connectionRejected };
           }
           setCheckInStatus('Checking whether your answers were saved…');
           const result = await host.request('tools/call', {
@@ -952,11 +965,18 @@ ${mcpHostBridgeScript}
             return;
           }
           renderSafetyReview(today.workoutRecommendation);
+          const { connectionRejected } = unconfirmedCheckIn;
           unconfirmedCheckIn = null;
           setSavedAssessment(stored);
-          confirmed = stored.scale === '1-to-5' && matchesCheckIn(stored.checkIn, checkIn);
+          confirmed = stored.scale === '1-to-5' && matchesCheckIn(stored.checkIn, submittedAnswers);
           if (!confirmed) {
-            setCheckInStatus('The saved answers don’t match. Save again to use these answers.', true);
+            if (connectionRejected) {
+              setCheckInStatus('The SociusFit connection rejected the check-in request. Select Refresh tools in SociusFit’s ChatGPT settings, then reopen the app and try again.', true);
+            } else if (stored.status === 'missing') {
+              setCheckInStatus('Your check-in wasn’t saved. Your answers are still here. Try saving again.', true);
+            } else {
+              setCheckInStatus('The saved answers don’t match. Save again to use these answers.', true);
+            }
           }
         } catch {
           if (isCurrent()) setCheckInStatus('Could not confirm the check-in was saved. Try again to check.', true);
@@ -964,9 +984,10 @@ ${mcpHostBridgeScript}
           if (revision === dayRevision) {
             checkInBusy = false;
             if (confirmed) {
-              setSavedAssessment({ status: 'saved', scale: '1-to-5', checkIn });
+              setSavedAssessment({ status: 'saved', scale: '1-to-5', checkIn: submittedAnswers });
               unconfirmedCheckIn = null;
-              setCheckInStatus('Check-in saved for today.');
+              setCheckInStatus(answersStillMatch ? 'Check-in saved for today.'
+                : 'Your previous check-in was saved. Save again to use your edited answers.');
             }
             syncCheckInControls();
             if (confirmed && draftRequested) void requestSessionDraft(date, tzOffset, isCurrent);
@@ -1026,7 +1047,7 @@ ${mcpHostBridgeScript}
           return;
         }
 
-        status.textContent = 'Loading saved activity…';
+        status.textContent = 'Loading saved workouts…';
         try {
           const result = await host.request('tools/call', {
             name: 'show_socius_activity', arguments: { date, timezone },
@@ -1034,17 +1055,17 @@ ${mcpHostBridgeScript}
           if (host.closed || call !== activityRequest) return;
           if (result?.isError) {
             status.textContent = result._meta?.['mcp/www_authenticate']
-              ? 'Reconnect SociusFit in ChatGPT, then try again.' : 'Saved activity is temporarily unavailable.';
+              ? 'Reconnect SociusFit in ChatGPT, then try again.' : 'Saved workouts are temporarily unavailable.';
             retry.hidden = false;
             return;
           }
           const activity = result?._meta?.activity;
           if (activity?.date !== date) throw new Error('Activity date did not match');
-          renderActivity(activity);
+          renderActivity(activity, ['workouts']);
           status.textContent = '';
         } catch {
           if (!host.closed && call === activityRequest) {
-            status.textContent = 'Could not load saved activity. Try again.';
+            status.textContent = 'Could not load saved workouts. Try again.';
             retry.hidden = false;
           }
         }
@@ -1115,7 +1136,7 @@ ${mcpHostBridgeScript}
       function openView(view) {
         if (activeView === view || byId('show-' + view).hidden) return;
         activeView = view;
-        const views = { today: 'Today', activity: 'Activity', nutrition: 'Nutrition' };
+        const views = { today: 'Today', activity: 'Training history', nutrition: 'Nutrition' };
         byId('view-title').textContent = views[view];
         for (const key of Object.keys(views)) {
           byId('show-' + key).setAttribute('aria-pressed', String(key === view));

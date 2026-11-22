@@ -57,7 +57,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   let mealCount = 0
   const savedCheckIns = new Map<string, CheckIn>()
   if (options.savedCheckIn) savedCheckIns.set(date, options.savedCheckIn)
-  let nextSaveReceipt: 'lost' | 'wrong_date' | 'wrong_values' | 'transport_rejection' | undefined
+  let nextSaveReceipt: 'lost' | 'wrong_date' | 'wrong_values' | 'transport_rejection' | 'invalid_params' | 'not_saved' | undefined
   let nextReadError = false
   let todayDate = date
   let todayRecovery: Partial<ReturnType<typeof projectTodayRecovery>> = recovery
@@ -103,21 +103,26 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
       }
     } else if (request.params?.name === 'save_socius_today_check_in') {
       const { date: savedDate, checkIn } = request.params.arguments as { date: string; checkIn: CheckIn }
-      savedCheckIns.set(savedDate, checkIn)
-      if (nextSaveReceipt === 'transport_rejection') {
+      if (nextSaveReceipt !== 'invalid_params' && nextSaveReceipt !== 'not_saved') savedCheckIns.set(savedDate, checkIn)
+      if (nextSaveReceipt === 'invalid_params') {
+        error = { code: -32602, message: 'Tool arguments do not match the installed schema' }
+      } else if (nextSaveReceipt === 'transport_rejection') {
         error = { code: -32000, message: 'Host could not deliver the save receipt' }
       } else {
-        result = nextSaveReceipt === 'lost' ? { isError: true } : { _meta: { savedCheckIn: {
+        result = nextSaveReceipt === 'lost' || nextSaveReceipt === 'not_saved' ? { isError: true } : { _meta: { savedCheckIn: {
           date: nextSaveReceipt === 'wrong_date' ? '2026-11-19' : savedDate,
           checkIn: nextSaveReceipt === 'wrong_values' ? usualCheckIn : checkIn,
         } } }
       }
       nextSaveReceipt = undefined
     } else if (request.params?.name === 'show_socius_activity') {
+      const selected = request.params.arguments as { date: string; timezone: string }
+      const entries = selected.date === '2026-11-07'
+        ? [{ label: 'Saved workout', revision: 2, details: ['Dumbbell row · 3 sets'] }] : []
       result = { _meta: { activity: {
-        ...(request.params.arguments as object),
-        workouts: { status: 'no_records', entries: [] },
-        meals: { status: 'no_records', entries: [] },
+        ...selected,
+        workouts: { status: entries.length ? 'available' : 'no_records', entries },
+        meals: { status: 'available', entries: [{ label: 'Logged lunch', revision: 1, details: ['Turkey sandwich'] }] },
       } } }
     } else if (request.params?.name === 'read_socius_nutrition') {
       result = { _meta: { nutrition: {
@@ -493,6 +498,7 @@ describe('SociusFit dashboard', () => {
     ])
     if (edited) {
       expect(checkInValues(element)).toEqual(Object.values(usualCheckIn))
+      expect(element('check-in-status').textContent).toBe('Your previous check-in was saved. Save again to use your edited answers.')
       button.click()
       await vi.waitFor(() => expect(element('check-in-next').hidden).toBe(false))
       expect(requests.filter(request => request.params?.name === 'save_socius_today_check_in')).toHaveLength(2)
@@ -520,6 +526,31 @@ describe('SociusFit dashboard', () => {
     expect(requests.filter(request => request.params?.name === 'save_socius_today_check_in')).toHaveLength(1)
     expect(requests.filter(request => request.method === 'ui/message')).toHaveLength(edited ? 0 : 1)
     expect(element('draft-manual').hidden).toBe(!edited)
+  })
+
+  it.each([
+    ['invalid_params', 'The SociusFit connection rejected the check-in request. Select Refresh tools in SociusFit’s ChatGPT settings, then reopen the app and try again.'],
+    ['not_saved', 'Your check-in wasn’t saved. Your answers are still here. Try saving again.'],
+  ] as const)('retains the answers and can save after %s', async (mode, message) => {
+    const { element, requests, setNextSaveReceipt } = mountWidget(initialRecommendation, todayClock(), { supportsDraft: true })
+    const saves = () => requests.filter(request => request.params?.name === 'save_socius_today_check_in')
+    const drafts = () => requests.filter(request => request.method === 'ui/message')
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    const checkIn = { stress: 5, fatigue: 3, sleep: 3, soreness: 5, motivation: 4 }
+    fillCheckIn(element, checkIn)
+    setNextSaveReceipt(mode)
+    const button = element('check-in-submit') as HTMLButtonElement
+    button.click()
+
+    await vi.waitFor(() => expect(element('check-in-status').textContent).toBe(message))
+    expect(checkInValues(element)).toEqual(Object.values(checkIn))
+    expect(saves()).toHaveLength(1)
+    expect(drafts()).toHaveLength(0)
+
+    button.click()
+    await vi.waitFor(() => expect(element('check-in-status').textContent).toBe('Check-in saved for today.'))
+    expect(saves()).toHaveLength(2)
+    expect(drafts()).toHaveLength(1)
   })
 
   it('preserves the draft when a newer check-in is read after a lost receipt', async () => {
@@ -662,7 +693,7 @@ describe('SociusFit dashboard', () => {
     expect(element('check-in-next').hidden).toBe(false)
   })
 
-  it('loads Activity and refreshes Nutrition without exposing dashboard chat actions', async () => {
+  it('shows dated workouts in Training history and refreshes Nutrition without exposing dashboard chat actions', async () => {
     const { widget, element, requests, setMealCount } = mountWidget({
       status: 'unscheduled', source: 'accepted_plan', title: 'No workout scheduled today', reason: null, sessions: [],
     })
@@ -670,12 +701,32 @@ describe('SociusFit dashboard', () => {
     expect(element('accepted-plan-details').hidden).toBe(true)
     for (const id of retiredControls) expect(widget.getElementById(id)).toBeNull()
 
+    expect(element('show-today').textContent).toBe('Today')
+    expect(element('show-activity').textContent).toBe('Training history')
     element('show-activity').click()
     await vi.waitFor(() => expect(element('activity-card').hidden).toBe(false))
+    expect(element('view-title').textContent).toBe('Training history')
+    const workoutDate = element('activity-date') as HTMLInputElement
+    expect(widget.querySelector('label[for="activity-date"]')?.textContent?.trim()).toBe('Workout date')
+    expect(workoutDate.type).toBe('date')
+    expect(workoutDate.max).toBe(date)
+    expect(workoutDate.value).toBe('2026-11-19')
+    expect(element('activity-workouts-note').textContent).toBe('No workouts were logged for this date.')
     element('previous-day').click()
     await vi.waitFor(() => expect(element('activity-card').hidden).toBe(false))
+
+    workoutDate.value = '2026-11-07'
+    workoutDate.dispatchEvent(new Event('change', { bubbles: true }))
+    await vi.waitFor(() => expect(element('activity-workouts').textContent).toContain('Dumbbell row · 3 sets'))
+    expect(element('activity-card-date').getAttribute('datetime')).toBe('2026-11-07')
+    expect(element('activity-workouts').textContent).toContain('Revised')
+    expect(widget.getElementById('activity-meals')).toBeNull()
+
+    workoutDate.value = '2026-11-21'
+    workoutDate.dispatchEvent(new Event('change', { bubbles: true }))
+    expect(element('activity-load').textContent).toBe('Choose a date on or before today.')
     expect(requests.filter(request => request.params?.name === 'show_socius_activity').map(request => request.params?.arguments))
-      .toMatchObject([{ date: '2026-11-19' }, { date: '2026-11-18' }])
+      .toMatchObject([{ date: '2026-11-19' }, { date: '2026-11-18' }, { date: '2026-11-07' }])
 
     element('show-nutrition').click()
     await vi.waitFor(() => expect(element('nutrition-refresh').hidden).toBe(false))
