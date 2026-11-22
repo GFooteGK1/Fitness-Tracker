@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import { FormErrors } from '@/app/lib/auth/types'
 
@@ -14,7 +13,6 @@ export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false)
   
   const { signIn } = useAuth()
-  const router = useRouter()
 
   // Validate form fields
   const validateForm = (): boolean => {
@@ -49,8 +47,7 @@ export default function SignInForm() {
     try {
       await signIn(email, password)
       
-      // Redirect will be handled by the auth context
-      router.push('/dashboard')
+      // The sign-in page waits for profile state and resumes the requested page.
       
     } catch (error: any) {
       console.error('Sign in error:', error)

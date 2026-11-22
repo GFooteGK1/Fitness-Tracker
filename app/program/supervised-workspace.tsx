@@ -133,7 +133,10 @@ export function SupervisedWorkspace({ userId }: { userId: string }) {
     <h1 className="text-2xl font-bold">Supervised programming</h1>
     <p>Prepare a complete week, review the evidence and proposed changes, then confirm the coach decision. The athlete accepts a saved proposal separately.</p>
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
-    {programs?.programs.length === 0 && <p>No supervised programs are assigned to this account.</p>}
+    {programs?.programs.length === 0 && <div className="space-y-3"><p>No coach-managed programs are assigned to this account.</p>
+      <p>To review the next week for your existing personal program, use the athlete review workspace.</p>
+      <a href="/program/first-reviewed" className="app-primary inline-flex min-h-11 items-center px-4 py-3">Review your next week</a>
+    </div>}
     {recoveryPrograms.length > 0 && <nav aria-label="Saved request recovery" className="flex flex-wrap gap-2">{recoveryPrograms.map(id =>
       <button key={id} className={actionClass} disabled={busy} aria-pressed={selected === id} onClick={() => setSelected(id)}>Saved request · {id.slice(-8)}</button>)}</nav>}
     {programs && <nav aria-label="Assigned programs" className="flex flex-wrap gap-2">{programs.programs.map(p =>

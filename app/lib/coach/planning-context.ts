@@ -3,6 +3,7 @@ import { formatUTCAsLocalDateWithOffset, localDateToUTCStart, isValidTimezoneOff
 import { MOVEMENT_CATALOG } from './movement-catalog'
 import type { ProgrammingProfile } from './programming-schema'
 import { buildPrescriptionBasis } from './prescription-basis'
+import { readSegmentedWorkoutEvents } from './segmented-workout-events'
 import { resolveHistorySnapshot, historyFieldProvenance, confirmedPrescriptionLink, type HistoryCompletion, type ActivityHistoryRevision, type HistoryWorkoutRow } from './planning-history'
 
 export interface FactualPlanningContext {
@@ -106,18 +107,25 @@ export function buildFactualPlanningContext(input: PlanningHistorySnapshot): Fac
     const completion = confirmedPrescriptionLink(row, input.completions ?? [], input.asOf)
     for (const [bi, block] of blocks.entries()) {
       if (!isObject(block)) { missing.push(`${row.id}:unsupported_block_${bi}`); structurallyIncomplete = true; continue }
-      if (Array.isArray(block.exercises) && Array.isArray(block.movements)) { missing.push(`${row.id}:ambiguous_block_${bi}`); structurallyIncomplete = true; continue }
+      const segmented = Object.hasOwn(block, 'segments')
+      if ((Array.isArray(block.exercises) && Array.isArray(block.movements))
+        || (segmented && (Object.hasOwn(block, 'exercises') || Object.hasOwn(block, 'movements')))) { missing.push(`${row.id}:ambiguous_block_${bi}`); structurallyIncomplete = true; continue }
       const canonical = Array.isArray(block.exercises)
       if (canonical && !completion) { missing.push(`${row.id}:prescription_execution_unconfirmed`); continue }
-      const entries = canonical ? block.exercises : block.movements
+      const segmentedEntries = segmented ? readSegmentedWorkoutEvents(block, `${Array.isArray(row.blocks) ? 'blocks' : 'blocks.blocks'}[${bi}]`) : null
+      if (segmentedEntries?.issues.length) { missing.push(...segmentedEntries.issues.map(reason => `${row.id}:${reason}:${bi}`)); structurallyIncomplete = true }
+      const entries = segmentedEntries ? segmentedEntries.entries : canonical ? block.exercises : block.movements
       if (!Array.isArray(entries)) { missing.push(`${row.id}:unsupported_entries_${bi}`); structurallyIncomplete = true; continue }
-      for (const [ei, entry] of entries.entries()) {
+      for (const [ei, item] of entries.entries()) {
+        const location = segmentedEntries ? segmentedEntries.entries[ei] : null
+        const entry = location ? location.entry : item
         if (!isObject(entry)) { missing.push(`${row.id}:unsupported_entry_${bi}_${ei}`); structurallyIncomplete = true; continue }
         if (entry.completed === false || entry.workStatus === 'unsure') continue
+        const name = segmented ? entry.movement_name : entry.name
         const movement = canonical ? MOVEMENT_CATALOG.find(item => item.id === entry.movementId)
-          : MOVEMENT_CATALOG.find(item => typeof entry.name === 'string' && (item.id === entry.name.toLowerCase() || item.name.toLowerCase() === entry.name.trim().toLowerCase()))
+          : MOVEMENT_CATALOG.find(item => typeof name === 'string' && (item.id === name.toLowerCase() || item.name.toLowerCase() === name.trim().toLowerCase()))
         if (!movement) continue
-        const sourcePath = `${Array.isArray(row.blocks) ? 'blocks' : 'blocks.blocks'}[${bi}].${canonical ? 'exercises' : 'movements'}[${ei}]`
+        const sourcePath = location?.path ?? `${Array.isArray(row.blocks) ? 'blocks' : 'blocks.blocks'}[${bi}].${canonical ? 'exercises' : 'movements'}[${ei}]`
         const provenance = historyFieldProvenance(row.capture_provenance, sourcePath)
         if (!canonical && ['copied_template', 'imported_unverified'].includes(provenance.origin) && provenance.reviewState === 'unreviewed') continue
         // Stored ranges and doses are deliberately absent from runtime familiarity.

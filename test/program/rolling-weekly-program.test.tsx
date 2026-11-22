@@ -37,6 +37,41 @@ import {
 } from '@/app/program/weekly-program-view'
 
 describe('rolling weekly Program experience', () => {
+  it.each([['', '2026-09-20'], ['2026-02-30', '2026-03-06'], ['2026-09-21', '2026-09-20']])('does not label an invalid accepted window as current', (start, end) => {
+    const current = weeklyPlan('2026-09-14', '2026-12-31')
+    current.windowStart = start; current.windowEnd = end
+    render(<WeeklyProgramView state={weeklyState(current)} activeProgram={activeProgram(current)} review={null} proposal={null}
+      reviewing={false} creatingProposal={false} accepting={false} savingSessionId={null}
+      onReview={vi.fn()} onCreateProposal={vi.fn()} onAccept={vi.fn()} onRequestDirectionChange={vi.fn()}
+      onRecordSessionResult={vi.fn()} onEditFailedSessionResult={vi.fn()} onRefreshPlan={vi.fn()} />)
+    expect(screen.getByRole('heading', { name: 'Weekly plan data needs a refresh' })).toBeInTheDocument()
+    expect(screen.queryByText('This week', { exact: true })).not.toBeInTheDocument()
+    expect(screen.queryByText('Today', { exact: true })).not.toBeInTheDocument()
+  })
+  it.each([
+    ['2026-09-13', 'Upcoming accepted week', 'Scheduled'],
+    ['2026-09-14', 'This week', 'Current'],
+    ['2026-09-20', 'This week', 'Current'],
+    ['2026-10-11', 'Last accepted week', 'Accepted history'],
+  ])('labels the accepted week accurately on %s without altering its history', (date, label, badge) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(`${date}T12:00:00`))
+    const current = weeklyPlan('2026-09-14', '2026-12-31')
+    const state = weeklyState(current), program = activeProgram(current)
+    const before = structuredClone({ state, program })
+    render(<WeeklyProgramView state={state} activeProgram={program} review={null} proposal={null}
+      reviewing={false} creatingProposal={false} accepting={false} savingSessionId={null}
+      onReview={vi.fn()} onCreateProposal={vi.fn()} onAccept={vi.fn()} onRequestDirectionChange={vi.fn()}
+      onRecordSessionResult={vi.fn()} onEditFailedSessionResult={vi.fn()} onRefreshPlan={vi.fn()} />)
+    expect(screen.getByText(label)).toBeInTheDocument()
+    expect(screen.getByText(badge, { exact: true })).toBeInTheDocument()
+    if (date === '2026-10-11' || date === '2026-09-13') {
+      expect(screen.queryByText('Today', { exact: true })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save workout' })).not.toBeInTheDocument()
+    }
+    expect(screen.getByText('All accepted sessions')).toBeInTheDocument()
+    expect({ state, program }).toEqual(before)
+  })
   it('shows the accepted origin as history without exposing proposal actions', () => {
     const current = weeklyPlan('2026-09-14', '2026-12-31')
     const state = weeklyState(current)
@@ -145,6 +180,7 @@ describe('rolling weekly Program experience', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.useRealTimers()
   })
 
   it('creates only a first-week proposal and keeps acceptance separate', async () => {
@@ -344,6 +380,8 @@ describe('rolling weekly Program experience', () => {
   })
 
   it('shows one accepted week, the next proposal, and explicit acceptance', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 8, 2, 12))
     const current = weeklyPlan('2026-08-31', '2026-12-31')
     const decision: RollingWeeklyPlanningDecision = {
       reviewId: 'review-1',
@@ -388,6 +426,7 @@ describe('rolling weekly Program experience', () => {
     expect(screen.queryByText('Week 3')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Accept next week' }))
     expect(onAccept).toHaveBeenCalledOnce()
+    vi.useRealTimers()
   })
 
   it('can rebuild a next-week proposal from the saved immutable review', () => {

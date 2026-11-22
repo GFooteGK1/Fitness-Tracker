@@ -20,6 +20,7 @@ export function createFirstReviewedPreviewHttp(options:{createUserClient:()=>Pro
       const result=await prepareFirstReviewedCandidate(db,draft),after=await db.auth.getUser()
       if(after.error||after.data.user?.id!==actor)return reply({kind:'account_changed'},409)
       if(!options.enabled())return reply({kind:'disabled'},409)
+      if(result.kind==='evidence_window_required')return reply({kind:'needs_review',error:'This review has more than 64 recorded evidence entries. Choose a shorter training history lookback and reload setup and fresh facts. No evidence was truncated.'},409)
       if(result.kind!=='prepared_first_candidate')return reply({kind:'needs_review',error:'This draft could not be compiled against current confirmed context. Review context and the complete prescription.'},409)
       if(result.privatePacket.userId!==actor)return reply({kind:'not_found'},404)
       return reply({kind:'preview',candidateId:draft.candidateId,programId:draft.programId,draftHash:doseContentHash(draft),reviewPacket:result.reviewPacket},200)

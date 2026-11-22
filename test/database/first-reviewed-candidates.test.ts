@@ -369,6 +369,11 @@ describe('first reviewed candidate and decision boundary (disposable SQL)', () =
     p.reviewPacket = changed
     await rejected(() => submit(p), '22023')
   })
+  it.each([63,64,65])('preserves the exact review evidence bound for %s records',async(count)=>{
+    const id=await designation(),p=await prepare(id)
+    const packet={...p.reviewPacket,evidence:Array.from({length:count},(_,i)=>({sourceId:`synthetic-source:${i}`,summary:'Recorded source quantity; no dose authority.'}))}
+    expect(parseFirstReviewedReviewPacket(packet)!==null).toBe(count<=64)
+  })
   it('binds one immutable decision to the exact reviewer, designation and complete candidate', async () => {
     const id = await designation(), p = await prepare(id), saved = await submit(p), request = randomUUID()
     await f.actor(foreign)
