@@ -101,6 +101,23 @@ export async function readWhoopWebhookRecord(
   return recovery
 }
 
+export async function readWhoopWebhookCycle(
+  cycleId: unknown,
+  providerUserId: number,
+  accessToken: string,
+  signal: AbortSignal,
+): Promise<WhoopRecord | null> {
+  if (!isProviderId(cycleId)) throw new Error('Invalid WHOOP cycle ID')
+
+  const cycle = await fetchRecord(`/developer/v2/cycle/${cycleId}`, accessToken, signal)
+  if (cycle.id !== cycleId || cycle.user_id !== providerUserId) {
+    throw new Error('WHOOP cycle identity mismatch')
+  }
+  if (cycle.score_state === 'UNSCORABLE' && cycle.score == null) return null
+  if (cycle.score_state !== 'SCORED') throw new Error('WHOOP cycle score unavailable')
+  return cycle
+}
+
 async function fetchRecord(path: string, accessToken: string, signal: AbortSignal): Promise<WhoopRecord> {
   const hostname = process.env.WHOOP_API_HOSTNAME || 'https://api.prod.whoop.com'
   const response = await fetch(new URL(path, hostname), {

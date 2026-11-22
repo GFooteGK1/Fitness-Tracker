@@ -1,12 +1,16 @@
 import { createHmac } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createServiceRoleClient } from '@/app/lib/auth/supabase-server'
-import { storeRecoveryData, storeSleepData } from '@/app/lib/whoop/sync-service'
+import { storeCycleData, storeRecoveryData, storeSleepData } from '@/app/lib/whoop/sync-service'
 import { getOwnerCronAccessToken } from '@/app/lib/whoop/token-service'
 import { POST } from '@/app/api/whoop/webhook/route'
 
 vi.mock('@/app/lib/auth/supabase-server', () => ({ createServiceRoleClient: vi.fn() }))
-vi.mock('@/app/lib/whoop/sync-service', () => ({ storeRecoveryData: vi.fn(), storeSleepData: vi.fn() }))
+vi.mock('@/app/lib/whoop/sync-service', () => ({
+  storeCycleData: vi.fn(),
+  storeRecoveryData: vi.fn(),
+  storeSleepData: vi.fn(),
+}))
 vi.mock('@/app/lib/whoop/token-service', () => ({ getOwnerCronAccessToken: vi.fn() }))
 vi.mock('@/app/lib/whoop/timing-owner', () => ({
   isWhoopTimingOwner: (value: unknown) => value === '11111111-1111-4111-8111-111111111111',
@@ -20,6 +24,17 @@ const sleepId = '33333333-3333-4333-8333-333333333333'
 const event = { user_id: sourceId, id: sleepId, type: 'sleep.updated', trace_id: 'synthetic-trace' }
 const sleep = { user_id: sourceId, id: sleepId, cycle_id: 789, score_state: 'SCORED' }
 const recovery = { user_id: sourceId, sleep_id: sleepId, cycle_id: 789, score_state: 'SCORED' }
+const cycle = {
+  user_id: sourceId,
+  id: recovery.cycle_id,
+  created_at: '2025-11-22T08:00:00Z',
+  updated_at: '2025-11-22T08:05:00Z',
+  start: '2025-11-22T08:00:00Z',
+  end: null,
+  timezone_offset: '-06:00',
+  score_state: 'SCORED',
+  score: { strain: 12.34 },
+}
 const hostname = 'https://whoop.example.invalid'
 const endpoint = 'https://socius.example.invalid/api/whoop/webhook'
 const providerFetch = vi.fn<typeof fetch>()
@@ -47,6 +62,14 @@ function serviceClient() {
   return client
 }
 
+function signedRecoveryRequest() {
+  return signedRequest(JSON.stringify({ ...event, type: 'recovery.updated' }))
+}
+
+function mockRecoveryReads() {
+  return providerFetch.mockResolvedValueOnce(Response.json(sleep)).mockResolvedValueOnce(Response.json(recovery))
+}
+
 beforeEach(() => {
   vi.resetAllMocks()
   vi.stubEnv('WHOOP_WEBHOOK_USER_ID', String(sourceId))
@@ -58,6 +81,7 @@ beforeEach(() => {
   vi.mocked(getOwnerCronAccessToken).mockResolvedValue('synthetic-token')
   vi.mocked(storeSleepData).mockResolvedValue(1)
   vi.mocked(storeRecoveryData).mockResolvedValue(1)
+  vi.mocked(storeCycleData).mockResolvedValue(1)
 })
 
 afterEach(() => {
@@ -159,21 +183,93 @@ describe('WHOOP owner webhook', () => {
     })
     expect(storeSleepData).toHaveBeenCalledExactlyOnceWith(owner, [sleep], client, true)
     expect(storeRecoveryData).not.toHaveBeenCalled()
+    expect(storeCycleData).not.toHaveBeenCalled()
   })
 
-  it('resolves a v2 recovery event through its sleep ID and writes only recovery', async () => {
+  it('persists v2 recovery then fetches and persists strain for the same cycle', async () => {
     const client = serviceClient()
-    providerFetch.mockResolvedValueOnce(Response.json(sleep)).mockResolvedValueOnce(Response.json(recovery))
-    const response = await POST(signedRequest(JSON.stringify({ ...event, type: 'recovery.updated' })))
+    mockRecoveryReads().mockResolvedValueOnce(Response.json(cycle))
+    const response = await POST(signedRecoveryRequest())
 
     expect(response.status).toBe(204)
     expect(providerFetch.mock.calls.map(([url]) => String(url))).toEqual([
       `${hostname}/developer/v2/activity/sleep/${sleepId}`,
       `${hostname}/developer/v2/cycle/789/recovery`,
+      `${hostname}/developer/v2/cycle/789`,
     ])
     expect(providerFetch.mock.calls[0][1]?.signal).toBe(providerFetch.mock.calls[1][1]?.signal)
+    expect(providerFetch).toHaveBeenNthCalledWith(3, new URL('/developer/v2/cycle/789', hostname), {
+      headers: { Authorization: 'Bearer synthetic-token' },
+      cache: 'no-store',
+      redirect: 'error',
+      signal: expect.any(AbortSignal),
+    })
+    expect(providerFetch.mock.calls[2][1]?.signal).toBe(providerFetch.mock.calls[0][1]?.signal)
     expect(storeRecoveryData).toHaveBeenCalledExactlyOnceWith(owner, [recovery], client, true)
+    expect(vi.mocked(storeRecoveryData).mock.invocationCallOrder[0])
+      .toBeLessThan(providerFetch.mock.invocationCallOrder[2])
+    expect(storeCycleData).toHaveBeenCalledExactlyOnceWith(owner, [cycle], client, true)
     expect(storeSleepData).not.toHaveBeenCalled()
+  })
+
+  it('does not request strain if the recovery write fails', async () => {
+    const client = serviceClient()
+    mockRecoveryReads()
+    vi.mocked(storeRecoveryData).mockRejectedValueOnce(new Error('synthetic recovery write failure'))
+
+    expect((await POST(signedRecoveryRequest())).status).toBe(503)
+    expect(storeRecoveryData).toHaveBeenCalledExactlyOnceWith(owner, [recovery], client, true)
+    expect(providerFetch).toHaveBeenCalledTimes(2)
+    expect(storeCycleData).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { ...cycle, user_id: 891 },
+    { ...cycle, id: 790 },
+    { ...cycle, score_state: 'UNKNOWN' },
+    { ...cycle, score_state: 'PENDING_SCORE', score: undefined },
+    { ...cycle, score_state: 'UNSCORABLE' },
+  ])('requests retry after storing recovery when the cycle cannot supply verified strain', async record => {
+    const client = serviceClient()
+    mockRecoveryReads().mockResolvedValueOnce(Response.json(record))
+
+    expect((await POST(signedRecoveryRequest())).status).toBe(503)
+    expect(storeRecoveryData).toHaveBeenCalledExactlyOnceWith(owner, [recovery], client, true)
+    expect(storeCycleData).not.toHaveBeenCalled()
+  })
+
+  it('acknowledges an unscorable cycle without replacing strain', async () => {
+    const client = serviceClient()
+    const unscorable = { ...cycle, score_state: 'UNSCORABLE', score: undefined }
+    mockRecoveryReads().mockResolvedValueOnce(Response.json(unscorable))
+
+    expect((await POST(signedRecoveryRequest())).status).toBe(204)
+    expect(storeRecoveryData).toHaveBeenCalledExactlyOnceWith(owner, [recovery], client, true)
+    expect(storeCycleData).not.toHaveBeenCalled()
+  })
+
+  it('requests retry when the cycle fetch fails after recovery is stored', async () => {
+    const client = serviceClient()
+    mockRecoveryReads().mockResolvedValueOnce(new Response(null, { status: 429 }))
+
+    expect((await POST(signedRecoveryRequest())).status).toBe(503)
+    expect(storeRecoveryData).toHaveBeenCalledExactlyOnceWith(owner, [recovery], client, true)
+    expect(storeCycleData).not.toHaveBeenCalled()
+  })
+
+  it('allows delivery retry after the strict strain writer rejects a cycle', async () => {
+    const client = serviceClient()
+    mockRecoveryReads().mockResolvedValueOnce(Response.json(cycle))
+    mockRecoveryReads().mockResolvedValueOnce(Response.json(cycle))
+    vi.mocked(storeCycleData).mockRejectedValueOnce(new Error('synthetic cycle write failure'))
+    const request = signedRecoveryRequest()
+    const retry = request.clone()
+
+    expect((await POST(request)).status).toBe(503)
+    expect((await POST(retry)).status).toBe(204)
+    expect(storeRecoveryData).toHaveBeenCalledTimes(2)
+    expect(storeCycleData).toHaveBeenCalledTimes(2)
+    expect(storeCycleData).toHaveBeenLastCalledWith(owner, [cycle], client, true)
   })
 
   it.each([
@@ -194,8 +290,10 @@ describe('WHOOP owner webhook', () => {
   ])('requires a recovery response consistent with the event and resolved sleep', async record => {
     serviceClient()
     providerFetch.mockResolvedValueOnce(Response.json(sleep)).mockResolvedValueOnce(Response.json(record))
-    expect((await POST(signedRequest(JSON.stringify({ ...event, type: 'recovery.updated' })))).status).toBe(503)
+    expect((await POST(signedRecoveryRequest())).status).toBe(503)
     expect(storeRecoveryData).not.toHaveBeenCalled()
+    expect(storeCycleData).not.toHaveBeenCalled()
+    expect(providerFetch).toHaveBeenCalledTimes(2)
   })
 
   it.each([404, 429, 500])('requests retry for an unavailable provider record (%d)', async status => {
