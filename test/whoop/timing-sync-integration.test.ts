@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fullSync } from '@/app/lib/whoop/sync-service'
+import { fullSync, storeCycleData } from '@/app/lib/whoop/sync-service'
 import * as api from '@/app/lib/whoop/api-client'
 import * as token from '@/app/lib/whoop/token-service'
 import { providerPayload, syntheticOther, syntheticTimingOwner, timingNow } from '../fixtures/whoop-provider-timing'
@@ -62,5 +62,33 @@ describe('synthetic sync orchestration: providers/token/database fully stubbed',
     for (const fn of [api.getRecovery, api.getSleep, api.getCycles, api.getWorkouts]) vi.mocked(fn).mockResolvedValue([])
     const { db, calls } = dbFixture(); expect((await fullSync(syntheticTimingOwner, db)).recordsSynced).toEqual({ recovery: 0, sleep: 0, cycles: 0, workouts: 0 })
     expect(calls.every(c => c.table === 'whoop_sync_status')).toBe(true)
+  })
+
+  it('stores a complete webhook cycle with provider timing and leaves the batch checkpoint alone', async () => {
+    const { db, calls } = dbFixture()
+    const payload = providerPayload('cycle')
+
+    await expect(storeCycleData(syntheticTimingOwner, [payload], db, true)).resolves.toBe(1)
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({
+      table: 'whoop_cycles',
+      options: { onConflict: 'user_id,cycle_id' },
+      rows: [{
+        cycle_id: 42,
+        strain: 8.125,
+        provider_updated_at: payload.updated_at,
+        timing_mapping_version: 'whoop_timing_owner_v1',
+        timing_ingested_at: timingNow,
+      }],
+    })
+  })
+
+  it('rejects an incomplete webhook cycle without a legacy or checkpoint write', async () => {
+    const { db, calls } = dbFixture()
+    const payload = { ...providerPayload('cycle'), score: {} }
+
+    await expect(storeCycleData(syntheticTimingOwner, [payload], db, true))
+      .rejects.toThrow('Valid WHOOP provider timing required')
+    expect(calls).toEqual([])
   })
 })

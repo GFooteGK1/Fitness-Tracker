@@ -3,6 +3,8 @@
 ADR-0047 gives WHOOP two ingestion paths into the existing canonical tables.
 Daily and manual sync reconcile an overlapping, paginated range. A signed
 owner-only webhook reads the exact changed sleep or recovery from WHOOP.
+After saving recovery, it reads the linked cycle and saves a scored Day
+Strain. Later strain changes rely on polling WHOOP.
 Postgres preserves the newest retained provider version. Today can refresh
 the saved WHOOP section on foreground without changing training guidance.
 The receiver is off until its two server-side owner IDs are configured and

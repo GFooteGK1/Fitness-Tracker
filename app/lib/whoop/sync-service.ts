@@ -341,16 +341,18 @@ function transformSleepData(userId: string, apiData: any): Partial<WhoopSleep> {
 /**
  * Transform and store cycle data
  */
-async function storeCycleData(
+export async function storeCycleData(
   userId: string,
-  cycleData: any[],
-  supabase: SupabaseClient
+  cycleData: unknown[],
+  supabase: SupabaseClient,
+  requireTiming = false,
 ): Promise<number> {
   const records = cycleData.map(item => transformCycleData(userId, item));
 
-  const { error } = await upsertWhoopTiming(supabase, 'cycle', userId, records, cycleData);
+  const { error } = await upsertWhoopTiming(supabase, 'cycle', userId, records, cycleData, requireTiming);
 
   if (error) {
+    if (requireTiming) throw new Error('WHOOP cycle write failed');
     console.error('[WHOOP Sync] Failed to store cycle data:', error);
     throw error;
   }

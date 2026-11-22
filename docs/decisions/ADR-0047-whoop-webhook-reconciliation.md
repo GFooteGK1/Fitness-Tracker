@@ -1,8 +1,8 @@
 # ADR-0047 - WHOOP webhooks and reconciliation
 
-- **Status:** Approved for implementation. Production activation and athlete verification are pending.
+- **Status:** Accepted. The production webhook is enabled. Live verification of the linked Day Strain update is pending.
 - **Date:** 2026-11-21
-- **Tracking:** Fitness-Tracker-9on
+- **Tracking:** Fitness-Tracker-9on, Fitness-Tracker-9on.1
 - **Related:** [Owner timing](ADR-0040-owner-pilot-whoop-timing.md), [Owner cron](ADR-0041-owner-authenticated-whoop-cron-get.md), [WHOOP webhooks](https://developer.whoop.com/docs/developing/webhooks/), [WHOOP API](https://developer.whoop.com/api/)
 
 ## Decision
@@ -19,9 +19,13 @@ recovery updates for the configured WHOOP account and fixed Socius owner.
 It checks the signature before accessing stored credentials, reads the
 exact record from WHOOP, verifies its identity, and uses the existing
 canonical writer. Recovery events identify a sleep, so the receiver resolves
-its cycle before reading recovery. The receiver acknowledges updates after
-storage succeeds. A failed fetch or write lets WHOOP retry. Repeated deliveries
-can still make WHOOP requests. No webhook updates the daily batch timestamp.
+its cycle before reading recovery. After saving recovery, the receiver reads
+the same cycle and saves its Day Strain if WHOOP has scored it. The reads share
+one provider deadline. An unscorable cycle leaves strain to reconciliation.
+A pending score or a failed fetch or write lets WHOOP retry. If the cycle
+fails after recovery is saved, that recovery remains available. Repeated
+deliveries can still make WHOOP requests. No webhook updates the daily batch
+timestamp.
 
 Postgres compares provider timestamps under the row lock. Once the owner
 record has a versioned snapshot, older, equal, and unversioned writes
@@ -40,15 +44,17 @@ Refresh preserves the current check-in and training guidance.
 
 - A more frequent poll still needs overlap and cannot run more than daily on
   the current Vercel Hobby plan. Daily reconciliation remains useful for missed
-  events and day strain, which has no webhook.
+  events and strain changes made after the recovery update. WHOOP sends no
+  dedicated cycle update event.
 - A durable queue could acknowledge early and coalesce duplicate requests.
   Synchronous handling keeps one owner on the current stack and uses WHOOP
   retries. Check actual delivery latency and failures before adding a worker.
   A concurrent OAuth refresh can fail while another request rotates the token.
   The existing compare-and-save keeps the winning grant and a failed webhook
   remains retryable.
-- The pilot handles updated sleep and recovery. Signed deletes and workout
-  events receive a successful acknowledgement without mutating Socius.
+- The pilot handles updated sleep and recovery, including the linked cycle on
+  recovery updates. Signed deletes and workout events receive a successful
+  acknowledgement without mutating Socius.
   The recent-history poll imports present records. It does not infer deletion
   from a missing record or repair edits older than the lookback when a webhook
   also failed.
@@ -63,8 +69,9 @@ Refresh preserves the current check-in and training guidance.
    With production approval, set server-side `WHOOP_WEBHOOK_USER_ID` and
    `WHOOP_WEBHOOK_OWNER_ID`. Reuse the existing WHOOP app secret. Register
    `https://www.sociusfit.com/api/whoop/webhook` as v2 in that same WHOOP app.
-3. Compare WHOOP, Socius storage, and Today after a scored morning and an
-   authorized sleep correction. Record provider update and ingestion times,
+3. Compare sleep, recovery, and linked Day Strain in WHOOP, Socius storage,
+   and Today after a scored morning and an authorized sleep correction.
+   Record provider update and ingestion times,
    check retry behavior, and verify Today on the athlete's client.
 4. Disable webhook delivery by removing its WHOOP registration or either
    receiver identity setting. The daily poll and stored records remain available.
