@@ -3,6 +3,7 @@ import { validatePlanningIntent } from './planning-intent'
 export { projectContextRecovery } from './external-recovery-context'
 
 export const COACHING_CONTEXT_VERSION = 1 as const
+export const COACHING_CONTEXT_MAX_CHARACTERS = 128_000
 export const REQUIREMENT_KEYS = ['training_intent', 'primary_goal', 'training_schedule', 'available_equipment', 'training_constraints', 'exercise_preferences'] as const
 export type ContextRow = Record<string, unknown>
 export interface ContextSource {

@@ -295,14 +295,14 @@ ${nutritionStyles}
           <ol id="recommendation-actions" class="guidance-list"></ol>
           <h4 class="guidance-heading">What informed this</h4>
           <ul id="recommendation-reasons" class="bullets guidance-list"></ul>
-          <p class="muted section-note">Use this as a starting point and adjust it to how you feel.</p>
+          <p class="muted section-note">Use this plan as a starting point. Ask in chat to adjust today’s plan.</p>
         </div>
         <div id="saved-review" hidden>
           <h3 id="saved-review-title"></h3>
           <p id="saved-review-reason" class="section-note" hidden></p>
         </div>
         <form id="check-in-form" autocomplete="off">
-          <fieldset id="check-in-fields" class="check-in-fields" aria-describedby="check-in-instructions">
+          <fieldset id="check-in-fields" class="check-in-fields" aria-describedby="check-in-instructions" disabled>
             <legend>How do you feel today?</legend>
             <p id="check-in-instructions" class="muted">Compare each with your usual.</p>
             <div class="check-in-grid">
@@ -330,9 +330,25 @@ ${nutritionStyles}
                   <option value="better">Better than usual</option>
                 </select>
               </label>
+              <label>Soreness
+                <select id="check-in-soreness" required>
+                  <option value="" selected disabled>Choose one</option>
+                  <option value="lower">Lower than usual</option>
+                  <option value="usual">Usual</option>
+                  <option value="higher">Higher than usual</option>
+                </select>
+              </label>
+              <label>Motivation
+                <select id="check-in-motivation" required>
+                  <option value="" selected disabled>Choose one</option>
+                  <option value="lower">Lower than usual</option>
+                  <option value="usual">Usual</option>
+                  <option value="higher">Higher than usual</option>
+                </select>
+              </label>
             </div>
           </fieldset>
-          <button id="check-in-submit" type="submit">Get recommendation</button>
+          <button id="check-in-submit" type="submit" disabled>Save &amp; get recommendation</button>
           <p id="check-in-status" role="status" class="muted"></p>
         </form>
         <details id="accepted-plan-details" class="recovery-timing" hidden>
@@ -419,6 +435,8 @@ ${mcpHostBridgeScript}
       const activityDate = byId('activity-date');
       const checkInForm = byId('check-in-form');
       const checkInSubmit = byId('check-in-submit');
+      const checkInFields = byId('check-in-fields');
+      const checkInInputs = ['stress', 'fatigue', 'sleep', 'soreness', 'motivation'];
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       let initialized = false;
       let activityRequest = 0;
@@ -427,6 +445,10 @@ ${mcpHostBridgeScript}
       let nutritionInFlight = false;
       let nutritionSignInRequired = false;
       let savedRecommendation = null;
+      let savedCheckIn = null;
+      let savedAssessmentGuidance = null;
+      let checkInEnabled = false;
+      let checkInBusy = false;
       let dayTimer = null;
       let deviceDay = localDayKey(new Date());
       let dayRevision = 0;
@@ -511,6 +533,40 @@ ${mcpHostBridgeScript}
         byId('recommendation-reasons').replaceChildren(...(guidance?.reasons ?? []).map(reason => element('li', reason)));
         byId('recommendation-actions').replaceChildren(...(guidance?.actions ?? []).map(action => element('li', action)));
         renderSavedGuidance(guidance);
+      }
+
+      function matchesCheckIn(value) {
+        return !!value && checkInInputs.every(name => value[name] === byId('check-in-' + name).value);
+      }
+
+      function syncCheckInControls() {
+        checkInFields.disabled = !checkInEnabled || checkInBusy;
+        checkInSubmit.disabled = checkInFields.disabled;
+        checkInSubmit.textContent = matchesCheckIn(savedCheckIn)
+          ? 'Refresh recommendation' : 'Save & get recommendation';
+      }
+
+      function renderCheckIn(today, features) {
+        const checkIn = today.checkIn;
+        savedCheckIn = checkIn?.status === 'saved' ? checkIn.checkIn : null;
+        savedAssessmentGuidance = savedCheckIn ? today.assessmentGuidance ?? null : null;
+        checkInEnabled = features.checkInEnabled === true
+          && (checkIn?.status === 'saved' || checkIn?.status === 'missing');
+        for (const name of checkInInputs) byId('check-in-' + name).value = savedCheckIn?.[name] ?? '';
+        renderGuidance(savedAssessmentGuidance);
+        if (savedCheckIn) {
+          setCheckInStatus(checkInEnabled ? 'Check-in saved for today.' : 'Check-in saved for today. Editing is currently unavailable.');
+        } else {
+          setCheckInStatus(checkInEnabled ? '' : 'Daily check-in is currently unavailable.');
+        }
+        syncCheckInControls();
+      }
+
+      function editCheckIn() {
+        const matchesSaved = matchesCheckIn(savedCheckIn);
+        renderGuidance(matchesSaved ? savedAssessmentGuidance : null);
+        setCheckInStatus(matchesSaved ? 'Check-in saved for today.' : savedCheckIn ? 'Unsaved changes.' : '');
+        syncCheckInControls();
       }
 
       function renderLastWorkout(workout) {
@@ -670,6 +726,7 @@ ${mcpHostBridgeScript}
 
       function render(today, features) {
         const hasDate = renderToday(today);
+        renderCheckIn(today, { checkInEnabled: hasDate && features.checkInEnabled });
         const activityAvailable = features.activityEnabled === true && timezone && hasDate;
         const nutritionAvailable = features.nutritionEnabled === true && timezone;
         byId('show-activity').hidden = !activityAvailable;
@@ -738,7 +795,7 @@ ${mcpHostBridgeScript}
       async function refreshWhoop() {
         const date = byId('today-date').dateTime;
         if (host.closed || activeView !== 'today' || document.visibilityState === 'hidden'
-          || whoopRefreshInFlight || byId('retry').disabled || checkInSubmit.disabled
+          || whoopRefreshInFlight || byId('retry').disabled || checkInBusy
           || !date || byId('error-message').textContent || lastWhoopReadAt === null
           || Date.now() - lastWhoopReadAt < whoopRefreshIntervalMs) return;
         const revision = todayReadRevision;
@@ -771,55 +828,81 @@ ${mcpHostBridgeScript}
         }
       }
 
-      function clearGuidance() {
-        renderGuidance(null);
-        setCheckInStatus('');
-      }
-
       async function submitCheckIn(event) {
         event.preventDefault();
         if (host.closed || refreshTodayIfDateChanged() || checkInSubmit.disabled || !checkInForm.reportValidity()) return;
+        const date = byId('today-date').dateTime;
+        const tzOffset = new Date().getTimezoneOffset();
         const revision = dayRevision;
         todayReadRevision += 1;
-
-        const checkIn = {
-          stress: byId('check-in-stress').value,
-          fatigue: byId('check-in-fatigue').value,
-          sleep: byId('check-in-sleep').value,
-        };
-        const fields = byId('check-in-fields');
-        checkInSubmit.disabled = true;
-        fields.disabled = true;
-        renderGuidance(null);
-        setCheckInStatus('Reviewing today’s training…');
+        const checkIn = Object.fromEntries(checkInInputs.map(name => [name, byId('check-in-' + name).value]));
+        let saved = matchesCheckIn(savedCheckIn);
+        checkInBusy = true;
+        syncCheckInControls();
+        const isCurrent = () => !refreshTodayIfDateChanged() && !host.closed && revision === dayRevision;
         try {
+          if (!saved) {
+            setCheckInStatus('Saving today’s check-in…');
+            const result = await host.request('tools/call', {
+              name: 'save_socius_today_check_in', arguments: { date, tzOffset, checkIn },
+            }).catch(() => null);
+            if (!isCurrent()) return;
+            if (result?._meta?.['mcp/www_authenticate']) {
+              setCheckInStatus('Reconnect SociusFit in ChatGPT to save your check-in.', true);
+              return;
+            }
+            const receipt = result?._meta?.savedCheckIn;
+            if (!result?.isError && receipt?.date === date && matchesCheckIn(receipt.checkIn)) {
+              saved = true;
+              savedCheckIn = receipt.checkIn;
+              savedAssessmentGuidance = null;
+            }
+          }
+          setCheckInStatus(saved ? 'Check-in saved for today. Updating recommendation…' : 'Checking whether your answers were saved…');
           const result = await host.request('tools/call', {
-            name: 'open_socius_today',
-            arguments: { tzOffset: new Date().getTimezoneOffset(), checkIn },
+            name: 'open_socius_today', arguments: { tzOffset },
           });
-          refreshTodayIfDateChanged();
-          if (host.closed || revision !== dayRevision) return;
+          if (!isCurrent()) return;
           if (result?._meta?.['mcp/www_authenticate']) {
-            setCheckInStatus('Reconnect SociusFit in ChatGPT, then try again.', true);
+            setCheckInStatus(saved
+              ? 'Check-in saved for today. Reconnect SociusFit in ChatGPT to refresh the recommendation.'
+              : 'Reconnect SociusFit in ChatGPT to confirm whether your check-in was saved.', true);
             return;
           }
           const today = result?._meta?.today;
           const guidance = today?.assessmentGuidance;
-          if (result?.isError || typeof guidance?.title !== 'string' || !guidance.title
+          if (result?.isError || today?.date !== date || today.checkIn?.status !== 'saved') {
+            throw new Error('Saved check-in read missing');
+          }
+          if (!matchesCheckIn(today.checkIn.checkIn)) {
+            if (!saved) throw new Error('Save could not be confirmed');
+            savedCheckIn = today.checkIn.checkIn;
+            savedAssessmentGuidance = guidance ?? null;
+            renderGuidance(null);
+            setCheckInStatus('Saved answers changed. Save your current answers to use them.', true);
+            return;
+          }
+          saved = true;
+          savedCheckIn = today.checkIn.checkIn;
+          if (typeof guidance?.title !== 'string' || !guidance.title
             || typeof guidance.summary !== 'string' || !Array.isArray(guidance.reasons)
             || !Array.isArray(guidance.actions)) throw new Error('Recommendation result missing');
           renderToday(today);
-          renderGuidance(guidance);
+          renderCheckIn(today, result._meta);
           syncTodayVisibility();
-          setCheckInStatus('Recommendation ready.');
+          setCheckInStatus('Check-in saved for today. Recommendation ready.');
           if (activeView === 'today' && (document.activeElement === document.body
             || checkInForm.contains(document.activeElement))) byId('recommendation-title').focus();
         } catch {
-          if (!host.closed && revision === dayRevision) setCheckInStatus('Could not get today’s recommendation. Try again.', true);
+          if (isCurrent()) {
+            setCheckInStatus(saved
+              ? 'Check-in saved for today. Could not refresh the recommendation. Try again.'
+              : 'Could not confirm the check-in was saved. Try again.', true);
+          }
         } finally {
           if (revision === dayRevision) {
-            fields.disabled = false;
-            checkInSubmit.disabled = false;
+            checkInBusy = false;
+            syncCheckInControls();
           }
         }
       }
@@ -840,10 +923,8 @@ ${mcpHostBridgeScript}
         deviceDay = currentDay;
         dayRevision += 1;
         savedRecommendation = null;
-        clearGuidance();
-        checkInForm.reset();
-        byId('check-in-fields').disabled = false;
-        checkInSubmit.disabled = false;
+        checkInBusy = false;
+        renderCheckIn({}, {});
         byId('accepted-plan-details').open = false;
         byId('last-workout').open = false;
         void loadToday();
@@ -999,7 +1080,7 @@ ${mcpHostBridgeScript}
       byId('next-day').addEventListener('click', () => changeDay(1));
       byId('activity-retry').addEventListener('click', loadActivity);
 
-      checkInForm.addEventListener('change', clearGuidance);
+      checkInForm.addEventListener('change', editCheckIn);
       checkInForm.addEventListener('submit', submitCheckIn);
       byId('retry').addEventListener('click', loadToday);
       refreshTodayIfDateChanged();

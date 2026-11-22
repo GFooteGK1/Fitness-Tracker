@@ -1,5 +1,7 @@
 # Architecture decisions
 
+- [ADR-0048: Saved daily check-in for SociusFit Today](ADR-0048-saved-today-check-in.md) - owner and local-date persistence with shared coaching readback.
+
 - [ADR-0047: WHOOP webhooks and reconciliation](ADR-0047-whoop-webhook-reconciliation.md) - paginated overlap, signed owner updates, provider-version ordering, and Today refresh.
 
 - [ADR-0046: One-day guidance in SociusFit Today](ADR-0046-today-check-in-guidance.md) - an ephemeral owner check-in, current goals and recent work inform today's advice inside the private widget.

@@ -1,6 +1,7 @@
 import { getLocalDate, parseDateString } from '../timezone-utils'
 import { contextObject } from './coaching-context'
 import type { readCoachingContext } from './coaching-context-server'
+import type { DailyCheckIn } from './daily-check-in'
 import { validatePlanningIntent } from './planning-intent'
 import type { TodayWorkoutRecommendation } from './today-workout-recommendation'
 import type { CoachProgramDomainId } from './types'
@@ -30,7 +31,7 @@ export function parseTodayCheckIn(input: unknown) {
   return { stress: input.stress, fatigue: input.fatigue, sleep: input.sleep }
 }
 
-type CheckIn = NonNullable<ReturnType<typeof parseTodayCheckIn>>
+type CheckIn = NonNullable<ReturnType<typeof parseTodayCheckIn>> & Partial<Pick<DailyCheckIn, 'soreness' | 'motivation'>>
 type CoachingContext = Awaited<ReturnType<typeof readCoachingContext>>
 
 const goalPractice: Record<CoachProgramDomainId, string> = {
@@ -84,9 +85,11 @@ export function deriveTodayAssessmentGuidance(
       ? workoutEvidence.sessionRpe : null
 
   const checkInConcerns = [checkIn.stress === 'higher' ? 'higher stress' : null,
-    checkIn.fatigue === 'higher' ? 'higher fatigue' : null, checkIn.sleep === 'worse' ? 'worse sleep' : null].filter(Boolean)
+    checkIn.fatigue === 'higher' ? 'higher fatigue' : null, checkIn.sleep === 'worse' ? 'worse sleep' : null,
+    checkIn.soreness === 'higher' ? 'higher soreness' : null].filter(Boolean)
   const reasons = [checkInConcerns.length ? `You reported ${checkInConcerns.join(', ')} compared with usual.`
-    : 'Your check-in put stress and fatigue at or below usual, and sleep at or above usual.']
+    : 'Your check-in put the reported recovery signals at or better than usual.']
+  if (checkIn.motivation === 'lower') reasons.push('You reported lower motivation than usual.')
   if (hardEffort !== null) reasons.push(`You confirmed a recent session effort of ${hardEffort}/10.`)
   else if (alreadyTrained) reasons.push('You have training logged for today.')
   else if (isRecent(lastWorkout.date) || recentRecords.length) reasons.push('You have recent training logged.')
@@ -111,10 +114,12 @@ export function deriveTodayAssessmentGuidance(
   if (planned.length) {
     return { title: planned.length === 1 ? `Start with ${planned[0].title}` : 'Start with your saved session',
       summary: 'Use the planned work as a starting point and let your warm-up confirm the effort.', reasons,
-      actions: ['Keep the intended effort if movement feels good. Scale the work if the warm-up feels harder than usual.'] }
+      actions: ['Use the warm-up and main work from your accepted plan below.',
+        'Keep the intended effort if movement feels good. Scale the work if the warm-up feels harder than usual.'] }
   }
   return { title: goal.domain ? 'Do a manageable session for your goal' : 'Keep training simple today',
-    summary: 'Warm up gradually and choose familiar work that fits how you feel today.', reasons,
-    actions: [goal.domain ? goalPractice[goal.domain] : 'Consider easy aerobic work or practice a familiar movement with comfortable effort.',
-      'Keep your existing training constraints in mind and ease off if the work feels harder than usual.'] }
+    summary: 'Choose familiar work that fits how you feel today.', reasons,
+    actions: ['Warm up with easy movement. Build effort gradually as you feel ready.',
+      goal.domain ? goalPractice[goal.domain] : 'Choose easy aerobic work or practice a familiar movement at a comfortable effort.',
+      'Stay within your saved training constraints. Finish with easy movement, or ease off sooner if the work feels harder than usual.'] }
 }

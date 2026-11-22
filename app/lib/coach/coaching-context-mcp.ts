@@ -5,7 +5,7 @@ import { coachingContextTool, createCoachingContextTool, createOwnedCoachingCont
 import { coachingReferenceTool, createCoachingReferenceTool } from './coaching-reference-tool'
 import { activityRecordTools, createActivityRecordTool } from './activity-record-tools'
 import { activityHistoryTool, createActivityHistoryTool } from './activity-history-tool'
-import { createSociusTodayTool, legacySociusTodayResourceUris, sociusTodayResource, sociusTodayResourceContents, sociusTodayTool } from './socius-today-app'
+import { createSaveSociusTodayCheckInTool, createSociusTodayTool, legacySociusTodayResourceUris, saveSociusTodayCheckInTool, sociusTodayResource, sociusTodayResourceContents, sociusTodayTool } from './socius-today-app'
 import { createSociusActivityTool, sociusActivityResource, sociusActivityResourceContents, sociusActivityTool } from './socius-activity-app'
 import { createSociusNutritionTool, sociusNutritionTool } from './socius-nutrition-app'
 import { createWorkoutTodayReader } from './workout-today-app'
@@ -17,15 +17,18 @@ import { createOwnedWorkoutRecoveryReader } from './recovery-today-app'
  */
 export function createCoachingContextMcpServer(authorize: AuthorizeContextRequest, policy: ContextToolPolicy,
   options: { writesEnabled?: boolean, todayEnabled?: boolean, activityEnabled?: boolean } = {}) {
-  const tool = createCoachingContextTool(authorize, policy)
   const reference = createCoachingReferenceTool(authorize, policy)
   const history = createActivityHistoryTool(authorize, policy)
   const activityEnabled = options.todayEnabled === true && options.activityEnabled === true
   const writesEnabled = options.writesEnabled ?? process.env.SOCIUS_MCP_WRITES_ENABLED === 'true'
-  const today = options.todayEnabled ? createSociusTodayTool(createOwnedCoachingContextReader(authorize, policy), {
+  const saveCheckIn = options.todayEnabled && writesEnabled ? createSaveSociusTodayCheckInTool(authorize, policy) : null
+  const readTodayWorkout = options.todayEnabled ? createWorkoutTodayReader(authorize, policy) : undefined
+  const tool = createCoachingContextTool(authorize, policy, readTodayWorkout)
+  const today = readTodayWorkout ? createSociusTodayTool(createOwnedCoachingContextReader(authorize, policy), {
     activityEnabled,
     nutritionEnabled: activityEnabled,
-    readWorkout: createWorkoutTodayReader(authorize, policy),
+    checkInEnabled: Boolean(saveCheckIn),
+    readWorkout: readTodayWorkout,
     readWorkoutRecovery: createOwnedWorkoutRecoveryReader(authorize, policy),
   }) : null
   const activity = activityEnabled ? createSociusActivityTool(history) : null
@@ -42,7 +45,8 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
     const tools = [coachingContextTool, coachingReferenceTool, activityHistoryTool, ...activities].map(descriptor => (
       { ...descriptor, securitySchemes, _meta: { securitySchemes } }
     ))
-    const apps = today ? [sociusTodayTool, ...(activity ? [sociusActivityTool, sociusNutritionTool] : [])] : []
+    const apps = today ? [sociusTodayTool, ...(saveCheckIn ? [saveSociusTodayCheckInTool] : []),
+      ...(activity ? [sociusActivityTool, sociusNutritionTool] : [])] : []
     return { tools: [...tools, ...apps.map(app => ({ ...app, securitySchemes, _meta: { ...app._meta, securitySchemes } }))] }
   })
   if (today) {
@@ -66,6 +70,7 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
       [coachingReferenceTool.name]: reference,
       [activityHistoryTool.name]: history,
       [sociusTodayTool.name]: today,
+      [saveSociusTodayCheckInTool.name]: saveCheckIn,
       [sociusActivityTool.name]: activity,
       [sociusNutritionTool.name]: nutrition,
     }

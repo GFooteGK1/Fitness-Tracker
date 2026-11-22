@@ -4,6 +4,8 @@
 - **Date:** 2026-11-21
 - **Related:** [ADR-0039](ADR-0039-chosen-llm-and-durable-context.md), [ADR-0040](ADR-0040-owner-pilot-whoop-timing.md), [training doctrine](../coach/training-doctrine.md#recovery-and-fatigue-management)
 
+[ADR-0048](ADR-0048-saved-today-check-in.md) describes the local candidate that adds durable check-in storage to the design below.
+
 ## Decision
 
 The private Today dashboard gives the signed-in owner optional same-day guidance about effort and what to do next. The athlete compares stress, fatigue, and sleep with their usual. Submitting the check-in reruns the existing owner-scoped context read and returns guidance inside the widget. The check-in and resulting guidance are ephemeral. The chosen LLM retains authority for authoring workouts and programming.
