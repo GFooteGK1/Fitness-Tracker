@@ -26,6 +26,7 @@ const legacyResourceUris = [
   'ui://socius/today-v5.html', 'ui://socius/today-v6.html', 'ui://socius/today-v7.html',
 ]
 const activityUri = 'ui://socius/activity.html'
+const draftUri = 'ui://socius/session-draft-v1.html'
 const title = 'Saved easy session'
 const today = (args: Record<string, unknown>) => ({ name: 'open_socius_today', arguments: args })
 const typical = { stress: 'usual', fatigue: 'usual', sleep: 'usual' }
@@ -166,7 +167,10 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         }),
       })]))
       expect(tools.every(tool => tool.annotations?.readOnlyHint === true)).toBe(true)
-      expect(await client.listResources()).toMatchObject({ resources: [{ uri: resourceUri, mimeType: 'text/html;profile=mcp-app' }] })
+      expect(await client.listResources()).toMatchObject({ resources: [
+        { uri: resourceUri, mimeType: 'text/html;profile=mcp-app' },
+        { uri: draftUri, mimeType: 'text/html;profile=mcp-app' },
+      ] })
       const resource = await client.readResource({ uri: resourceUri })
       expect(resource.contents).toMatchObject([{
         uri: resourceUri, mimeType: 'text/html;profile=mcp-app', text: expect.stringContaining('id="whoop-gauges"'),
@@ -210,7 +214,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         name: 'read_socius_nutrition', annotations: expect.objectContaining({ readOnlyHint: true }),
         _meta: expect.objectContaining({ ui: { visibility: ['app'] } }),
       }))
-      expect((await client.listResources()).resources.map(({ uri }) => uri)).toEqual([resourceUri, activityUri])
+      expect((await client.listResources()).resources.map(({ uri }) => uri)).toEqual([resourceUri, activityUri, draftUri])
       const resource = await client.readResource({ uri: activityUri })
       expect(resource.contents).toMatchObject([{
         uri: activityUri, mimeType: 'text/html;profile=mcp-app',

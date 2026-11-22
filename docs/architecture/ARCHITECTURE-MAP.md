@@ -77,6 +77,11 @@ have distinct acceptance gates; neither follows merely from synthetic tests.
 `get_coaching_context` exposes factual owner context through MCP; the cookie
 context route shares that reader. `get_coaching_reference` adds a versioned,
 repository-backed qualitative playbook and a small pointer in factual context.
+ADR-0049 adds owner-only session drafting to the MCP pilot. The prepare tool
+fixes a 28-day evidence window, checks saved review authority and supplies the
+reviewed playbook. The selected LLM authors one draft. The display tool verifies
+fresh evidence and draft structure before returning an inline card. Both tools
+are read-only.
 An additive external metrics/assessment view retains owned strength source sets,
 storage timestamps, estimate labels and unknown protocol/capture information.
 It references existing bounded observation series with transformation labels;
