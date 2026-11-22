@@ -1,10 +1,11 @@
 import { createServiceRoleClient } from '@/app/lib/auth/supabase-server'
-import { storeRecoveryData, storeSleepData } from '@/app/lib/whoop/sync-service'
+import { storeCycleData, storeRecoveryData, storeSleepData } from '@/app/lib/whoop/sync-service'
 import { isWhoopTimingOwner } from '@/app/lib/whoop/timing-owner'
 import { getOwnerCronAccessToken } from '@/app/lib/whoop/token-service'
 import {
   parseWhoopWebhook,
   readWhoopWebhookBody,
+  readWhoopWebhookCycle,
   readWhoopWebhookRecord,
   verifyWhoopWebhook,
   whoopWebhookUserId,
@@ -39,12 +40,17 @@ export async function POST(request: Request) {
 
     const db = createServiceRoleClient()
     const accessToken = await getOwnerCronAccessToken(owner, db)
-    const record = await readWhoopWebhookRecord({ ...event, type: event.type }, accessToken, AbortSignal.timeout(5_000))
+    const signal = AbortSignal.timeout(5_000)
+    const record = await readWhoopWebhookRecord({ ...event, type: event.type }, accessToken, signal)
     const store = event.type === 'sleep.updated' ? storeSleepData : storeRecoveryData
     await store(owner, [record], db, true)
+    if (event.type === 'recovery.updated') {
+      const cycle = await readWhoopWebhookCycle(record.cycle_id, sourceId, accessToken, signal)
+      if (cycle) await storeCycleData(owner, [cycle], db, true)
+    }
     return respond(204)
   } catch {
-    // WHOOP retries failed deliveries. Do not acknowledge an unpersisted update.
+    // WHOOP retries failed deliveries. A saved recovery survives a failed cycle read or write.
     console.warn('[WHOOP Webhook] Owner update could not be processed')
     return respond(503)
   }
