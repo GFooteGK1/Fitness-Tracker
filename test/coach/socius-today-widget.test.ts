@@ -7,7 +7,7 @@ import type { TodayWorkoutRecommendation } from '../../app/lib/coach/today-worko
 const date = '2026-11-20'
 const readAt = '2026-11-20T11:40:00.000Z'
 const draftAcknowledgement = 'Draft requested. If no draft appears, ask “Draft today’s session” in SociusFit chat.'
-const retiredControls = ['ask', 'activity-ask', 'workout-log', 'nutrition-log', 'chat-prompt', 'copy-prompt',
+const retiredControls = ['ask', 'activity-ask', 'workout-log', 'chat-prompt', 'copy-prompt', 'meal-chat-copy',
   'recommendation-result', 'recommendation-title', 'saved-guidance-title']
 
 const lastWorkout = {
@@ -44,7 +44,9 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   savedRelativeCheckIn?: typeof relativeCheckIn
   oldServer?: boolean
   checkInEnabled?: boolean
+  nutritionWritesEnabled?: boolean
   supportsDraft?: boolean
+  supportsActiveChat?: boolean
   draftResponse?: 'reject' | 'error_result' | 'uncertain'
 } = {}) {
   const iframe = document.createElement('iframe')
@@ -74,8 +76,11 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
     let result: unknown
     let error: { code: number; message: string } | undefined
     if (request.method === 'ui/initialize') {
-      result = { hostCapabilities: options.supportsDraft
-        ? { message: { text: {} } } : { experimental: { 'openai/message': {} } } }
+      const supportsActiveChat = options.supportsActiveChat ?? !options.supportsDraft
+      result = { hostCapabilities: {
+        ...(options.supportsDraft ? { message: { text: {} } } : {}),
+        ...(supportsActiveChat ? { experimental: { 'openai/message': {} } } : {}),
+      } }
     } else if (request.method === 'ui/message') {
       if (options.draftResponse === 'reject') error = { code: -32000, message: 'Message sending denied' }
       else if (options.draftResponse === 'error_result') result = { isError: true }
@@ -98,6 +103,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
           },
           activityEnabled: true,
           nutritionEnabled: true,
+          ...(options.nutritionWritesEnabled ? { nutritionWritesEnabled: true } : {}),
           checkInEnabled: options.checkInEnabled ?? true,
         } }
       }
@@ -693,7 +699,7 @@ describe('SociusFit dashboard', () => {
     expect(element('check-in-next').hidden).toBe(false)
   })
 
-  it('shows dated workouts in Training history and refreshes Nutrition without exposing dashboard chat actions', async () => {
+  it('shows dated workouts and refreshes Nutrition without enabling meal logging for read-only access', async () => {
     const { widget, element, requests, setMealCount } = mountWidget({
       status: 'unscheduled', source: 'accepted_plan', title: 'No workout scheduled today', reason: null, sessions: [],
     })
@@ -730,11 +736,87 @@ describe('SociusFit dashboard', () => {
 
     element('show-nutrition').click()
     await vi.waitFor(() => expect(element('nutrition-refresh').hidden).toBe(false))
+    expect(element('nutrition-log').hidden).toBe(true)
     expect(element('nutrition-meal-count').textContent).toBe('0 saved meals')
     setMealCount(1)
     element('nutrition-refresh').click()
     await vi.waitFor(() => expect(element('nutrition-meal-count').textContent).toBe('1 saved meal'))
     expect(element('nutrition-progress').textContent).toContain('30 g logged')
     expect(requests.filter(request => request.method === 'ui/message')).toHaveLength(0)
+  })
+
+  it('keeps meal details across dashboard views and requests one unsent draft in the active chat', async () => {
+    const { element, requests, holdNextDraft, releaseHeldDraft } = mountWidget(initialRecommendation, undefined, {
+      nutritionWritesEnabled: true, supportsDraft: true, supportsActiveChat: true,
+    })
+    const chatRequests = () => requests.filter(request => request.method === 'ui/message')
+    await vi.waitFor(() => expect(element('show-nutrition').hidden).toBe(false))
+    element('show-nutrition').click()
+    await vi.waitFor(() => expect(element('nutrition-log').hidden).toBe(false))
+    element('nutrition-log').click()
+
+    const panel = element('meal-chat')
+    const details = element('meal-chat-details') as HTMLTextAreaElement
+    const openChat = element('meal-chat-open') as HTMLButtonElement
+    details.value = 'A turkey sandwich for lunch.'
+    details.dispatchEvent(new Event('input', { bubbles: true }))
+    expect(panel.hidden).toBe(false)
+    expect(chatRequests()).toHaveLength(0)
+
+    element('show-activity').click()
+    await vi.waitFor(() => expect(element('activity-card').hidden).toBe(false))
+    expect(panel.closest('[hidden]')).toBeNull()
+    element('show-today').click()
+    expect(panel.closest('[hidden]')).toBeNull()
+    expect(details.value).toBe('A turkey sandwich for lunch.')
+
+    holdNextDraft()
+    openChat.click()
+    openChat.click()
+    expect(chatRequests()).toHaveLength(1)
+    expect(chatRequests()[0].params).toEqual({
+      role: 'user',
+      content: [{ type: 'text', text: expect.stringMatching(/^I want to log food I ate\.[\s\S]*A turkey sandwich for lunch\./) }],
+      _meta: { 'openai/message': { target: 'active', send: false } },
+    })
+    releaseHeldDraft()
+    await vi.waitFor(() => expect(element('meal-chat-status').textContent).toMatch(/review, edit, and send/i))
+    expect(details.readOnly).toBe(true)
+    details.dispatchEvent(new Event('input', { bubbles: true }))
+    openChat.click()
+    expect(chatRequests()).toHaveLength(1)
+    expect(panel.closest('[hidden]')).toBeNull()
+    expect(requests.some(request => request.params?.name === 'create_meal')).toBe(false)
+  })
+
+  it.each([
+    { mode: 'no chat capability', supportsDraft: false, supportsActiveChat: false, requests: 0 },
+    { mode: 'standard text support only', supportsDraft: true, supportsActiveChat: false, requests: 0 },
+    { mode: 'active routing support only', supportsDraft: false, supportsActiveChat: true, requests: 0 },
+    { mode: 'host rejection', supportsDraft: true, supportsActiveChat: true, requests: 1 },
+  ])('preserves the meal details and points to chat for $mode', async ({ supportsDraft, supportsActiveChat, requests: expectedRequests }) => {
+    const { element, requests } = mountWidget(initialRecommendation, undefined, {
+      nutritionWritesEnabled: true, supportsDraft, supportsActiveChat, draftResponse: 'reject',
+    })
+    await vi.waitFor(() => expect(element('show-nutrition').hidden).toBe(false))
+    element('show-nutrition').click()
+    await vi.waitFor(() => expect(element('nutrition-log').hidden).toBe(false))
+    element('nutrition-log').click()
+    const details = element('meal-chat-details') as HTMLTextAreaElement
+    details.value = 'One bowl of oatmeal.'
+    details.dispatchEvent(new Event('input', { bubbles: true }))
+    element('meal-chat-open').click()
+
+    await vi.waitFor(() => expect(element('meal-chat-status').textContent).toMatch(/log the meal directly/i))
+    expect(element('meal-chat').closest('[hidden]')).toBeNull()
+    expect(details.value).toBe('One bowl of oatmeal.')
+    expect(details.readOnly).toBe(expectedRequests === 1)
+    expect(requests.filter(request => request.method === 'ui/message')).toHaveLength(expectedRequests)
+    expect(requests.some(request => request.params?.name === 'create_meal')).toBe(false)
+
+    element('meal-chat-close').click()
+    expect(element('meal-chat').hidden).toBe(true)
+    element('nutrition-log').click()
+    expect(details.value).toBe('')
   })
 })

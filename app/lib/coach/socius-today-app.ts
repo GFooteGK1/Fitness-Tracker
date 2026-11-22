@@ -22,11 +22,12 @@ export const legacySociusTodayResourceUris: readonly string[] = [
   'ui://socius/today-v10.html',
   'ui://socius/today-v11.html',
   'ui://socius/today-v12.html',
+  'ui://socius/today-v13.html',
 ]
 
 export const sociusTodayResource = {
   // ChatGPT uses the URI as a cache key. Bump it when releasing changes to the widget.
-  uri: 'ui://socius/today-v13.html',
+  uri: 'ui://socius/today-v14.html',
   name: 'SociusFit Today',
   mimeType: 'text/html;profile=mcp-app',
 } as const
@@ -57,7 +58,7 @@ export const sociusTodayTool = {
   annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   _meta: {
     ui: { resourceUri: sociusTodayResource.uri, visibility: ['app'] },
-    'openai/ui': { entrypoints: [{ type: 'global' }] },
+    'openai/ui': { entrypoints: [{ type: 'global' }, { type: 'thread' }] },
   },
 } as const
 
@@ -175,6 +176,7 @@ export function createSociusTodayTool(
   options: {
     activityEnabled: boolean
     nutritionEnabled: boolean
+    nutritionWritesEnabled: boolean
     checkInEnabled: boolean
     readWorkout: ReturnType<typeof createWorkoutTodayReader>
     readWorkoutRecovery: ReturnType<typeof createOwnedWorkoutRecoveryReader>
@@ -222,6 +224,7 @@ export function createSociusTodayTool(
         },
         ...(options.activityEnabled ? { activityEnabled: true } : {}),
         ...(options.nutritionEnabled ? { nutritionEnabled: true } : {}),
+        ...(options.nutritionWritesEnabled ? { nutritionWritesEnabled: true } : {}),
         ...(options.checkInEnabled ? { checkInEnabled: true } : {}),
       } }
     },
