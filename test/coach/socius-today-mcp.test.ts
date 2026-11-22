@@ -20,17 +20,46 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v7.html'
+const resourceUri = 'ui://socius/today-v8.html'
 const legacyResourceUris = [
   'ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html',
-  'ui://socius/today-v5.html', 'ui://socius/today-v6.html',
+  'ui://socius/today-v5.html', 'ui://socius/today-v6.html', 'ui://socius/today-v7.html',
 ]
 const activityUri = 'ui://socius/activity.html'
 const title = 'Saved easy session'
 const today = (args: Record<string, unknown>) => ({ name: 'open_socius_today', arguments: args })
 const typical = { stress: 'usual', fatigue: 'usual', sleep: 'usual' }
+const answers = { ...typical, soreness: 'higher', motivation: 'usual' }
+const localDate = '2026-10-18'
+const saveName = 'save_socius_today_check_in'
+const saveArguments = { date: localDate, tzOffset: 360, checkIn: answers }
+const saveCall = (overrides: Record<string, unknown> = {}) => ({ name: saveName, arguments: { ...saveArguments, ...overrides } })
+const checkInTable = 'coach_daily_checkins'
 
-async function connect(subject = owner, setup?: (rows: ContextRows) => void) {
+function checkInStorage(records: ContextRows[string] = []) {
+  const mismatches = { value: { soreness: 'usual' }, owner: { user_id: other }, date: { local_date: '2026-10-17' } }
+  const storage = { records, failure: null as 'database' | keyof typeof mismatches | null }
+  const upsert = vi.fn((row: Record<string, unknown>, options: { onConflict: string }) => {
+    expect(options.onConflict).toBe('user_id,local_date')
+    return {
+      select: (columns: string) => ({
+        single: async () => {
+          if (storage.failure === 'database') return { data: null, error: { message: 'private check-in storage detail' } }
+          const index = records.findIndex(record => record.user_id === row.user_id && record.local_date === row.local_date)
+          if (index === -1) records.push({ ...row })
+          else records[index] = { ...records[index], ...row }
+          const saved = records[index === -1 ? records.length - 1 : index]
+          const selected = Object.fromEntries(columns.split(',').map(column => column.trim()).map(column => [column, saved[column]]))
+          if (storage.failure) Object.assign(selected, mismatches[storage.failure])
+          return { data: selected, error: null }
+        },
+      }),
+    }
+  })
+  return { storage, upsert }
+}
+
+async function connect(subject = owner, setup?: (rows: ContextRows) => void, checkIns?: ReturnType<typeof checkInStorage>) {
   const rows = contextRows()
   rows.workouts = [{ ...workSnapshot().workouts[0], id: 'owner-saved-workout', workout_date: '2026-10-18',
     execution_status: 'completed', rpe: 7.5,
@@ -38,18 +67,27 @@ async function connect(subject = owner, setup?: (rows: ContextRows) => void) {
     notes: 'private workout notes', input_text: 'private workout attachment' }]
   setup?.(rows)
   for (const records of Object.values(rows)) for (const row of records) row.user_id = subject
+  if (checkIns) rows[checkInTable] = checkIns.storage.records
   const fixture = contextClient(rows)
+  if (checkIns) {
+    const from = vi.mocked(fixture.db.from)
+    const original = from.getMockImplementation()!
+    from.mockImplementation(table => {
+      const query = original(table)
+      return table === checkInTable ? Object.assign(query, { upsert: checkIns.upsert }) : query
+    })
+  }
 
   // Mock the provider SDK boundary. The mounted handler still checks the claims,
   // current Auth user, and live OAuth session on every protocol request.
-  const session = { active: true }
+  const session = { active: true, authSubject: subject }
   Object.assign(fixture.db.auth, {
     getClaims: async () => ({ data: { claims: {
       iss: config.issuer, aud: config.resource, client_id: config.clientId, sub: subject,
       role: 'authenticated', scope: 'email', session_id: '30000000-0000-4000-8000-000000000001',
       exp: Math.floor(Date.now() / 1000) + 600,
     } }, error: null }),
-    getUser: async () => ({ data: { user: { id: subject } }, error: null }),
+    getUser: async () => ({ data: { user: { id: session.authSubject } }, error: null }),
   })
   const dependencies: CoachingBearerDependencies = {
     client: () => fixture.db,
@@ -61,12 +99,15 @@ async function connect(subject = owner, setup?: (rows: ContextRows) => void) {
   }
   const request = (input: Parameters<typeof fetch>[0], init?: RequestInit) =>
     handleCoachingMcp(new Request(input, init), config, dependencies)
-  const client = new Client({ name: 'synthetic-today-client', version: '1.0.0' })
-  await client.connect(new StreamableHTTPClientTransport(new URL(config.resource), {
-    requestInit: { headers: { Authorization: 'Bearer synthetic-token' } },
-    fetch: request,
-  }))
-  return { ...fixture, client, request, rows, session }
+  async function openClient() {
+    const client = new Client({ name: 'synthetic-today-client', version: '1.0.0' })
+    await client.connect(new StreamableHTTPClientTransport(new URL(config.resource), {
+      requestInit: { headers: { Authorization: 'Bearer synthetic-token' } },
+      fetch: request,
+    }))
+    return client
+  }
+  return { ...fixture, client: await openClient(), openClient, request, rows, session }
 }
 
 describe('private Socius Today sidebar over authenticated stateless MCP', () => {
@@ -139,6 +180,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         expect(legacy.contents).toEqual(resource.contents.map(content => ({ ...content, uri })))
       }
       await expect(client.readResource({ uri: 'ui://socius/other.html' })).rejects.toThrow()
+      await expect(client.callTool(saveCall())).rejects.toMatchObject({ code: -32602 })
 
       const launch = await client.callTool(today({}))
       expect(launch.isError).not.toBe(true)
@@ -281,6 +323,139 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         actions: expect.arrayContaining([expect.stringContaining('a familiar aerobic activity')]),
         reasons: expect.arrayContaining([expect.stringContaining('limited recent workout evidence')]),
       }, recovery: { status: 'disconnected' } })
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('keeps the same local-day answers across Today, a fresh chat, and a same-day correction', async () => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+    const foreign = { user_id: other, local_date: localDate, ...answers, stress: 'higher' }
+    const checkIns = checkInStorage([foreign])
+    const { client, openClient, traces, writes } = await connect(owner, data => {
+      data.workouts[0].workout_date = '2026-10-17'
+    }, checkIns)
+    try {
+      const { tools } = await client.listTools()
+      expect(tools).toContainEqual(expect.objectContaining({
+        name: saveName, annotations: expect.objectContaining({ readOnlyHint: false }),
+        _meta: expect.objectContaining({ ui: expect.objectContaining({ visibility: ['app'] }) }),
+      }))
+      const initial = await client.callTool(today({ tzOffset: 360 }))
+      expect(initial._meta).toMatchObject({ checkInEnabled: true, today: { date: localDate, checkIn: { status: 'missing' } } })
+      expect(checkIns.upsert).not.toHaveBeenCalled()
+
+      const saved = await client.callTool(saveCall())
+      expect(saved.isError).not.toBe(true)
+      expect(saved._meta?.savedCheckIn).toEqual({ date: localDate, checkIn: answers })
+      expect(saved.structuredContent).toBeUndefined()
+      expect(JSON.stringify(saved.content)).not.toMatch(/soreness|motivation|10000000-0000/)
+      expect(checkIns.upsert).toHaveBeenCalledTimes(1)
+      expect(checkIns.upsert).toHaveBeenCalledWith({ user_id: owner, local_date: localDate, ...answers }, { onConflict: 'user_id,local_date' })
+
+      const fresh = await openClient()
+      try {
+        const hydrated = await fresh.callTool(today({ tzOffset: 360 }))
+        expect(hydrated._meta?.today).toMatchObject({
+          date: localDate, checkIn: { status: 'saved', checkIn: answers },
+          assessmentGuidance: { title: 'Start easy and reassess', reasons: expect.arrayContaining([expect.stringMatching(/soreness/)]) },
+        })
+        const chatCall = { name: 'get_coaching_context', arguments: { tzOffset: 360 } }
+        const context = await fresh.callTool(chatCall)
+        expect(context.structuredContent).toMatchObject({ context: { localDate, dailyCheckIn: { status: 'saved', checkIn: answers },
+          assessmentGuidance: (hydrated._meta?.today as { assessmentGuidance: unknown }).assessmentGuidance } })
+        expect(JSON.stringify(context.structuredContent)).not.toContain(other)
+        const legacyPreview = await fresh.callTool(today({ tzOffset: 360, checkIn: typical }))
+        expect(legacyPreview._meta?.today).toMatchObject({ checkIn: { status: 'saved', checkIn: answers },
+          assessmentGuidance: { title: `Start with ${title}` } })
+        expect(checkIns.upsert).toHaveBeenCalledTimes(1)
+
+        const correction = { ...answers, soreness: 'usual' }
+        const corrected = await fresh.callTool(saveCall({ checkIn: correction }))
+        expect(corrected._meta?.savedCheckIn).toEqual({ date: localDate, checkIn: correction })
+        expect(checkIns.storage.records).toEqual([foreign, { user_id: owner, local_date: localDate, ...correction }])
+        const readBack = await client.callTool(today({ tzOffset: 360 }))
+        expect(readBack._meta?.today).toMatchObject({ checkIn: { checkIn: correction }, assessmentGuidance: { title: `Start with ${title}` } })
+        const contextAfterCorrection = await fresh.callTool(chatCall)
+        expect(contextAfterCorrection.structuredContent).toMatchObject({ context: { dailyCheckIn: { checkIn: correction },
+          assessmentGuidance: (readBack._meta?.today as { assessmentGuidance: unknown }).assessmentGuidance } })
+
+        vi.setSystemTime('2026-10-19T06:00:00.000Z')
+        const nextDay = await fresh.callTool(today({ tzOffset: 360 }))
+        expect(nextDay._meta?.today).toMatchObject({ date: '2026-10-19', checkIn: { status: 'missing' } })
+        expect(nextDay._meta?.today).not.toHaveProperty('assessmentGuidance')
+        const nextDayChat = await fresh.callTool(chatCall)
+        expect(nextDayChat.structuredContent).toMatchObject({ context: { localDate: '2026-10-19', dailyCheckIn: { status: 'missing' } } })
+        const lateSave = await fresh.callTool(saveCall())
+        expect(lateSave.isError).toBe(true)
+        expect(lateSave._meta?.savedCheckIn).toBeUndefined()
+        expect(checkIns.upsert).toHaveBeenCalledTimes(2)
+      } finally { await fresh.close() }
+
+      const readTraces = traces.filter(trace => trace.table === checkInTable && trace.columns)
+      expect(readTraces.length).toBeGreaterThan(0)
+      expect(readTraces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner)
+        && trace.filters.some(([key]) => key === 'local_date'))).toBe(true)
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('hides and rejects the save tool for a valid non-pilot account even when other writes are enabled', async () => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+    const checkIns = checkInStorage([{ user_id: owner, local_date: localDate, ...answers }])
+    const { client, writes } = await connect(other, undefined, checkIns)
+    try {
+      const { tools } = await client.listTools()
+      expect(tools.map(tool => tool.name)).toContain('create_meal')
+      expect(tools.map(tool => tool.name)).not.toContain(saveName)
+      await expect(client.callTool(saveCall())).rejects.toMatchObject({ code: -32602 })
+      const context = await client.callTool({ name: 'get_coaching_context', arguments: { tzOffset: 360 } })
+      expect(context.structuredContent).toMatchObject({ context: { dailyCheckIn: { status: 'missing' } } })
+      expect(checkIns.upsert).not.toHaveBeenCalled()
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('rejects invalid input and a mismatched authenticated subject before writing', async () => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+    const checkIns = checkInStorage()
+    const { client, session, writes, db } = await connect(owner, undefined, checkIns)
+    try {
+      for (const invalid of [
+        { user_id: other }, { date: '2026-10-19' }, { date: '2026-10-17' }, { date: '2026-02-30' },
+        { tzOffset: 841 }, { tzOffset: '360' }, { checkIn: typical }, { checkIn: { ...answers, soreness: 'bad' } },
+        { checkIn: { ...answers, user_id: other } },
+      ]) {
+        const rejected = await client.callTool(saveCall(invalid))
+        expect(rejected.isError).toBe(true)
+        expect(rejected._meta?.savedCheckIn).toBeUndefined()
+      }
+      session.authSubject = other
+      await expect(client.callTool(saveCall())).rejects.toThrow()
+      expect(db.from).not.toHaveBeenCalled()
+      expect(checkIns.upsert).not.toHaveBeenCalled()
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it.each(['database', 'value', 'owner', 'date'] as const)('withholds a save receipt on a %s acknowledgement failure', async failure => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+    const checkIns = checkInStorage()
+    checkIns.storage.failure = failure
+    const { client, writes } = await connect(owner, undefined, checkIns)
+    try {
+      const result = await client.callTool(saveCall())
+      expect(result.isError).toBe(true)
+      expect(result._meta?.savedCheckIn).toBeUndefined()
+      expect(JSON.stringify(result.content)).not.toContain('private check-in storage detail')
+      const reread = await client.callTool(today({ tzOffset: 360 }))
+      expect(reread._meta?.today).toMatchObject({ checkIn: failure === 'database'
+        ? { status: 'missing' }
+        : { status: 'saved', checkIn: answers } })
+      expect(checkIns.upsert).toHaveBeenCalledTimes(1)
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })

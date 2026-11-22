@@ -1,6 +1,8 @@
-import { isValidTimezoneOffset } from '../timezone-utils'
+import { formatUTCAsLocalDateWithOffset, isValidTimezoneOffset } from '../timezone-utils'
 import { CoachingContextError, contextObject } from './coaching-context'
 import type { readCoachingContext } from './coaching-context-server'
+import { assertVerifiedContextPrincipal, type AuthorizeContextRequest, type ContextToolPolicy } from './coaching-context-tool'
+import { dailyCheckInSchema, parseDailyCheckIn, saveDailyCheckIn } from './daily-check-in'
 import { projectTodayRecovery, type createOwnedWorkoutRecoveryReader } from './recovery-today-app'
 import { deriveTodayAssessmentGuidance, parseTodayCheckIn, todayCheckInSchema } from './today-assessment-guidance'
 import { sociusTodayHtml } from './today-app-ui'
@@ -12,11 +14,12 @@ export const legacySociusTodayResourceUris: readonly string[] = [
   'ui://socius/today-v4.html',
   'ui://socius/today-v5.html',
   'ui://socius/today-v6.html',
+  'ui://socius/today-v7.html',
 ]
 
 export const sociusTodayResource = {
   // ChatGPT uses the URI as a cache key. Bump it when releasing changes to the widget.
-  uri: 'ui://socius/today-v7.html',
+  uri: 'ui://socius/today-v8.html',
   name: 'SociusFit Today',
   mimeType: 'text/html;profile=mcp-app',
 } as const
@@ -50,6 +53,53 @@ export const sociusTodayTool = {
     'openai/ui': { entrypoints: [{ type: 'global' }] },
   },
 } as const
+
+export const saveSociusTodayCheckInTool = {
+  name: 'save_socius_today_check_in',
+  title: 'Save Today check-in',
+  description: 'Save the athlete’s explicit check-in for their current local date from the private Today dashboard.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      date: { type: 'string', format: 'date' },
+      tzOffset: { type: 'integer', minimum: -720, maximum: 840 },
+      checkIn: dailyCheckInSchema,
+    },
+    required: ['date', 'tzOffset', 'checkIn'],
+    additionalProperties: false,
+  },
+  annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+  _meta: { ui: { visibility: ['app'] } },
+} as const
+
+function validOffset(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && isValidTimezoneOffset(value)
+}
+
+export function createSaveSociusTodayCheckInTool(authorize: AuthorizeContextRequest, policy: ContextToolPolicy) {
+  return {
+    async call(input: unknown) {
+      if (!contextObject(input) || Object.keys(input).length !== 3
+        || typeof input.date !== 'string' || !validOffset(input.tzOffset)) {
+        throw new CoachingContextError(400, 'A check-in save requires the local date and timezone offset')
+      }
+      const checkIn = parseDailyCheckIn(input.checkIn)
+      if (!checkIn) throw new CoachingContextError(400, 'All five check-in answers are required')
+      const { principal, db } = await authorize()
+      assertVerifiedContextPrincipal(principal, policy)
+      const identity = await db.auth.getUser()
+      if (identity.error || identity.data.user?.id !== principal.subject) {
+        throw new CoachingContextError(401, 'Authenticated subject mismatch')
+      }
+      const date = formatUTCAsLocalDateWithOffset(new Date().toISOString(), input.tzOffset)
+      if (input.date !== date) throw new CoachingContextError(409, 'The local date changed. Reopen Today and try again.')
+      const saved = await saveDailyCheckIn(db, principal.subject, date, checkIn).catch(() => {
+        throw new CoachingContextError(503, 'Could not confirm the check-in save')
+      })
+      return { content: [{ type: 'text' as const, text: 'Today check-in saved.' }], _meta: { savedCheckIn: { date, checkIn: saved } } }
+    },
+  }
+}
 
 export const sociusTodayResourceContents = {
   ...sociusTodayResource,
@@ -86,6 +136,7 @@ export function createSociusTodayTool(
   options: {
     activityEnabled: boolean
     nutritionEnabled: boolean
+    checkInEnabled: boolean
     readWorkout: ReturnType<typeof createWorkoutTodayReader>
     readWorkoutRecovery: ReturnType<typeof createOwnedWorkoutRecoveryReader>
   },
@@ -104,19 +155,23 @@ export function createSociusTodayTool(
       // after it can supply the athlete's local offset through the same host.
       if (!('tzOffset' in input)) return { content }
       const { tzOffset } = input
-      if (typeof tzOffset !== 'number' || !Number.isInteger(tzOffset) || !isValidTimezoneOffset(tzOffset)) {
+      if (!validOffset(tzOffset)) {
         throw new CoachingContextError(400, 'Invalid timezone offset')
       }
       const context = await readContext({ tzOffset, days: 7 })
       const workout = await options.readWorkout(context)
       const pairedRecovery = await options.readWorkoutRecovery(workout.workoutEvidence)
+      const saved = context.dailyCheckIn
+      const assessment = checkIn ?? (saved.status === 'saved' ? saved.checkIn : null)
       return { content, _meta: {
         today: {
           ...projectToday(context, workout, pairedRecovery),
-          ...(checkIn ? { assessmentGuidance: deriveTodayAssessmentGuidance(checkIn, context, workout) } : {}),
+          checkIn: saved,
+          ...(assessment ? { assessmentGuidance: deriveTodayAssessmentGuidance(assessment, context, workout) } : {}),
         },
         ...(options.activityEnabled ? { activityEnabled: true } : {}),
         ...(options.nutritionEnabled ? { nutritionEnabled: true } : {}),
+        ...(options.checkInEnabled ? { checkInEnabled: true } : {}),
       } }
     },
   }

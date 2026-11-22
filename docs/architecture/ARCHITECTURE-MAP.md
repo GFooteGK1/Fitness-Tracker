@@ -50,10 +50,12 @@ local-day claims remain conservative; provider links stay explicitly unjoined.
 See `docs/plans/retained-provider-timing-context-read-2026-10-20.md`. Publication
 and live-runtime qualification are separate from local verification.
 
-The private ChatGPT Today view uses the existing owner OAuth guard. The local
-ADR-0046 candidate adds a read-only check-in that pairs the athlete's responses
-with confirmed goals, recent work, and the scheduled session for that local date.
-A current saved review takes precedence. The chosen LLM owns workout authoring.
+The private ChatGPT Today view uses the existing owner OAuth guard. ADR-0048
+adds an explicit check-in save behind the MCP writes flag. `coach_daily_checkins`
+keeps one answer set per owner and local date. Today and `get_coaching_context`
+read the same saved answers. Today pairs them with confirmed goals, recent work,
+and that day's scheduled session. A current saved review takes precedence. The
+chosen LLM owns workout authoring.
 Saved WHOOP values appear second with their freshness and the comparison with a
 qualifying earlier score. WHOOP's local-day alignment is unverified and the
 check-in guidance does not use those values. The latest completed workout appears
@@ -61,8 +63,8 @@ third in a collapsed card and groups saved sets without rewriting the workout.
 
 Activity and Nutrition use the same owner-scoped local day and canonical meal
 records. Nutrition reads only macro totals and current targets when its tab opens
-or becomes visible and while it remains open. The dashboard performs read-only
-requests. Meal creation and correction continue through the existing capture
+or becomes visible and while it remains open. Activity and Nutrition perform
+read-only requests. Meal creation and correction continue through the existing capture
 and receipt paths.
 
 ADR-0041 adds the separately approved owner-only cron GET: the existing bearer

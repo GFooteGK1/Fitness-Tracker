@@ -37,13 +37,21 @@ const usualGuidance = {
   actions: ['Build toward moderate effort.'],
 }
 
+const usualCheckIn = { stress: 'usual', fatigue: 'usual', sleep: 'usual', soreness: 'usual', motivation: 'usual' }
+const harderCheckIn = { stress: 'usual', fatigue: 'higher', sleep: 'worse', soreness: 'higher', motivation: 'lower' }
+type CheckIn = typeof usualCheckIn
+const checkInFields = Object.keys(usualCheckIn) as Array<keyof CheckIn>
+
 interface HostRequest {
   id?: number
   method: string
   params?: Record<string, unknown>
 }
 
-function mountWidget(workoutRecommendation = initialRecommendation, browserClock?: DateConstructor) {
+function mountWidget(workoutRecommendation = initialRecommendation, browserClock?: DateConstructor, options: {
+  savedCheckIn?: CheckIn
+  checkInEnabled?: boolean
+} = {}) {
   const iframe = document.createElement('iframe')
   document.body.append(iframe)
   const child = iframe.contentWindow!
@@ -52,7 +60,10 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   const widget = child.document
   const requests: HostRequest[] = []
   let mealCount = 0
-  let nextAssessmentError = false
+  const savedCheckIns = new Map<string, CheckIn>()
+  if (options.savedCheckIn) savedCheckIns.set(date, options.savedCheckIn)
+  let loseNextSaveReceipt = false
+  let nextReadError = false
   let todayDate = date
   let todayRecovery: Partial<ReturnType<typeof projectTodayRecovery>> = recovery
   let holdNextToday = false
@@ -65,22 +76,28 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
     if (request.method === 'ui/initialize') {
       result = { hostCapabilities: { message: { text: {} }, experimental: { 'openai/message': {} } } }
     } else if (request.params?.name === 'open_socius_today') {
-      const args = request.params.arguments as { checkIn?: { fatigue: string } }
-      const checkIn = args.checkIn
-      if (checkIn && nextAssessmentError) {
-        nextAssessmentError = false
+      const checkIn = savedCheckIns.get(todayDate)
+      if (nextReadError) {
+        nextReadError = false
         result = { isError: true }
       } else {
         result = { _meta: {
           today: {
             date: todayDate, readAt, workoutRecommendation, sessions: workoutRecommendation.sessions,
             recentWork: [], lastWorkout, recovery: todayRecovery,
+            checkIn: checkIn ? { status: 'saved', checkIn } : { status: 'missing' },
             ...(checkIn && { assessmentGuidance: checkIn.fatigue === 'higher' ? easierGuidance : usualGuidance }),
           },
           activityEnabled: true,
           nutritionEnabled: true,
+          checkInEnabled: options.checkInEnabled ?? true,
         } }
       }
+    } else if (request.params?.name === 'save_socius_today_check_in') {
+      const { date: savedDate, checkIn } = request.params.arguments as { date: string; checkIn: CheckIn }
+      savedCheckIns.set(savedDate, checkIn)
+      result = loseNextSaveReceipt ? { isError: true } : { _meta: { savedCheckIn: { date: savedDate, checkIn } } }
+      loseNextSaveReceipt = false
     } else if (request.params?.name === 'show_socius_activity') {
       result = { _meta: { activity: {
         ...(request.params.arguments as object),
@@ -113,16 +130,26 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
     requests,
     setMealCount: (count: number) => { mealCount = count },
     setTodayDate: (value: string) => { todayDate = value },
+    setSavedCheckIn: (checkIn: CheckIn) => { savedCheckIns.set(todayDate, checkIn) },
     setRecovery: (values: Partial<ReturnType<typeof projectTodayRecovery>>) => { todayRecovery = { ...recovery, ...values } },
     holdNextToday: () => { holdNextToday = true },
     releaseHeldToday: () => { respondToHeldToday?.() },
-    failNextAssessment: () => { nextAssessmentError = true },
+    loseNextSaveReceipt: () => { loseNextSaveReceipt = true },
+    failNextRead: () => { nextReadError = true },
   }
 }
 
 function choose(control: HTMLSelectElement, value: string) {
   control.value = value
   control.dispatchEvent(new Event('change', { bubbles: true }))
+}
+
+function fillCheckIn(element: (id: string) => HTMLElement, values: CheckIn) {
+  for (const field of checkInFields) choose(element('check-in-' + field) as HTMLSelectElement, values[field])
+}
+
+function checkInValues(element: (id: string) => HTMLElement) {
+  return checkInFields.map(field => (element('check-in-' + field) as HTMLSelectElement).value)
 }
 
 afterEach(() => {
@@ -176,53 +203,114 @@ describe('SociusFit dashboard', () => {
     expect(element('accepted-plan-details').hidden).toBe(true)
   })
 
-  it('uses the completed check-in for guidance and can retry an updated check-in', async () => {
-    const { element, requests, failNextAssessment } = mountWidget()
+  it('saves all five answers before reading guidance and can retry an uncertain save', async () => {
+    const { element, requests, loseNextSaveReceipt, failNextRead } = mountWidget()
     await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
     const form = element('check-in-form') as HTMLFormElement
     const button = element('check-in-submit') as HTMLButtonElement
-    const stress = element('check-in-stress') as HTMLSelectElement
-    const fatigue = element('check-in-fatigue') as HTMLSelectElement
-    const sleep = element('check-in-sleep') as HTMLSelectElement
-    const assessmentRequests = () => requests
-      .filter(request => request.params?.name === 'open_socius_today')
-      .slice(1)
+    const saveRequests = () => requests
+      .filter(request => request.params?.name === 'save_socius_today_check_in')
       .map(request => request.params?.arguments)
     button.click()
-    expect(assessmentRequests()).toHaveLength(0)
-    choose(stress, 'usual')
-    choose(fatigue, 'higher')
-    choose(sleep, 'worse')
+    expect(saveRequests()).toHaveLength(0)
+    fillCheckIn(element, harderCheckIn)
     expect(form.checkValidity()).toBe(true)
     button.click()
     await vi.waitFor(() => expect(element('recommendation-title').textContent).toBe(easierGuidance.title))
     expect(element('recommendation-summary').textContent).toBe(easierGuidance.summary)
     expect(element('recommendation-reasons').textContent).toContain(easierGuidance.reasons[0])
     expect(element('recommendation-actions').textContent).toContain(easierGuidance.actions[0])
-    expect(assessmentRequests()).toMatchObject([
-      { tzOffset: expect.any(Number), checkIn: { stress: 'usual', fatigue: 'higher', sleep: 'worse' } },
+    expect(saveRequests()).toMatchObject([
+      { date, tzOffset: expect.any(Number), checkIn: harderCheckIn },
     ])
+    expect(requests.filter(request => request.method === 'tools/call').map(request => request.params)).toEqual([
+      { name: 'open_socius_today', arguments: { tzOffset: expect.any(Number) } },
+      { name: 'save_socius_today_check_in', arguments: { date, tzOffset: expect.any(Number), checkIn: harderCheckIn } },
+      { name: 'open_socius_today', arguments: { tzOffset: expect.any(Number) } },
+    ])
+    expect(element('recommendation-result').textContent).toContain('Ask in chat to adjust today’s plan.')
+    expect(element('check-in-status').textContent).toContain('Check-in saved for today.')
 
-    failNextAssessment()
-    choose(fatigue, 'usual')
-    choose(sleep, 'usual')
+    loseNextSaveReceipt()
+    failNextRead()
+    fillCheckIn(element, usualCheckIn)
     expect(element('recommendation-title').textContent).toBe('')
     button.click()
     await vi.waitFor(() => expect(button.disabled).toBe(false))
-    expect(element('check-in-status').textContent).toMatch(/try again/i)
+    expect(element('check-in-status').textContent).toMatch(/could not confirm.*try again/i)
     expect(element('today-content').hidden).toBe(false)
-    expect(fatigue.value).toBe('usual')
-    expect(sleep.value).toBe('usual')
+    expect(checkInValues(element)).toEqual(Object.values(usualCheckIn))
 
     button.click()
     await vi.waitFor(() => expect(element('recommendation-title').textContent).toBe(usualGuidance.title))
     expect(element('recommendation-reasons').textContent).toContain(usualGuidance.reasons[0])
     expect(element('recommendation-reasons').textContent).not.toContain(easierGuidance.reasons[0])
-    expect(assessmentRequests().slice(1)).toMatchObject([
-      { checkIn: { stress: 'usual', fatigue: 'usual', sleep: 'usual' } },
-      { checkIn: { stress: 'usual', fatigue: 'usual', sleep: 'usual' } },
+    expect(saveRequests().slice(1)).toMatchObject([
+      { date, checkIn: usualCheckIn },
+      { date, checkIn: usualCheckIn },
     ])
     expect(requests.filter(request => request.method === 'ui/message')).toHaveLength(0)
+  })
+
+  it('confirms a lost receipt from saved records without sending another save', async () => {
+    const { element, requests, loseNextSaveReceipt } = mountWidget()
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    fillCheckIn(element, harderCheckIn)
+    loseNextSaveReceipt()
+    element('check-in-submit').click()
+    await vi.waitFor(() => expect(element('recommendation-title').textContent).toBe(easierGuidance.title))
+    expect(element('check-in-status').textContent).toBe('Check-in saved for today. Recommendation ready.')
+    expect(requests.filter(request => request.method === 'tools/call').map(request => request.params?.name)).toEqual([
+      'open_socius_today', 'save_socius_today_check_in', 'open_socius_today',
+    ])
+  })
+
+  it('hydrates the saved answers and recommendation from the first read even when writes are disabled', async () => {
+    const { element, requests } = mountWidget(initialRecommendation, undefined, {
+      savedCheckIn: harderCheckIn, checkInEnabled: false,
+    })
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    expect(checkInValues(element)).toEqual(Object.values(harderCheckIn))
+    expect(element('recommendation-title').textContent).toBe(easierGuidance.title)
+    expect(element('check-in-status').textContent).toBe('Check-in saved for today. Editing is currently unavailable.')
+    expect((element('check-in-submit') as HTMLButtonElement).disabled).toBe(true)
+    expect(requests.filter(request => request.method === 'tools/call').map(request => request.params?.name))
+      .toEqual(['open_socius_today'])
+  })
+
+  it('retains a saved receipt when the plan read fails and retries only the read', async () => {
+    const { element, requests, failNextRead } = mountWidget()
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    fillCheckIn(element, harderCheckIn)
+    failNextRead()
+    const button = element('check-in-submit') as HTMLButtonElement
+    button.click()
+    await vi.waitFor(() => expect(button.disabled).toBe(false))
+    expect(element('check-in-status').textContent).toBe('Check-in saved for today. Could not refresh the recommendation. Try again.')
+    expect(checkInValues(element)).toEqual(Object.values(harderCheckIn))
+    expect(button.textContent).toBe('Refresh recommendation')
+
+    button.click()
+    await vi.waitFor(() => expect(element('recommendation-title').textContent).toBe(easierGuidance.title))
+    expect(requests.filter(request => request.method === 'tools/call').map(request => request.params?.name)).toEqual([
+      'open_socius_today', 'save_socius_today_check_in', 'open_socius_today', 'open_socius_today',
+    ])
+  })
+
+  it('preserves the draft when a newer check-in is read after a lost receipt', async () => {
+    const { element, requests, loseNextSaveReceipt, setSavedCheckIn } = mountWidget()
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    fillCheckIn(element, harderCheckIn)
+    loseNextSaveReceipt()
+    const button = element('check-in-submit') as HTMLButtonElement
+    button.click()
+    setSavedCheckIn(usualCheckIn)
+
+    await vi.waitFor(() => expect(button.disabled).toBe(false))
+    expect(checkInValues(element)).toEqual(Object.values(harderCheckIn))
+    expect(button.textContent).toBe('Save & get recommendation')
+    expect(element('check-in-status').textContent).toContain('Could not confirm')
+    expect(requests.filter(request => request.params?.name === 'save_socius_today_check_in')).toHaveLength(1)
   })
 
   it('clears the previous check-in and reads the new day when the widget regains focus', async () => {
@@ -230,8 +318,7 @@ describe('SociusFit dashboard', () => {
     vi.setSystemTime(new Date(2026, 10, 20, 23, 59))
     const { widget, element, requests, setTodayDate } = mountWidget(initialRecommendation, Date)
     await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
-    const fields = ['stress', 'fatigue', 'sleep'].map(name => element('check-in-' + name) as HTMLSelectElement)
-    for (const field of fields) choose(field, 'usual')
+    fillCheckIn(element, usualCheckIn)
     element('check-in-submit').click()
     await vi.waitFor(() => expect(element('recommendation-title').textContent).toBe(usualGuidance.title))
     const workout = element('last-workout') as HTMLDetailsElement
@@ -245,7 +332,7 @@ describe('SociusFit dashboard', () => {
     expect(element('today-content').hidden).toBe(false)
     expect(element('recommendation-result').hidden).toBe(true)
     expect(element('check-in-status').textContent).toBe('')
-    expect(fields.map(field => field.value)).toEqual(['', '', ''])
+    expect(checkInValues(element)).toEqual(checkInFields.map(() => ''))
     expect(workout.open).toBe(false)
     expect(requests.filter(request => request.params?.name === 'open_socius_today').at(-1)?.params?.arguments)
       .toEqual({ tzOffset: expect.any(Number) })
@@ -258,8 +345,7 @@ describe('SociusFit dashboard', () => {
       widget, element, requests, setRecovery, holdNextToday, releaseHeldToday,
     } = mountWidget(initialRecommendation, Date)
     await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
-    const fields = ['stress', 'fatigue', 'sleep'].map(name => element('check-in-' + name) as HTMLSelectElement)
-    for (const field of fields) choose(field, 'usual')
+    fillCheckIn(element, usualCheckIn)
     element('check-in-submit').click()
     await vi.waitFor(() => expect(element('recommendation-title').textContent).toBe(usualGuidance.title))
     const workout = element('last-workout') as HTMLDetailsElement
@@ -295,7 +381,7 @@ describe('SociusFit dashboard', () => {
       '2026-11-20T12:30:00Z', '2026-11-19T13:30:00Z', '2026-11-20T13:30:00Z', '2026-11-20T14:00:00Z',
     ])
     expect(element('recommendation-title').textContent).toBe(usualGuidance.title)
-    expect(fields.map(field => field.value)).toEqual(['usual', 'usual', 'usual'])
+    expect(checkInValues(element)).toEqual(Object.values(usualCheckIn))
     expect(workout.open).toBe(true)
     expect(element('recent').firstChild).toBe(workoutRows)
     expect(todayCalls().at(-1)?.params?.arguments).toEqual({ tzOffset: expect.any(Number) })
@@ -312,7 +398,7 @@ describe('SociusFit dashboard', () => {
     widget.defaultView!.dispatchEvent(new Event('focus'))
 
     setRecovery({ recoveryScore: 82 })
-    for (const name of ['stress', 'fatigue', 'sleep']) choose(element('check-in-' + name) as HTMLSelectElement, 'usual')
+    fillCheckIn(element, usualCheckIn)
     element('check-in-submit').click()
     await vi.waitFor(() => expect(element('recovery-percent').textContent).toBe('82%'))
     releaseHeldToday()

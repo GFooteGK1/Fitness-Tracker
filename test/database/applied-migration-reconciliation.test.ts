@@ -11,6 +11,7 @@ const files = readdirSync(directory).filter(file => file.endsWith('.sql')).sort(
 const newPending = [
   '20261107170516_target_tolerance_capacity.sql',
   '20261121195138_protect_whoop_provider_version.sql',
+  '20261122002519_coach_daily_checkins.sql',
 ]
 // Offline comparison only. This never connects to a database or repairs history.
 function pending(local: string[], applied: { version: string; name: string }[]) {
