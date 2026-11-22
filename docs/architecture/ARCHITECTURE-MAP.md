@@ -52,10 +52,11 @@ and live-runtime qualification are separate from local verification.
 
 The private ChatGPT Today view uses the existing owner OAuth guard. ADR-0048
 adds an explicit check-in save behind the MCP writes flag. `coach_daily_checkins`
-keeps one answer set per owner and local date. Today and `get_coaching_context`
-read the same saved answers. Today pairs them with confirmed goals, recent work,
-and that day's scheduled session. A current saved review takes precedence. The
-chosen LLM owns workout authoring.
+keeps one answer set per owner and local date. ADR-0051 adds five exact 1–5
+ratings and retains historical relative answers with their scale. Today and
+`get_coaching_context` read the same saved answers. Today confirms the save and
+uses the native chat handoff to request the draft under ADR-0052. The chosen LLM owns
+workout authoring.
 Saved WHOOP values appear second with their freshness and the comparison with a
 qualifying earlier score. WHOOP's local-day alignment is unverified and the
 check-in guidance does not use those values. The latest completed workout appears
@@ -77,11 +78,14 @@ have distinct acceptance gates; neither follows merely from synthetic tests.
 `get_coaching_context` exposes factual owner context through MCP; the cookie
 context route shares that reader. `get_coaching_reference` adds a versioned,
 repository-backed qualitative playbook and a small pointer in factual context.
-ADR-0049 adds owner-only session drafting to the MCP pilot. The prepare tool
-fixes a 28-day evidence window, checks saved review authority and supplies the
-reviewed playbook. The selected LLM authors one draft. The display tool verifies
-fresh evidence and draft structure before returning an inline card. Both tools
-are read-only.
+ADR-0049, ADR-0050 and ADR-0052 define one owner-only daily drafting workflow. The prepare
+tool fixes a 28-day evidence window and includes the saved check-in, confirmed
+goals and constraints, and reviewed playbook. Today and the draft read the same
+explicit safety holds independently of weekly plan replacement eligibility. The
+selected LLM authors one training, recovery or rest draft. The display tool verifies fresh evidence and
+draft structure before returning an inline card. Both tools are read-only.
+The standalone web coach directs daily authoring requests from the pilot owner
+to the same SociusFit chat workflow.
 An additive external metrics/assessment view retains owned strength source sets,
 storage timestamps, estimate labels and unknown protocol/capture information.
 It references existing bounded observation series with transformation labels;

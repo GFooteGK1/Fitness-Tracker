@@ -9,6 +9,8 @@ import { freezeCapture, commitCaptureBundle } from '@/app/lib/capture/service'
 import { stageCaptureDraft } from '@/app/lib/capture/drafts'
 import { formatUTCAsLocalDateWithOffset } from '@/app/lib/timezone-utils'
 import { validCorrection } from '@/app/lib/capture/corrections'
+import { isSociusTodayPilotOwner } from '@/app/lib/coach/socius-today-pilot'
+import { dailySessionHandoffMessage } from '@/app/lib/agents/prompts/daily-session-routing'
 
 // ─── Rate Limiting ────────────────────────────────────────────────────────────
 // Per-user in-memory limit: 20 requests per 60-second window.
@@ -46,7 +48,7 @@ import { classifyInput } from '@/app/lib/agents/classifier'
 import { preprocessInput, validateRequest } from '@/app/lib/agents/preprocessor'
 import { determineRouteFromManager, executeRoute } from '@/app/lib/agents/router'
 import type { AgentCaller } from '@/app/lib/agents/router'
-import { buildManagerDecision } from '@/app/lib/agents/manager'
+import { buildManagerDecision, classifyDailySessionHandoff } from '@/app/lib/agents/manager'
 import { buildTrainerContext, buildNutritionistContext, buildSociusContext, invalidatePassiveCache } from '@/app/lib/agents/context-builder'
 import { callTrainerAgent, persistWorkout, persistNewPRs } from '@/app/lib/agents/trainer-agent'
 import { callNutritionistAgent, persistMeal } from '@/app/lib/agents/nutritionist-agent'
@@ -85,6 +87,16 @@ async function processRequest(request: NextRequest) {
 
     // 4. Preprocess input (handle voice/photo/file)
     const processedContent = await preprocessInput(body)
+
+    const directHandoff = isSociusTodayPilotOwner(user.id) && !body.correction && !body.photo_data && !body.audio_data
+      && (body.input_mode === 'text' || body.input_mode === 'voice') ? classifyDailySessionHandoff(processedContent) : null
+    if (directHandoff) {
+      const { classification, managerDecision } = directHandoff
+      const messages: AgentMessage[] = [{ role: 'socius', domain: 'socius', content: dailySessionHandoffMessage }]
+      await persistChatMessages(supabase, user.id, body, messages, classification)
+      const response: AgentResponse = { messages, classification, manager_decision: managerDecision, processing_time_ms: Date.now() - startTime }
+      return NextResponse.json(response)
+    }
 
     // 5. Classify
     const classification = await classifyInput(processedContent, body.input_mode)

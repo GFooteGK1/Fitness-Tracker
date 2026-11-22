@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { callSociusAgent } from '@/app/lib/agents/socius-agent'
 import { buildSociusPrompt } from '@/app/lib/agents/prompts/socius'
+import { callAgentWithTools } from '@/app/lib/agents/tools/agentic-loop'
+import { complete } from '@/app/lib/llm/client'
 import { getEightWeekIntent } from '@/app/lib/coach/policy'
 import { reasoningEvidencePacket } from '../fixtures/coach-reasoning-evidence'
 import { workSnapshot } from '../fixtures/coach-performed-work'
@@ -7,6 +11,9 @@ import { buildPerformedWorkContext } from '@/app/lib/coach/performed-work-contex
 import { projectCoachingDecisionContext } from '@/app/lib/coach/coaching-decision-context'
 import { coachingDecisionRows } from '../fixtures/coaching-decision-record'
 import type { SociusContext, ThirtyDaySummary, DataAvailability, RecentInsight, ChatMessage } from '@/app/lib/agents/types'
+
+vi.mock('@/app/lib/agents/tools/agentic-loop', () => ({ callAgentWithTools: vi.fn() }))
+vi.mock('@/app/lib/llm/client', () => ({ complete: vi.fn() }))
 
 // ─── Test Helpers ────────────────────────────────────────────────────
 
@@ -404,6 +411,25 @@ describe('buildSociusPrompt - pattern library', () => {
 // ─── Cross-Domain Synthesis Instructions ─────────────────────────────
 
 describe('buildSociusPrompt - instructions', () => {
+  it('hands off new and revised daily sessions while allowing factual and weekly coaching', () => {
+    const prompt = buildSociusPrompt(makeBaseContext(), true)
+
+    expect(prompt).toContain('asks what to train today, requests a personalized session for today, or asks to adjust today\'s session')
+    expect(prompt).toContain('save today’s check-in in Today to start the draft')
+    expect(prompt).toContain('If you already saved it, ask “Draft today’s session” in SociusFit chat')
+    expect(prompt).toContain('Treat an undated request for one runnable personalized session as a request for today unless another date is established.')
+    expect(prompt).toContain('Give the handoff without drafting a workout or prescribing changes here.')
+    expect(prompt).toContain('answer factual questions about accepted sessions and completed workouts, explain training principles, and discuss goals')
+    expect(prompt).toContain('Use the existing paths for completed-work logging and weekly programming.')
+  })
+
+  it('keeps the existing coaching instructions outside the Today pilot', () => {
+    const prompt = buildSociusPrompt(makeBaseContext())
+
+    expect(prompt).not.toContain('Draft today’s session')
+    expect(prompt).toContain('6. When data is limited, acknowledge gaps and still provide the best-supported recommendation.')
+  })
+
   it('includes cross-domain synthesis instructions', () => {
     const prompt = buildSociusPrompt(makeBaseContext())
     expect(prompt).toContain('Synthesize across all domains')
@@ -439,6 +465,30 @@ describe('buildSociusPrompt - instructions', () => {
     const prompt = buildSociusPrompt(makeBaseContext())
     expect(prompt).toContain('data is limited')
     expect(prompt).toContain('acknowledge gaps')
+  })
+})
+
+describe('Socius agent Today pilot routing', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.clearAllMocks()
+  })
+
+  it.each([
+    { userId: 'pilot-owner', contextUserId: 'different-user', expectHandoff: true },
+    { userId: 'different-user', contextUserId: 'pilot-owner', expectHandoff: false },
+    { userId: undefined, contextUserId: 'pilot-owner', expectHandoff: false },
+  ])('uses authenticated ID $userId instead of context ID $contextUserId', async ({ userId, contextUserId, expectHandoff }) => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', 'pilot-owner')
+    const text = JSON.stringify({ message: 'Coaching reply.' })
+    vi.mocked(callAgentWithTools).mockResolvedValue({ text, toolCalls: [], totalTokens: { input: 0, output: 0 } })
+    vi.mocked(complete).mockResolvedValue({ text, toolCalls: [], usage: { input: 0, output: 0 }, stopReason: 'stop', model: 'test', provider: 'openai' })
+
+    await callSociusAgent(makeBaseContext({ user_id: contextUserId }), 'What should I train today?', {} as SupabaseClient, userId)
+
+    const prompt = userId ? vi.mocked(callAgentWithTools).mock.lastCall?.[0].systemPrompt : vi.mocked(complete).mock.lastCall?.[0].system
+    expect(typeof prompt).toBe('string')
+    expect(prompt?.includes('Draft today’s session')).toBe(expectHandoff)
   })
 })
 

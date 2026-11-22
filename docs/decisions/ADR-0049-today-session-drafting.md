@@ -4,7 +4,9 @@
 - **Date:** 2026-11-21
 - **Related:** [ADR-0039](ADR-0039-chosen-llm-and-durable-context.md), [ADR-0048](ADR-0048-saved-today-check-in.md)
 
-## Decision
+[ADR-0050](ADR-0050-one-daily-session-drafting-workflow.md) supersedes the quick recommendation and weekly-review prerequisite for daily drafting.
+
+## Original decision
 
 The athlete asks their chosen LLM to draft today’s session after a confirmed check-in save. The owner-scoped MCP pilot offers a versioned workflow with two read-only calls. The existing Today recommendation remains available for a quick read.
 
@@ -32,7 +34,7 @@ In an authorized isolated candidate connected to the intended host, use a synthe
 | A corrected workout | The latest saved revision informs the draft and the corrected workout counts once. |
 | A partial log | The draft states relevant gaps and makes claims only about known work. |
 | Missing or stale check-in | A focused request for the current check-in. No draft display. |
-| Saved review hold | The review message appears. No draft display. |
+| Applicable safety hold | The review message appears. No draft display. |
 | Evidence changes before display | The first display attempt stops. A new attempt starts from a fresh prepare call. |
 
 Every run must meet the tool, date, source, hold, validation and no-write checks. A coaching reviewer must also pass goal fit, readiness adjustment and feasibility for each ready case. Keep model/host and workflow version with each result so a change can be evaluated against the same cases. This installed-chat pilot is a separate milestone from passing synthetic tests.

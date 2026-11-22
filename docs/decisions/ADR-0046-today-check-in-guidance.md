@@ -1,6 +1,6 @@
 # ADR-0046 - One-day guidance in SociusFit Today
 
-- **Status:** Implemented in the local candidate. Hosted and athlete verification are pending.
+- **Status:** Historical decision. [ADR-0050](ADR-0050-one-daily-session-drafting-workflow.md) retires in-widget daily recommendations and check-in previews in its candidate.
 - **Date:** 2026-11-21
 - **Related:** [ADR-0039](ADR-0039-chosen-llm-and-durable-context.md), [ADR-0040](ADR-0040-owner-pilot-whoop-timing.md), [training doctrine](../coach/training-doctrine.md#recovery-and-fatigue-management)
 

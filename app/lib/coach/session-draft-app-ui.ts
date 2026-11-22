@@ -53,7 +53,7 @@ export const sessionDraftHtml = String.raw`<!doctype html>
     <p id="draft-status" class="muted" role="status">Loading session draft…</p>
     <article id="session-draft" aria-labelledby="draft-title" hidden>
       <header>
-        <p id="draft-label"><strong>Session draft</strong><time id="draft-date"></time></p>
+        <p id="draft-label"><strong id="draft-kind">Session draft</strong><time id="draft-date"></time></p>
         <h1 id="draft-title"></h1>
         <p id="draft-objective"></p>
         <p id="plan-basis" class="muted"></p>
@@ -93,6 +93,7 @@ ${mcpHostBridgeScript}
       const textFields = ['title', 'objective', 'goal', 'weekReview', 'checkInAdjustment', 'rationale', 'scaleWhen', 'stopWhen'];
       const rowFields = [['dose', 'Dose'], ['effort', 'Effort'], ['rest', 'Rest']];
       const planLabels = { follow: 'Based on the accepted session', adjust: 'Proposed adjustment to the accepted session', new: 'New session' };
+      const dayLabels = { training: 'Session draft', recovery: 'Recovery draft', rest: 'Rest day draft' };
       const formatter = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
       let waiting;
       let resizeObserver;
@@ -121,9 +122,12 @@ ${mcpHostBridgeScript}
       }
 
       function renderDraft(draft) {
+        const dayType = draft?.dayType ?? 'training';
         if (!draft || !textFields.every(key => hasText(draft[key])) || typeof draft.historyComplete !== 'boolean'
           || typeof draft.planUse !== 'string' || !Object.hasOwn(planLabels, draft.planUse)
-          || !Array.isArray(draft.sourceDates) || !draft.warmUp?.length || !draft.mainWork?.length) {
+          || !Object.hasOwn(dayLabels, dayType) || !Array.isArray(draft.sourceDates)
+          || (dayType === 'rest' ? phases.some(([key]) => draft[key]?.length)
+            : !draft.mainWork?.length || (dayType === 'training' && !draft.warmUp?.length))) {
           throw new Error('Draft missing');
         }
         const date = formatDate(draft.date);
@@ -157,10 +161,13 @@ ${mcpHostBridgeScript}
         }
         byId('draft-date').dateTime = draft.date;
         byId('draft-date').textContent = date;
+        byId('draft-kind').textContent = dayLabels[dayType];
         byId('draft-title').textContent = draft.title;
         byId('draft-objective').textContent = draft.objective;
-        byId('plan-basis').textContent = planLabels[draft.planUse];
+        byId('plan-basis').textContent = draft.daySchedule === 'scheduled_rest' ? 'Scheduled rest day'
+          : dayType === 'rest' && draft.planUse === 'new' ? 'Rest recommended' : planLabels[draft.planUse];
         byId('check-in-adjustment').textContent = draft.checkInAdjustment;
+        byId('scale-title').textContent = dayType === 'rest' ? 'When to reassess' : 'When to scale or stop';
         byId('draft-scale').textContent = draft.scaleWhen;
         byId('draft-stop').textContent = draft.stopWhen;
         byId('draft-goal').textContent = draft.goal;

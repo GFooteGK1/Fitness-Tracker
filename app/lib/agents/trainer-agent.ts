@@ -10,6 +10,7 @@ import type {
 } from './types'
 import { buildTrainerPrompt } from './prompts/trainer'
 import { complete } from '@/app/lib/llm/client'
+import { isSociusTodayPilotOwner } from '@/app/lib/coach/socius-today-pilot'
 import { callAgentWithTools, type AgenticCallResult, type ToolCallRecord } from './tools/agentic-loop'
 import { TRAINER_TOOLS } from './tools/definitions'
 import {
@@ -37,7 +38,7 @@ export async function callTrainerAgent(
   supabase?: SupabaseClient,
   userId?: string
 ): Promise<TrainerResponseWithTools> {
-  const systemPrompt = buildTrainerPrompt(ctx)
+  const systemPrompt = buildTrainerPrompt(ctx, isSociusTodayPilotOwner(userId))
 
   // If supabase and userId are provided, use the agentic loop with tools
   if (supabase && userId) {

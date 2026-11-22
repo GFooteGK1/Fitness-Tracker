@@ -1,5 +1,11 @@
 # Architecture decisions
 
+- [ADR-0052: Start the daily draft after saving Today](ADR-0052-start-draft-after-today-check-in.md) - verified save trigger, native ChatGPT handoff and rest-day drafts.
+
+- [ADR-0051: Five-point Today check-in](ADR-0051-five-point-today-check-in.md) - exact ratings, original relative answers and cached-widget compatibility.
+
+- [ADR-0050: One workflow for daily training drafts](ADR-0050-one-daily-session-drafting-workflow.md) - daily authoring, stored check-in and explicit safety holds.
+
 - [ADR-0049: Draft today’s session in chat](ADR-0049-today-session-drafting.md) - fixed-window evidence and validated display for chosen-LLM drafts.
 
 - [ADR-0048: Saved daily check-in for SociusFit Today](ADR-0048-saved-today-check-in.md) - owner and local-date persistence with shared coaching readback.

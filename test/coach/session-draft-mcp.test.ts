@@ -7,16 +7,17 @@ import { recommendationScope } from '../../app/lib/recommendations/context'
 import { coachingDecisionRows } from '../fixtures/coaching-decision-record'
 import { contextClient, contextRows, type ContextRows } from '../fixtures/coaching-context'
 import { workSnapshot } from '../fixtures/coach-performed-work'
+import { reviewedRollingWeek } from '../fixtures/reviewed-rolling-week'
 
 const owner = '10000000-0000-4000-8000-000000000001'
 const other = '10000000-0000-4000-8000-000000000002'
 const clock = '2026-10-19T00:13:53.447Z'
 const tzOffset = 360
 const localDate = '2026-10-18'
-const draftResource = 'ui://socius/session-draft-v1.html'
+const draftResource = 'ui://socius/session-draft-v2.html'
 const prepareName = 'prepare_today_session_draft'
 const showName = 'show_today_session_draft'
-const version = 'today-session-draft-v1'
+const version = 'today-session-draft-v4'
 const firstWorkout = '10000000-0000-4000-8000-000000000021'
 const latestWorkout = '10000000-0000-4000-8000-000000000022'
 const outsideWorkout = '10000000-0000-4000-8000-000000000023'
@@ -51,47 +52,59 @@ function seedRows(): ContextRows {
   return rows
 }
 
-function seedReviewHold(rows: ContextRows) {
+function seedRoutineReviewNotice(rows: ContextRows) {
   vi.stubEnv('RECOMMENDATIONS_ENABLED', 'true')
   const scope = recommendationScope(tzOffset)
   rows.recommendation_refresh_state = [{
     user_id: owner,
     source_revision: 3, response_revision: 0, processed_source_revision: 3, processed_response_revision: 0,
-    current_recommendation_id: 'hold-for-review', last_error: null, next_due_at: null,
+    current_recommendation_id: 'routine-review', last_error: null, next_due_at: null,
     processed_context: { activePlanId: 'accepted-one', intentMemoryId: 'memory-training_intent', intentVersion: 1,
       runtimeFingerprint: scope.runtimeFingerprint, localDate: scope.localDate, timezoneOffset: scope.tzOffset },
   }]
   rows.recommendations = [{
-    id: 'hold-for-review', user_id: owner, local_date: localDate, timezone_offset: tzOffset, plan_version_id: 'accepted-one',
+    id: 'routine-review', user_id: owner, local_date: localDate, timezone_offset: tzOffset, plan_version_id: 'accepted-one',
     intent_memory_id: 'memory-training_intent', intent_version: 1, source_revision: 3, response_revision: 0,
     lifecycle: 'active', valid_until: '2026-10-19T05:00:00.000Z', runtime_fingerprint: scope.runtimeFingerprint,
     scope_key: 'review:weekly-review-one', evidence_fingerprint: 'current', rule_id: 'accepted_plan.review',
     policy_version: 'bounded-actions-1', decision: { schemaVersion: 1, kind: 'action', ruleId: 'accepted_plan.review',
       policyVersion: 'bounded-actions-1', sourceRevision: 3, responseRevision: 0, title: 'Review your plan before training',
-      reason: 'Your saved weekly review calls for a review.', destination: { type: 'review' } },
+      reason: 'The evidence behind this weekly review changed.', reasonCodes: ['review_source_changed'], destination: { type: 'review' } },
   }]
 }
 
-function seedCanonicalReviewHold(rows: ContextRows) {
+function seedCanonicalReview(rows: ContextRows, action: 'continue' | 'pause_review' | 'recover', createdAt = '2026-10-16T12:00:00.000Z') {
   const { review } = coachingDecisionRows(owner)
   const setupKeys = ['primary_goal', 'training_schedule', 'available_equipment', 'training_constraints']
   const memories = Object.fromEntries(rows.coach_memories.filter(row => setupKeys.includes(String(row.memory_key))).map(row => [row.memory_key, {
     memoryId: row.id, memoryVersion: row.version, currentAtRead: true, content: row.content,
     lifecycle: { status: 'confirmed', effectiveFrom: null, effectiveUntil: null, reviewAfter: null },
   }]))
+  const presentation = action === 'continue' ? 'same_track' : 'safety'
+  const evidence = action === 'continue' ? 'sufficient' : 'safety_override'
   rows.coach_weekly_reviews = [{ ...review, program_id: 'program-one', base_plan_version_id: 'accepted-one',
-    action: 'pause_review', presentation_class: 'safety', evidence_status: 'safety_override',
-    rationale: { ...review.rationale, contextRevision: 3, setupMemoryBindings: { schemaVersion: 1, memories },
-      planningDecision: { ...review.rationale.planningDecision, action: 'pause_review', presentationClass: 'safety', evidenceStatus: 'safety_override' },
+    action, presentation_class: presentation, evidence_status: evidence, created_at: createdAt,
+    rationale: { ...review.rationale, contextRevision: 2, setupMemoryBindings: { schemaVersion: 1, memories },
+      planningDecision: { ...review.rationale.planningDecision, action, presentationClass: presentation, evidenceStatus: evidence },
     }, evidence_snapshot: { schemaVersion: 1, missing: [] },
   }]
 }
 
-async function connect({ subject = owner, rows = seedRows(), failTable }: {
-  subject?: string; rows?: ContextRows; failTable?: string
+function seedConcerningFeedback(rows: ContextRows, recordedAt: string) {
+  rows.coach_checkins = [{ id: 'session-feedback-one', user_id: owner, program_id: 'program-one', plan_version_id: 'accepted-one',
+    prescribed_session_id: 'past-session-one', checkin_type: 'session', occurred_at: '2026-10-15T12:00:00.000Z', created_at: recordedAt,
+    'responses->>pain': 'concerning', responses: { outcome: 'stopped_early', sessionRpe: 7, energy: 'okay', pain: 'concerning', note: null } }]
+}
+
+async function connect({ subject = owner, rows = seedRows(), failTable, onSafetyFeedbackRead }: {
+  subject?: string; rows?: ContextRows; failTable?: string; onSafetyFeedbackRead?: () => void
 } = {}) {
   for (const records of Object.values(rows)) for (const row of records) row.user_id = subject
-  const fixture = contextClient(rows, { failTable })
+  const fixture = contextClient(rows, { failTable, onRead: (table, read) => {
+    if (table !== 'coach_checkins' || !onSafetyFeedbackRead) return
+    const query = fixture.traces.filter(trace => trace.table === table)[read - 1]
+    if (query?.filters.some(([column]) => column === 'responses->>pain')) onSafetyFeedbackRead()
+  } })
   Object.assign(fixture.db.auth, {
     getClaims: async () => ({ data: { claims: {
       iss: config.issuer, aud: config.resource, client_id: config.clientId, sub: subject,
@@ -178,6 +191,10 @@ describe('Today session draft over authenticated stateless MCP', () => {
       expect((await client.readResource({ uri: draftResource })).contents).toContainEqual(expect.objectContaining({
         uri: draftResource, mimeType: 'text/html;profile=mcp-app', text: expect.any(String),
       }))
+      const legacyUri = 'ui://socius/session-draft-v1.html'
+      expect((await client.readResource({ uri: legacyUri })).contents).toEqual(
+        (await client.readResource({ uri: draftResource })).contents.map(content => ({ ...content, uri: legacyUri })),
+      )
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
@@ -206,6 +223,22 @@ describe('Today session draft over authenticated stateless MCP', () => {
     } finally { await client.close() }
   })
 
+  it('binds an automatic draft request to the verified check-in date across midnight', async () => {
+    const { client, db, writes } = await connect()
+    try {
+      const action = prepare({ tzOffset, expectedLocalDate: localDate })
+      expect((await client.callTool(action)).structuredContent).toMatchObject({ status: 'ready', evidence: { date: localDate } })
+      const reads = vi.mocked(db.from).mock.calls.length
+      vi.setSystemTime('2026-10-19T06:00:01.000Z')
+      const delayed = await client.callTool(action)
+      expect(delayed.isError).toBe(true)
+      expect(delayed.structuredContent ?? {}).not.toHaveProperty('contextId')
+      expect(delayed.content).toMatchObject([{ type: 'text', text: expect.stringContaining('different local date') }])
+      expect(db.from).toHaveBeenCalledTimes(reads)
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
   it('freezes the inclusive 28-day evidence, playbook publication, and one editable draft with no writes', async () => {
     vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
     const { client, rows, writes, traces } = await connect()
@@ -215,9 +248,10 @@ describe('Today session draft over authenticated stateless MCP', () => {
       expect(prepared.isError).not.toBe(true)
       expect(prepared.structuredContent).toMatchObject({ status: 'ready', workflowVersion: version, contextId: expect.any(String), evidence: {
         date: localDate, window: { startsOn: '2026-09-21', endsOn: localDate },
-        goals: [expect.objectContaining({ id: 'goal:5k', statement: 'Improve 5000 meter time' })], hasPlannedSession: true,
+        goals: [expect.objectContaining({ id: 'goal:5k', statement: 'Improve 5000 meter time' })],
+        daySchedule: 'planned', hasPlannedSession: true,
         historyCoverage: { complete: true, athleteCoverage: 'unknown' },
-        checkIn: { fatigue: 'usual', sleep: 'usual' },
+        checkIn: { fatigue: 'usual', sleep: 'usual' }, checkInScale: 'relative-to-usual',
         playbook: { version: expect.any(String), contentHash: expect.stringMatching(/^[a-f0-9]{64}$/),
           selectedDomains: ['assessment', 'conditioning', 'recovery'] },
         weeks: [
@@ -321,8 +355,33 @@ describe('Today session draft over authenticated stateless MCP', () => {
       expect(expired.isError).toBe(true)
       expect(expired._meta?.sessionDraft).toBeUndefined()
       expect((await client.callTool(prepare())).structuredContent).toMatchObject({ status: 'ready', evidence: {
-        checkIn: { fatigue: 'higher' },
+        checkIn: { fatigue: 'higher' }, checkInScale: 'relative-to-usual',
       } })
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('binds exact 1-to-5 ratings even when a correction leaves the old relative answers unchanged', async () => {
+    const rows = seedRows()
+    Object.assign(rows.coach_daily_checkins[0], {
+      stress: 'higher', fatigue: 'lower', sleep: 'better', soreness: 'usual', motivation: 'higher',
+      stress_rating: 1, fatigue_rating: 4, sleep_rating: 5, soreness_rating: 3, motivation_rating: 5,
+    })
+    const { client, writes } = await connect({ rows })
+    try {
+      const prepared = await prepareReady(client)
+      expect(prepared.evidence).toMatchObject({
+        checkInScale: '1-to-5', checkIn: { stress: 1, fatigue: 4, sleep: 5, soreness: 3, motivation: 5 },
+      })
+      rows.coach_daily_checkins[0].stress_rating = 2
+      const old = await client.callTool(show(prepared.contextId, validDraft(prepared.evidence.goals[0].id)))
+      expect(old.isError).toBe(true)
+      expect(old._meta?.sessionDraft).toBeUndefined()
+      const fresh = await prepareReady(client)
+      expect(fresh.contextId).not.toBe(prepared.contextId)
+      expect(fresh.evidence).toMatchObject({ checkInScale: '1-to-5', checkIn: { stress: 2 } })
+      const shown = await client.callTool(show(fresh.contextId, validDraft(fresh.evidence.goals[0].id)))
+      expect(shown.structuredContent).toMatchObject({ status: 'validated' })
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
@@ -342,7 +401,7 @@ describe('Today session draft over authenticated stateless MCP', () => {
     } finally { await client.close() }
   })
 
-  it.each(['coach_daily_checkins', 'workouts', 'coach_weekly_reviews'])('reports an unavailable %s read without producing a draft', async failTable => {
+  it.each(['coach_daily_checkins', 'workouts', 'coach_weekly_reviews', 'coach_checkins'])('reports an unavailable %s read without producing a draft', async failTable => {
     const { client, writes } = await connect({ failTable })
     try {
       const result = await client.callTool(prepare())
@@ -367,13 +426,11 @@ describe('Today session draft over authenticated stateless MCP', () => {
     } finally { await client.close() }
   })
 
-  it.each([
-    ['Today recommendation', seedReviewHold], ['canonical weekly review with Today recommendations disabled', seedCanonicalReviewHold],
-  ] as const)('blocks a draft after discovering a hold from %s', async (_label, seedHold) => {
+  it.each(['pause_review', 'recover'] as const)('preserves a stored %s safety hold after unrelated context changes', async action => {
     const { client, rows, writes } = await connect()
     try {
       const ready = await prepareReady(client)
-      seedHold(rows)
+      seedCanonicalReview(rows, action)
       const prepared = await client.callTool(prepare())
       expect(prepared.structuredContent).toMatchObject({ status: 'review_required', workflowVersion: version,
         message: 'Review your saved plan before drafting a session.' })
@@ -383,5 +440,136 @@ describe('Today session draft over authenticated stateless MCP', () => {
       expect(shown._meta?.sessionDraft).toBeUndefined()
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
+  })
+
+  it('allows a daily draft despite a stale routine weekly review and cached routine review notice', async () => {
+    const rows = seedRows()
+    seedCanonicalReview(rows, 'continue')
+    seedRoutineReviewNotice(rows)
+    const { client, traces, writes } = await connect({ rows })
+    try {
+      const prepared = await client.callTool(prepare())
+      expect(prepared.structuredContent).toMatchObject({ status: 'ready', workflowVersion: version, evidence: {
+        hasPlannedSession: true, acceptedSession: { planId: 'accepted-one',
+          sessions: [{ status: 'planned', prescription: { title: 'Saved easy session' } }] },
+      } })
+      expect(prepared.structuredContent).not.toHaveProperty('evidence.acceptedSession.review')
+      const result = prepared.structuredContent as unknown as ReadyEvidence
+      seedCanonicalReview(rows, 'continue', '2026-10-18T12:00:00.000Z')
+      const shown = await client.callTool(show(result.contextId, validDraft(result.evidence.goals[0].id)))
+      expect(shown.structuredContent).toMatchObject({ status: 'validated' })
+      expect(traces.some(trace => trace.table === 'recommendation_refresh_state' || trace.table === 'recommendations')).toBe(false)
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('allows a new session draft when there is no accepted plan', async () => {
+    const rows = seedRows()
+    rows.training_programs = []
+    const { client, writes } = await connect({ rows })
+    try {
+      const prepared = await client.callTool(prepare())
+      expect(prepared.structuredContent).toMatchObject({ status: 'ready', evidence: {
+        daySchedule: 'unscheduled', hasPlannedSession: false, acceptedSession: { planId: null, sessions: [] },
+      } })
+      const result = prepared.structuredContent as unknown as ReadyEvidence
+      const shown = await client.callTool(show(result.contextId, { ...validDraft(result.evidence.goals[0].id), planUse: 'new' }))
+      expect(shown.structuredContent).toMatchObject({ status: 'validated' })
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('validates rest and light recovery on a verified scheduled rest day through the same tools', async () => {
+    const rows = seedRows()
+    const { plan, intent } = reviewedRollingWeek('2026-10-12')
+    expect(plan.windowEnd).toBe(localDate)
+    expect(plan.scheduledSessions.some(session => session.scheduledDate === localDate)).toBe(false)
+    Object.assign(rows.training_plan_versions[0], {
+      intent, plan_mode: 'rolling_weekly', window_start: plan.windowStart, window_end: plan.windowEnd,
+      input_snapshot: { reviewedExecutionStorage: 'reviewed_execution_slots_v1' },
+    })
+    rows.coach_effective_prescribed_sessions = plan.scheduledSessions.map((session, index) => ({
+      id: `effective-${index}`, program_id: 'program-one', plan_version_id: 'accepted-one',
+      execution_plan_version_id: 'accepted-one', week_number: 1, session_index: index + 1,
+      scheduled_date: session.scheduledDate, prescription: session.prescription, status: 'planned',
+      completed_workout_id: null, completion_contract_version: null, has_reports: false,
+    }))
+    const { client, writes } = await connect({ rows })
+    try {
+      const prepared = await prepareReady(client)
+      expect(prepared.evidence).toMatchObject({
+        daySchedule: 'scheduled_rest', hasPlannedSession: false,
+        window: { startsOn: '2026-09-21', endsOn: localDate },
+        acceptedSession: { planId: 'accepted-one', sessions: [] },
+      })
+      const draft = validDraft(prepared.evidence.goals[0].id)
+      const wrong = await client.callTool(show(prepared.contextId, { ...draft, dayType: 'training' }))
+      expect(wrong.isError).toBe(true)
+      expect(wrong._meta?.sessionDraft).toBeUndefined()
+
+      const rest = { ...draft, title: 'Keep the scheduled rest day', objective: 'Recover for the next planned session.',
+        dayType: 'rest', warmUp: [], mainWork: [] }
+      const hiddenTraining = await client.callTool(show(prepared.contextId, { ...rest, mainWork: draft.mainWork }))
+      expect(hiddenTraining.isError).toBe(true)
+      const shownRest = await client.callTool(show(prepared.contextId, rest))
+      expect(shownRest.structuredContent).toMatchObject({ status: 'validated' })
+      expect(shownRest._meta?.sessionDraft).toMatchObject({
+        dayType: 'rest', daySchedule: 'scheduled_rest', planUse: 'follow', warmUp: [], mainWork: [],
+      })
+
+      const recovery = { ...rest, dayType: 'recovery',
+        mainWork: [{ activity: 'Easy walk', dose: '10 min', effort: 'Comfortable', rest: 'As needed' }] }
+      const shownRecovery = await client.callTool(show(prepared.contextId, recovery))
+      expect(shownRecovery.structuredContent).toMatchObject({ status: 'validated' })
+      expect(shownRecovery._meta?.sessionDraft).toMatchObject({ dayType: 'recovery', daySchedule: 'scheduled_rest' })
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('blocks concerning feedback even after a newer ordinary plan review', async () => {
+    const rows = seedRows()
+    seedCanonicalReview(rows, 'continue')
+    const { client, writes } = await connect({ rows })
+    try {
+      const pending = await prepareReady(client)
+      seedConcerningFeedback(rows, '2026-10-17T12:00:00.000Z')
+      expect((await client.callTool(prepare())).structuredContent).toMatchObject({ status: 'review_required',
+        message: expect.stringContaining('concerning pain') })
+      expect((await client.callTool(show(pending.contextId, validDraft(pending.evidence.goals[0].id)))).isError).toBe(true)
+
+      seedCanonicalReview(rows, 'continue', '2026-10-18T12:00:00.000Z')
+      expect((await client.callTool(prepare())).structuredContent).toMatchObject({ status: 'review_required',
+        message: expect.stringContaining('concerning pain') })
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it.each([
+    { change: 'pause review', status: 'review_required', apply: (rows: ContextRows) => seedCanonicalReview(rows, 'pause_review') },
+    { change: 'recover review', status: 'review_required', apply: (rows: ContextRows) => seedCanonicalReview(rows, 'recover') },
+    { change: 'accepted base', status: 'unavailable', apply: (rows: ContextRows) => {
+      rows.training_programs[0].active_plan_version_id = 'accepted-two'
+    } },
+  ])('rechecks a concurrent $change after reading concerning feedback', async ({ status, apply }) => {
+    const rows = seedRows()
+    const prepareClient = await connect({ rows, onSafetyFeedbackRead: () => apply(rows) })
+    try {
+      expect((await prepareClient.client.callTool(prepare())).structuredContent).toMatchObject({ status })
+      expect(prepareClient.writes).not.toHaveBeenCalled()
+    } finally { await prepareClient.client.close() }
+
+    const displayRows = seedRows()
+    let changeEnabled = false
+    const displayClient = await connect({ rows: displayRows, onSafetyFeedbackRead: () => {
+      if (changeEnabled) apply(displayRows)
+    } })
+    try {
+      const pending = await prepareReady(displayClient.client)
+      changeEnabled = true
+      const shown = await displayClient.client.callTool(show(pending.contextId, validDraft(pending.evidence.goals[0].id)))
+      expect(shown.isError).toBe(true)
+      expect(shown._meta?.sessionDraft).toBeUndefined()
+      expect(displayClient.writes).not.toHaveBeenCalled()
+    } finally { await displayClient.client.close() }
   })
 })

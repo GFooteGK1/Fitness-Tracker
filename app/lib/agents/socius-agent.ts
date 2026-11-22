@@ -9,6 +9,7 @@ import type {
 } from './types'
 import { buildSociusPrompt } from './prompts/socius'
 import { complete } from '@/app/lib/llm/client'
+import { isSociusTodayPilotOwner } from '@/app/lib/coach/socius-today-pilot'
 import { callAgentWithTools, type ToolCallRecord } from './tools/agentic-loop'
 import { SOCIUS_TOOLS } from './tools/definitions'
 import {
@@ -44,7 +45,7 @@ export async function callSociusAgent(
   supabase?: SupabaseClient,
   userId?: string
 ): Promise<SociusResponseWithTools> {
-  const systemPrompt = buildSociusPrompt(ctx)
+  const systemPrompt = buildSociusPrompt(ctx, isSociusTodayPilotOwner(userId))
 
   if (supabase && userId) {
     const result = await callAgentWithTools({

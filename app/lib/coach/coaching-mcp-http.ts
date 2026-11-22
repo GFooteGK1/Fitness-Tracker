@@ -2,6 +2,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { createCoachingContextMcpServer } from './coaching-context-mcp'
 import { authorizeCoachingBearer, coachingOAuthError, coachingPrivateHeaders, type CoachingBearerDependencies, type CoachingOAuthConfig } from '../auth/coaching-oauth'
 import { CoachingContextError } from './coaching-context'
+import { isSociusTodayPilotOwner } from './socius-today-pilot'
 
 /** Stateless, owner-bound per request. The SDK owns the protocol; no refresh,
  * OAuth grant or host operation is exposed by this route. Domain writes are
@@ -14,7 +15,7 @@ export async function handleCoachingMcp(request: Request, config: CoachingOAuthC
       throw new CoachingContextError(400, 'Unexpected connection origin')
     }
     const authorized = await authorizeCoachingBearer(request, config, dependencies)
-    const todayEnabled = authorized.principal.subject === process.env.SOCIUS_MCP_TODAY_OWNER_ID
+    const todayEnabled = isSociusTodayPilotOwner(authorized.principal.subject)
     const activityEnabled = todayEnabled && process.env.SOCIUS_MCP_ACTIVITY_UI_ENABLED === 'true'
     const server = createCoachingContextMcpServer(async () => authorized, config, { todayEnabled, activityEnabled })
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true, maxRequestBodySize: 65_536 })

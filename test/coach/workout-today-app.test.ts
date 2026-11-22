@@ -1,9 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { captureProvenance } from '../../app/lib/capture/contracts'
 import { readCoachingContext } from '../../app/lib/coach/coaching-context-server'
-import { deriveTodayAssessmentGuidance } from '../../app/lib/coach/today-assessment-guidance'
 import { createWorkoutTodayReader } from '../../app/lib/coach/workout-today-app'
-import { recommendationScope } from '../../app/lib/recommendations/context'
 import { contextClient, contextNow, contextOwner, contextRows, type ContextRows } from '../fixtures/coaching-context'
 import { effortWorkSession } from '../fixtures/reviewed-effort-work'
 
@@ -50,27 +48,6 @@ async function read(rows: ContextRows) {
   return { ...result, context }
 }
 
-function addSavedTrainingRecommendation(rows: ContextRows) {
-  vi.stubEnv('RECOMMENDATIONS_ENABLED', 'true')
-  const scope = recommendationScope(0)
-  const now = {
-    source_revision: 3, response_revision: 0, processed_source_revision: 3, processed_response_revision: 0,
-    current_recommendation_id: 'saved-one', last_error: null, next_due_at: null,
-    processed_context: { activePlanId: 'accepted-one', intentMemoryId: 'memory-training_intent', intentVersion: 1,
-      runtimeFingerprint: scope.runtimeFingerprint, localDate: scope.localDate, timezoneOffset: scope.tzOffset },
-  }
-  rows.recommendation_refresh_state = [{ user_id: contextOwner, ...now }]
-  rows.recommendations = [{ id: 'saved-one', user_id: contextOwner, local_date: localDate, timezone_offset: 0,
-    plan_version_id: 'accepted-one', intent_memory_id: 'memory-training_intent', intent_version: 1,
-    source_revision: 3, response_revision: 0, lifecycle: 'active', valid_until: `${localDate}T22:00:00.000Z`,
-    runtime_fingerprint: scope.runtimeFingerprint, scope_key: 'review:weekly-review-one', evidence_fingerprint: 'first',
-    rule_id: 'accepted_plan.review', policy_version: 'bounded-actions-1',
-    decision: { schemaVersion: 1, kind: 'action', ruleId: 'accepted_plan.review', policyVersion: 'bounded-actions-1',
-      sourceRevision: 3, responseRevision: 0, title: 'Review your plan before training',
-      reason: 'Your saved weekly review calls for recovery.', destination: { type: 'review' } },
-  }]
-}
-
 describe('Workout Today source projection', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -78,7 +55,6 @@ describe('Workout Today source projection', () => {
   })
   afterEach(() => {
     vi.useRealTimers()
-    vi.unstubAllEnvs()
   })
 
   it('shows one latest completed workout and groups equal set doses without losing different reps, load or recorded effort', async () => {
@@ -198,30 +174,21 @@ describe('Workout Today source projection', () => {
     ])
   })
 
-  it('shows a current owned recommendation on an unscheduled day and falls back when it is stale or deferred', async () => {
+  it('shows an unscheduled day without an old recommendation', async () => {
     const rows = contextRows()
     rows.prescribed_sessions = []
-    addSavedTrainingRecommendation(rows)
-    expect((await read(rows)).workoutRecommendation).toMatchObject({
-      status: 'recommended', source: 'saved_recommendation', title: 'Review your plan before training',
-    })
-    rows.recommendation_suppressions = [{ user_id: contextOwner, scope_key: 'review:weekly-review-one',
-      evidence_fingerprint: 'an-older-revision', response: 'deferred', defer_until: `${localDate}T14:00:00.000Z` }]
-    expect((await read(rows)).workoutRecommendation).toMatchObject({ status: 'unscheduled', source: 'accepted_plan', sessions: [] })
-    rows.recommendation_suppressions = []
-    rows.recommendation_refresh_state[0].source_revision = 4
-    expect((await read(rows)).workoutRecommendation).toMatchObject({ status: 'unscheduled', source: 'accepted_plan', sessions: [] })
+    expect(await read(rows)).toMatchObject({ safety: { status: 'clear' },
+      workoutRecommendation: { status: 'unscheduled', source: 'accepted_plan', sessions: [] } })
   })
 
-  it('keeps a saved review ahead of a planned session even when the new check-in is favorable', async () => {
+  it('preserves an explicit saved review alongside a planned session', async () => {
     const rows = contextRows()
-    addSavedTrainingRecommendation(rows)
+    rows.coach_weekly_reviews = [{ id: 'owned-review', user_id: contextOwner, program_id: 'program-one',
+      base_plan_version_id: 'accepted-one', review_revision: 1, action: 'recover', created_at: `${localDate}T10:00:00.000Z` }]
     const workout = await read(rows)
-    expect(workout.workoutRecommendation).toMatchObject({ reviewBeforeTraining: true,
+    expect(workout.safety).toEqual({ status: 'hold', reason: 'recover' })
+    expect(workout.workoutRecommendation).toMatchObject({
       sessions: [expect.objectContaining({ status: 'planned', title: 'Saved easy session' })] })
-    expect(deriveTodayAssessmentGuidance({ stress: 'lower', fatigue: 'lower', sleep: 'better' }, workout.context, workout))
-      .toMatchObject({ title: 'Review your plan before training', summary: 'Your saved weekly review calls for recovery.',
-        actions: ['Review the saved guidance before choosing today’s training.'] })
   })
 
   it('shows validated reviewed session movements and preserves optional work', async () => {

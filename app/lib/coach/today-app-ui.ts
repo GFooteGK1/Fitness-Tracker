@@ -1,6 +1,14 @@
 import { activityCardMarkup, activityRendererScript, activityStyles, mcpHostBridgeScript } from './activity-app-ui'
 import { nutritionCardMarkup, nutritionRendererScript, nutritionStyles } from './nutrition-app-ui'
 
+function scaleOptions(labels: string[]) {
+  return labels.map((label, index) => '<option value="' + (index + 1) + '">' + (index + 1) + ' · ' + label + '</option>').join('\n')
+}
+
+const strainOptions = scaleOptions(['Very high', 'High', 'Moderate', 'Low', 'Very low'])
+const sleepOptions = scaleOptions(['Very poor', 'Poor', 'Fair', 'Good', 'Very good'])
+const motivationOptions = scaleOptions(['Very low', 'Low', 'Moderate', 'High', 'Very high'])
+
 /** A self-contained MCP Apps resource. Athlete data arrives only through the host's tool bridge. */
 export const sociusTodayHtml = String.raw`<!doctype html>
 <html lang="en">
@@ -192,6 +200,7 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     button:disabled { opacity: .7; cursor: wait; }
     #retry { margin-top: .65rem; }
     #check-in-form { margin-top: 1rem; }
+    #check-in-relative { margin-top: .75rem; }
     .check-in-fields { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
     .check-in-fields legend { padding: 0; font-weight: 650; }
     .check-in-grid { display: grid; gap: .6rem; margin-block: .65rem .8rem; }
@@ -210,16 +219,8 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     .check-in-grid select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     #check-in-status:not(:empty) { margin-top: .55rem; }
     #check-in-status[data-error] { color: var(--danger); }
-    #recommendation-title {
-      margin-top: .45rem;
-      font-size: clamp(1.6rem, 6vw, 2.25rem);
-      line-height: 1.15;
-      letter-spacing: -.035em;
-    }
+    #check-in-submit:disabled { cursor: default; }
     .bullets { list-style: disc; padding-inline-start: 1.2rem; }
-    .guidance-list { margin-block: .35rem 0; padding-inline-start: 1.2rem; }
-    .guidance-heading { margin: .8rem 0 0; font-size: 1rem; }
-    .guidance-list li + li { margin-top: .25rem; }
     #saved-review {
       margin-top: .8rem;
       padding: .75rem;
@@ -287,74 +288,58 @@ ${nutritionStyles}
     </section>
     <div id="today-content" hidden>
       <section class="panel session-panel" aria-labelledby="sessions-title">
-        <h2 id="sessions-title">Recommended plan</h2>
-        <div id="recommendation-result" hidden>
-          <h3 id="recommendation-title" tabindex="-1"></h3>
-          <p id="recommendation-summary" class="section-note"></p>
-          <h4 class="guidance-heading">What to do</h4>
-          <ol id="recommendation-actions" class="guidance-list"></ol>
-          <h4 class="guidance-heading">What informed this</h4>
-          <ul id="recommendation-reasons" class="bullets guidance-list"></ul>
-          <p class="muted section-note">Use this plan as a starting point. Ask in chat to adjust today’s plan.</p>
-        </div>
+        <h2 id="sessions-title">Today’s training</h2>
         <div id="saved-review" hidden>
           <h3 id="saved-review-title"></h3>
           <p id="saved-review-reason" class="section-note" hidden></p>
         </div>
+        <details id="check-in-relative" class="recovery-timing" hidden>
+          <summary>Saved answers compared with your usual</summary>
+          <ul id="check-in-relative-answers" class="bullets"></ul>
+        </details>
         <form id="check-in-form" autocomplete="off">
           <fieldset id="check-in-fields" class="check-in-fields" aria-describedby="check-in-instructions" disabled>
             <legend>How do you feel today?</legend>
-            <p id="check-in-instructions" class="muted">Compare each with your usual.</p>
+            <p id="check-in-instructions" class="muted">Rate each from 1 (worst) to 5 (best).</p>
             <div class="check-in-grid">
               <label>Stress
                 <select id="check-in-stress" required>
                   <option value="" selected disabled>Choose one</option>
-                  <option value="lower">Lower than usual</option>
-                  <option value="usual">Usual</option>
-                  <option value="higher">Higher than usual</option>
+                  ${strainOptions}
                 </select>
               </label>
               <label>Fatigue
                 <select id="check-in-fatigue" required>
                   <option value="" selected disabled>Choose one</option>
-                  <option value="lower">Lower than usual</option>
-                  <option value="usual">Usual</option>
-                  <option value="higher">Higher than usual</option>
+                  ${strainOptions}
                 </select>
               </label>
               <label>Sleep
                 <select id="check-in-sleep" required>
                   <option value="" selected disabled>Choose one</option>
-                  <option value="worse">Worse than usual</option>
-                  <option value="usual">Usual</option>
-                  <option value="better">Better than usual</option>
+                  ${sleepOptions}
                 </select>
               </label>
               <label>Soreness
                 <select id="check-in-soreness" required>
                   <option value="" selected disabled>Choose one</option>
-                  <option value="lower">Lower than usual</option>
-                  <option value="usual">Usual</option>
-                  <option value="higher">Higher than usual</option>
+                  ${strainOptions}
                 </select>
               </label>
               <label>Motivation
                 <select id="check-in-motivation" required>
                   <option value="" selected disabled>Choose one</option>
-                  <option value="lower">Lower than usual</option>
-                  <option value="usual">Usual</option>
-                  <option value="higher">Higher than usual</option>
+                  ${motivationOptions}
                 </select>
               </label>
             </div>
           </fieldset>
-          <button id="check-in-submit" type="submit" disabled>Save &amp; get recommendation</button>
+          <button id="check-in-submit" type="submit" disabled>Save check-in</button>
           <p id="check-in-status" role="status" class="muted"></p>
         </form>
+        <p id="check-in-next" class="section-note" tabindex="-1" hidden><span id="draft-request-status" role="status"></span><span id="draft-manual">Ask <strong>“Draft today’s session”</strong> in SociusFit chat.</span></p>
         <details id="accepted-plan-details" class="recovery-timing" hidden>
-          <summary id="accepted-plan-summary">Accepted plan for today</summary>
-          <h3 id="saved-guidance-title" class="section-note" hidden></h3>
-          <p id="saved-guidance-reason" class="muted section-note" hidden></p>
+          <summary>Accepted plan for today</summary>
           <ul id="sessions"></ul>
         </details>
       </section>
@@ -437,6 +422,10 @@ ${mcpHostBridgeScript}
       const checkInSubmit = byId('check-in-submit');
       const checkInFields = byId('check-in-fields');
       const checkInInputs = ['stress', 'fatigue', 'sleep', 'soreness', 'motivation'];
+      const relativeRatings = {
+        lower: 'Lower than usual', usual: 'Usual', higher: 'Higher than usual',
+        worse: 'Worse than usual', better: 'Better than usual',
+      };
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       let initialized = false;
       let activityRequest = 0;
@@ -444,11 +433,13 @@ ${mcpHostBridgeScript}
       let nutritionRefresh = null;
       let nutritionInFlight = false;
       let nutritionSignInRequired = false;
-      let savedRecommendation = null;
-      let savedCheckIn = null;
-      let savedAssessmentGuidance = null;
+      let savedAssessment = null;
+      let unconfirmedCheckIn = null;
       let checkInEnabled = false;
       let checkInBusy = false;
+      let hostSupportsDraft = false;
+      let draftInFlightDay = null;
+      let draftRevision = 0;
       let dayTimer = null;
       let deviceDay = localDayKey(new Date());
       let dayRevision = 0;
@@ -483,10 +474,8 @@ ${mcpHostBridgeScript}
       }
 
       function renderAcceptedPlan(today) {
-        const sessions = today.workoutRecommendation?.sessions ?? today.sessions;
         const statusLabels = { planned: 'Planned', completed: 'Completed', skipped: 'Skipped' };
-        savedRecommendation = today.workoutRecommendation?.source === 'saved_recommendation' ? today.workoutRecommendation : null;
-        byId('sessions').replaceChildren(...sessions.map(session => {
+        byId('sessions').replaceChildren(...today.sessions.map(session => {
           const item = element('li', null, 'entry');
           const heading = element('div', null, 'entry-heading');
           heading.append(element('h3', session.title || 'Training session'));
@@ -502,21 +491,14 @@ ${mcpHostBridgeScript}
           }
           return item;
         }));
-        renderSavedGuidance(null);
+        byId('accepted-plan-details').hidden = today.sessions.length === 0;
       }
 
-      function renderSavedGuidance(guidance) {
-        const savedTitle = savedRecommendation?.title;
-        const sameTitle = !!guidance && guidance.title.trim().toLowerCase() === savedTitle?.trim().toLowerCase();
-        const showReview = !!savedRecommendation?.reviewBeforeTraining && !!savedTitle && !sameTitle;
-        const showInDetails = !!savedTitle && !sameTitle && !showReview;
+      function renderSafetyReview(review) {
+        const showReview = review?.reviewBeforeTraining === true && !!review.title;
         byId('saved-review').hidden = !showReview;
-        setNote('saved-review-title', showReview ? savedTitle : null);
-        setNote('saved-review-reason', showReview ? savedRecommendation.reason : null);
-        setNote('saved-guidance-title', showInDetails ? savedTitle : null);
-        setNote('saved-guidance-reason', showInDetails ? savedRecommendation.reason : null);
-        byId('accepted-plan-summary').textContent = showInDetails ? 'Saved plan and guidance' : 'Accepted plan for today';
-        byId('accepted-plan-details').hidden = !showInDetails && !byId('sessions').childElementCount;
+        setNote('saved-review-title', showReview ? review.title : null);
+        setNote('saved-review-reason', showReview ? review.reason : null);
       }
 
       function setCheckInStatus(text, isError = false) {
@@ -525,47 +507,104 @@ ${mcpHostBridgeScript}
         status.toggleAttribute('data-error', isError);
       }
 
-      function renderGuidance(guidance) {
-        const result = byId('recommendation-result');
-        result.hidden = !guidance;
-        byId('recommendation-title').textContent = guidance?.title ?? '';
-        byId('recommendation-summary').textContent = guidance?.summary ?? '';
-        byId('recommendation-reasons').replaceChildren(...(guidance?.reasons ?? []).map(reason => element('li', reason)));
-        byId('recommendation-actions').replaceChildren(...(guidance?.actions ?? []).map(action => element('li', action)));
-        renderSavedGuidance(guidance);
+      function checkInValues() {
+        return Object.fromEntries(checkInInputs.map(name => {
+          const value = byId('check-in-' + name).value;
+          return [name, value === '' ? null : Number(value)];
+        }));
       }
 
-      function matchesCheckIn(value) {
-        return !!value && checkInInputs.every(name => value[name] === byId('check-in-' + name).value);
+      function isRating(value) {
+        return Number.isInteger(value) && value >= 1 && value <= 5;
+      }
+
+      function parseAssessment(assessment) {
+        if (assessment?.status === 'missing') return assessment;
+        const answers = assessment?.checkIn;
+        if (assessment?.status === 'saved' && answers) {
+          if (assessment.scale === '1-to-5' && checkInInputs.every(name => isRating(answers[name]))) return assessment;
+          if (assessment.scale === 'relative-to-usual' && checkInInputs.every(name =>
+            (name === 'sleep' ? ['worse', 'usual', 'better'] : ['lower', 'usual', 'higher']).includes(answers[name]))) {
+            return assessment;
+          }
+        }
+        return { status: 'unavailable' };
+      }
+
+      function matchesCheckIn(saved, answers) {
+        return !!saved && checkInInputs.every(name => saved[name] === answers[name]);
+      }
+
+      function matchesSavedAssessment(answers) {
+        if (savedAssessment?.scale === 'relative-to-usual') {
+          return checkInInputs.every(name => answers[name] === null);
+        }
+        return matchesCheckIn(savedAssessment?.checkIn, answers);
+      }
+
+      function setSavedAssessment(assessment) {
+        savedAssessment = assessment.status === 'saved' ? assessment : null;
+        const relative = savedAssessment?.scale === 'relative-to-usual' ? savedAssessment.checkIn : null;
+        const detail = byId('check-in-relative');
+        detail.hidden = !relative;
+        if (!relative) detail.open = false;
+        byId('check-in-relative-answers').replaceChildren(...(relative ? checkInInputs.map(name => {
+          const label = name[0].toUpperCase() + name.slice(1);
+          return element('li', label + ' · ' + relativeRatings[relative[name]]);
+        }) : []));
+      }
+
+      function canRequestDraft() {
+        return hostSupportsDraft && byId('saved-review').hidden;
+      }
+
+      function setDraftFeedback(message, showManual = false) {
+        byId('draft-request-status').textContent = message;
+        byId('draft-manual').hidden = !showManual;
+      }
+
+      function resetDraftFeedback() {
+        draftRevision += 1;
+        setDraftFeedback('', true);
       }
 
       function syncCheckInControls() {
+        const matchesSaved = matchesSavedAssessment(checkInValues());
         checkInFields.disabled = !checkInEnabled || checkInBusy;
-        checkInSubmit.disabled = checkInFields.disabled;
-        checkInSubmit.textContent = matchesCheckIn(savedCheckIn)
-          ? 'Refresh recommendation' : 'Save & get recommendation';
+        checkInSubmit.disabled = checkInFields.disabled || draftInFlightDay === dayRevision
+          || (matchesSaved && !unconfirmedCheckIn);
+        checkInSubmit.formNoValidate = !!unconfirmedCheckIn;
+        checkInSubmit.textContent = unconfirmedCheckIn ? 'Check save status'
+          : canRequestDraft() ? 'Save check-in & draft session' : 'Save check-in';
+        byId('check-in-next').hidden = !!unconfirmedCheckIn || !matchesSaved || !byId('saved-review').hidden;
       }
 
       function renderCheckIn(today, features) {
-        const checkIn = today.checkIn;
-        savedCheckIn = checkIn?.status === 'saved' ? checkIn.checkIn : null;
-        savedAssessmentGuidance = savedCheckIn ? today.assessmentGuidance ?? null : null;
-        checkInEnabled = features.checkInEnabled === true
-          && (checkIn?.status === 'saved' || checkIn?.status === 'missing');
-        for (const name of checkInInputs) byId('check-in-' + name).value = savedCheckIn?.[name] ?? '';
-        renderGuidance(savedAssessmentGuidance);
-        if (savedCheckIn) {
+        const assessment = parseAssessment(today.assessment ?? { ...today.checkIn, scale: 'relative-to-usual' });
+        setSavedAssessment(assessment);
+        unconfirmedCheckIn = null;
+        resetDraftFeedback();
+        checkInEnabled = !!today.assessment && features.checkInEnabled === true && assessment.status !== 'unavailable';
+        const scores = savedAssessment?.scale === '1-to-5' ? savedAssessment.checkIn : null;
+        for (const name of checkInInputs) byId('check-in-' + name).value = scores ? String(scores[name]) : '';
+        if (savedAssessment?.scale === 'relative-to-usual') {
+          setCheckInStatus(checkInEnabled
+            ? 'Previous check-in saved. You can enter 1–5 ratings for today.'
+            : 'Previous check-in saved. 1–5 ratings are currently unavailable.');
+        } else if (savedAssessment) {
           setCheckInStatus(checkInEnabled ? 'Check-in saved for today.' : 'Check-in saved for today. Editing is currently unavailable.');
         } else {
-          setCheckInStatus(checkInEnabled ? '' : 'Daily check-in is currently unavailable.');
+          setCheckInStatus(checkInEnabled ? '' : '1–5 check-ins are currently unavailable.');
         }
         syncCheckInControls();
       }
 
       function editCheckIn() {
-        const matchesSaved = matchesCheckIn(savedCheckIn);
-        renderGuidance(matchesSaved ? savedAssessmentGuidance : null);
-        setCheckInStatus(matchesSaved ? 'Check-in saved for today.' : savedCheckIn ? 'Unsaved changes.' : '');
+        if (unconfirmedCheckIn) unconfirmedCheckIn.draftRequested = false;
+        resetDraftFeedback();
+        const matchesSaved = matchesSavedAssessment(checkInValues());
+        setCheckInStatus(unconfirmedCheckIn ? 'Check the previous save before submitting new answers.'
+          : matchesSaved ? 'Check-in saved for today.' : savedAssessment ? 'Unsaved changes.' : '');
         syncCheckInControls();
       }
 
@@ -716,6 +755,7 @@ ${mcpHostBridgeScript}
           byId('next-day').disabled = !activityDate.value || activityDate.value >= activityDate.max;
         }
         renderAcceptedPlan(today);
+        renderSafetyReview(today.workoutRecommendation);
         renderLastWorkout(today.lastWorkout);
         renderWorkoutRecovery(today.recovery.sessionEffort);
         renderRecovery(today.recovery);
@@ -768,7 +808,8 @@ ${mcpHostBridgeScript}
             return;
           }
           if (!initialized) {
-            await host.initialize('SociusFit Today', 'fullscreen');
+            const capabilities = await host.initialize('SociusFit Today', 'fullscreen');
+            hostSupportsDraft = Boolean(capabilities.message?.text);
             initialized = true;
           }
           const result = await host.request('tools/call', {
@@ -828,20 +869,57 @@ ${mcpHostBridgeScript}
         }
       }
 
+      async function requestSessionDraft(date, tzOffset, isCurrent) {
+        if (!canRequestDraft() || !isCurrent() || activeView !== 'today'
+          || document.visibilityState !== 'visible' || byId('today-date').dateTime !== date
+          || date !== deviceDay || new Date().getTimezoneOffset() !== tzOffset
+          || draftInFlightDay === dayRevision) return;
+        const day = dayRevision;
+        const revision = draftRevision;
+        const canReport = () => isCurrent() && revision === draftRevision;
+        draftInFlightDay = day;
+        setDraftFeedback('Requesting a session draft in SociusFit chat…');
+        syncCheckInControls();
+        try {
+          const result = await host.request('ui/message', {
+            role: 'user',
+            content: [{
+              type: 'text',
+              text: 'Draft today’s session. Use expectedLocalDate ' + date + ' and browser tzOffset ' + tzOffset + ' minutes (JavaScript getTimezoneOffset).',
+            }],
+          });
+          if (!result || typeof result !== 'object' || Array.isArray(result) || result.isError) {
+            throw new Error('Draft request was not acknowledged');
+          }
+          if (canReport()) setDraftFeedback('Draft requested. If no draft appears, ask “Draft today’s session” in SociusFit chat.');
+        } catch {
+          if (canReport()) setDraftFeedback('Could not confirm the draft request. Check SociusFit chat before asking again. ', true);
+        } finally {
+          if (draftInFlightDay === day) {
+            draftInFlightDay = null;
+            syncCheckInControls();
+          }
+        }
+      }
+
       async function submitCheckIn(event) {
         event.preventDefault();
-        if (host.closed || refreshTodayIfDateChanged() || checkInSubmit.disabled || !checkInForm.reportValidity()) return;
+        if (host.closed || refreshTodayIfDateChanged() || checkInSubmit.disabled) return;
+        const checkIn = checkInValues();
+        if (!unconfirmedCheckIn && (!checkInForm.reportValidity() || !checkInInputs.every(name => isRating(checkIn[name])))) return;
         const date = byId('today-date').dateTime;
         const tzOffset = new Date().getTimezoneOffset();
         const revision = dayRevision;
-        todayReadRevision += 1;
-        const checkIn = Object.fromEntries(checkInInputs.map(name => [name, byId('check-in-' + name).value]));
-        let saved = matchesCheckIn(savedCheckIn);
+        const draftRequested = unconfirmedCheckIn
+          ? unconfirmedCheckIn.draftRequested && matchesCheckIn(unconfirmedCheckIn.answers, checkIn)
+          : canRequestDraft();
+        let confirmed = false;
         checkInBusy = true;
+        resetDraftFeedback();
         syncCheckInControls();
         const isCurrent = () => !refreshTodayIfDateChanged() && !host.closed && revision === dayRevision;
         try {
-          if (!saved) {
+          if (!unconfirmedCheckIn) {
             setCheckInStatus('Saving today’s check-in…');
             const result = await host.request('tools/call', {
               name: 'save_socius_today_check_in', arguments: { date, tzOffset, checkIn },
@@ -852,63 +930,56 @@ ${mcpHostBridgeScript}
               return;
             }
             const receipt = result?._meta?.savedCheckIn;
-            if (!result?.isError && receipt?.date === date && matchesCheckIn(receipt.checkIn)) {
-              saved = true;
-              savedCheckIn = receipt.checkIn;
-              savedAssessmentGuidance = null;
+            if (!result?.isError && receipt?.date === date && matchesCheckIn(receipt.checkIn, checkIn)) {
+              confirmed = true;
+              return;
             }
+            unconfirmedCheckIn = { answers: checkIn, draftRequested };
           }
-          setCheckInStatus(saved ? 'Check-in saved for today. Updating recommendation…' : 'Checking whether your answers were saved…');
+          setCheckInStatus('Checking whether your answers were saved…');
           const result = await host.request('tools/call', {
             name: 'open_socius_today', arguments: { tzOffset },
           });
           if (!isCurrent()) return;
           if (result?._meta?.['mcp/www_authenticate']) {
-            setCheckInStatus(saved
-              ? 'Check-in saved for today. Reconnect SociusFit in ChatGPT to refresh the recommendation.'
-              : 'Reconnect SociusFit in ChatGPT to confirm whether your check-in was saved.', true);
+            setCheckInStatus('Reconnect SociusFit in ChatGPT to confirm whether your check-in was saved.', true);
             return;
           }
           const today = result?._meta?.today;
-          const guidance = today?.assessmentGuidance;
-          if (result?.isError || today?.date !== date || today.checkIn?.status !== 'saved') {
-            throw new Error('Saved check-in read missing');
-          }
-          if (!matchesCheckIn(today.checkIn.checkIn)) {
-            if (!saved) throw new Error('Save could not be confirmed');
-            savedCheckIn = today.checkIn.checkIn;
-            savedAssessmentGuidance = guidance ?? null;
-            renderGuidance(null);
-            setCheckInStatus('Saved answers changed. Save your current answers to use them.', true);
+          const stored = parseAssessment(today?.assessment);
+          if (result?.isError || today?.date !== date || stored.status === 'unavailable') {
+            setCheckInStatus('Could not confirm the check-in was saved. Try again to check.', true);
             return;
           }
-          saved = true;
-          savedCheckIn = today.checkIn.checkIn;
-          if (typeof guidance?.title !== 'string' || !guidance.title
-            || typeof guidance.summary !== 'string' || !Array.isArray(guidance.reasons)
-            || !Array.isArray(guidance.actions)) throw new Error('Recommendation result missing');
-          renderToday(today);
-          renderCheckIn(today, result._meta);
-          syncTodayVisibility();
-          setCheckInStatus('Check-in saved for today. Recommendation ready.');
-          if (activeView === 'today' && (document.activeElement === document.body
-            || checkInForm.contains(document.activeElement))) byId('recommendation-title').focus();
-        } catch {
-          if (isCurrent()) {
-            setCheckInStatus(saved
-              ? 'Check-in saved for today. Could not refresh the recommendation. Try again.'
-              : 'Could not confirm the check-in was saved. Try again.', true);
+          renderSafetyReview(today.workoutRecommendation);
+          unconfirmedCheckIn = null;
+          setSavedAssessment(stored);
+          confirmed = stored.scale === '1-to-5' && matchesCheckIn(stored.checkIn, checkIn);
+          if (!confirmed) {
+            setCheckInStatus('The saved answers don’t match. Save again to use these answers.', true);
           }
+        } catch {
+          if (isCurrent()) setCheckInStatus('Could not confirm the check-in was saved. Try again to check.', true);
         } finally {
           if (revision === dayRevision) {
             checkInBusy = false;
+            if (confirmed) {
+              setSavedAssessment({ status: 'saved', scale: '1-to-5', checkIn });
+              unconfirmedCheckIn = null;
+              setCheckInStatus('Check-in saved for today.');
+            }
             syncCheckInControls();
+            if (confirmed && draftRequested) void requestSessionDraft(date, tzOffset, isCurrent);
+            const next = byId('check-in-next');
+            if (confirmed && !next.hidden && activeView === 'today' && (document.activeElement === document.body
+              || checkInForm.contains(document.activeElement))) next.focus();
           }
         }
       }
 
       function localDayKey(date) {
-        return [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-');
+        return [String(date.getFullYear()).padStart(4, '0'),
+          String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
       }
 
       function refreshTodayIfDateChanged() {
@@ -922,7 +993,6 @@ ${mcpHostBridgeScript}
 
         deviceDay = currentDay;
         dayRevision += 1;
-        savedRecommendation = null;
         checkInBusy = false;
         renderCheckIn({}, {});
         byId('accepted-plan-details').open = false;

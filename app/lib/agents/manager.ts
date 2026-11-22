@@ -16,6 +16,35 @@ const DEFAULT_CONTEXT_REQUEST: ManagerContextRequest = {
   include_daily_context: true
 }
 
+export function classifyDailySessionHandoff(content: string): { classification: ClassificationResult; managerDecision: ManagerDecision } | null {
+  // Standalone phrases only. Combined requests still go through normal routing.
+  if (!/^(?:please[ ,]+)?(?:draft today['’]s session|what should i train today|what does training look like today|adjust today['’]s session)[.!?]?$/i.test(content)) return null
+
+  return {
+    classification: {
+      input_type: 'question',
+      domains: ['socius'],
+      confidence: 1,
+      context: { has_portions: false, has_score: false, is_benchmark: false },
+    },
+    managerDecision: {
+      intent: 'ask_question',
+      agents: [],
+      context_request: {
+        user_goals: false,
+        recent_training_days: 0,
+        recent_nutrition_days: 0,
+        recent_recovery_days: 0,
+        include_prs: false,
+        include_today_program: false,
+        include_daily_context: false,
+      },
+      follow_up_needed: false,
+      confidence: 1,
+    },
+  }
+}
+
 /**
  * The Manager owns routing plus context-budget selection.
  *
