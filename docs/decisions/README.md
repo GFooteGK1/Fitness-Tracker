@@ -1,5 +1,7 @@
 # Architecture decisions
 
+- [ADR-0049: Draft today’s session in chat](ADR-0049-today-session-drafting.md) - fixed-window evidence and validated display for chosen-LLM drafts.
+
 - [ADR-0048: Saved daily check-in for SociusFit Today](ADR-0048-saved-today-check-in.md) - owner and local-date persistence with shared coaching readback.
 
 - [ADR-0047: WHOOP webhooks and reconciliation](ADR-0047-whoop-webhook-reconciliation.md) - paginated overlap, signed owner updates, provider-version ordering, and Today refresh.
