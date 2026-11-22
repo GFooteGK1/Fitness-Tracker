@@ -1,6 +1,57 @@
 import { setupMemoryBindingsCurrent } from './setup-memory-bindings'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { projectAcceptedCoachingDecisionOrigin, projectCoachingDecisionContext, type CoachingDecisionContext } from './coaching-decision-context'
+import { validateStoredCoachSessionCheckin } from './execution-feedback'
+
+const reviewActions = ['continue', 'adjust_dose', 'collect_signal', 'recover', 'shift_emphasis', 'pause_review'] as const
+
+export type ActivePlanSafety =
+  | { status: 'clear' }
+  | { status: 'hold'; reason: 'pause_review' | 'recover' | 'concerning_feedback' }
+  | { status: 'unavailable' }
+
+/** The latest accepted-base safety action is independent of weekly proposal eligibility. */
+export async function readActivePlanSafety(db: SupabaseClient, owner: string, programId: string, planId: string, asOf: string): Promise<ActivePlanSafety> {
+  const unavailable = { status: 'unavailable' } as const
+  const cutoff = Date.parse(asOf)
+  if (!owner || !programId || !planId || !Number.isFinite(cutoff)) return unavailable
+  try {
+    const feedback = await db.from('coach_checkins').select('id,user_id,program_id,plan_version_id,created_at,occurred_at,responses')
+      .eq('user_id', owner).eq('program_id', programId).eq('plan_version_id', planId).eq('checkin_type', 'session')
+      .eq('responses->>pain', 'concerning').order('created_at', { ascending: false }).order('id', { ascending: true }).limit(1)
+
+    // Check the active base and latest review after the feedback read, which can outlast either.
+    const [reviewResult, activeResult] = await Promise.all([
+      db.from('coach_weekly_reviews').select('id,user_id,program_id,base_plan_version_id,review_revision,action,created_at')
+        .eq('user_id', owner).eq('program_id', programId).eq('base_plan_version_id', planId)
+        .order('review_revision', { ascending: false }).limit(1),
+      db.from('training_programs').select('id,user_id,active_plan_version_id,status')
+        .eq('user_id', owner).eq('id', programId).eq('status', 'active').eq('active_plan_version_id', planId).limit(1),
+    ])
+    if (reviewResult.error || activeResult.error || !Array.isArray(reviewResult.data) || reviewResult.data.length > 1
+      || !Array.isArray(activeResult.data) || activeResult.data.length !== 1) return unavailable
+    const active = activeResult.data[0]
+    if (active.id !== programId || active.user_id !== owner || active.active_plan_version_id !== planId || active.status !== 'active') {
+      return unavailable
+    }
+    const review = reviewResult.data[0] ?? null
+    if (review && (review.user_id !== owner || review.program_id !== programId || review.base_plan_version_id !== planId
+      || typeof review.id !== 'string' || !review.id || !Number.isSafeInteger(review.review_revision) || review.review_revision < 1
+      || !reviewActions.some(action => action === review.action) || typeof review.created_at !== 'string'
+      || !Number.isFinite(Date.parse(review.created_at)) || Date.parse(review.created_at) > cutoff)) return unavailable
+    if (review?.action === 'pause_review' || review?.action === 'recover') return { status: 'hold', reason: review.action }
+
+    // An ordinary weekly review cannot resolve a concerning feedback signal.
+    if (feedback.error || !Array.isArray(feedback.data) || feedback.data.length > 1) return unavailable
+    const row = feedback.data[0]
+    if (!row) return { status: 'clear' }
+    if (row.user_id !== owner || row.program_id !== programId || row.plan_version_id !== planId
+      || typeof row.id !== 'string' || typeof row.created_at !== 'string' || !Number.isFinite(Date.parse(row.created_at))
+      || Date.parse(row.created_at) > cutoff) return unavailable
+    const checkIn = validateStoredCoachSessionCheckin(row.responses, row.occurred_at, row.id)
+    return checkIn.ok && checkIn.value.pain === 'concerning' ? { status: 'hold', reason: 'concerning_feedback' } : unavailable
+  } catch { return unavailable }
+}
 
 /** Bounded, owned readback of one stored decision for the active accepted base. */
 export async function fetchCoachingDecisionContext(

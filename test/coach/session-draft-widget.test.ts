@@ -94,4 +94,25 @@ describe('SociusFit inline session draft', () => {
     deliver({ _meta: { sessionDraft: { ...draft, mainWork: [] } } })
     expect(element('session-draft').hidden).toBe(true)
   })
+
+  it('renders a scheduled rest draft without exercise phases and allows light recovery detail', () => {
+    const { widget, element, deliver } = mountDraft()
+    const rest = { ...draft, title: 'Keep the scheduled rest day', objective: 'Recover for the next planned session.',
+      dayType: 'rest', daySchedule: 'scheduled_rest', warmUp: [], mainWork: [] }
+    deliver({ _meta: { sessionDraft: rest } })
+    expect(element('session-draft').hidden).toBe(false)
+    expect(element('draft-kind').textContent).toBe('Rest day draft')
+    expect(element('plan-basis').textContent).toBe('Scheduled rest day')
+    expect(element('scale-title').textContent).toBe('When to reassess')
+    expect(widget.querySelectorAll('.phase')).toHaveLength(0)
+
+    deliver({ _meta: { sessionDraft: { ...rest, mainWork: draft.mainWork } } })
+    expect(element('session-draft').hidden).toBe(true)
+
+    const walk = { activity: 'Easy walk', dose: '10 min', effort: 'Comfortable', rest: 'As needed' }
+    deliver({ _meta: { sessionDraft: { ...rest, dayType: 'recovery', mainWork: [walk] } } })
+    expect(element('session-draft').hidden).toBe(false)
+    expect(element('draft-kind').textContent).toBe('Recovery draft')
+    expect(widget.querySelector('.phase h3')?.textContent).toBe('Easy walk')
+  })
 })

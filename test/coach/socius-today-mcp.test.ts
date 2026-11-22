@@ -3,7 +3,6 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { handleCoachingMcp } from '../../app/lib/coach/coaching-mcp-http'
 import type { CoachingBearerDependencies, CoachingOAuthConfig } from '../../app/lib/auth/coaching-oauth'
-import { captureProvenance } from '../../app/lib/capture/contracts'
 import { contextClient, contextRows, type ContextRows } from '../fixtures/coaching-context'
 import { workSnapshot } from '../fixtures/coach-performed-work'
 
@@ -20,17 +19,21 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v8.html'
+const resourceUri = 'ui://socius/today-v12.html'
 const legacyResourceUris = [
   'ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html',
   'ui://socius/today-v5.html', 'ui://socius/today-v6.html', 'ui://socius/today-v7.html',
+  'ui://socius/today-v8.html', 'ui://socius/today-v9.html', 'ui://socius/today-v10.html', 'ui://socius/today-v11.html',
 ]
 const activityUri = 'ui://socius/activity.html'
-const draftUri = 'ui://socius/session-draft-v1.html'
+const draftUri = 'ui://socius/session-draft-v2.html'
 const title = 'Saved easy session'
 const today = (args: Record<string, unknown>) => ({ name: 'open_socius_today', arguments: args })
 const typical = { stress: 'usual', fatigue: 'usual', sleep: 'usual' }
-const answers = { ...typical, soreness: 'higher', motivation: 'usual' }
+const legacyAnswers = { ...typical, soreness: 'higher', motivation: 'usual' }
+const answers = { stress: 2, fatigue: 4, sleep: 5, soreness: 1, motivation: 5 }
+const shadows = { stress: 'higher', fatigue: 'lower', sleep: 'better', soreness: 'higher', motivation: 'higher' }
+const storedRatings = { ...shadows, stress_rating: 2, fatigue_rating: 4, sleep_rating: 5, soreness_rating: 1, motivation_rating: 5 }
 const localDate = '2026-10-18'
 const saveName = 'save_socius_today_check_in'
 const saveArguments = { date: localDate, tzOffset: 360, checkIn: answers }
@@ -38,7 +41,7 @@ const saveCall = (overrides: Record<string, unknown> = {}) => ({ name: saveName,
 const checkInTable = 'coach_daily_checkins'
 
 function checkInStorage(records: ContextRows[string] = []) {
-  const mismatches = { value: { soreness: 'usual' }, owner: { user_id: other }, date: { local_date: '2026-10-17' } }
+  const mismatches = { value: { soreness_rating: 2 }, owner: { user_id: other }, date: { local_date: '2026-10-17' } }
   const storage = { records, failure: null as 'database' | keyof typeof mismatches | null }
   const upsert = vi.fn((row: Record<string, unknown>, options: { onConflict: string }) => {
     expect(options.onConflict).toBe('user_id,local_date')
@@ -48,7 +51,13 @@ function checkInStorage(records: ContextRows[string] = []) {
           if (storage.failure === 'database') return { data: null, error: { message: 'private check-in storage detail' } }
           const index = records.findIndex(record => record.user_id === row.user_id && record.local_date === row.local_date)
           if (index === -1) records.push({ ...row })
-          else records[index] = { ...records[index], ...row }
+          else {
+            const existing = records[index]
+            const fields = Object.keys(answers)
+            const changesLegacy = !Object.hasOwn(row, 'stress_rating') && fields.some(field => row[field] !== existing[field])
+            const cleared = changesLegacy ? Object.fromEntries(fields.map(field => [`${field}_rating`, null])) : {}
+            records[index] = { ...existing, ...row, ...cleared }
+          }
           const saved = records[index === -1 ? records.length - 1 : index]
           const selected = Object.fromEntries(columns.split(',').map(column => column.trim()).map(column => [column, saved[column]]))
           if (storage.failure) Object.assign(selected, mismatches[storage.failure])
@@ -154,7 +163,12 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
     const { client, db, writes } = await connect()
     try {
       expect(client.getServerCapabilities()?.resources).toEqual({})
+      expect(client.getInstructions()).toContain('For any request to recommend, draft, or adjust today’s training, start with prepare_today_session_draft.')
+      expect(client.getInstructions()).toContain('Factual reads and general coaching references do not authorize a draft.')
       const tools = (await client.listTools()).tools
+      expect(tools.find(tool => tool.name === 'get_coaching_context')?.description).toContain('factual context')
+      expect(tools.find(tool => tool.name === 'prepare_today_session_draft')?.description).toContain('including on a rest day')
+      expect(tools.find(tool => tool.name === 'prepare_today_session_draft')?.description).toContain('any other result or tool error')
       expect(tools).toEqual(expect.arrayContaining([expect.objectContaining({
         name: today({}).name, annotations: expect.objectContaining({ readOnlyHint: true }),
         icons: ['light', 'dark'].map(theme => ({
@@ -274,46 +288,37 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
     } finally { await client.close() }
   })
 
-  it('validates the app-only check-in and recalculates advice from fresh owner reads without saving it', async () => {
+  it('retires check-in previews and keeps Today hydration factual', async () => {
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
-    const { client, rows, db, traces, writes } = await connect(owner, data => {
-      Object.assign(data.workouts[0], { workout_date: '2026-10-17', rpe: 9,
-        capture_provenance: captureProvenance('workout', 'model_estimated', 'unreviewed') })
+    const { client, db, traces, writes } = await connect(owner, data => {
       data.whoop_recovery[0].recovery_score = 12
     })
     try {
-      for (const args of [{ checkIn: typical }, { tzOffset: 360, checkIn: null },
-        { tzOffset: 360, checkIn: { stress: 'usual', sleep: 'usual' } },
-        { tzOffset: 360, checkIn: { ...typical, sleep: 'higher' } },
-        { tzOffset: 360, checkIn: { ...typical, user_id: other } }]) {
+      for (const args of [{ checkIn: typical }, { tzOffset: 360, checkIn: answers }]) {
         const result = await client.callTool(today(args))
         expect(result.isError).toBe(true)
         expect(result._meta?.today).toBeUndefined()
+        expect(result.content).toEqual([{ type: 'text', text: 'Reopen Today to view your saved check-in.' }])
       }
       expect(db.from).not.toHaveBeenCalled()
 
-      const initial = await client.callTool(today({ tzOffset: 360, checkIn: typical }))
-      expect(initial._meta?.today).toMatchObject({ assessmentGuidance: {
-        title: `Start with ${title}`,
-        reasons: expect.arrayContaining(['You have recent training logged.', expect.stringContaining('Improve 5000 meter time')]),
-      }, recovery: { recoveryScore: 12, status: 'stale' } })
+      const initial = await client.callTool(today({ tzOffset: 360 }))
+      expect(initial._meta?.today).toMatchObject({ checkIn: { status: 'missing' },
+        sessions: [expect.objectContaining({ title, status: 'planned' })],
+        recovery: { recoveryScore: 12, status: 'stale' } })
+      expect(initial._meta?.today).not.toHaveProperty('assessmentGuidance')
       expect(initial.content).toEqual([{ type: 'text', text: 'SociusFit Today opened.' }])
       expect(initial.structuredContent).toBeUndefined()
-
-      const worse = await client.callTool(today({ tzOffset: 360, checkIn: { ...typical, sleep: 'worse' } }))
-      expect(worse._meta?.today).toMatchObject({ assessmentGuidance: { title: 'Start easy and reassess',
-        reasons: expect.arrayContaining(['You reported worse sleep compared with usual.']) } })
-
-      rows.workouts[0].capture_provenance = captureProvenance('workout', 'athlete_reported', 'corrected')
-      const reviewed = await client.callTool(today({ tzOffset: 360, checkIn: typical }))
-      expect(reviewed._meta?.today).toMatchObject({ assessmentGuidance: { title: 'Make today an easy day',
-        reasons: expect.arrayContaining(['You confirmed a recent session effort of 9/10.']) } })
+      const cached = await client.callTool(today({ tzOffset: 360, checkIn: typical }))
+      expect(cached._meta?.today).toMatchObject({ checkIn: { status: 'missing' }, assessmentGuidance: {
+        title: 'Open the updated Today view', summary: expect.stringContaining('Reopen Today'), actions: [], reasons: [],
+      } })
       expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner))).toBe(true)
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
 
-  it('offers training that fits a confirmed goal even without a scheduled session or WHOOP', async () => {
+  it('loads an unscheduled day without turning it into a second recommendation path', async () => {
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
     const { client, writes } = await connect(owner, rows => {
       rows.prescribed_sessions = []
@@ -321,12 +326,9 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       rows.whoop_tokens = []
     })
     try {
-      const result = await client.callTool(today({ tzOffset: 360, checkIn: typical }))
-      expect(result._meta?.today).toMatchObject({ assessmentGuidance: {
-        title: 'Do a manageable session for your goal',
-        actions: expect.arrayContaining([expect.stringContaining('a familiar aerobic activity')]),
-        reasons: expect.arrayContaining([expect.stringContaining('limited recent workout evidence')]),
-      }, recovery: { status: 'disconnected' } })
+      const result = await client.callTool(today({ tzOffset: 360 }))
+      expect(result._meta?.today).toMatchObject({ sessions: [], recovery: { status: 'disconnected' } })
+      expect(result._meta?.today).not.toHaveProperty('assessmentGuidance')
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
@@ -334,7 +336,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
   it('keeps the same local-day answers across Today, a fresh chat, and a same-day correction', async () => {
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
     vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
-    const foreign = { user_id: other, local_date: localDate, ...answers, stress: 'higher' }
+    const foreign = { user_id: other, local_date: localDate, ...legacyAnswers, stress: 'higher' }
     const checkIns = checkInStorage([foreign])
     const { client, openClient, traces, writes } = await connect(owner, data => {
       data.workouts[0].workout_date = '2026-10-17'
@@ -346,7 +348,9 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         _meta: expect.objectContaining({ ui: expect.objectContaining({ visibility: ['app'] }) }),
       }))
       const initial = await client.callTool(today({ tzOffset: 360 }))
-      expect(initial._meta).toMatchObject({ checkInEnabled: true, today: { date: localDate, checkIn: { status: 'missing' } } })
+      expect(initial._meta).toMatchObject({ checkInEnabled: true, today: {
+        date: localDate, assessment: { status: 'missing' }, checkIn: { status: 'missing' },
+      } })
       expect(checkIns.upsert).not.toHaveBeenCalled()
 
       const saved = await client.callTool(saveCall())
@@ -355,34 +359,39 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       expect(saved.structuredContent).toBeUndefined()
       expect(JSON.stringify(saved.content)).not.toMatch(/soreness|motivation|10000000-0000/)
       expect(checkIns.upsert).toHaveBeenCalledTimes(1)
-      expect(checkIns.upsert).toHaveBeenCalledWith({ user_id: owner, local_date: localDate, ...answers }, { onConflict: 'user_id,local_date' })
+      expect(checkIns.upsert).toHaveBeenCalledWith({ user_id: owner, local_date: localDate, ...storedRatings }, { onConflict: 'user_id,local_date' })
 
       const fresh = await openClient()
       try {
         const hydrated = await fresh.callTool(today({ tzOffset: 360 }))
         expect(hydrated._meta?.today).toMatchObject({
-          date: localDate, checkIn: { status: 'saved', checkIn: answers },
-          assessmentGuidance: { title: 'Start easy and reassess', reasons: expect.arrayContaining([expect.stringMatching(/soreness/)]) },
+          date: localDate, assessment: { status: 'saved', scale: '1-to-5', checkIn: answers },
+          checkIn: { status: 'saved', checkIn: shadows },
+          assessmentGuidance: { title: 'Check-in saved', summary: 'In SociusFit chat, ask “Draft today’s session”.', reasons: [], actions: [] },
         })
         const chatCall = { name: 'get_coaching_context', arguments: { tzOffset: 360 } }
         const context = await fresh.callTool(chatCall)
-        expect(context.structuredContent).toMatchObject({ context: { localDate, dailyCheckIn: { status: 'saved', checkIn: answers },
-          assessmentGuidance: (hydrated._meta?.today as { assessmentGuidance: unknown }).assessmentGuidance } })
+        expect(context.structuredContent).toMatchObject({ context: { localDate,
+          dailyCheckIn: { status: 'saved', scale: '1-to-5', checkIn: answers },
+        } })
+        expect(context.structuredContent).not.toHaveProperty('context.assessmentGuidance')
         expect(JSON.stringify(context.structuredContent)).not.toContain(other)
         const legacyPreview = await fresh.callTool(today({ tzOffset: 360, checkIn: typical }))
-        expect(legacyPreview._meta?.today).toMatchObject({ checkIn: { status: 'saved', checkIn: answers },
-          assessmentGuidance: { title: `Start with ${title}` } })
+        expect(legacyPreview._meta?.today).toMatchObject({ checkIn: { status: 'saved', checkIn: shadows },
+          assessmentGuidance: { title: 'Open the updated Today view', reasons: [], actions: [] } })
         expect(checkIns.upsert).toHaveBeenCalledTimes(1)
 
-        const correction = { ...answers, soreness: 'usual' }
+        const correction = { ...answers, soreness: 2 }
         const corrected = await fresh.callTool(saveCall({ checkIn: correction }))
         expect(corrected._meta?.savedCheckIn).toEqual({ date: localDate, checkIn: correction })
-        expect(checkIns.storage.records).toEqual([foreign, { user_id: owner, local_date: localDate, ...correction }])
+        expect(checkIns.storage.records).toEqual([foreign, { user_id: owner, local_date: localDate, ...storedRatings, soreness_rating: 2 }])
         const readBack = await client.callTool(today({ tzOffset: 360 }))
-        expect(readBack._meta?.today).toMatchObject({ checkIn: { checkIn: correction }, assessmentGuidance: { title: `Start with ${title}` } })
+        expect(readBack._meta?.today).toMatchObject({ assessment: { scale: '1-to-5', checkIn: correction },
+          checkIn: { checkIn: shadows }, assessmentGuidance: { title: 'Check-in saved' },
+        })
         const contextAfterCorrection = await fresh.callTool(chatCall)
-        expect(contextAfterCorrection.structuredContent).toMatchObject({ context: { dailyCheckIn: { checkIn: correction },
-          assessmentGuidance: (readBack._meta?.today as { assessmentGuidance: unknown }).assessmentGuidance } })
+        expect(contextAfterCorrection.structuredContent).toMatchObject({ context: { dailyCheckIn: { checkIn: correction } } })
+        expect(contextAfterCorrection.structuredContent).not.toHaveProperty('context.assessmentGuidance')
 
         vi.setSystemTime('2026-10-19T06:00:00.000Z')
         const nextDay = await fresh.callTool(today({ tzOffset: 360 }))
@@ -407,7 +416,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
   it('hides and rejects the save tool for a valid non-pilot account even when other writes are enabled', async () => {
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
     vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
-    const checkIns = checkInStorage([{ user_id: owner, local_date: localDate, ...answers }])
+    const checkIns = checkInStorage([{ user_id: owner, local_date: localDate, ...legacyAnswers }])
     const { client, writes } = await connect(other, undefined, checkIns)
     try {
       const { tools } = await client.listTools()
@@ -421,6 +430,56 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
     } finally { await client.close() }
   })
 
+  it('reads exact historical relative answers and accepts an explicit cached-widget correction', async () => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+    const checkIns = checkInStorage([{ user_id: owner, local_date: localDate, ...legacyAnswers }])
+    const { client } = await connect(owner, undefined, checkIns)
+    try {
+      const before = await client.callTool(today({ tzOffset: 360 }))
+      expect(before._meta?.today).toMatchObject({
+        assessment: { status: 'saved', scale: 'relative-to-usual', checkIn: legacyAnswers },
+        checkIn: { status: 'saved', checkIn: legacyAnswers },
+      })
+      const newSave = await client.callTool(saveCall())
+      expect(newSave._meta?.savedCheckIn).toEqual({ date: localDate, checkIn: answers })
+      const sameLegacySave = await client.callTool(saveCall({ checkIn: shadows }))
+      expect(sameLegacySave._meta?.savedCheckIn).toEqual({ date: localDate, checkIn: shadows })
+      const precise = await client.callTool(today({ tzOffset: 360 }))
+      expect(precise._meta?.today).toMatchObject({ assessment: { status: 'saved', scale: '1-to-5', checkIn: answers } })
+      const oldSave = await client.callTool(saveCall({ checkIn: legacyAnswers }))
+      expect(oldSave._meta?.savedCheckIn).toEqual({ date: localDate, checkIn: legacyAnswers })
+      const after = await client.callTool(today({ tzOffset: 360 }))
+      expect(after._meta?.today).toMatchObject({
+        assessment: { status: 'saved', scale: 'relative-to-usual', checkIn: legacyAnswers },
+        checkIn: { status: 'saved', checkIn: legacyAnswers },
+      })
+      expect(checkIns.storage.records).toHaveLength(1)
+    } finally { await client.close() }
+  })
+
+  it.each([
+    { action: 'recover', expected: 'Review before training' },
+    { action: 'unknown', expected: 'Training safety status unavailable' },
+  ])('keeps an old widget handoff consistent with the $action safety state', async ({ action, expected }) => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    const checkIns = checkInStorage([{ user_id: owner, local_date: localDate, ...storedRatings }])
+    const { client, writes } = await connect(owner, rows => {
+      rows.coach_weekly_reviews = [{ id: 'review', program_id: 'program-one', base_plan_version_id: 'accepted-one',
+        review_revision: 1, action, created_at: '2026-10-18T10:00:00.000Z' }]
+    }, checkIns)
+    try {
+      const response = await client.callTool(today({ tzOffset: 360 }))
+      expect(response._meta?.today).toMatchObject({
+        workoutRecommendation: { reviewBeforeTraining: true, title: expected },
+        assessmentGuidance: { title: expected, actions: [], reasons: [] },
+      })
+      expect(JSON.stringify(response._meta?.today)).not.toContain('Draft today’s session')
+      expect(writes).not.toHaveBeenCalled()
+      expect(checkIns.upsert).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
   it('rejects invalid input and a mismatched authenticated subject before writing', async () => {
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
     vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
@@ -430,6 +489,8 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       for (const invalid of [
         { user_id: other }, { date: '2026-10-19' }, { date: '2026-10-17' }, { date: '2026-02-30' },
         { tzOffset: 841 }, { tzOffset: '360' }, { checkIn: typical }, { checkIn: { ...answers, soreness: 'bad' } },
+        { checkIn: { ...answers, stress: 0 } }, { checkIn: { ...answers, sleep: 6 } },
+        { checkIn: { ...answers, fatigue: 4.5 } }, { checkIn: { ...answers, motivation: '5' } },
         { checkIn: { ...answers, user_id: other } },
       ]) {
         const rejected = await client.callTool(saveCall(invalid))
@@ -456,9 +517,9 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       expect(result._meta?.savedCheckIn).toBeUndefined()
       expect(JSON.stringify(result.content)).not.toContain('private check-in storage detail')
       const reread = await client.callTool(today({ tzOffset: 360 }))
-      expect(reread._meta?.today).toMatchObject({ checkIn: failure === 'database'
+      expect(reread._meta?.today).toMatchObject({ assessment: failure === 'database'
         ? { status: 'missing' }
-        : { status: 'saved', checkIn: answers } })
+        : { status: 'saved', scale: '1-to-5', checkIn: answers } })
       expect(checkIns.upsert).toHaveBeenCalledTimes(1)
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }

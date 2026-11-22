@@ -1,11 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { readActivePlanSafety, type ActivePlanSafety } from './coaching-decision-context-server'
 import { CoachingContextError, contextObject } from './coaching-context'
 import type { readCoachingContext } from './coaching-context-server'
 import { assertVerifiedContextPrincipal, type AuthorizeContextRequest, type ContextToolPolicy } from './coaching-context-tool'
 import { buildExternalPerformedWorkContext } from './external-performed-work-context'
 import type { EvidenceQuantity } from './performed-dose-evidence'
 import { historyFieldProvenance, type HistoryWorkoutRow } from './planning-history'
-import { projectTodayWorkoutRecommendation, readCurrentWorkoutRecommendation } from './today-workout-recommendation'
+import { projectTodayWorkoutRecommendation } from './today-workout-recommendation'
 
 type CoachingContext = Awaited<ReturnType<typeof readCoachingContext>>
 type Work = ReturnType<typeof buildExternalPerformedWorkContext>
@@ -286,6 +287,18 @@ async function readLastCompletedWorkout(db: SupabaseClient, owner: string, conte
   } catch { return unavailable }
 }
 
+function readDailySafety(db: SupabaseClient, owner: string, context: CoachingContext): ActivePlanSafety | Promise<ActivePlanSafety> {
+  if (!context.acceptedProgramming) {
+    return context.gaps.includes('accepted_plan_missing') ? { status: 'clear' } : { status: 'unavailable' }
+  }
+  const program: unknown = context.acceptedProgramming.program
+  const plan: unknown = context.acceptedProgramming.plan
+  if (!contextObject(program) || typeof program.id !== 'string' || !contextObject(plan) || typeof plan.id !== 'string') {
+    return { status: 'unavailable' }
+  }
+  return readActivePlanSafety(db, owner, program.id, plan.id, context.readCompletedAt)
+}
+
 export function createWorkoutTodayReader(authorize: AuthorizeContextRequest, policy: ContextToolPolicy) {
   return async (context: CoachingContext) => {
     const { principal, db } = await authorize()
@@ -295,15 +308,10 @@ export function createWorkoutTodayReader(authorize: AuthorizeContextRequest, pol
       || (context.performedWork && context.performedWork.userId !== principal.subject)) {
       throw new CoachingContextError(401, 'Authenticated subject mismatch')
     }
-    const owner = principal.subject
-    const [last, storedRecommendation] = await Promise.all([
-      readLastCompletedWorkout(db, owner, context),
-      readCurrentWorkoutRecommendation(db, owner, context),
+    const [last, safety] = await Promise.all([
+      readLastCompletedWorkout(db, principal.subject, context),
+      readDailySafety(db, principal.subject, context),
     ])
-    const plan = projectTodayWorkoutRecommendation(context)
-    const workoutRecommendation = storedRecommendation ? {
-      ...plan, ...storedRecommendation, status: 'recommended' as const, source: 'saved_recommendation' as const,
-    } : plan
-    return { ...last, workoutRecommendation }
+    return { ...last, workoutRecommendation: projectTodayWorkoutRecommendation(context), safety }
   }
 }

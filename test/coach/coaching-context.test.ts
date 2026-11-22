@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readCoachingContext, selectOnlyClient } from '@/app/lib/coach/coaching-context-server'
+import { buildCompleteEightWeekPlan } from '@/app/lib/coach/complete-program'
+import { buildStoredRollingWeeklyIntent, serializeRollingSessions } from '@/app/lib/coach/rolling-weekly-api'
+import { buildRollingTrainingDirection } from '@/app/lib/coach/rolling-weekly-contracts'
+import { buildRollingWeeklyPlan } from '@/app/lib/coach/rolling-weekly-plan'
 import { contextClient, contextNow, contextOwner, contextRows } from '../fixtures/coaching-context'
 import { reviewedRollingWeek } from '../fixtures/reviewed-rolling-week'
+import { GOLDEN_PROGRAMMING_PROFILES } from './golden-programming-profiles'
 import * as referencePublication from '../../app/lib/coach/external-coaching-reference'
 
 const params = () => new URLSearchParams({ tzOffset: '0', days: '28' })
@@ -195,7 +200,9 @@ describe('authenticated coaching context: requirements established before implem
   it('preserves exact reviewed prescriptions and their effective execution identity', async () => {
     const rows = contextRows(), reviewed = reviewedRollingWeek()
     const plan = reviewed.plan
-    rows.training_plan_versions[0].intent = reviewed.intent
+    Object.assign(rows.training_plan_versions[0], {
+      intent: reviewed.intent, window_start: plan.windowStart, window_end: plan.windowEnd,
+    })
     rows.training_plan_versions[0].input_snapshot = { reviewedExecutionStorage: 'reviewed_execution_slots_v1' }
     rows.coach_effective_prescribed_sessions = plan.scheduledSessions.map((session, index) => ({
       id: `effective-${index}`, user_id: contextOwner, program_id: 'program-one', plan_version_id: 'accepted-one',
@@ -208,6 +215,28 @@ describe('authenticated coaching context: requirements established before implem
     const result = await readCoachingContext(contextClient(rows).db, params())
     expect(result.acceptedProgramming?.todaySessions[0]).toMatchObject({ id: 'effective-0', execution_plan_version_id: 'execution-plan' })
     expect(result.acceptedProgramming?.todaySessions[0].prescription).toEqual(plan.scheduledSessions[0].prescription)
+    expect(result.acceptedProgramming?.scheduleWindow).toEqual({ startsOn: plan.windowStart, endsOn: plan.windowEnd })
+  })
+
+  it('verifies a rolling window only when every final dated slot agrees with the accepted plan', async () => {
+    const rows = contextRows()
+    const { profile } = GOLDEN_PROGRAMMING_PROFILES[1]
+    const direction = buildRollingTrainingDirection(profile, { hypothesis: 'Build strength with repeatable exposures.' })
+    const plan = buildRollingWeeklyPlan({ source: 'initial', windowStart: profile.startDate, profile, direction })
+    if (plan.kind !== 'weekly_plan') throw new Error('Expected a weekly plan')
+    Object.assign(rows.training_plan_versions[0], {
+      intent: buildStoredRollingWeeklyIntent(plan, buildCompleteEightWeekPlan(profile).adaptiveProgramming),
+      window_start: plan.windowStart, window_end: plan.windowEnd,
+    })
+    rows.prescribed_sessions = serializeRollingSessions(plan).map((slot, index) => ({
+      ...slot, id: `session-${index}`, user_id: contextOwner, program_id: 'program-one',
+      plan_version_id: 'accepted-one', status: 'planned', completed_workout_id: null,
+    }))
+    const complete = await readCoachingContext(contextClient(rows).db, params())
+    expect(complete.acceptedProgramming?.scheduleWindow).toEqual({ startsOn: plan.windowStart, endsOn: plan.windowEnd })
+    rows.prescribed_sessions.pop()
+    const incomplete = await readCoachingContext(contextClient(rows).db, params())
+    expect(incomplete.acceptedProgramming?.scheduleWindow).toBeNull()
   })
 
   it('does not export private plan storage even when it is large, retaining the exact saved session', async () => {
@@ -249,12 +278,13 @@ describe('authenticated coaching context: requirements established before implem
     expect(network).not.toHaveBeenCalled()
   })
 
-  it('reports expired goals and rest days without generating a replacement session', async () => {
+  it('reports expired goals and an unscheduled legacy date without inferring rest', async () => {
     const rows = contextRows(); rows.coach_memories[0].effective_until = '2026-10-18T00:00:00.000Z'
     rows.prescribed_sessions[0].scheduled_date = '2026-10-19'
     const result = await readCoachingContext(contextClient(rows).db, params())
     expect(result.requirements.training_intent).toMatchObject({ status: 'expired', value: null })
     expect(result.acceptedProgramming?.todaySessions).toEqual([])
+    expect(result.acceptedProgramming?.scheduleWindow).toBeNull()
     expect(result.gaps).toContain('no_saved_session_for_local_date')
   })
 })

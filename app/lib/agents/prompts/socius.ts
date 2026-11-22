@@ -1,4 +1,5 @@
 import { renderRecommendationContext } from './recommendation-context'
+import { dailySessionRouting } from './daily-session-routing'
 import { canSurfaceLegacyInsight, filterModelConversation } from '../legacy-insight-guard'
 import type { SociusContext } from '../types'
 import { COACH_REFERENCE_MANIFEST } from '@/app/lib/coach/reference'
@@ -11,7 +12,7 @@ import { renderCoachingDecisionContext } from '@/app/lib/coach/coaching-decision
  * Builds the Socius system prompt with full passive context embedded.
  * Socius synthesizes workouts, nutrition, WHOOP recovery, and user goals.
  */
-export function buildSociusPrompt(ctx: SociusContext): string {
+export function buildSociusPrompt(ctx: SociusContext, todayPilot = false): string {
   const summary = ctx.thirty_day_summary
   const avail = ctx.data_availability
 
@@ -101,7 +102,7 @@ ${ctx.user_profile.body_metrics && Object.keys(ctx.user_profile.body_metrics).le
 
 You are Socius, the SociusFit cross-domain analyst. You are part of a coaching team that includes a Trainer and a Nutritionist.
 
-## Your Job
+${todayPilot ? `${dailySessionRouting}\n\n` : ''}## Your Job
 - Synthesize workouts, nutrition, recovery, sleep, strain, and user goals.
 - Data-driven but approachable.
 - Synthesize across all domains: workouts, nutrition, WHOOP, and user goals.
@@ -213,7 +214,7 @@ Do not infer nutrition-performance links from adherence or workout counts. Do no
 3. For workout summaries, aggregate by type (metcon, strength, cardio), include counts and frequency, and call out notable outliers.
 4. For trend analysis, describe the trend and cite supporting data points from the context.
 5. Cite specific data points from the provided context.
-6. When data is limited, acknowledge gaps and still provide the best-supported recommendation.
+6. ${todayPilot ? 'For other coaching questions, when' : 'When'} data is limited, acknowledge gaps and still provide the best-supported recommendation.
 7. Do not invent data that is not present in the context.
 8. Do not invent loads, percentages, paces, calorie targets, set/rep prescriptions, or progression limits. Numeric prescriptions must come from validated policy output or an accepted program shown in context.
 9. Never activate or silently rewrite a program. Describe proposed changes and require explicit athlete acceptance through the application workflow.

@@ -4,7 +4,10 @@
 - **Date:** 2026-11-21
 - **Related:** [ADR-0039](ADR-0039-chosen-llm-and-durable-context.md), [ADR-0046](ADR-0046-today-check-in-guidance.md)
 
-## Decision
+[ADR-0050](ADR-0050-one-daily-session-drafting-workflow.md) keeps this storage contract and replaces the guidance and preview paths described below.
+[ADR-0051](ADR-0051-five-point-today-check-in.md) adds exact 1–5 ratings to the same owner-local-date record.
+
+## Original decision
 
 Today saves the athlete’s explicit check-in in `coach_daily_checkins`. Each owner has one row per local calendar date. An explicit save replaces that date’s answers, and the confirmation echoes the verified row. Opening Today reads the same date and regenerates the recommendation from the saved answers and current coaching context. The private save tool requires the verified Today pilot owner and the existing MCP writes flag. It verifies the date against the supplied current timezone offset before saving. New saves require stress, fatigue, sleep, soreness, and motivation. The two added prompts follow the coaching reference and are proposed fields for this candidate.
 

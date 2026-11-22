@@ -1,10 +1,6 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { personalizedCoachingCapabilities } from '../personalized-coaching-capabilities'
-import { recommendationScope } from '../recommendations/context'
 import { contextObject, type ContextRow } from './coaching-context'
 import type { readCoachingContext } from './coaching-context-server'
 import { describeReviewedActivity, isOptionalReviewedStep, parseReviewedSession, reviewedStepActivities, REVIEWED_SESSION_FORMAT } from './reviewed-session-contract'
-import { stableStringify } from './rolling-weekly-contracts'
 
 type TodayWorkoutContext = Awaited<ReturnType<typeof readCoachingContext>>
 
@@ -23,9 +19,6 @@ export interface TodayWorkoutRecommendation {
   reviewBeforeTraining?: boolean
   sessions: SessionPreview[]
 }
-
-const refreshFields = 'user_id,source_revision,response_revision,processed_source_revision,processed_response_revision,processed_context,current_recommendation_id,next_due_at,last_error'
-const recommendationFields = 'id,user_id,decision,rule_id,policy_version,runtime_fingerprint,scope_key,evidence_fingerprint,source_revision,response_revision,local_date,timezone_offset,valid_until,plan_version_id,intent_memory_id,intent_version,lifecycle'
 
 function text(value: unknown, length: number) {
   return typeof value === 'string' ? value.trim().slice(0, length) || null : null
@@ -83,7 +76,7 @@ function sessionDetails(prescription: ContextRow): string[] {
 
 export function projectTodayWorkoutRecommendation(context: Pick<TodayWorkoutContext, 'acceptedProgramming' | 'localDate'>): TodayWorkoutRecommendation {
   const programming = context.acceptedProgramming
-  if (!programming) return { status: 'unavailable', source: null, title: 'No workout recommendation available',
+  if (!programming) return { status: 'unavailable', source: null, title: 'No saved workout schedule available',
     reason: null, sessions: [] }
   const sessions = programming.todaySessions.slice(0, 6).flatMap<SessionPreview>(row => {
     if (row.scheduled_date !== context.localDate || !contextObject(row.prescription)
@@ -102,79 +95,4 @@ export function projectTodayWorkoutRecommendation(context: Pick<TodayWorkoutCont
     title: 'Today’s scheduled workout was skipped', reason: null, sessions }
   return { status: 'unscheduled', source: 'accepted_plan', title: 'No workout scheduled today',
     reason: null, sessions: [] }
-}
-
-function ownedRows(value: { data: unknown; error: unknown }, owner: string, max: number): ContextRow[] {
-  if (value.error || !Array.isArray(value.data) || value.data.length > max
-    || value.data.some(row => !contextObject(row) || row.user_id !== owner)) throw new Error('Owner recommendation source unavailable')
-  return value.data as ContextRow[]
-}
-
-function authority(context: TodayWorkoutContext) {
-  const planRow: unknown = context.acceptedProgramming?.plan
-  const plan = contextObject(planRow) ? planRow.id : null
-  const intent = context.requirements.training_intent
-  // On uncertain reads we can't confirm that a saved recommendation is current.
-  if ((typeof plan !== 'string' && !context.gaps.includes('accepted_plan_missing'))
-    || !['current', 'missing', 'withdrawn', 'expired', 'not_yet_effective'].includes(intent.status)) return null
-  const currentIntent = intent.status === 'current' ? intent.source : null
-  if (currentIntent && (typeof currentIntent.id !== 'string' || typeof currentIntent.version !== 'number'
-    || (typeof currentIntent.reviewAfter === 'string' && Date.parse(currentIntent.reviewAfter) <= Date.now()))) return null
-  return { activePlanId: plan ?? null, intentMemoryId: currentIntent?.id ?? null, intentVersion: currentIntent?.version ?? null }
-}
-
-function currentState(state: ContextRow | undefined, scope: ReturnType<typeof recommendationScope>, ownership: NonNullable<ReturnType<typeof authority>>) {
-  if (!state || typeof state.current_recommendation_id !== 'string'
-    || !Number.isSafeInteger(state.source_revision) || !Number.isSafeInteger(state.response_revision)
-    || state.source_revision !== state.processed_source_revision || state.response_revision !== state.processed_response_revision
-    || state.last_error !== null || (state.next_due_at !== null && (typeof state.next_due_at !== 'string'
-      || !(Date.parse(state.next_due_at) > Date.now())))) return false
-  return stableStringify(state.processed_context) === stableStringify({ ...ownership,
-    localDate: scope.localDate, timezoneOffset: scope.tzOffset, runtimeFingerprint: scope.runtimeFingerprint })
-}
-
-/** Authenticated SELECT-only equivalent of the recommendation service's visibility check.
- * The normal read RPC seeds refresh state and is intentionally outside this view.
- */
-export async function readCurrentWorkoutRecommendation(
-  db: SupabaseClient, owner: string, context: TodayWorkoutContext,
-): Promise<Pick<TodayWorkoutRecommendation, 'title' | 'reason' | 'reviewBeforeTraining'> | null> {
-  if (!personalizedCoachingCapabilities().recommendations) return null
-  const ownership = authority(context)
-  const scope = recommendationScope(context.timezoneOffset)
-  if (!ownership || scope.localDate !== context.localDate) return null
-  const readState = async () => ownedRows(await db.from('recommendation_refresh_state')
-    .select(refreshFields).eq('user_id', owner).limit(1), owner, 1)[0]
-  try {
-    const state = await readState()
-    if (!currentState(state, scope, ownership)) return null
-    const [row] = ownedRows(await db.from('recommendations').select(recommendationFields)
-      .eq('user_id', owner).eq('id', state.current_recommendation_id).limit(1), owner, 1)
-    if (!row || row.id !== state.current_recommendation_id || row.lifecycle !== 'active'
-      || row.local_date !== scope.localDate || row.timezone_offset !== scope.tzOffset
-      || row.runtime_fingerprint !== scope.runtimeFingerprint || row.plan_version_id !== ownership.activePlanId
-      || row.intent_memory_id !== ownership.intentMemoryId || row.intent_version !== ownership.intentVersion
-      || row.source_revision !== state.source_revision || row.response_revision !== state.response_revision
-      || typeof row.scope_key !== 'string' || typeof row.evidence_fingerprint !== 'string'
-      || !contextObject(row.decision) || typeof row.valid_until !== 'string' || !(Date.parse(row.valid_until) > Date.now())) return null
-    const decision = row.decision
-    if (decision.schemaVersion !== 1 || decision.ruleId !== row.rule_id || decision.policyVersion !== row.policy_version
-      || decision.sourceRevision !== row.source_revision || decision.responseRevision !== row.response_revision
-      || (decision.kind !== 'action' && decision.kind !== 'collect_signal') || !contextObject(decision.destination)
-      || !['session', 'review', 'proposal', 'baseline'].includes(String(decision.destination.type))) return null
-
-    const suppressions = ownedRows(await db.from('recommendation_suppressions').select('user_id,response,defer_until,evidence_fingerprint')
-      .eq('user_id', owner).eq('scope_key', row.scope_key).limit(101), owner, 100)
-    if (suppressions.some(suppression => suppression.response === 'deferred'
-      ? typeof suppression.defer_until === 'string' && Date.parse(suppression.defer_until) > Date.now()
-      : suppression.evidence_fingerprint === row.evidence_fingerprint)) return null
-    // A transactional source change makes the refresh row become dirty. A second
-    // read prevents mixing generations across these small owner-bound SELECTs.
-    const after = await readState()
-    if (!currentState(after, scope, ownership) || stableStringify(after) !== stableStringify(state)
-      || !(Date.parse(row.valid_until) > Date.now())) return null
-    const title = text(decision.title, 120)
-    return title ? { title, reason: text(decision.reason, 350),
-      reviewBeforeTraining: decision.kind === 'action' && decision.destination.type === 'review' } : null
-  } catch { return null }
 }

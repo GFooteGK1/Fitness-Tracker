@@ -1,4 +1,5 @@
 import { renderRecommendationContext } from './recommendation-context'
+import { dailySessionRouting } from './daily-session-routing'
 import { canSurfaceLegacyInsight, filterModelConversation } from '../legacy-insight-guard'
 import type { TrainerContext } from '../types'
 import { EXERCISE_KNOWLEDGE } from '../knowledge/exercise'
@@ -9,7 +10,7 @@ import { EXERCISE_KNOWLEDGE } from '../knowledge/exercise'
  *
  * Validates: Requirements 2.1, 2.3, 2.5, 2.6, 2.7
  */
-export function buildTrainerPrompt(ctx: TrainerContext): string {
+export function buildTrainerPrompt(ctx: TrainerContext, todayPilot = false): string {
   const workoutList = ctx.recent_workouts
     .map(w => {
       const blocks = w.blocks
@@ -39,7 +40,7 @@ export function buildTrainerPrompt(ctx: TrainerContext): string {
 
 You are the SociusFit Trainer — an expert CrossFit and functional fitness coach. You are part of a coaching team that includes a Nutritionist and a cross-domain analyst (Socius).
 
-## Your Personality
+${todayPilot ? `${dailySessionRouting}\n\n` : ''}## Your Personality
 - Direct, encouraging, data-driven
 - You speak in coaching vernacular — you know the lingo
 - You celebrate PRs enthusiastically but don't over-hype mediocre sessions

@@ -11,7 +11,7 @@ import { createSociusNutritionTool, sociusNutritionTool } from './socius-nutriti
 import { createWorkoutTodayReader } from './workout-today-app'
 import { createOwnedWorkoutRecoveryReader } from './recovery-today-app'
 import { createSessionDraftEvidenceReader } from './session-draft-evidence'
-import { createSessionDraftTools, prepareTodaySessionDraftTool, sessionDraftInstructions, sessionDraftResource, sessionDraftResourceContents, showTodaySessionDraftTool } from './session-draft-tools'
+import { createSessionDraftTools, legacySessionDraftResourceUri, prepareTodaySessionDraftTool, sessionDraftInstructions, sessionDraftResource, sessionDraftResourceContents, showTodaySessionDraftTool } from './session-draft-tools'
 
 /** One owner-bound server instance per authenticated request/session. No listener,
  * deployment, token verifier or OAuth grant is created here. The caller supplies
@@ -25,7 +25,7 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
   const writesEnabled = options.writesEnabled ?? process.env.SOCIUS_MCP_WRITES_ENABLED === 'true'
   const saveCheckIn = options.todayEnabled && writesEnabled ? createSaveSociusTodayCheckInTool(authorize, policy) : null
   const readTodayWorkout = options.todayEnabled ? createWorkoutTodayReader(authorize, policy) : undefined
-  const tool = createCoachingContextTool(authorize, policy, readTodayWorkout)
+  const tool = createCoachingContextTool(authorize, policy)
   const today = readTodayWorkout ? createSociusTodayTool(createOwnedCoachingContextReader(authorize, policy), {
     activityEnabled,
     nutritionEnabled: activityEnabled,
@@ -61,7 +61,9 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
     server.setRequestHandler(ReadResourceRequestSchema, async ({ params }) => {
       const { uri } = params
       if (activity && uri === sociusActivityResource.uri) return { contents: [sociusActivityResourceContents] }
-      if (sessionDraft && uri === sessionDraftResource.uri) return { contents: [sessionDraftResourceContents] }
+      if (sessionDraft && (uri === sessionDraftResource.uri || uri === legacySessionDraftResourceUri)) {
+        return { contents: [{ ...sessionDraftResourceContents, uri }] }
+      }
       if (uri === sociusTodayResource.uri || legacySociusTodayResourceUris.includes(uri)) {
         return { contents: [{ ...sociusTodayResourceContents, uri }] }
       }

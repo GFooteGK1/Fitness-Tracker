@@ -1,6 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatUTCAsLocalDateWithOffset, localDateToUTCStart } from '../timezone-utils'
-import { fetchCoachingDecisionContext } from './coaching-decision-context-server'
 import { CoachingContextError, contextObject } from './coaching-context'
 import { createOwnedCoachingContextReader, type AuthorizeContextRequest, type ContextToolPolicy } from './coaching-context-tool'
 import { COACHING_REFERENCE_MAX_DOMAINS, readCoachingReference, type COACHING_REFERENCE_DOMAINS } from './external-coaching-reference'
@@ -134,22 +132,6 @@ const reviewRequired = (message = 'Review your saved plan before drafting a sess
 const unavailable = (message: string) => ({ status: 'unavailable' as const, message })
 const needsInput = (message: string) => ({ status: 'needs_input' as const, message })
 
-async function readPlanSafety(db: SupabaseClient, owner: string, programId: string, planId: string) {
-  const weekly = await fetchCoachingDecisionContext(db, owner, programId, planId)
-  if (weekly.status === 'current' && (weekly.decision?.action === 'pause_review' || weekly.decision?.action === 'recover')) {
-    return reviewRequired()
-  }
-  if (['invalid', 'invalidated', 'superseded', 'context_changed'].includes(weekly.status)) {
-    return reviewRequired('Confirm the current saved plan review before drafting a session.')
-  }
-  if (weekly.status === 'unavailable') {
-    return unavailable('The saved plan review could not be verified. Try again before drafting a session.')
-  }
-  return { status: 'clear' as const, review: weekly.decision ? {
-    id: weekly.decision.reviewId, revision: weekly.decision.reviewRevision, action: weekly.decision.action,
-  } : null }
-}
-
 function currentRequirements(requirements: Context['requirements']) {
   return Object.fromEntries((['training_schedule', 'available_equipment', 'training_constraints', 'exercise_preferences'] as const).map(key => {
     const item = requirements[key]
@@ -157,20 +139,29 @@ function currentRequirements(requirements: Context['requirements']) {
   }))
 }
 
-function buildEvidence(context: Context, checkIn: Extract<Context['dailyCheckIn'], { status: 'saved' }>['checkIn'],
+function dayScheduleFor(date: string, programming: Context['acceptedProgramming']) {
+  for (const status of ['planned', 'completed', 'skipped'] as const) {
+    if (programming?.todaySessions.some(session => session.status === status)) return status
+  }
+  const window = programming?.scheduleWindow
+  return window && date >= window.startsOn && date <= window.endsOn ? 'scheduled_rest' as const : 'unscheduled' as const
+}
+
+function buildEvidence(context: Context, assessment: Extract<Context['dailyCheckIn'], { status: 'saved' }>,
   work: Work, history: ReturnType<typeof projectHistory>, goals: ReturnType<typeof currentGoals>,
-  playbook: NonNullable<ReturnType<typeof playbookFor>>, today: WorkoutToday,
-  planId: string | null, review: Extract<Awaited<ReturnType<typeof readPlanSafety>>, { status: 'clear' }>['review']) {
+  playbook: NonNullable<ReturnType<typeof playbookFor>>, today: WorkoutToday, planId: string | null) {
   const acceptedSessions = context.acceptedProgramming?.todaySessions.map(({ id, status, prescription }) => ({ id, status, prescription }))
     .sort((left, right) => String(left.id).localeCompare(String(right.id))) ?? []
   const alreadyTrainedToday = today.lastWorkout.date === context.localDate || acceptedSessions.some(session => session.status === 'completed')
     || history.workouts.some(workout => workout.date === context.localDate)
+  const daySchedule = dayScheduleFor(context.localDate, context.acceptedProgramming)
   return {
-    date: context.localDate, window: work.window, goals, ...history, playbook, checkIn,
+    date: context.localDate, window: work.window, goals, ...history, playbook,
+    checkIn: assessment.checkIn, checkInScale: assessment.scale,
     requirements: currentRequirements(context.requirements), alreadyTrainedToday,
     todayWorkStatus: alreadyTrainedToday ? 'recorded' as const : today.lastWorkout.status === 'unavailable' ? 'unknown' as const : 'no_records' as const,
-    hasPlannedSession: acceptedSessions.some(session => session.status === 'planned'),
-    acceptedSession: { planId, sessions: acceptedSessions, review },
+    daySchedule, hasPlannedSession: daySchedule === 'planned',
+    acceptedSession: { planId, sessions: acceptedSessions },
   }
 }
 
@@ -190,24 +181,19 @@ export function createSessionDraftEvidenceReader(authorize: AuthorizeContextRequ
     if (!context.acceptedProgramming && !context.gaps.includes('accepted_plan_missing')) {
       return unavailable('Your accepted plan could not be verified. Try again before drafting a session.')
     }
-    const program: unknown = context.acceptedProgramming?.program
     const plan: unknown = context.acceptedProgramming?.plan
-    const programId = contextObject(program) ? program.id : null
     const planId = contextObject(plan) ? plan.id : null
-    if (context.acceptedProgramming && (typeof programId !== 'string' || typeof planId !== 'string')) {
-      return unavailable('Your accepted plan could not be verified. Try again before drafting a session.')
-    }
-    const [today, safety] = await Promise.all([
-      createWorkoutTodayReader(bound, policy)(context),
-      typeof programId === 'string' && typeof planId === 'string'
-        ? readPlanSafety(authorized.db, authorized.principal.subject, programId, planId)
-        : { status: 'clear' as const, review: null },
-    ])
+    const today = await createWorkoutTodayReader(bound, policy)(context)
+    const safety = today.safety
     if (formatUTCAsLocalDateWithOffset(new Date().toISOString(), tzOffset) !== context.localDate) {
       throw new CoachingContextError(409, 'The local date changed. Save the current check-in before drafting.')
     }
-    if (today.workoutRecommendation.reviewBeforeTraining) return reviewRequired()
-    if (safety.status !== 'clear') return safety
+    if (safety.status === 'unavailable') {
+      return unavailable('Training safety could not be verified. Try again before drafting a session.')
+    }
+    if (safety.status === 'hold') return safety.reason === 'concerning_feedback'
+      ? reviewRequired('Review the concerning pain in your saved session feedback before drafting a session.')
+      : reviewRequired()
     if (['unavailable', 'truncated', 'invalid'].includes(context.requirements.training_intent.status)) {
       return unavailable('Your current training goals could not be verified. Try again before drafting a session.')
     }
@@ -224,7 +210,7 @@ export function createSessionDraftEvidenceReader(authorize: AuthorizeContextRequ
     }
     const history = projectHistory(work)
     if (!history.workouts.length) return needsInput('Can you use SociusFit to log your completed sessions from the past four weeks before trying again?')
-    return { status: 'ready', evidence: buildEvidence(context, dailyCheckIn.checkIn, work, history, goals, playbook,
-      today, typeof planId === 'string' ? planId : null, safety.review) }
+    return { status: 'ready', evidence: buildEvidence(context, dailyCheckIn, work, history, goals, playbook,
+      today, typeof planId === 'string' ? planId : null) }
   }
 }

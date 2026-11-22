@@ -2,9 +2,11 @@ import { formatUTCAsLocalDateWithOffset, isValidTimezoneOffset } from '../timezo
 import { CoachingContextError, contextObject } from './coaching-context'
 import type { readCoachingContext } from './coaching-context-server'
 import { assertVerifiedContextPrincipal, type AuthorizeContextRequest, type ContextToolPolicy } from './coaching-context-tool'
-import { dailyCheckInSchema, parseDailyCheckIn, saveDailyCheckIn } from './daily-check-in'
+import {
+  dailyCheckInSchema, legacyDailyCheckInSchema, parseDailyCheckIn, parseLegacyDailyCheckIn,
+  saveDailyCheckIn, toLegacyDailyCheckIn,
+} from './daily-check-in'
 import { projectTodayRecovery, type createOwnedWorkoutRecoveryReader } from './recovery-today-app'
-import { deriveTodayAssessmentGuidance, parseTodayCheckIn, todayCheckInSchema } from './today-assessment-guidance'
 import { sociusTodayHtml } from './today-app-ui'
 import type { createWorkoutTodayReader } from './workout-today-app'
 
@@ -15,11 +17,15 @@ export const legacySociusTodayResourceUris: readonly string[] = [
   'ui://socius/today-v5.html',
   'ui://socius/today-v6.html',
   'ui://socius/today-v7.html',
+  'ui://socius/today-v8.html',
+  'ui://socius/today-v9.html',
+  'ui://socius/today-v10.html',
+  'ui://socius/today-v11.html',
 ]
 
 export const sociusTodayResource = {
   // ChatGPT uses the URI as a cache key. Bump it when releasing changes to the widget.
-  uri: 'ui://socius/today-v8.html',
+  uri: 'ui://socius/today-v12.html',
   name: 'SociusFit Today',
   mimeType: 'text/html;profile=mcp-app',
 } as const
@@ -40,11 +46,11 @@ const todayIcons = [
 export const sociusTodayTool = {
   name: 'open_socius_today',
   title: 'SociusFit',
-  description: 'Open the private SociusFit Today dashboard or get daily guidance from a quick check-in with a timezone offset.',
+  description: 'Open the private SociusFit Today dashboard for the saved check-in, scheduled sessions and recovery.',
   icons: todayIcons,
   inputSchema: {
     type: 'object',
-    properties: { tzOffset: { type: 'integer', minimum: -720, maximum: 840 }, checkIn: todayCheckInSchema },
+    properties: { tzOffset: { type: 'integer', minimum: -720, maximum: 840 } },
     additionalProperties: false,
   },
   annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
@@ -57,13 +63,13 @@ export const sociusTodayTool = {
 export const saveSociusTodayCheckInTool = {
   name: 'save_socius_today_check_in',
   title: 'Save Today check-in',
-  description: 'Save the athlete’s explicit check-in for their current local date from the private Today dashboard.',
+  description: 'Save the athlete’s explicit check-in for their local date. Each of the five ratings is from 1 (worst) to 5 (best). Cached Today widgets may send the previous relative answers.',
   inputSchema: {
     type: 'object',
     properties: {
       date: { type: 'string', format: 'date' },
       tzOffset: { type: 'integer', minimum: -720, maximum: 840 },
-      checkIn: dailyCheckInSchema,
+      checkIn: { anyOf: [dailyCheckInSchema, legacyDailyCheckInSchema] },
     },
     required: ['date', 'tzOffset', 'checkIn'],
     additionalProperties: false,
@@ -83,8 +89,8 @@ export function createSaveSociusTodayCheckInTool(authorize: AuthorizeContextRequ
         || typeof input.date !== 'string' || !validOffset(input.tzOffset)) {
         throw new CoachingContextError(400, 'A check-in save requires the local date and timezone offset')
       }
-      const checkIn = parseDailyCheckIn(input.checkIn)
-      if (!checkIn) throw new CoachingContextError(400, 'All five check-in answers are required')
+      const checkIn = parseDailyCheckIn(input.checkIn) ?? parseLegacyDailyCheckIn(input.checkIn)
+      if (!checkIn) throw new CoachingContextError(400, 'Use five whole-number ratings from 1 to 5.')
       const { principal, db } = await authorize()
       assertVerifiedContextPrincipal(principal, policy)
       const identity = await db.auth.getUser()
@@ -114,13 +120,45 @@ type CoachingContext = Awaited<ReturnType<typeof readCoachingContext>>
 type WorkoutToday = Awaited<ReturnType<ReturnType<typeof createWorkoutTodayReader>>>
 type WorkoutRecovery = Awaited<ReturnType<ReturnType<typeof createOwnedWorkoutRecoveryReader>>>
 
+// Previously cached widgets expect this field after saving. Give them the
+// chat handoff without generating any training guidance.
+const legacyCheckInHandoff = {
+  title: 'Check-in saved',
+  summary: 'In SociusFit chat, ask “Draft today’s session”.',
+  reasons: [],
+  actions: [],
+}
+
+const retiredCheckInPreview = {
+  title: 'Open the updated Today view',
+  summary: 'Reopen Today to save your five check-in answers. Then ask “Draft today’s session” in SociusFit chat.',
+  reasons: [],
+  actions: [],
+}
+
+function isRetiredPreview(value: unknown) {
+  const fields = ['stress', 'fatigue', 'sleep'] as const
+  return contextObject(value) && Object.keys(value).length === fields.length
+    && fields.every(field => legacyDailyCheckInSchema.properties[field].enum.some(choice => choice === value[field]))
+}
+
 function projectToday(context: CoachingContext, workout: WorkoutToday, pairedRecovery: WorkoutRecovery) {
-  const { workoutRecommendation, lastWorkout, workoutEvidence } = workout
+  const { workoutRecommendation, lastWorkout, workoutEvidence, safety } = workout
   const sessions = workoutRecommendation.sessions
+  const warning = safety.status === 'hold' ? {
+    title: safety.reason === 'concerning_feedback' ? 'Review the saved pain report' : 'Review before training',
+    reason: safety.reason === 'concerning_feedback' ? 'Your saved feedback flags concerning pain.'
+      : safety.reason === 'recover' ? 'Your saved coaching decision calls for recovery.'
+        : 'Your saved coaching decision calls for a pause.',
+  } : safety.status === 'unavailable' ? {
+    title: 'Training safety status unavailable',
+    reason: 'Try again before choosing today’s training.',
+  } : null
   return {
     date: context.localDate,
     readAt: context.readCompletedAt,
-    workoutRecommendation,
+    workoutRecommendation: warning ? { ...workoutRecommendation, ...warning,
+      status: 'recommended' as const, source: 'saved_recommendation' as const, reviewBeforeTraining: true } : workoutRecommendation,
     lastWorkout,
     // Keep the prior payload keys usable while the host refreshes the installed resource.
     sessionStatus: sessions.length ? 'scheduled' : context.acceptedProgramming ? 'none' : 'unavailable',
@@ -144,13 +182,15 @@ export function createSociusTodayTool(
   return {
     async call(input: unknown) {
       if (!contextObject(input) || Object.keys(input).some(key => key !== 'tzOffset' && key !== 'checkIn')) {
-        throw new CoachingContextError(400, 'Only timezone offset and check-in are supported')
+        throw new CoachingContextError(400, 'Reopen Today to view your saved check-in.')
+      }
+      // Cached pre-save widgets can still send their old three-field preview.
+      // Return only an update notice, and never interpret or save those answers.
+      const cachedPreview = 'checkIn' in input
+      if (cachedPreview && (!('tzOffset' in input) || !isRetiredPreview(input.checkIn))) {
+        throw new CoachingContextError(400, 'Reopen Today to view your saved check-in.')
       }
       const content = [{ type: 'text' as const, text: 'SociusFit Today opened.' }]
-      const checkIn = 'checkIn' in input ? parseTodayCheckIn(input.checkIn) : null
-      if ('checkIn' in input && (!checkIn || !('tzOffset' in input))) {
-        throw new CoachingContextError(400, 'A check-in requires stress, fatigue, sleep and a timezone offset')
-      }
       // The host opens the global entry point with {}. The app requests data
       // after it can supply the athlete's local offset through the same host.
       if (!('tzOffset' in input)) return { content }
@@ -161,13 +201,23 @@ export function createSociusTodayTool(
       const context = await readContext({ tzOffset, days: 7 })
       const workout = await options.readWorkout(context)
       const pairedRecovery = await options.readWorkoutRecovery(workout.workoutEvidence)
-      const saved = context.dailyCheckIn
-      const assessment = checkIn ?? (saved.status === 'saved' ? saved.checkIn : null)
+      const assessment = context.dailyCheckIn
+      const today = projectToday(context, workout, pairedRecovery)
+      const review = today.workoutRecommendation
+      const handoff = cachedPreview || assessment.status === 'saved' ? (
+        review.reviewBeforeTraining
+          ? { title: review.title, summary: review.reason ?? 'Check the training safety status before drafting.', actions: [], reasons: [] }
+          : cachedPreview ? retiredCheckInPreview : legacyCheckInHandoff
+      ) : null
+      const checkIn = assessment.status === 'saved' ? { status: 'saved' as const,
+        checkIn: assessment.scale === '1-to-5' ? toLegacyDailyCheckIn(assessment.checkIn) : assessment.checkIn,
+      } : assessment
       return { content, _meta: {
         today: {
-          ...projectToday(context, workout, pairedRecovery),
-          checkIn: saved,
-          ...(assessment ? { assessmentGuidance: deriveTodayAssessmentGuidance(assessment, context, workout) } : {}),
+          ...today,
+          assessment,
+          checkIn,
+          ...(handoff ? { assessmentGuidance: handoff } : {}),
         },
         ...(options.activityEnabled ? { activityEnabled: true } : {}),
         ...(options.nutritionEnabled ? { nutritionEnabled: true } : {}),
