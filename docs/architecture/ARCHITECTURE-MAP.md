@@ -62,11 +62,11 @@ qualifying earlier score. WHOOP's local-day alignment is unverified and the
 check-in guidance does not use those values. The latest completed workout appears
 third in a collapsed card and groups saved sets without rewriting the workout.
 
-Activity and Nutrition use the same owner-scoped local day and canonical meal
-records. Nutrition reads only macro totals and current targets when its tab opens
-or becomes visible and while it remains open. Activity and Nutrition perform
-read-only requests. Meal creation and correction continue through the existing capture
-and receipt paths.
+Training history in Today uses the owner-scoped Activity tool to display saved workouts
+by local date. The inline Activity card also shows logged meals. Nutrition reads macro
+totals and current targets when its tab opens or becomes visible and while it remains
+open. These views perform read-only requests. Meal creation and correction continue
+through the existing capture and receipt paths.
 
 ADR-0041 adds the separately approved owner-only cron GET: the existing bearer
 secret is checked before privileged work; only an existing fixed-owner connection

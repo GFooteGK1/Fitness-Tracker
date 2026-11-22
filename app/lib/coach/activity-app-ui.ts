@@ -31,14 +31,23 @@ export const activityStyles = String.raw`
     }
 `
 
+const activityWorkoutEntries = String.raw`          <p id="activity-workouts-note" class="muted section-note" hidden></p>
+          <ul id="activity-workouts"></ul>`
+
+export const trainingHistoryCardMarkup = String.raw`
+    <div id="activity-card" hidden>
+      <h2><time id="activity-card-date"></time></h2>
+${activityWorkoutEntries}
+    </div>
+`
+
 export const activityCardMarkup = String.raw`
     <div id="activity-card" hidden>
       <time id="activity-card-date"></time>
       <div class="activity-columns" aria-label="Saved activity">
         <section aria-labelledby="activity-workouts-title">
           <h2 id="activity-workouts-title">Workouts</h2>
-          <p id="activity-workouts-note" class="muted section-note" hidden></p>
-          <ul id="activity-workouts"></ul>
+${activityWorkoutEntries}
         </section>
         <section aria-labelledby="activity-meals-title">
           <h2 id="activity-meals-title">Meals</h2>
@@ -51,7 +60,7 @@ export const activityCardMarkup = String.raw`
 `
 
 export const activityRendererScript = String.raw`
-      function renderActivity(activity) {
+      function renderActivity(activity, domains = ['workouts', 'meals']) {
         if (!activity || typeof activity.date !== 'string' || typeof activity.timezone !== 'string') {
           throw new Error('Activity result missing');
         }
@@ -63,7 +72,7 @@ export const activityRendererScript = String.raw`
           weekday: 'long', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
         }).format(date);
 
-        for (const domain of ['workouts', 'meals']) {
+        for (const domain of domains) {
           const records = activity[domain];
           if (!records || !Array.isArray(records.entries)
             || !['available', 'partial', 'no_records', 'unavailable'].includes(records.status)) {
@@ -104,7 +113,9 @@ export const activityRendererScript = String.raw`
           });
           document.getElementById('activity-' + domain).replaceChildren(...entries);
         }
-        document.getElementById('activity-meals-coverage').hidden = activity.meals.status === 'unavailable';
+        if (domains.includes('meals')) {
+          document.getElementById('activity-meals-coverage').hidden = activity.meals.status === 'unavailable';
+        }
         document.getElementById('activity-card').hidden = false;
       }
 `
@@ -173,7 +184,9 @@ export const mcpHostBridgeScript = String.raw`
           clearTimeout(entry.timeout);
           pending.delete(data.id);
           if (data.error || !Object.hasOwn(data, 'result')) {
-            entry.reject(new Error('Host request failed'));
+            const error = new Error('Host request failed');
+            if (Number.isInteger(data.error?.code)) error.code = data.error.code;
+            entry.reject(error);
           } else {
             entry.resolve(data.result);
           }
