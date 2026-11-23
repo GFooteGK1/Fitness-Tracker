@@ -1,21 +1,23 @@
 import { createHash } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { coachingReferencePointer, readCoachingReference, COACHING_REFERENCE_MAX_RESPONSE_BYTES } from '../../app/lib/coach/external-coaching-reference'
+import { coachingReferencePointer, readCoachingReference, COACHING_REFERENCE_MAX_RESPONSE_BYTES, COACHING_REFERENCE_VERSION } from '../../app/lib/coach/external-coaching-reference'
 import { createCoachingReferenceTool } from '../../app/lib/coach/coaching-reference-tool'
 import { contextClient, contextOwner } from '../fixtures/coaching-context'
 
 const policy = { clientId: 'synthetic-client', issuer: 'https://auth.invalid', resource: 'https://synthetic.invalid/api/mcp' }
 const principal = () => ({ ...policy, subject: contextOwner, role: 'authenticated', expiresAt: Date.now() + 60_000 })
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex')
+const legacyVersion = 'external-coaching-0.1.0'
 
 afterEach(() => vi.restoreAllMocks())
 
-describe('versioned external qualitative coaching publication', () => {
+describe('versioned external coaching publication', () => {
   it('returns core, explicit authority, review scope, provenance and supersession independently of athlete data', () => {
     const result = readCoachingReference({})
     expect(result.selectedDomains).toEqual([])
     expect(result.reference.domains).toEqual({})
-    expect(result.reference.review).toMatchObject({ interfaceReviewedAt: '2026-10-19', inheritedEvidenceReviewDate: '2026-10-17' })
+    expect(result.version).toBe('external-coaching-0.2.0')
+    expect(result.reference.review).toMatchObject({ interfaceReviewedAt: '2026-11-23', inheritedEvidenceReviewDate: '2026-10-17' })
     expect(result.reference.provenance.map(source => source.sourcePath)).toContain('docs/decisions/ADR-0039-chosen-llm-and-durable-context.md')
     expect(result.reference.supersession.scope).toBe('external_chosen_llm_interface_only')
     expect(result.reference.supersession.replacement).toContain('selected LLM authors programming')
@@ -24,6 +26,43 @@ describe('versioned external qualitative coaching publication', () => {
     expect(result.reference.safetyBoundary.join(' ')).toContain('sharp or escalating pain')
     expect(JSON.stringify(result.reference)).not.toMatch(/Greg|APEX|five training days|five-day/i)
     expect(result.selectedContentHash).toBe(hash(result.reference))
+  })
+
+  it('includes the ordered programming method and evidence links in a core-only read', () => {
+    const { reference } = readCoachingReference({})
+    expect(reference).toMatchObject({
+      programmingGuide: {
+        scope: expect.any(String),
+        steps: ['assess_goals', 'choose_block_focus', 'set_build_and_maintenance_dose',
+          'organize_high_low', 'progress_from_evidence', 'review_month'].map(id => ({
+          id, title: expect.any(String), instructions: expect.arrayContaining([expect.any(String)]),
+        })),
+        sources: expect.arrayContaining([expect.objectContaining({ title: expect.any(String), url: expect.stringMatching(/^https:\/\//), scope: expect.any(String) })]),
+      },
+    })
+  })
+
+  it('preserves the previously published body and hashes for explicit legacy reads', () => {
+    const legacy = readCoachingReference({ version: legacyVersion, domains: ['isometrics', 'power', 'strength', 'assessment'] })
+    expect(legacy).toMatchObject({
+      version: legacyVersion,
+      contentHash: '585d5ce41d96cbe34e1b8cc47dd605983ba39d4d982002a109cbd787b4bde5ae',
+      selectedContentHash: 'e7e33b7c2ceb467be141b00a76c684ced72efc1527868f462cbe1ae9fb36289f',
+      selectedDomains: ['assessment', 'strength', 'power', 'isometrics'],
+      reference: { review: { interfaceReviewedAt: '2026-10-19' } },
+    })
+    expect(legacy.reference).not.toHaveProperty('programmingGuide')
+    expect(hash(legacy.reference)).toBe(legacy.selectedContentHash)
+    const legacyTail = readCoachingReference({ version: legacyVersion, domains: ['recovery', 'conditioning'] })
+    const complete = { ...legacy.reference, domains: {
+      assessment: legacy.reference.domains.assessment, strength: legacy.reference.domains.strength, power: legacy.reference.domains.power,
+      conditioning: legacyTail.reference.domains.conditioning, recovery: legacyTail.reference.domains.recovery, isometrics: legacy.reference.domains.isometrics,
+    } }
+    expect(hash(complete)).toBe(legacy.contentHash)
+    expect(coachingReferencePointer(legacyVersion)).toMatchObject({
+      status: 'available', version: legacyVersion, contentHash: legacy.contentHash, reviewedAt: '2026-10-19',
+    })
+    expect(coachingReferencePointer()).toMatchObject({ status: 'available', version: COACHING_REFERENCE_VERSION })
   })
 
   it('binds the context pointer to the complete immutable publication and canonicalizes requested section order', () => {

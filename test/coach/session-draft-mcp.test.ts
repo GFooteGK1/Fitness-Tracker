@@ -253,7 +253,7 @@ describe('Today session draft over authenticated stateless MCP', () => {
         daySchedule: 'planned', hasPlannedSession: true,
         historyCoverage: { complete: true, athleteCoverage: 'unknown' },
         checkIn: { fatigue: 'usual', sleep: 'usual' }, checkInScale: 'relative-to-usual',
-        playbook: { version: expect.any(String), contentHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        playbook: { version: 'external-coaching-0.2.0', contentHash: expect.stringMatching(/^[a-f0-9]{64}$/),
           selectedDomains: ['assessment', 'conditioning', 'recovery'] },
         weeks: [
           { startsOn: '2026-09-21', endsOn: '2026-09-27', workoutIds: [firstWorkout], loggedWorkoutCount: 1 },
@@ -284,6 +284,45 @@ describe('Today session draft over authenticated stateless MCP', () => {
       expect(JSON.stringify(shown.content)).not.toContain(draft.title)
       expect(rows).toEqual(saved)
       expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner))).toBe(true)
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it.each([
+    { goalType: 'typed hypertrophy', selectedDomains: ['assessment', 'strength', 'recovery'], goalId: 'goal:hypertrophy' },
+    { goalType: 'legacy', selectedDomains: ['assessment', 'recovery'], goalId: 'primary_goal' },
+  ])('automatically supplies the programming guide for a $goalType goal before drafting', async ({ goalType, selectedDomains, goalId }) => {
+    const rows = seedRows()
+    if (goalType === 'typed hypertrophy') {
+      const memory = rows.coach_memories.find(row => row.memory_key === 'training_intent')!
+      const strengthIntent = intent()
+      const goal = strengthIntent.outcomes[0].goal
+      strengthIntent.outcomes[0] = {
+        ...strengthIntent.outcomes[0], domain: 'hypertrophy', measurement: null,
+        binding: { movementId: null, distance: null, equipmentIds: [], variation: null },
+        goal: { ...goal, id: goalId, kind: 'process', statement: 'Train consistently to build upper-body muscle',
+          requiredQualityIds: ['training_adherence'] },
+      }
+      memory.content = strengthIntent
+    } else {
+      rows.coach_memories = rows.coach_memories.filter(row => row.memory_key !== 'training_intent')
+    }
+    const { client, writes } = await connect({ rows })
+    try {
+      const prepared = await client.callTool(prepare())
+      expect(prepared.isError).not.toBe(true)
+      expect(prepared.structuredContent).toMatchObject({ status: 'ready', evidence: {
+        goals: [expect.objectContaining({ id: goalId })],
+        playbook: { version: 'external-coaching-0.2.0', selectedDomains,
+          reference: { programmingGuide: { steps: expect.arrayContaining([
+            expect.objectContaining({ id: 'set_build_and_maintenance_dose' }),
+            expect.objectContaining({ id: 'review_month' }),
+          ]) } } },
+      } })
+      const packet = prepared.structuredContent as unknown as { evidence: { playbook: unknown } }
+      const reference = await client.callTool({ name: 'get_coaching_reference', arguments: { domains: selectedDomains } })
+      expect(reference.isError).toBe(false)
+      expect(reference.structuredContent).toEqual({ reference: packet.evidence.playbook })
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })

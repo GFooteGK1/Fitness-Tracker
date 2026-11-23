@@ -177,7 +177,7 @@ describe('owner OAuth bearer verification with real SDK JWT signatures and synth
       const reads = vi.mocked(fixture.query.db.from).mock.calls.length
       const reference = await client.callTool({ name: 'get_coaching_reference', arguments: { domains: ['strength'] } })
       expect(reference.isError, JSON.stringify(reference)).toBe(false)
-      expect(reference.structuredContent).toMatchObject({ reference: { version: 'external-coaching-0.1.0' } })
+      expect(reference.structuredContent).toMatchObject({ reference: { version: 'external-coaching-0.2.0' } })
       expect(fixture.query.db.from).toHaveBeenCalledTimes(reads)
       fixture.state.active = false
       await expect(client.callTool({ name: 'get_coaching_context', arguments: { tzOffset: 0 } })).rejects.toThrow()
