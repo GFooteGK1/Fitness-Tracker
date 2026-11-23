@@ -2,6 +2,11 @@
 
 Greg approved this slice on 2026-10-19, including normal tested commit/merge. It follows the factual coverage inventory; it does not update the separately missing athlete requirements.
 
+The November 23 [Playbook assessment](../coach/external-coaching-playbook-review-2026-11-23.md)
+describes the local `external-coaching-0.2.0` candidate. The current
+publication includes an ordered programming guide in its core. The original
+`external-coaching-0.1.0` remains available via its exact version and original hashes.
+
 ## Contract and decision
 
 Publish `external-coaching-0.1.0` as a small repository-backed, reviewed, qualitative reference through `get_coaching_reference`. The selected LLM authors programming and synthesis. General guidance creates no athlete facts, universal sport priority, training cadence or dose. Preserve the legacy internal generation path and all historical snapshots.

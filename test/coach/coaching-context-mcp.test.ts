@@ -74,11 +74,11 @@ describe('official SDK MCP over loopback Streamable HTTP, synthetic owner only',
       expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === contextOwner))).toBe(true)
       expect(host.wire.map(row => row.method)).toEqual(expect.arrayContaining(['initialize', 'notifications/initialized', 'tools/list', 'tools/call']))
       expect(host.wire.find(row => row.method === 'tools/call')?.contentType).toContain(json ? 'application/json' : 'text/event-stream')
-      expect(result.structuredContent).toMatchObject({ context: { coachingReference: { status: 'available', tool: 'get_coaching_reference' } } })
+      expect(result.structuredContent).toMatchObject({ context: { coachingReference: { status: 'available', tool: 'get_coaching_reference', version: 'external-coaching-0.2.0' } } })
       const priorReads = traces.length
       const reference = await host.client.callTool({ name: 'get_coaching_reference', arguments: { domains: ['isometrics', 'strength'] } })
       expect(reference.isError).toBe(false)
-      expect(reference.structuredContent).toMatchObject({ reference: { version: 'external-coaching-0.1.0', selectedDomains: ['strength', 'isometrics'], reference: { authority: 'general_reference_not_athlete_records' } } })
+      expect(reference.structuredContent).toMatchObject({ reference: { version: 'external-coaching-0.2.0', selectedDomains: ['strength', 'isometrics'], reference: { authority: 'general_reference_not_athlete_records' } } })
       expect(traces).toHaveLength(priorReads)
       expect(writes).not.toHaveBeenCalled()
       expect(tools.tools[1]._meta?.securitySchemes).toEqual([{ type: 'oauth2', scopes: ['email'] }])

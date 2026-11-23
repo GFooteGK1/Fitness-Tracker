@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto'
 import { CoachingContextError, contextObject } from './coaching-context'
+import { COACHING_PROGRAMMING_GUIDE } from './coaching-programming-guide'
 
-export const COACHING_REFERENCE_VERSION = 'external-coaching-0.1.0'
+const LEGACY_COACHING_REFERENCE_VERSION = 'external-coaching-0.1.0'
+export const COACHING_REFERENCE_VERSION = 'external-coaching-0.2.0'
 export const COACHING_REFERENCE_MAX_DOMAINS = 4
 export const COACHING_REFERENCE_MAX_RESPONSE_BYTES = 32_768
 export const COACHING_REFERENCE_DOMAINS = ['assessment', 'strength', 'power', 'conditioning', 'recovery', 'isometrics'] as const
@@ -9,9 +11,9 @@ type Domain = typeof COACHING_REFERENCE_DOMAINS[number]
 
 // A new publication requires a new version and editorial review. Never overwrite
 // an older publication to silently change a historical version's meaning.
-const publication = {
+const legacyPublication = {
   schemaVersion: 1,
-  version: COACHING_REFERENCE_VERSION,
+  version: LEGACY_COACHING_REFERENCE_VERSION,
   authority: 'general_reference_not_athlete_records',
   intendedPopulation: 'Generally healthy adult athletes seeking general wellness and athletic development.',
   review: { status: 'reviewed', interfaceReviewedAt: '2026-10-19', inheritedEvidenceReviewDate: '2026-10-17',
@@ -21,7 +23,7 @@ const publication = {
     { sourcePath: 'docs/coach/training-doctrine.md', sourceVersion: '0.1.1', role: 'qualitative_training_principles',
       coverage: 'The 2026-10-17 evidence review covered the isometric supplement; other sections retain their earlier review.' },
     { sourcePath: 'app/lib/coach/isometric-guidance.ts', sourceVersion: 'isometric-guidance-0.1.0', role: 'qualitative_isometric_guidance' },
-    { sourcePath: 'app/lib/coach/external-coaching-reference.ts', sourceVersion: COACHING_REFERENCE_VERSION, role: 'published_external_reference' },
+    { sourcePath: 'app/lib/coach/external-coaching-reference.ts', sourceVersion: LEGACY_COACHING_REFERENCE_VERSION, role: 'published_external_reference' },
   ],
   supersession: { scope: 'external_chosen_llm_interface_only',
     supersedes: 'The legacy reference rule that the model only composes presentation while app policy owns programming numbers.',
@@ -74,27 +76,72 @@ const publication = {
   } satisfies Record<Domain, string[]>,
 }
 
+const currentPublication = {
+  ...legacyPublication,
+  version: COACHING_REFERENCE_VERSION,
+  review: {
+    ...legacyPublication.review,
+    interfaceReviewedAt: '2026-11-23',
+    scope: 'Review of goal assessment, block focus, High/Low scheduling, dosing, progression and monthly review guidance. Numerical references describe published evidence within its stated scope.',
+  },
+  provenance: [
+    ...legacyPublication.provenance,
+    { sourcePath: 'app/lib/coach/coaching-programming-guide.ts', sourceVersion: COACHING_REFERENCE_VERSION,
+      role: 'goal_driven_programming_and_review' },
+  ],
+  supersession: {
+    ...legacyPublication.supersession,
+    supersedes: 'The earlier external publication as the default reference. It remains available by its exact version.',
+  },
+  principles: [
+    legacyPublication.principles[0],
+    'Prioritize the trainable gap with the best expected contribution to the athlete’s goal within their available time and training capacity. State the evidence and the main uncertainty.',
+    ...legacyPublication.principles.slice(2),
+  ],
+  programmingGuide: COACHING_PROGRAMMING_GUIDE,
+  domains: {
+    ...legacyPublication.domains,
+    strength: [
+      ...legacyPublication.domains.strength,
+      'Track strength by the trained lift and its load, execution and effort. Track hypertrophy dose by attributable weekly working sets for the target muscle and review the relevant size outcome separately.',
+      'For supported muscle groups, four fractional weekly sets is a pooled low-volume growth reference. The ACSM position stand uses about ten weekly sets per muscle group as a general growth reference. Explain the counting method and adapt the starting dose to the athlete.',
+      'Maintenance dose depends on the quality, recent training and what is held constant. Retain goal-relevant exposure and confirm maintenance through comparable outcomes.',
+    ],
+  },
+}
+
+type Publication = typeof legacyPublication & { programmingGuide?: typeof COACHING_PROGRAMMING_GUIDE }
+type PublishedReference = { publication: Publication; contentHash: string }
+
 // Hash exact UTF-8 JSON.stringify bytes (in publication insertion order), not a
 // platform's display formatting. The complete-publication and returned-view
 // hashes have different scopes so a subset never masquerades as the full text.
 export function coachingReferenceHash(value: unknown) {
   return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex')
 }
-const contentHash = coachingReferenceHash(publication)
+const publications = new Map<string, PublishedReference>()
+for (const publication of [legacyPublication, currentPublication]) {
+  publications.set(publication.version, { publication, contentHash: coachingReferenceHash(publication) })
+}
 
-export function coachingReferencePointer(version = COACHING_REFERENCE_VERSION) {
-  if (version !== publication.version || publication.review.status !== 'reviewed') {
-    return { status: 'unpublished' as const, tool: 'get_coaching_reference', requestedVersion: version, reference: null }
-  }
+function publicationPointer({ publication, contentHash }: PublishedReference) {
   return { status: 'available' as const, tool: 'get_coaching_reference', version: publication.version,
     contentHash, hashAlgorithm: 'sha256_utf8_json_stringify_v1', hashScope: 'complete_publication',
     reviewedAt: publication.review.interfaceReviewedAt, sourcePath: 'app/lib/coach/external-coaching-reference.ts' }
 }
 
+export function coachingReferencePointer(version = COACHING_REFERENCE_VERSION) {
+  const entry = publications.get(version)
+  if (!entry || entry.publication.review.status !== 'reviewed') {
+    return { status: 'unpublished' as const, tool: 'get_coaching_reference', requestedVersion: version, reference: null }
+  }
+  return publicationPointer(entry)
+}
+
 export function readCoachingReference(input: unknown) {
   const params = input === undefined ? {} : input
   if (!contextObject(params) || Object.keys(params).some(key => !['version', 'domains'].includes(key))
-    || ('version' in params && (typeof params.version !== 'string' || params.version !== publication.version))) {
+    || ('version' in params && (typeof params.version !== 'string' || !publications.has(params.version)))) {
     throw new CoachingContextError(400, 'Only a published version and optional whitelisted domains are supported')
   }
   const requested = 'domains' in params ? params.domains : []
@@ -103,8 +150,10 @@ export function readCoachingReference(input: unknown) {
     || new Set(requested).size !== requested.length) {
     throw new CoachingContextError(400, 'Choose at most four distinct whitelisted domains')
   }
-  const pointer = coachingReferencePointer()
-  if (pointer.status !== 'available') throw new CoachingContextError(503, 'Coaching reference is unpublished')
+  const entry = publications.get(typeof params.version === 'string' ? params.version : COACHING_REFERENCE_VERSION)
+  if (!entry || entry.publication.review.status !== 'reviewed') throw new CoachingContextError(503, 'Coaching reference is unpublished')
+  const { publication } = entry
+  const pointer = publicationPointer(entry)
   // Canonical publication order makes equivalent domain selections reproducible.
   const domains = Object.fromEntries(COACHING_REFERENCE_DOMAINS.filter(domain => requested.includes(domain)).map(domain => [domain, publication.domains[domain]]))
   const selected = { ...publication, domains }
@@ -112,6 +161,6 @@ export function readCoachingReference(input: unknown) {
     maxDomains: COACHING_REFERENCE_MAX_DOMAINS, selectedContentHash: coachingReferenceHash(selected), selectedHashScope: 'returned_reference',
     reference: selected })) as {
       status: 'available'; version: string; contentHash: string; selectedContentHash: string; selectedDomains: Domain[];
-      availableDomains: readonly Domain[]; reference: Omit<typeof publication, 'domains'> & { domains: Partial<Record<Domain, string[]>> }
+      availableDomains: readonly Domain[]; reference: Omit<Publication, 'domains'> & { domains: Partial<Record<Domain, string[]>> }
     }
 }

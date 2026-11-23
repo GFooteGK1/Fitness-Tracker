@@ -4,7 +4,7 @@ import { COACHING_REFERENCE_DOMAINS, COACHING_REFERENCE_MAX_RESPONSE_BYTES, read
 
 export const coachingReferenceTool = {
   name: 'get_coaching_reference',
-  description: 'Retrieve the versioned general coaching playbook for the selected LLM to author programming. Core principles are always returned; select up to four detailed domains. Includes provenance, review scope, supersession and hash. Creates no athlete requirements or sessions. Read get_coaching_context separately for saved athlete facts.',
+  description: 'Use the versioned Coaching Playbook when drafting or revising a training week or block and when interpreting a monthly training review. The current publication includes goal assessment, build and maintenance dose, High/Low scheduling, progression and review. Request up to four relevant domains for more detail. Use get_coaching_context for saved athlete facts. This tool is read-only.',
   inputSchema: { type: 'object', properties: {
     version: { type: 'string', description: 'Exact published version from get_coaching_context; omit for current reviewed publication.' },
     domains: { type: 'array', items: { type: 'string', enum: COACHING_REFERENCE_DOMAINS }, maxItems: 4, uniqueItems: true },
