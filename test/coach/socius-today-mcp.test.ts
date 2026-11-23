@@ -19,12 +19,12 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v13.html'
+const resourceUri = 'ui://socius/today-v14.html'
 const legacyResourceUris = [
   'ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html',
   'ui://socius/today-v5.html', 'ui://socius/today-v6.html', 'ui://socius/today-v7.html',
   'ui://socius/today-v8.html', 'ui://socius/today-v9.html', 'ui://socius/today-v10.html', 'ui://socius/today-v11.html',
-  'ui://socius/today-v12.html',
+  'ui://socius/today-v12.html', 'ui://socius/today-v13.html',
 ]
 const activityUri = 'ui://socius/activity.html'
 const draftUri = 'ui://socius/session-draft-v2.html'
@@ -178,7 +178,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         _meta: expect.objectContaining({
           securitySchemes: [{ type: 'oauth2', scopes: ['email'] }],
           ui: expect.objectContaining({ resourceUri }),
-          'openai/ui': expect.objectContaining({ entrypoints: [{ type: 'global' }] }),
+          'openai/ui': expect.objectContaining({ entrypoints: [{ type: 'global' }, { type: 'thread' }] }),
         }),
       })]))
       expect(tools.every(tool => tool.annotations?.readOnlyHint === true)).toBe(true)
@@ -240,7 +240,21 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       const result = await client.callTool(today({ tzOffset: 360 }))
       expect(result._meta?.activityEnabled).toBe(true)
       expect(result._meta?.nutritionEnabled).toBe(true)
+      expect(result._meta?.nutritionWritesEnabled).toBe(true)
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('keeps Nutrition available with no logging action when writes are disabled', async () => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    vi.stubEnv('SOCIUS_MCP_ACTIVITY_UI_ENABLED', 'true')
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'false')
+    const { client, writes } = await connect()
+    try {
+      const result = await client.callTool(today({ tzOffset: 360 }))
+      expect(result._meta?.nutritionEnabled).toBe(true)
       expect(result._meta?.nutritionWritesEnabled).toBeUndefined()
+      expect((await client.listTools()).tools.map(tool => tool.name)).not.toContain('create_meal')
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })

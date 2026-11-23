@@ -32,6 +32,7 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
   const today = readTodayWorkout ? createSociusTodayTool(createOwnedCoachingContextReader(authorize, policy), {
     activityEnabled,
     nutritionEnabled: activityEnabled,
+    nutritionWritesEnabled: activityEnabled && writesEnabled,
     checkInEnabled: Boolean(saveCheckIn),
     readWorkout: readTodayWorkout,
     readWorkoutRecovery: createOwnedWorkoutRecoveryReader(authorize, policy),

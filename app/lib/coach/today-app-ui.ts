@@ -1,5 +1,5 @@
 import { activityRendererScript, activityStyles, mcpHostBridgeScript, trainingHistoryCardMarkup } from './activity-app-ui'
-import { nutritionCardMarkup, nutritionRendererScript, nutritionStyles } from './nutrition-app-ui'
+import { mealChatMarkup, mealChatScript, nutritionCardMarkup, nutritionRendererScript, nutritionStyles } from './nutrition-app-ui'
 
 function scaleOptions(labels: string[]) {
   return labels.map((label, index) => '<option value="' + (index + 1) + '">' + (index + 1) + ' · ' + label + '</option>').join('\n')
@@ -288,6 +288,7 @@ ${nutritionStyles}
         <button id="show-nutrition" type="button" aria-pressed="false" aria-controls="nutrition-content" hidden>Nutrition</button>
       </nav>
     </header>
+${mealChatMarkup}
     <p id="loading" class="muted" role="status">Loading your saved training…</p>
     <section id="load-error" class="panel" hidden>
       <p id="error-message" role="alert"></p>
@@ -411,6 +412,7 @@ ${nutritionStyles}
 ${trainingHistoryCardMarkup}
     </section>
     <section id="nutrition-content" class="panel" aria-labelledby="view-title" hidden>
+      <button id="nutrition-log" type="button" aria-controls="meal-chat" aria-expanded="false" hidden>Log food in chat</button>
       <p id="nutrition-load" class="muted" role="status"></p>
       <button id="nutrition-retry" type="button" hidden>Try again</button>
 ${nutritionCardMarkup}
@@ -422,8 +424,10 @@ ${nutritionCardMarkup}
       const byId = id => document.getElementById(id);
 ${activityRendererScript}
 ${nutritionRendererScript}
+${mealChatScript}
 ${mcpHostBridgeScript}
       const host = createMcpHostBridge({ onClosed: stopRefreshTimers });
+      const mealChat = setupMealChat(host, byId);
       const activityDate = byId('activity-date');
       const checkInForm = byId('check-in-form');
       const checkInSubmit = byId('check-in-submit');
@@ -778,6 +782,7 @@ ${mcpHostBridgeScript}
         const nutritionAvailable = features.nutritionEnabled === true && timezone;
         byId('show-activity').hidden = !activityAvailable;
         byId('show-nutrition').hidden = !nutritionAvailable;
+        mealChat.setAvailable(nutritionAvailable && features.nutritionWritesEnabled === true);
         byId('view-switch').hidden = !activityAvailable && !nutritionAvailable;
         if (activityAvailable && !activityDate.max) {
           activityDate.max = today.date;
@@ -817,6 +822,7 @@ ${mcpHostBridgeScript}
           if (!initialized) {
             const capabilities = await host.initialize('SociusFit Today', 'fullscreen');
             hostSupportsDraft = Boolean(capabilities.message?.text);
+            mealChat.setCapabilities(capabilities);
             initialized = true;
           }
           const result = await host.request('tools/call', {
