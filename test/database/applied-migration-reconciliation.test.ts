@@ -13,7 +13,7 @@ const newPending = [
   '20261121195138_protect_whoop_provider_version.sql',
   '20261122002519_coach_daily_checkins.sql',
   '20261122135004_coach_daily_checkin_ratings.sql',
-  '20261123115000_mcp_coaching_requirements.sql',
+      '20261123130203_mcp_coaching_requirements.sql',
 ]
 // Offline comparison only. This never connects to a database or repairs history.
 function pending(local: string[], applied: { version: string; name: string }[]) {

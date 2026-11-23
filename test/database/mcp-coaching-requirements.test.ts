@@ -42,7 +42,7 @@ describe('MCP coaching requirement persistence (disposable PostgreSQL with synth
   beforeAll(async () => {
     f = await supervisedLifecycleFixture(true, true, true)
     for (const migration of ['20261005120000_first_reviewed_designation.sql', '20261005130000_first_reviewed_candidates.sql',
-      '20261123115000_mcp_coaching_requirements.sql']) {
+      '20261123130203_mcp_coaching_requirements.sql']) {
       await f.db.exec(sqlFile(`supabase/migrations/${migration}`))
     }
     const profileDdl = sqlFile('docs/migrations/complete-holistic-migration.sql').replaceAll('\r\n', '\n')

@@ -127,6 +127,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
     vi.setSystemTime(now)
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', undefined)
     vi.stubEnv('SOCIUS_MCP_ACTIVITY_UI_ENABLED', undefined)
+    vi.stubEnv('SOCIUS_MCP_COACHING_REQUIREMENTS_ENABLED', undefined)
     vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'false')
   })
   afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs() })
@@ -158,6 +159,33 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
+
+  it.each([
+    { pilot: owner, subject: owner, toolsAvailable: true },
+    { pilot: owner, subject: other, toolsAvailable: false },
+    { pilot: undefined, subject: owner, toolsAvailable: false },
+  ])('limits coaching profile tools to the configured pilot without narrowing existing tools ($toolsAvailable)',
+    async ({ pilot, subject, toolsAvailable }) => {
+      vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', pilot)
+      vi.stubEnv('SOCIUS_MCP_COACHING_REQUIREMENTS_ENABLED', 'true')
+      vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+      const { client, db, writes } = await connect(subject)
+      try {
+        const tools = (await client.listTools()).tools.map(tool => tool.name)
+        expect(tools).toContain('get_coaching_context')
+        expect(tools).toContain('create_meal')
+        for (const name of ['get_coaching_profile', 'save_coaching_requirement']) {
+          expect(tools.includes(name)).toBe(toolsAvailable)
+          expect(client.getInstructions()?.includes(name)).toBe(toolsAvailable)
+          // Invalid arguments reach tool validation only for the configured pilot.
+          const result = client.callTool({ name, arguments: { unexpected: true } })
+          if (toolsAvailable) await expect(result).resolves.toMatchObject({ isError: true })
+          else await expect(result).rejects.toMatchObject({ code: -32602 })
+        }
+        expect(db.from).not.toHaveBeenCalled()
+        expect(writes).not.toHaveBeenCalled()
+      } finally { await client.close() }
+    })
 
   it('advertises the read-only app, serves static HTML and opens with empty arguments without reading domain data', async () => {
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)

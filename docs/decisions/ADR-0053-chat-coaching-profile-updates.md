@@ -1,6 +1,6 @@
 # ADR-0053 – Save coaching profile updates from chat
 
-- **Status:** Local candidate. Hosted and installed-client acceptance are pending.
+- **Status:** Approved for the owner pilot. See `Fitness-Tracker-i25` for rollout and client verification.
 - **Date:** 2026-11-23
 - **Tracking:** `Fitness-Tracker-i25`
 - **Related:** [ADR-0039](ADR-0039-chosen-llm-and-durable-context.md), [ADR-0044](ADR-0044-chatgpt-activity-record-operations.md), [ADR-0050](ADR-0050-one-daily-session-drafting-workflow.md)
@@ -15,7 +15,9 @@ An injury update stores the athlete’s wording and any explicitly reported trai
 
 The database binds each save to the latest owner/category revision under the existing lock and uses the canonical confirmation and correction operations. A private receipt stores the request hash and an owned revision reference. The exact request returns its original saved version after a lost response or a later edit. A stale request or a reused ID with different content fails before changing the profile. The application verifies the returned owner, revision and saved content before confirming success. New writes respect the coaching pause control.
 
-Both tools require `SOCIUS_MCP_WRITES_ENABLED=true` and `SOCIUS_MCP_COACHING_REQUIREMENTS_ENABLED=true`. Install and verify the migration before enabling the owner pilot. When a chat request includes a save and a new draft, the coach saves first and prepares the draft from fresh evidence after verified readback.
+Production Supabase assigned migration version `20261123130203` to the reviewed SQL. The stored statement matched the reviewed Git bytes and SHA-256. The repository uses the applied version so future deployments recognize it.
+
+Both tools require `SOCIUS_MCP_WRITES_ENABLED=true` and `SOCIUS_MCP_COACHING_REQUIREMENTS_ENABLED=true`. The HTTP endpoint also requires the authenticated subject to match the configured pilot owner (`SOCIUS_MCP_TODAY_OWNER_ID`). Install and verify the migration before enabling the owner pilot. When a chat request includes a save and a new draft, the coach saves first and prepares the draft from fresh evidence after verified readback.
 
 ## Alternatives
 
