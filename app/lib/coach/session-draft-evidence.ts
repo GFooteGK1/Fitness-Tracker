@@ -200,6 +200,13 @@ export function createSessionDraftEvidenceReader(authorize: AuthorizeContextRequ
     if (context.requirements.training_intent.status === 'needs_review') {
       return needsInput('Can you review and confirm your current training goals in SociusFit before trying again?')
     }
+    const constraintStatus = context.requirements.training_constraints.status
+    if (['unavailable', 'truncated', 'invalid'].includes(constraintStatus)) {
+      return unavailable('Your saved training restrictions could not be verified. Try again before drafting a session.')
+    }
+    if (constraintStatus === 'needs_review') {
+      return reviewRequired('Review and confirm your saved training restrictions in SociusFit before drafting a session.')
+    }
     const goals = currentGoals(context.requirements)
     if (!goals.length) return needsInput('Can you confirm and save the training goal for today’s draft in SociusFit before trying again?')
     const playbook = playbookFor(context, goals)

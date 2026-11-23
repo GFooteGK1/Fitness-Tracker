@@ -164,7 +164,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
     const { client, db, writes } = await connect()
     try {
       expect(client.getServerCapabilities()?.resources).toEqual({})
-      expect(client.getInstructions()).toContain('For any request to recommend, draft, or adjust today’s training, start with prepare_today_session_draft.')
+      expect(client.getInstructions()).toContain('use prepare_today_session_draft before authoring')
       expect(client.getInstructions()).toContain('Factual reads and general coaching references do not authorize a draft.')
       const tools = (await client.listTools()).tools
       expect(tools.find(tool => tool.name === 'get_coaching_context')?.description).toContain('factual context')

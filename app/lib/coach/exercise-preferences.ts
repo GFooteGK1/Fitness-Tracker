@@ -59,7 +59,7 @@ export function preferenceSupportNotes(value: ExercisePreferences): string[] {
     if (entry.target.kind === 'interest' && entry.target.id === ISOMETRIC_GUIDANCE.interestId) {
       return ['Isometrics requested in warm-ups or accessories. Count existing PIMA; preserve priority-work quality. Holds need explicit reviewed position, duration, effort and recovery. Automatic programming does not insert isometric doses.']
     }
-    if (entry.target.kind === 'unresolved') return [`${entry.athleteWording}: saved as an interest; a supported movement has not been identified.`]
+    if (entry.target.kind === 'unresolved') return [`${entry.athleteWording}: a supported movement has not been identified for this saved wording.`]
     if (entry.target.kind === 'interest' && !EXERCISE_INTERESTS.find(item => item.id === entry.target.id)!.movementIds.length) {
       return [`${entry.athleteWording}: saved as an interest; specialist prescriptions are not supported yet.`]
     }

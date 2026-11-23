@@ -6,6 +6,7 @@ import { handleCoachingMcp } from '../../app/lib/coach/coaching-mcp-http'
 import { recommendationScope } from '../../app/lib/recommendations/context'
 import { coachingDecisionRows } from '../fixtures/coaching-decision-record'
 import { contextClient, contextRows, type ContextRows } from '../fixtures/coaching-context'
+import { intent } from '../fixtures/personalized-coaching/intent'
 import { workSnapshot } from '../fixtures/coach-performed-work'
 import { reviewedRollingWeek } from '../fixtures/reviewed-rolling-week'
 
@@ -323,6 +324,61 @@ describe('Today session draft over authenticated stateless MCP', () => {
         expect.objectContaining({ id: latestWorkout, revision: 2 }),
       ]) } })
       expect(fresh.structuredContent).not.toMatchObject({ contextId: prepared.contextId })
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('uses updated coaching declarations in a fresh draft and keeps the accepted session as saved', async () => {
+    const { client, openClient, rows, writes } = await connect()
+    try {
+      const previous = await prepareReady(client)
+      const updatedIntent = intent()
+      updatedIntent.outcomes[0].goal.statement = 'Build back toward a comfortable 5000 meter run'
+      const replacements = {
+        training_intent: updatedIntent,
+        available_equipment: { equipment: 'Adjustable dumbbells and a bench', resolvedEquipmentIds: ['dumbbell', 'bench'] },
+        training_constraints: { constraints: 'No running while I recover from my reported ankle injury', constraintKinds: ['no_running'] },
+        exercise_preferences: { schemaVersion: 1, state: 'specified', entries: [
+          { athleteWording: 'I prefer step-ups', target: { kind: 'unresolved' } },
+          { athleteWording: 'I prefer to skip burpees', target: { kind: 'unresolved' } },
+        ] },
+      }
+      const savedPlan = structuredClone(rows.training_plan_versions)
+      const savedSessions = structuredClone(rows.prescribed_sessions)
+      for (const [key, content] of Object.entries(replacements)) {
+        const current = rows.coach_memories.find(row => row.memory_key === key)!
+        current.status = 'superseded'
+        rows.coach_memories.push({ ...current, id: `new-${key}`, version: 2, status: 'confirmed', content })
+      }
+      const fresh = await openClient()
+      try {
+        expect((await fresh.callTool(prepare())).structuredContent).toMatchObject({ status: 'ready', evidence: {
+          goals: [expect.objectContaining({ statement: updatedIntent.outcomes[0].goal.statement, source: { id: 'new-training_intent', version: 2 } })],
+          requirements: {
+            available_equipment: { value: replacements.available_equipment, source: { version: 2 } },
+            training_constraints: { value: replacements.training_constraints, source: { version: 2 } },
+            exercise_preferences: { value: replacements.exercise_preferences, source: { version: 2 } },
+          },
+          acceptedSession: { planId: 'accepted-one' },
+        } })
+        expect((await fresh.callTool(show(previous.contextId, validDraft(previous.evidence.goals[0].id)))).isError).toBe(true)
+      } finally { await fresh.close() }
+      expect(rows.training_plan_versions).toEqual(savedPlan)
+      expect(rows.prescribed_sessions).toEqual(savedSessions)
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('requires a review when a confirmed training restriction reaches its review date', async () => {
+    const { client, rows, writes } = await connect()
+    try {
+      const previous = await prepareReady(client)
+      const restriction = rows.coach_memories.find(row => row.memory_key === 'training_constraints')!
+      restriction.content = { constraints: 'No overhead lifting', constraintKinds: ['no_overhead'] }
+      restriction.review_after = '2026-10-18T22:30:00.000Z'
+      expect((await client.callTool(prepare())).structuredContent).toMatchObject({ status: 'review_required',
+        message: expect.stringContaining('saved training restrictions') })
+      expect((await client.callTool(show(previous.contextId, validDraft(previous.evidence.goals[0].id)))).isError).toBe(true)
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
