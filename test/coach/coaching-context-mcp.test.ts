@@ -44,8 +44,12 @@ async function localMcp(authorize: AuthorizeContextRequest, jsonResponse = true,
 }
 
 describe('official SDK MCP over loopback Streamable HTTP, synthetic owner only', () => {
-  beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(contextNow) })
-  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(contextNow)
+    vi.stubEnv('SOCIUS_MCP_COACHING_REQUIREMENTS_ENABLED', undefined)
+  })
+  afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); vi.restoreAllMocks() })
 
   it.each([true, false])('initializes, lists read-only tools and retrieves exact saved context (JSON response=%s)', async json => {
     const { db, writes, traces } = contextClient()
@@ -116,6 +120,100 @@ describe('official SDK MCP over loopback Streamable HTTP, synthetic owner only',
         expect(result.isError).toBe(true)
       }
       expect(writes).not.toHaveBeenCalled(); expect(db.from).not.toHaveBeenCalled()
+    } finally { await host.close() }
+  })
+
+  it.each([
+    { writesEnabled: true, requirementsFlag: undefined },
+    { writesEnabled: false, requirementsFlag: 'true' },
+  ])('excludes coaching profile editing unless both flags are enabled ($writesEnabled, $requirementsFlag)', async ({ writesEnabled, requirementsFlag }) => {
+    vi.stubEnv('SOCIUS_MCP_COACHING_REQUIREMENTS_ENABLED', requirementsFlag)
+    const { db, writes } = contextClient()
+    const authorize = vi.fn(async () => ({ principal: principal(), db }))
+    const host = await localMcp(authorize, true, writesEnabled)
+    try {
+      await host.client.connect(host.clientTransport)
+      const { tools } = await host.client.listTools()
+      for (const name of ['get_coaching_profile', 'save_coaching_requirement']) {
+        expect(tools.some(tool => tool.name === name)).toBe(false)
+        expect(host.client.getInstructions()).not.toContain(name)
+        await expect(host.client.callTool({ name, arguments: {} })).rejects.toMatchObject({ code: -32602 })
+      }
+      expect(authorize).not.toHaveBeenCalled()
+      expect(db.from).not.toHaveBeenCalled()
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await host.close() }
+  })
+
+  it('publishes the owner-scoped coaching profile read and save when both flags are enabled', async () => {
+    vi.stubEnv('SOCIUS_MCP_COACHING_REQUIREMENTS_ENABLED', 'true')
+    const key = 'training_constraints'
+    const requestId = '10000000-0000-4000-8000-000000000001'
+    const memoryId = '10000000-0000-4000-8000-000000000002'
+    const content = { constraints: 'Avoid overhead lifts during training.', constraintKinds: ['no_overhead'] }
+    const provenance = { source: 'socius_mcp', confirmedBy: 'athlete' }
+    const filters: Array<[string, unknown]> = []
+    const query = {
+      select: () => query,
+      eq: (column: string, value: unknown) => { filters.push([column, value]); return query },
+      order: () => query,
+      limit: () => query,
+      maybeSingle: async () => ({ data: null, error: null }),
+    }
+    const db = {
+      auth: { getUser: vi.fn(async () => ({ data: { user: { id: contextOwner } }, error: null })) },
+      from: vi.fn((_table: string) => query),
+      rpc: vi.fn(async () => ({ error: null, data: {
+        requestId, userId: contextOwner, key, id: memoryId, version: 1, content, confirmedAt: contextNow, provenance,
+      } })),
+    }
+    const authorize = vi.fn(async () => ({ principal: principal(), db: db as unknown as Awaited<ReturnType<AuthorizeContextRequest>>['db'] }))
+    const host = await localMcp(authorize, true, true)
+    try {
+      await host.client.connect(host.clientTransport)
+      const { tools } = await host.client.listTools()
+      expect(tools.map(tool => tool.name)).toEqual([
+        'get_coaching_context', 'get_coaching_reference', 'get_activity_history',
+        'get_coaching_profile', 'save_coaching_requirement',
+        'create_workout', 'amend_workout', 'create_meal', 'amend_meal', 'get_activity_record', 'get_activity_write_status',
+      ])
+      expect(tools.find(tool => tool.name === 'get_coaching_profile')).toMatchObject({
+        annotations: { readOnlyHint: true }, _meta: { securitySchemes: [{ type: 'oauth2', scopes: ['email'] }] },
+      })
+      expect(tools.find(tool => tool.name === 'save_coaching_requirement')).toMatchObject({
+        annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: false },
+        _meta: { securitySchemes: [{ type: 'oauth2', scopes: ['email'] }] },
+      })
+      const instructions = host.client.getInstructions()
+      expect(instructions).toContain('ask whether to save it for future coaching unless they already explicitly asked')
+      expect(instructions).toContain('One-day symptoms, hypothetical scenarios and reported facts about someone else are conversation context only')
+      expect(instructions).toContain('Read get_coaching_profile before calling save_coaching_requirement')
+      expect(instructions).toContain('save first and prepare a fresh draft after verified readback')
+      expect(authorize).not.toHaveBeenCalled()
+
+      for (const name of ['get_coaching_profile', 'save_coaching_requirement']) {
+        const invalid = await host.client.callTool({ name, arguments: { user_id: 'foreign', sql: 'SELECT 1' } })
+        expect(invalid.isError).toBe(true)
+      }
+      expect(db.from).not.toHaveBeenCalled()
+      expect(db.rpc).not.toHaveBeenCalled()
+
+      const profile = await host.client.callTool({ name: 'get_coaching_profile', arguments: {} })
+      expect(profile.isError).toBe(false)
+      expect(profile.structuredContent).toMatchObject({ profile: { [key]: { status: 'missing', value: null, expected: null } } })
+      expect(db.auth.getUser).toHaveBeenCalled()
+      expect(db.from.mock.calls).toEqual(Array.from({ length: 5 }, () => ['coach_memories']))
+      expect(filters.filter(([column]) => column === 'user_id')).toEqual(Array.from({ length: 5 }, () => ['user_id', contextOwner]))
+      expect(db.rpc).not.toHaveBeenCalled()
+
+      const save = await host.client.callTool({ name: 'save_coaching_requirement', arguments: { requestId, key, expected: null, content } })
+      expect(save.isError).toBe(false)
+      expect(db.rpc).toHaveBeenCalledExactlyOnceWith('save_mcp_coaching_requirement', {
+        p_request_id: requestId, p_memory_key: key, p_expected: null, p_content: content,
+      })
+      expect(save.structuredContent).toEqual({ saved: {
+        requestId, key, id: memoryId, version: 1, value: content, confirmedAt: contextNow, provenance,
+      } })
     } finally { await host.close() }
   })
 

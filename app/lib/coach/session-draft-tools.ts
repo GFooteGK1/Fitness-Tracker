@@ -20,11 +20,11 @@ const dayTypes = ['training', 'recovery', 'rest'] as const
 const maxWorkPerPhase = 5
 const maxSources = 12
 
-export const sessionDraftInstructions = ' For any request to recommend, draft, or adjust today’s training, start with prepare_today_session_draft.'
+export const sessionDraftInstructions = ' For any request to recommend, draft, or adjust today’s training, use prepare_today_session_draft before authoring.'
   + ' When Today includes expectedLocalDate and tzOffset, pass both values unchanged. Keep the draft bound to that saved date.'
   + ' Treat an undated request for one personalized training session as a request for today unless another date is established.'
   + ' Use the reviewed playbook and compare the four weeks of known completed work against the active goals. State evidence gaps and compare only compatible sessions.'
-  + ' Select one objective and use the saved check-in to adjust the dose. Start from the accepted session when present and explain any adjustment.'
+  + ' Select one objective and use the saved check-in to adjust the dose. Respect the athlete’s current restrictions and available equipment. Start from the accepted session when appropriate and explain any adjustment.'
   + ' Run the workflow even without scheduled training. For daySchedule scheduled_rest, preserve the accepted rest day with planUse follow and a rest or light recovery draft. Treat unscheduled as an unknown schedule. Use empty exercise phases for full rest.'
   + ' On the 1-to-5 check-in, 1 is worst and 5 is best in every field. A 5 means very low stress, fatigue or soreness, very good sleep, or very high motivation. Treat relative-to-usual answers as qualitative.'
   + ' Ask one focused question if a missing constraint would change the session. When preparation is not ready or a call fails, relay the relevant message and resolve the issue before drafting. If the evidence changed, prepare it again.'
@@ -60,7 +60,7 @@ export const sessionDraftResourceContents = {
 
 export const prepareTodaySessionDraftTool = {
   name: 'prepare_today_session_draft', title: 'Prepare today’s session draft',
-  description: 'Use first after a Today check-in asks for a draft or when the athlete requests or revises one, including on a rest day. The fixed 28-day evidence, saved check-in, active goals, constraints, accepted schedule and reviewed playbook come from SociusFit. When ready, write one draft and call show_today_session_draft with the returned context ID. For any other result or tool error, resolve the issue before drafting a session.',
+  description: 'Use before authoring a requested Today draft or revision, including on a rest day. The fixed 28-day evidence, saved check-in, active goals, constraints, accepted schedule and reviewed playbook come from SociusFit. When ready, write one draft and call show_today_session_draft with the returned context ID. For any other result or tool error, resolve the issue before drafting a session.',
   inputSchema: { type: 'object', required: ['tzOffset'],
     properties: { tzOffset: timezoneOffset, expectedLocalDate: { type: 'string', format: 'date',
       description: 'The exact verified local date of the check-in. Pass it unchanged when starting a draft from Today.' } },

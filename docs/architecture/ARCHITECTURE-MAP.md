@@ -80,6 +80,12 @@ have distinct acceptance gates; neither follows merely from synthetic tests.
 `get_coaching_context` exposes factual owner context through MCP; the cookie
 context route shares that reader. `get_coaching_reference` adds a versioned,
 repository-backed qualitative playbook and a small pointer in factual context.
+[ADR-0053](../decisions/ADR-0053-chat-coaching-profile-updates.md) adds a gated
+chat read and save for goals, training restrictions, equipment and movement
+preferences. The authenticated owner saves one declaration at its reviewed
+revision through the canonical coach-memory writer. A private receipt binds
+exact retries to the saved revision. Fresh draft evidence reads those same
+declarations. Accepted plans retain their original snapshots.
 ADR-0049, ADR-0050 and ADR-0052 define one owner-only daily drafting workflow. The prepare
 tool fixes a 28-day evidence window and includes the saved check-in, confirmed
 goals and constraints, and reviewed playbook. Today and the draft read the same
