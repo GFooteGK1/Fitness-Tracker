@@ -122,7 +122,7 @@ export const activityRendererScript = String.raw`
 
 /** Shared transport for the full-screen and inline resources. Only the host can send results or context. */
 export const mcpHostBridgeScript = String.raw`
-      function createMcpHostBridge({ onToolResult, onClosed } = {}) {
+      function createMcpHostBridge({ onToolResult, onClosed, onHostContext } = {}) {
         const pending = new Map();
         let requestId = 0;
         let closed = false;
@@ -143,10 +143,11 @@ export const mcpHostBridgeScript = String.raw`
           });
         }
 
-        function applyTheme(context) {
+        function applyHostContext(context) {
           if (context?.theme === 'light' || context?.theme === 'dark') {
             document.documentElement.dataset.theme = context.theme;
           }
+          onHostContext?.(context);
         }
 
         window.addEventListener('message', event => {
@@ -168,7 +169,7 @@ export const mcpHostBridgeScript = String.raw`
             return;
           }
           if (data.method === 'ui/notifications/host-context-changed') {
-            applyTheme(data.params);
+            applyHostContext(data.params);
             return;
           }
           if (data.method === 'ui/notifications/tool-result') {
@@ -202,7 +203,7 @@ export const mcpHostBridgeScript = String.raw`
               appInfo: { name: appName, version: '1.0.0' },
               appCapabilities: { availableDisplayModes: [mode] },
             });
-            applyTheme(host?.hostContext);
+            applyHostContext(host?.hostContext);
             post({ method: 'ui/notifications/initialized' });
             return host?.hostCapabilities || {};
           },

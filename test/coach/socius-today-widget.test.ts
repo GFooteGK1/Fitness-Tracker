@@ -48,6 +48,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   supportsDraft?: boolean
   supportsActiveChat?: boolean
   draftResponse?: 'reject' | 'error_result' | 'uncertain'
+  hostContext?: Record<string, unknown>
 } = {}) {
   const iframe = document.createElement('iframe')
   document.body.append(iframe)
@@ -77,10 +78,13 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
     let error: { code: number; message: string } | undefined
     if (request.method === 'ui/initialize') {
       const supportsActiveChat = options.supportsActiveChat ?? !options.supportsDraft
-      result = { hostCapabilities: {
-        ...(options.supportsDraft ? { message: { text: {} } } : {}),
-        ...(supportsActiveChat ? { experimental: { 'openai/message': {} } } : {}),
-      } }
+      result = {
+        hostContext: options.hostContext,
+        hostCapabilities: {
+          ...(options.supportsDraft ? { message: { text: {} } } : {}),
+          ...(supportsActiveChat ? { experimental: { 'openai/message': {} } } : {}),
+        },
+      }
     } else if (request.method === 'ui/message') {
       if (options.draftResponse === 'reject') error = { code: -32000, message: 'Message sending denied' }
       else if (options.draftResponse === 'error_result') result = { isError: true }
@@ -160,6 +164,11 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
     widget,
     element: (id: string) => widget.getElementById(id)!,
     requests,
+    updateHostContext: (params: Record<string, unknown>, source = host) => {
+      child.dispatchEvent(new MessageEvent('message', {
+        source, data: { jsonrpc: '2.0', method: 'ui/notifications/host-context-changed', params },
+      }))
+    },
     setMealCount: (count: number) => { mealCount = count },
     setTodayDate: (value: string) => { todayDate = value },
     setSavedCheckIn: (checkIn: CheckIn) => { savedCheckIns.set(todayDate, checkIn) },
@@ -204,6 +213,29 @@ afterEach(() => {
 })
 
 describe('SociusFit dashboard', () => {
+  it('applies the host safe area and keeps it across unrelated context changes', async () => {
+    const { element, widget, updateHostContext } = mountWidget(initialRecommendation, undefined, {
+      hostContext: { theme: 'dark', platform: 'mobile', safeAreaInsets: { top: 30, bottom: 150 } },
+    })
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    const { dataset, style } = widget.documentElement
+    expect(dataset.hostPlatform).toBe('mobile')
+    expect(style.getPropertyValue('--host-safe-top')).toBe('30px')
+    expect(style.getPropertyValue('--host-safe-bottom')).toBe('150px')
+
+    updateHostContext({ theme: 'light' })
+    expect(dataset.theme).toBe('light')
+    expect(style.getPropertyValue('--host-safe-bottom')).toBe('150px')
+
+    updateHostContext({ safeAreaInsets: { bottom: 0, top: -1, left: '20px' } })
+    expect(style.getPropertyValue('--host-safe-bottom')).toBe('0px')
+    expect(style.getPropertyValue('--host-safe-top')).toBe('30px')
+    expect(style.getPropertyValue('--host-safe-left')).toBe('')
+
+    updateHostContext({ safeAreaInsets: { bottom: 180 } }, widget.defaultView!)
+    expect(style.getPropertyValue('--host-safe-bottom')).toBe('0px')
+  })
+
   it('orders today’s training, WHOOP, and collapsed last workout', async () => {
     const { element } = mountWidget()
     await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
