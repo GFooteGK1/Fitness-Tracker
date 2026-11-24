@@ -692,6 +692,19 @@ ${mcpHostBridgeScript}
         byId('workout-main').hidden = !main.length;
       }
 
+      function addMetric(list, label, detail) {
+        const row = element('div');
+        const value = element('dd');
+        value.append(detail);
+        row.append(element('dt', label), value);
+        list.append(row);
+        return value;
+      }
+
+      function isScore(value, max) {
+        return Number.isFinite(value) && value >= 0 && value <= max;
+      }
+
       function renderRecovery(recovery) {
         const labels = {
           stale: 'Stale',
@@ -706,17 +719,6 @@ ${mcpHostBridgeScript}
         state.dataset.state = recovery.status;
         setNote('recovery-note', recovery.status === 'stale' ? 'Recovery data may be out of date.'
           : recovery.status === 'unverified' ? 'The timestamp or sync could not be verified.' : null);
-        function addMetric(list, label, detail) {
-          const row = element('div');
-          const value = element('dd');
-          value.append(detail);
-          row.append(element('dt', label), value);
-          list.append(row);
-          return value;
-        }
-        function isScore(value, max) {
-          return Number.isFinite(value) && value >= 0 && value <= max;
-        }
         function setGauge(id, value, max, format) {
           const node = byId(id);
           const available = isScore(value, max);

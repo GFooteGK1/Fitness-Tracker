@@ -49,6 +49,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   supportsActiveChat?: boolean
   draftResponse?: 'reject' | 'error_result' | 'uncertain'
   hostContext?: Record<string, unknown>
+  sessionEffort?: ReturnType<typeof projectTodayRecovery>['sessionEffort']
 } = {}) {
   const iframe = document.createElement('iframe')
   document.body.append(iframe)
@@ -63,7 +64,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   let nextSaveReceipt: 'lost' | 'wrong_date' | 'wrong_values' | 'transport_rejection' | 'invalid_params' | 'not_saved' | undefined
   let nextReadError = false
   let todayDate = date
-  let todayRecovery: Partial<ReturnType<typeof projectTodayRecovery>> = recovery
+  let todayRecovery: Partial<ReturnType<typeof projectTodayRecovery>> = { ...recovery, sessionEffort: options.sessionEffort }
   let holdNextToday = false
   let respondToHeldToday: (() => void) | undefined
   let holdNextSave = false
@@ -213,6 +214,33 @@ afterEach(() => {
 })
 
 describe('SociusFit dashboard', () => {
+  it('opens Today with a saved workout effort and unverified workout time', async () => {
+    const { element } = mountWidget(initialRecommendation, undefined, {
+      sessionEffort: { status: 'timing_unverified', rpe: 7, workoutAt: null, recoveryScore: null, recoveryUpdatedAt: null },
+    })
+
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    expect(element('load-error').hidden).toBe(true)
+    expect(element('workout-recovery').hidden).toBe(false)
+    expect(element('workout-recovery-metrics').textContent).toContain('Session RPE7 / 10')
+    expect(element('workout-recovery-note').textContent).toBe('No verified recovery score from before this workout.')
+  })
+
+  it('opens Today with a workout effort paired with verified pre-workout recovery', async () => {
+    const workoutAt = '2026-11-19T15:30:00Z'
+    const recoveryUpdatedAt = '2026-11-19T13:00:00Z'
+    const { element } = mountWidget(initialRecommendation, undefined, {
+      sessionEffort: { status: 'paired', rpe: 8, workoutAt, recoveryScore: 72, recoveryUpdatedAt },
+    })
+
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    expect(element('load-error').hidden).toBe(true)
+    const metrics = element('workout-recovery-metrics')
+    expect(metrics.textContent).toContain('Pre-workout WHOOP recovery72%')
+    expect(metrics.textContent).toContain('Session RPE8 / 10')
+    expect(Array.from(metrics.querySelectorAll('time'), time => time.dateTime)).toEqual([recoveryUpdatedAt, workoutAt])
+  })
+
   it('applies the host safe area and keeps it across unrelated context changes', async () => {
     const { element, widget, updateHostContext } = mountWidget(initialRecommendation, undefined, {
       hostContext: { theme: 'dark', platform: 'mobile', safeAreaInsets: { top: 30, bottom: 150 } },
