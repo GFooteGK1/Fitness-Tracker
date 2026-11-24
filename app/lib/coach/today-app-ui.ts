@@ -36,17 +36,38 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     :root[data-theme="dark"] { color-scheme: dark; }
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
+    html, body { overflow: hidden; }
     body {
       margin: 0;
       background: var(--background);
       color: var(--foreground);
       font: 1rem/1.55 system-ui, sans-serif;
     }
+    #dashboard-scroll {
+      --page-top-gutter: 1.25rem;
+      --page-inline-gutter: 1rem;
+      --page-bottom-gutter: 1.5rem;
+      --bottom-clearance: max(var(--host-safe-bottom, 0px), env(safe-area-inset-bottom, 0px), var(--composer-clearance, 0px));
+      height: 100vh;
+      height: 100dvh;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      scroll-padding-block: max(var(--page-top-gutter), var(--host-safe-top, 0px)) var(--bottom-clearance);
+    }
+    #dashboard-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    /* The fullscreen ChatGPT composer and bottom navigation can cover the iframe on phones. */
+    :root[data-host-platform="mobile"] #dashboard-scroll { --composer-clearance: 9rem; }
+    @media (max-width: 42rem) {
+      #dashboard-scroll { --composer-clearance: 9rem; }
+    }
     main {
       max-width: 62rem;
       margin: auto;
-      padding: max(1.25rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
-        max(1.5rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+      padding:
+        max(var(--page-top-gutter), var(--host-safe-top, 0px), env(safe-area-inset-top, 0px))
+        max(var(--page-inline-gutter), var(--host-safe-right, 0px), env(safe-area-inset-right, 0px))
+        calc(var(--page-bottom-gutter) + var(--bottom-clearance))
+        max(var(--page-inline-gutter), var(--host-safe-left, 0px), env(safe-area-inset-left, 0px));
       overflow-wrap: anywhere;
     }
     header { margin: .5rem 0 1.25rem; }
@@ -262,7 +283,11 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     #load-error { color: var(--danger); background: var(--danger-soft); }
     footer { color: var(--muted); }
     @media (min-width: 42rem) {
-      main { padding-inline: 1.75rem; padding-block: 2rem; }
+      #dashboard-scroll {
+        --page-top-gutter: 2rem;
+        --page-inline-gutter: 1.75rem;
+        --page-bottom-gutter: 2rem;
+      }
       .check-in-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
 ${activityStyles}
@@ -277,6 +302,7 @@ ${nutritionStyles}
   </style>
 </head>
 <body>
+  <div id="dashboard-scroll" role="region" aria-label="SociusFit dashboard" tabindex="0">
   <main>
     <header>
       <p class="brand">SociusFit</p>
@@ -419,6 +445,7 @@ ${nutritionCardMarkup}
       <button id="nutrition-refresh" class="secondary-action" type="button" hidden>Refresh totals</button>
     </section>
   </main>
+  </div>
   <script>
     (() => {
       const byId = id => document.getElementById(id);
@@ -426,7 +453,22 @@ ${activityRendererScript}
 ${nutritionRendererScript}
 ${mealChatScript}
 ${mcpHostBridgeScript}
-      const host = createMcpHostBridge({ onClosed: stopRefreshTimers });
+      const dashboardScroll = byId('dashboard-scroll');
+      const host = createMcpHostBridge({
+        onClosed: stopRefreshTimers,
+        onHostContext(context) {
+          const root = document.documentElement;
+          if (['mobile', 'desktop', 'web'].includes(context?.platform)) {
+            root.dataset.hostPlatform = context.platform;
+          }
+          for (const edge of ['top', 'right', 'bottom', 'left']) {
+            const inset = context?.safeAreaInsets?.[edge];
+            if (Number.isFinite(inset) && inset >= 0) {
+              root.style.setProperty('--host-safe-' + edge, inset + 'px');
+            }
+          }
+        },
+      });
       const mealChat = setupMealChat(host, byId);
       const activityDate = byId('activity-date');
       const checkInForm = byId('check-in-form');
@@ -1150,6 +1192,7 @@ ${mcpHostBridgeScript}
         }
         if (view === 'today' && !refreshTodayIfDateChanged()) void refreshWhoop();
         syncTodayVisibility();
+        dashboardScroll.scrollTop = 0;
         stopNutritionRefresh();
         if (view === 'activity') void loadActivity();
         if (view === 'nutrition') {
