@@ -291,7 +291,18 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
 
   it('hydrates the widget with narrow saved facts for the browser-local date and keeps the model-visible result generic', async () => {
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
-    const { client, db, traces, writes, session } = await connect()
+    const name = 'Barbell floor press'
+    const dose = { reps: 5, load: { value: 95, unit: 'lb' } }
+    const grouped = { name, measurements: ['3 sets × 5 reps at 95 lb', '1 set × 3 reps at 95 lb'] }
+    const { client, db, traces, writes, session } = await connect(owner, rows => {
+      rows.workouts[0].blocks = [
+        { movements: [{ name, sets: 1, reps: 5, load: 95, unit: 'lb' }] },
+        { segments: [
+          { rounds: 2, events: [{ movement_name: name, performed: { sets: [dose, dose] } }] },
+          { events: [{ movement_name: name, performed: { ...dose, sets: 1, reps: 3 } }] },
+        ] },
+      ]
+    })
     try {
       for (const args of [{ tzOffset: 360, user_id: other }, { tzOffset: 841 }, { tzOffset: '360' }]) {
         const result = await client.callTool(today(args))
@@ -309,10 +320,10 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         workoutRecommendation: { source: 'accepted_plan', status: 'planned', title },
         lastWorkout: {
           date: '2026-10-18', sessionRpe: 7.5,
-          movements: expect.arrayContaining([expect.objectContaining({ name: 'Barbell floor press' })]),
+          movements: [grouped],
         },
         workoutRecoveryKey: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
-        recentStatus: expect.any(String), recentWork: expect.arrayContaining([expect.any(Object)]),
+        recentStatus: expect.any(String), recentWork: [{ ...grouped, date: localDate }],
         recovery: { status: 'stale', lastSyncAt: '2026-10-18T11:00:00.000Z', storedDate: '2026-10-18',
           recoveryScore: 71, sleepPerformance: 82, strainScore: 3, strainStatus: 'stale', strainStoredDate: '2026-10-18' },
       })

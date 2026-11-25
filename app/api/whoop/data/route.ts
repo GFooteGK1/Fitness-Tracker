@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@/app/lib/auth/supabase-server';
 import type { WhoopRecovery, WhoopSleep, WhoopCycle, WhoopWorkout } from '@/app/lib/types/whoop';
 
+function isStoredDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith('0000')) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function workoutCoverage(status: 'available' | 'unavailable' | 'not_connected') {
+  return { status, dateBasis: 'stored_date_label', eventTimePrecision: 'unknown' } as const;
+}
+
 /**
  * GET /api/whoop/data
  * 
@@ -9,15 +19,16 @@ import type { WhoopRecovery, WhoopSleep, WhoopCycle, WhoopWorkout } from '@/app/
  * 
  * Query Parameters:
  * - type: 'all' | 'recovery' | 'sleep' | 'cycle' | 'workouts' (default: 'all')
- * - startDate: ISO date string (optional)
- * - endDate: ISO date string (optional)
+ * - startDate: inclusive stored date label (YYYY-MM-DD for workouts, optional)
+ * - endDate: inclusive stored date label (YYYY-MM-DD for workouts, optional)
  * - limit: number (default: 7 for workouts, 1 for others)
  * 
  * Returns:
  * - recovery: Most recent recovery data
  * - sleep: Most recent sleep data
  * - cycle: Most recent cycle data
- * - workouts: Recent workouts (up to limit)
+ * - workouts: Saved workout rows in the requested date-label range (up to limit), or null when unavailable
+ * - workoutCoverage: Workout read status, date label basis, and unknown provider occurrence times
  * - connectionStatus: 'connected' | 'disconnected' | 'unhealthy'
  * - lastSyncAt: ISO timestamp of last successful sync
  * - staleness: boolean indicating if data is >24 hours old
@@ -38,16 +49,37 @@ export async function GET(request: Request) {
     // 2. Parse query parameters
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'all';
+    const includeWorkouts = type === 'all' || type === 'workouts';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const limit = parseInt(searchParams.get('limit') || '7', 10);
+    const limit = Number(searchParams.get('limit') ?? '7');
+
+    if (includeWorkouts) {
+      if ((startDate !== null && !isStoredDate(startDate)) || (endDate !== null && !isStoredDate(endDate))
+        || (startDate !== null && endDate !== null && startDate > endDate)) {
+        return NextResponse.json(
+          { error: 'Use an ordered YYYY-MM-DD range of stored date labels for WHOOP workouts.' },
+          { status: 400 }
+        );
+      }
+      if (!Number.isSafeInteger(limit) || limit < 1) {
+        return NextResponse.json({ error: 'The WHOOP workout limit must be a positive integer.' }, { status: 400 });
+      }
+    }
 
     // 3. Check if WHOOP is connected (tokens exist)
-    const { data: tokens } = await supabase
+    const { data: tokens, error: connectionReadError } = await supabase
       .from('whoop_tokens')
       .select('id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
+
+    if (connectionReadError) {
+      return NextResponse.json({
+        error: 'Could not verify the WHOOP connection.',
+        ...(includeWorkouts ? { workouts: null, workoutCoverage: workoutCoverage('unavailable') } : {}),
+      }, { status: 503 });
+    }
 
     // If no tokens, user hasn't connected WHOOP
     if (!tokens) {
@@ -58,7 +90,7 @@ export async function GET(request: Request) {
         recovery: null,
         sleep: null,
         cycle: null,
-        workouts: []
+        ...(includeWorkouts ? { workouts: null, workoutCoverage: workoutCoverage('not_connected') } : {}),
       });
     }
 
@@ -84,7 +116,8 @@ export async function GET(request: Request) {
       recovery?: WhoopRecovery | null;
       sleep?: WhoopSleep | null;
       cycle?: WhoopCycle | null;
-      workouts?: WhoopWorkout[];
+      workouts?: WhoopWorkout[] | null;
+      workoutCoverage?: ReturnType<typeof workoutCoverage>;
       connectionStatus: string;
       lastSyncAt: string | null;
       staleness: boolean;
@@ -143,19 +176,25 @@ export async function GET(request: Request) {
     }
 
     // Fetch workouts data
-    if (type === 'all' || type === 'workouts') {
+    if (includeWorkouts) {
       const query = supabase
         .from('whoop_workouts')
         .select('*')
         .eq('user_id', user.id)
-        .order('start_time', { ascending: false })
+        .order('date', { ascending: false })
+        .order('id', { ascending: true })
         .limit(limit);
 
-      if (startDate) query.gte('start_time', startDate);
-      if (endDate) query.lte('start_time', endDate);
+      if (startDate) query.gte('date', startDate);
+      if (endDate) query.lte('date', endDate);
 
-      const { data: workouts } = await query;
-      response.workouts = workouts || [];
+      const { data: workouts, error } = await query;
+      const available = !error && Array.isArray(workouts);
+      response.workouts = available ? workouts : null;
+      response.workoutCoverage = workoutCoverage(available ? 'available' : 'unavailable');
+      if (!available && type === 'workouts') {
+        return NextResponse.json({ ...response, error: 'WHOOP workouts are unavailable.' }, { status: 503 });
+      }
     }
 
     return NextResponse.json(response);
