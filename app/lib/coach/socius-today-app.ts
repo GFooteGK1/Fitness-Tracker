@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { formatUTCAsLocalDateWithOffset, isValidTimezoneOffset } from '../timezone-utils'
 import { CoachingContextError, contextObject } from './coaching-context'
 import type { readCoachingContext } from './coaching-context-server'
@@ -25,11 +26,12 @@ export const legacySociusTodayResourceUris: readonly string[] = [
   'ui://socius/today-v13.html',
   'ui://socius/today-v14.html',
   'ui://socius/today-v15.html',
+  'ui://socius/today-v16.html',
 ]
 
 export const sociusTodayResource = {
   // ChatGPT uses the URI as a cache key. Bump it when releasing changes to the widget.
-  uri: 'ui://socius/today-v16.html',
+  uri: 'ui://socius/today-v17.html',
   name: 'SociusFit Today',
   mimeType: 'text/html;profile=mcp-app',
 } as const
@@ -148,6 +150,10 @@ function isRetiredPreview(value: unknown) {
 
 function projectToday(context: CoachingContext, workout: WorkoutToday, pairedRecovery: WorkoutRecovery) {
   const { workoutRecommendation, lastWorkout, workoutEvidence, safety } = workout
+  // Match foreground comparisons to the displayed revision without exposing its workout ID.
+  const workoutRecoveryKey = workoutEvidence && workoutEvidence.revision !== null
+    ? createHash('sha256').update(`${workoutEvidence.workoutId}:${workoutEvidence.revision}`).digest('base64url')
+    : null
   const sessions = workoutRecommendation.sessions
   const warning = safety.status === 'hold' ? {
     title: safety.reason === 'concerning_feedback' ? 'Review the saved pain report' : 'Review before training',
@@ -164,6 +170,7 @@ function projectToday(context: CoachingContext, workout: WorkoutToday, pairedRec
     workoutRecommendation: warning ? { ...workoutRecommendation, ...warning,
       status: 'recommended' as const, source: 'saved_recommendation' as const, reviewBeforeTraining: true } : workoutRecommendation,
     lastWorkout,
+    workoutRecoveryKey,
     // Keep the prior payload keys usable while the host refreshes the installed resource.
     sessionStatus: sessions.length ? 'scheduled' : context.acceptedProgramming ? 'none' : 'unavailable',
     sessions,
