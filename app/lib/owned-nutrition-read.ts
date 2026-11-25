@@ -32,13 +32,14 @@ type OwnedMealTotalsRead = {
   status: 'available' | 'no_records' | 'partial' | 'unavailable'
   count: number | null
   totals: MacroTotals | null
+  loggedDays: number | null
 }
 
-/** Summarize the local day independently of the smaller activity-detail query. */
+/** Summarize a local date window independently of the smaller activity-detail query. */
 export async function readOwnedMealTotals(db: SupabaseClient, owner: string, window: {
-  startUtc: string; endUtcExclusive: string
+  startUtc: string; endUtcExclusive: string; timezone: string
 }): Promise<OwnedMealTotalsRead> {
-  const unavailable = { status: 'unavailable', count: null, totals: null } as const
+  const unavailable = { status: 'unavailable', count: null, totals: null, loggedDays: null } as const
   try {
     const { data, count: rawCount, error } = await db.from('meals').select(nutritionTotalFields, { count: 'exact' })
       .eq('user_id', owner).gte('meal_timestamp', window.startUtc).lt('meal_timestamp', window.endUtcExclusive)
@@ -69,7 +70,12 @@ export async function readOwnedMealTotals(db: SupabaseClient, owner: string, win
 
     const totals = calculateDailyTotals(valid)
     if (!Object.values(totals).every(Number.isFinite)) return { ...unavailable, count }
-    return { status: !complete ? 'partial' : count === 0 ? 'no_records' : 'available', count, totals }
+    // Only complete reads can identify days with no saved meals. A saved meal
+    // with zero macro values still counts as a logged day.
+    const dateFormat = new Intl.DateTimeFormat('en', { timeZone: window.timezone, calendar: 'gregory',
+      year: 'numeric', month: '2-digit', day: '2-digit' })
+    const loggedDays = complete ? new Set(data.map(row => dateFormat.format(new Date(row.meal_timestamp)))).size : null
+    return { status: !complete ? 'partial' : count === 0 ? 'no_records' : 'available', count, totals, loggedDays }
   } catch {
     return unavailable
   }

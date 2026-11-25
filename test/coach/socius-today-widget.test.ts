@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { sociusTodayHtml } from '../../app/lib/coach/today-app-ui'
 import type { projectTodayRecovery } from '../../app/lib/coach/recovery-today-app'
 import type { TodayWorkoutRecommendation } from '../../app/lib/coach/today-workout-recommendation'
+import type { MacroTotals } from '../../app/lib/types/food-tracking'
 
 const date = '2026-11-20'
 const readAt = '2026-11-20T11:40:00.000Z'
@@ -41,12 +42,31 @@ interface HostRequest {
   params?: Record<string, unknown>
 }
 
+interface NutritionWeek {
+  startDate: string
+  endDate: string
+  days: number
+  mealStatus: 'available' | 'no_records' | 'partial' | 'unavailable'
+  loggedDays: number | null
+  totals: MacroTotals | null
+  targetStatus: 'available' | 'not_configured' | 'unavailable'
+  targets: MacroTotals | null
+}
+
+const dailyNutritionTargets = { protein: 120, carbs: 250, fat: 75, calories: 2155 }
+const nutritionWeek = {
+  startDate: '2026-11-16', endDate: date, days: 5, mealStatus: 'available', loggedDays: 4,
+  totals: { protein: 450, carbs: 1000, fat: 300, calories: 8500 },
+  targetStatus: 'available', targets: { protein: 600, carbs: 1250, fat: 375, calories: 10775 },
+} satisfies NutritionWeek
+
 function mountWidget(workoutRecommendation = initialRecommendation, browserClock?: DateConstructor, options: {
   savedCheckIn?: CheckIn
   savedRelativeCheckIn?: typeof relativeCheckIn
   oldServer?: boolean
   checkInEnabled?: boolean
   nutritionWritesEnabled?: boolean
+  nutritionTargets?: MacroTotals
   supportsDraft?: boolean
   supportsActiveChat?: boolean
   draftResponse?: 'reject' | 'error_result' | 'uncertain'
@@ -62,6 +82,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   const widget = child.document
   const requests: HostRequest[] = []
   let mealCount = 0
+  let weekToDate: NutritionWeek | undefined
   const savedCheckIns = new Map<string, CheckIn>()
   if (options.savedCheckIn) savedCheckIns.set(date, options.savedCheckIn)
   let nextSaveReceipt: 'lost' | 'wrong_date' | 'wrong_values' | 'transport_rejection' | 'invalid_params' | 'not_saved' | undefined
@@ -141,9 +162,11 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
       } } }
     } else if (request.params?.name === 'read_socius_nutrition') {
       result = { _meta: { nutrition: {
-        date, readAt, timezone: 'UTC', mealCount,
-        mealStatus: mealCount ? 'available' : 'no_records', targetStatus: 'not_configured',
+        date: todayDate, readAt: todayDate === date ? readAt : `${todayDate}T11:40:00.000Z`, timezone: 'UTC', mealCount,
+        mealStatus: mealCount ? 'available' : 'no_records', targetStatus: options.nutritionTargets ? 'available' : 'not_configured',
         totals: { protein: mealCount * 30, carbs: 0, fat: 0, calories: mealCount * 120 },
+        ...(options.nutritionTargets ? { targets: options.nutritionTargets } : {}),
+        ...(weekToDate ? { weekToDate } : {}),
       } } }
     }
     const respond = () => child.dispatchEvent(new MessageEvent('message', {
@@ -175,6 +198,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
       }))
     },
     setMealCount: (count: number) => { mealCount = count },
+    setNutritionWeek: (week?: NutritionWeek) => { weekToDate = week },
     setTodayDate: (value: string) => { todayDate = value },
     setSavedCheckIn: (checkIn: CheckIn) => { savedCheckIns.set(todayDate, checkIn) },
     setRecovery: (values: Partial<ReturnType<typeof projectTodayRecovery>>) => { todayRecovery = { ...recovery, ...values } },
@@ -860,11 +884,118 @@ describe('SociusFit dashboard', () => {
     await vi.waitFor(() => expect(element('nutrition-refresh').hidden).toBe(false))
     expect(element('nutrition-log').hidden).toBe(true)
     expect(element('nutrition-meal-count').textContent).toBe('0 saved meals')
+    expect(element('nutrition-week').hidden).toBe(true)
     setMealCount(1)
     element('nutrition-refresh').click()
     await vi.waitFor(() => expect(element('nutrition-meal-count').textContent).toBe('1 saved meal'))
     expect(element('nutrition-progress').textContent).toContain('30 g logged')
     expect(requests.filter(request => request.method === 'ui/message')).toHaveLength(0)
+  })
+
+  it('opens the week-to-date summary on Nutrition and refreshes both daily and weekly progress through the host', async () => {
+    const { widget, element, requests, setMealCount, setNutritionWeek, setTodayDate } = mountWidget(initialRecommendation, undefined, {
+      nutritionTargets: dailyNutritionTargets,
+    })
+    setMealCount(1)
+    setNutritionWeek(nutritionWeek)
+    const nutritionCalls = () => requests.filter(request => request.params?.name === 'read_socius_nutrition')
+    const proteinProgress = () => widget.querySelector<HTMLProgressElement>('#nutrition-week-progress [aria-label="Protein week-to-date progress"]')
+
+    await vi.waitFor(() => expect(element('show-nutrition').hidden).toBe(false))
+    expect(nutritionCalls()).toHaveLength(0)
+    element('show-nutrition').click()
+    await vi.waitFor(() => expect(element('nutrition-refresh').hidden).toBe(false))
+    expect(nutritionCalls()).toHaveLength(1)
+    expect(nutritionCalls()[0].params?.arguments).toEqual({ timezone: expect.any(String) })
+    expect(element('nutrition-progress').textContent).toContain('30 g logged')
+
+    const week = element('nutrition-week') as HTMLDetailsElement
+    const summary = week.querySelector<HTMLElement>('summary')!
+    expect(week.hidden).toBe(false)
+    expect(summary.textContent?.trim()).toMatch(/week to date/i)
+    expect(week.open).toBe(false)
+    summary.click()
+    expect(week.open).toBe(true)
+    expect(element('nutrition-week-range').textContent).toMatch(/16.*20/)
+    expect(element('nutrition-week-coverage').textContent).toContain('4 of 5 days with saved meals.')
+    expect(proteinProgress()).not.toBeNull()
+    expect(proteinProgress()!.value / proteinProgress()!.max).toBeCloseTo(0.75)
+    expect(element('nutrition-week-progress').textContent).toContain('75%')
+
+    setMealCount(2)
+    setNutritionWeek({ ...nutritionWeek, totals: { ...nutritionWeek.totals, protein: 480 } })
+    element('nutrition-refresh').click()
+    await vi.waitFor(() => expect(element('nutrition-week-progress').textContent).toContain('80%'))
+    expect(week.open).toBe(true)
+    expect(element('nutrition-meal-count').textContent).toBe('2 saved meals')
+    expect(element('nutrition-progress').textContent).toContain('60 g logged')
+    expect(nutritionCalls()).toHaveLength(2)
+
+    setTodayDate('2026-11-23')
+    setMealCount(0)
+    setNutritionWeek({
+      ...nutritionWeek, startDate: '2026-11-23', endDate: '2026-11-23', days: 1, loggedDays: 0, mealStatus: 'no_records',
+      totals: { protein: 0, carbs: 0, fat: 0, calories: 0 }, targets: dailyNutritionTargets,
+    })
+    element('nutrition-refresh').click()
+    await vi.waitFor(() => expect(element('nutrition-week-range').textContent).toMatch(/23/))
+    expect(element('nutrition-week-coverage').textContent).toContain('0 of 1 day with saved meals.')
+    expect(proteinProgress()!.value).toBe(0)
+    expect(element('nutrition-week-progress').textContent).toContain('0%')
+    expect(element('nutrition-meal-count').textContent).toBe('0 saved meals')
+    expect(element('nutrition-progress').textContent).toContain('0 g logged')
+    expect(nutritionCalls()).toHaveLength(3)
+    summary.click()
+    expect(week.open).toBe(false)
+    expect(requests.filter(request => request.method === 'ui/message')).toHaveLength(0)
+  })
+
+  it('preserves daily nutrition when weekly totals are unavailable or missing from an older host response', async () => {
+    const { widget, element, setMealCount, setNutritionWeek } = mountWidget(initialRecommendation, undefined, {
+      nutritionTargets: dailyNutritionTargets,
+    })
+    setMealCount(1)
+    setNutritionWeek(nutritionWeek)
+    await vi.waitFor(() => expect(element('show-nutrition').hidden).toBe(false))
+    element('show-nutrition').click()
+    await vi.waitFor(() => expect(element('nutrition-week').hidden).toBe(false))
+    element('nutrition-week').querySelector('summary')!.click()
+    expect(element('nutrition-week-progress').textContent).toContain('75%')
+
+    setNutritionWeek({ ...nutritionWeek, mealStatus: 'partial', loggedDays: null })
+    element('nutrition-refresh').click()
+    await vi.waitFor(() => expect(element('nutrition-week-progress').textContent).toContain('450 g subtotal'))
+    expect(element('nutrition-week-progress').textContent).toContain('600 g target')
+    expect(element('nutrition-week-coverage').textContent).toContain('Logged-day coverage is unavailable.')
+    expect(widget.querySelectorAll('#nutrition-week-progress progress')).toHaveLength(0)
+    expect(element('nutrition-week-progress').textContent).not.toContain('75%')
+    expect(element('nutrition-card').hidden).toBe(false)
+    expect(element('nutrition-progress').textContent).toContain('30 g logged')
+
+    setNutritionWeek({ ...nutritionWeek, mealStatus: 'unavailable', loggedDays: null, totals: null })
+    element('nutrition-refresh').click()
+    await vi.waitFor(() => expect(element('nutrition-week-meal-note').textContent).toBe('Logged macro totals are unavailable.'))
+    expect(element('nutrition-week-coverage').textContent).toContain('Logged-day coverage is unavailable.')
+    expect(widget.querySelectorAll('#nutrition-week-progress progress')).toHaveLength(0)
+    expect(element('nutrition-week-progress').textContent).not.toContain('75%')
+    expect(element('nutrition-card').hidden).toBe(false)
+    expect(element('nutrition-progress').textContent).toContain('30 g logged')
+
+    setNutritionWeek({ ...nutritionWeek, days: 0 })
+    element('nutrition-refresh').click()
+    await vi.waitFor(() => expect(element('nutrition-week').textContent).toContain('Week-to-date nutrition is unavailable.'))
+    expect(element('nutrition-week').hidden).toBe(false)
+    expect(element('nutrition-week-progress').children).toHaveLength(0)
+    expect(element('nutrition-card').hidden).toBe(false)
+    expect(element('nutrition-progress').textContent).toContain('30 g logged')
+
+    setNutritionWeek()
+    element('nutrition-refresh').click()
+    await vi.waitFor(() => expect(element('nutrition-week').hidden).toBe(true))
+    expect(element('nutrition-card').hidden).toBe(false)
+    expect(element('nutrition-progress').textContent).toContain('30 g logged')
+    expect(element('nutrition-progress').textContent).toContain('120 g target')
+    expect(element('nutrition-meal-count').textContent).toBe('1 saved meal')
   })
 
   it('keeps meal details across dashboard views and requests one unsent draft in the active chat', async () => {
