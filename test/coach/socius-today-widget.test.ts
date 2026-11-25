@@ -50,6 +50,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   draftResponse?: 'reject' | 'error_result' | 'uncertain'
   hostContext?: Record<string, unknown>
   sessionEffort?: ReturnType<typeof projectTodayRecovery>['sessionEffort']
+  workoutRecoveryKey?: string
 } = {}) {
   const iframe = document.createElement('iframe')
   document.body.append(iframe)
@@ -64,6 +65,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   let nextSaveReceipt: 'lost' | 'wrong_date' | 'wrong_values' | 'transport_rejection' | 'invalid_params' | 'not_saved' | undefined
   let nextReadError = false
   let todayDate = date
+  let workoutRecoveryKey = options.workoutRecoveryKey
   let todayRecovery: Partial<ReturnType<typeof projectTodayRecovery>> = { ...recovery, sessionEffort: options.sessionEffort }
   let holdNextToday = false
   let respondToHeldToday: (() => void) | undefined
@@ -103,7 +105,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
         result = { _meta: {
           today: {
             date: todayDate, readAt, workoutRecommendation, sessions: workoutRecommendation.sessions,
-            recentWork: [], lastWorkout, recovery: todayRecovery,
+            recentWork: [], lastWorkout, recovery: todayRecovery, workoutRecoveryKey,
             ...(options.oldServer ? { checkIn: legacy } : { assessment }),
           },
           activityEnabled: true,
@@ -174,6 +176,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
     setTodayDate: (value: string) => { todayDate = value },
     setSavedCheckIn: (checkIn: CheckIn) => { savedCheckIns.set(todayDate, checkIn) },
     setRecovery: (values: Partial<ReturnType<typeof projectTodayRecovery>>) => { todayRecovery = { ...recovery, ...values } },
+    setWorkoutRecoveryKey: (key: string | undefined) => { workoutRecoveryKey = key },
     holdNextToday: () => { holdNextToday = true },
     releaseHeldToday: () => { respondToHeldToday?.() },
     holdNextSave: () => { holdNextSave = true },
@@ -223,7 +226,7 @@ describe('SociusFit dashboard', () => {
     expect(element('load-error').hidden).toBe(true)
     expect(element('workout-recovery').hidden).toBe(false)
     expect(element('workout-recovery-metrics').textContent).toContain('Session RPE7 / 10')
-    expect(element('workout-recovery-note').textContent).toBe('No verified recovery score from before this workout.')
+    expect(element('workout-recovery-note').textContent).toBe('No WHOOP recovery score verified for this workout.')
   })
 
   it('opens Today with a workout effort paired with verified pre-workout recovery', async () => {
@@ -236,7 +239,7 @@ describe('SociusFit dashboard', () => {
     await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
     expect(element('load-error').hidden).toBe(true)
     const metrics = element('workout-recovery-metrics')
-    expect(metrics.textContent).toContain('Pre-workout WHOOP recovery72%')
+    expect(metrics.textContent).toContain('WHOOP recovery updated before workout72%')
     expect(metrics.textContent).toContain('Session RPE8 / 10')
     expect(Array.from(metrics.querySelectorAll('time'), time => time.dateTime)).toEqual([recoveryUpdatedAt, workoutAt])
   })
@@ -737,6 +740,53 @@ describe('SociusFit dashboard', () => {
     expect(workout.open).toBe(true)
     expect(element('recent').firstChild).toBe(workoutRows)
     expect(todayCalls().at(-1)?.params?.arguments).toEqual({ tzOffset: expect.any(Number) })
+  })
+
+  it('refreshes the preceding WHOOP score for the displayed workout and clears an invalidated pair', async () => {
+    const workoutAt = '2026-11-19T15:30:00Z'
+    const recoveryUpdatedAt = '2026-11-19T13:00:00Z'
+    const unpaired = { status: 'recovery_unavailable', rpe: 7, workoutAt, recoveryScore: null, recoveryUpdatedAt: null } as const
+    const paired = { ...unpaired, status: 'paired', recoveryScore: 72, recoveryUpdatedAt } as const
+    const { widget, element, setRecovery } = mountWidget(initialRecommendation, todayClock(), {
+      sessionEffort: unpaired, workoutRecoveryKey: 'displayed-revision',
+    })
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    const comparison = element('workout-recovery-metrics')
+    expect(element('workout-recovery-note').hidden).toBe(false)
+
+    setRecovery({ sessionEffort: paired })
+    vi.setSystemTime(new Date(2026, 10, 20, 14, 1))
+    widget.defaultView!.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => expect(comparison.textContent).toContain('72%'))
+    expect(element('workout-recovery-note').hidden).toBe(true)
+    expect(Array.from(comparison.querySelectorAll('time'), time => time.dateTime)).toEqual([recoveryUpdatedAt, workoutAt])
+
+    setRecovery({ sessionEffort: unpaired })
+    vi.setSystemTime(new Date(2026, 10, 20, 14, 2))
+    widget.defaultView!.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => expect(element('workout-recovery-note').hidden).toBe(false))
+    expect(comparison.textContent).toContain('Session RPE7 / 10')
+    expect(comparison.textContent).not.toContain('72%')
+  })
+
+  it.each(['changed-revision', undefined])('keeps the displayed workout comparison on refresh with key %s', async key => {
+    const workoutAt = '2026-11-19T15:30:00Z'
+    const recoveryUpdatedAt = '2026-11-19T13:00:00Z'
+    const paired = { status: 'paired', rpe: 7, workoutAt, recoveryScore: 72, recoveryUpdatedAt } as const
+    const { widget, element, setRecovery, setWorkoutRecoveryKey } = mountWidget(initialRecommendation, todayClock(), {
+      sessionEffort: paired, workoutRecoveryKey: 'displayed-revision',
+    })
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    const comparison = element('workout-recovery-metrics')
+    expect(comparison.textContent).toContain('72%')
+
+    setWorkoutRecoveryKey(key)
+    setRecovery({ recoveryScore: 64, sessionEffort: { ...paired, recoveryScore: 56 } })
+    vi.setSystemTime(new Date(2026, 10, 20, 14, 1))
+    widget.defaultView!.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => expect(element('recovery-percent').textContent).toBe('64%'))
+    expect(comparison.textContent).toContain('72%')
+    expect(comparison.textContent).not.toContain('56%')
   })
 
   it('retains the saved check-in when a foreground WHOOP refresh finishes late', async () => {

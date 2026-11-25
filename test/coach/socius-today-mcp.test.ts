@@ -19,13 +19,14 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v16.html'
+const resourceUri = 'ui://socius/today-v17.html'
 const legacyResourceUris = [
   'ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html',
   'ui://socius/today-v5.html', 'ui://socius/today-v6.html', 'ui://socius/today-v7.html',
   'ui://socius/today-v8.html', 'ui://socius/today-v9.html', 'ui://socius/today-v10.html', 'ui://socius/today-v11.html',
   'ui://socius/today-v12.html', 'ui://socius/today-v13.html', 'ui://socius/today-v14.html',
   'ui://socius/today-v15.html',
+  'ui://socius/today-v16.html',
 ]
 const activityUri = 'ui://socius/activity.html'
 const draftUri = 'ui://socius/session-draft-v2.html'
@@ -301,7 +302,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
 
       const result = await client.callTool(today({ tzOffset: 360 }))
       expect(result.isError).not.toBe(true)
-      const dashboard = result._meta?.today
+      const dashboard = result._meta?.today as { workoutRecoveryKey?: string } | undefined
       expect(dashboard).toMatchObject({
         date: '2026-10-18', readAt: now, sessionStatus: expect.any(String),
         sessions: [expect.objectContaining({ title })],
@@ -310,6 +311,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
           date: '2026-10-18', sessionRpe: 7.5,
           movements: expect.arrayContaining([expect.objectContaining({ name: 'Barbell floor press' })]),
         },
+        workoutRecoveryKey: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
         recentStatus: expect.any(String), recentWork: expect.arrayContaining([expect.any(Object)]),
         recovery: { status: 'stale', lastSyncAt: '2026-10-18T11:00:00.000Z', storedDate: '2026-10-18',
           recoveryScore: 71, sleepPerformance: 82, strainScore: 3, strainStatus: 'stale', strainStoredDate: '2026-10-18' },
@@ -321,6 +323,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       expect(JSON.stringify(dashboard)).not.toContain(owner)
       expect(dashboard).not.toHaveProperty('assessmentGuidance')
       expect(JSON.stringify({ content: result.content, structuredContent: result.structuredContent })).not.toMatch(/Saved easy session|Barbell floor press/)
+      expect(JSON.stringify({ content: result.content, structuredContent: result.structuredContent })).not.toContain(dashboard?.workoutRecoveryKey)
       expect(traces.length).toBeGreaterThan(0)
       expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner))).toBe(true)
 
