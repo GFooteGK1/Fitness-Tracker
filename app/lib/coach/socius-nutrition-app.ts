@@ -27,6 +27,16 @@ type NutritionView = {
   totals: MacroTotals | null
   targetStatus: 'available' | 'not_configured' | 'unavailable'
   targets: MacroTotals | null
+  weekToDate: {
+    startDate: string
+    endDate: string
+    days: number
+    mealStatus: NutritionView['mealStatus']
+    loggedDays: number | null
+    totals: MacroTotals | null
+    targetStatus: NutritionView['targetStatus']
+    targets: MacroTotals | null
+  }
 }
 
 export function createSociusNutritionTool(authorize: AuthorizeContextRequest, policy: ContextToolPolicy) {
@@ -49,11 +59,35 @@ export function createSociusNutritionTool(authorize: AuthorizeContextRequest, po
       assertVerifiedContextPrincipal(principal, policy)
       const identity = await db.auth.getUser()
       if (identity.error || identity.data.user?.id !== principal.subject) throw new CoachingContextError(401, 'Authenticated subject mismatch')
-      const [meals, targets] = await Promise.all([
-        readOwnedMealTotals(db, principal.subject, window),
+      // Calendar arithmetic operates on the athlete's date label, rather than
+      // the server timezone or elapsed hours across daylight-saving changes.
+      const monday = new Date(window.startDate + 'T00:00:00Z')
+      const days = (monday.getUTCDay() + 6) % 7 + 1
+      monday.setUTCDate(monday.getUTCDate() - days + 1)
+      const weekStart = monday.toISOString().slice(0, 10)
+      const dailyRead = readOwnedMealTotals(db, principal.subject, window)
+      const readWeek = async () => {
+        try {
+          const week = getZonedDateWindow(weekStart, window.startDate, timezone, 7)
+          return await readOwnedMealTotals(db, principal.subject, week)
+        } catch {
+          return { status: 'unavailable', count: null, totals: null, loggedDays: null } as const
+        }
+      }
+      const [meals, targets, weekMeals] = await Promise.all([
+        dailyRead,
         readOwnedCurrentTargets(db, principal.subject),
+        days === 1 ? dailyRead : readWeek(),
       ])
       const current = targets.status === 'available' ? targets.targets : null
+      const dailyTargets = current ? {
+        protein: current.targetProtein, carbs: current.targetCarbs, fat: current.targetFat, calories: current.targetCalories,
+      } : null
+      const cumulative = dailyTargets ? {
+        protein: dailyTargets.protein * days, carbs: dailyTargets.carbs * days,
+        fat: dailyTargets.fat * days, calories: dailyTargets.calories * days,
+      } : null
+      const weeklyTargets = cumulative && Object.values(cumulative).every(Number.isFinite) ? cumulative : null
       const nutrition: NutritionView = {
         date: window.startDate,
         timezone: window.timezone,
@@ -62,9 +96,13 @@ export function createSociusNutritionTool(authorize: AuthorizeContextRequest, po
         mealCount: meals.count,
         totals: meals.totals,
         targetStatus: targets.status,
-        targets: current ? {
-          protein: current.targetProtein, carbs: current.targetCarbs, fat: current.targetFat, calories: current.targetCalories,
-        } : null,
+        targets: dailyTargets,
+        weekToDate: {
+          startDate: weekStart, endDate: window.startDate, days,
+          mealStatus: weekMeals.status, loggedDays: weekMeals.loggedDays, totals: weekMeals.totals,
+          targetStatus: targets.status === 'available' && !weeklyTargets ? 'unavailable' : targets.status,
+          targets: weeklyTargets,
+        },
       }
       return {
         content: [{ type: 'text' as const, text: 'SociusFit nutrition refreshed.' }],
