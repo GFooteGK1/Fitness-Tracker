@@ -6,6 +6,7 @@ import { assertVerifiedContextPrincipal, type AuthorizeContextRequest, type Cont
 import { buildExternalPerformedWorkContext } from './external-performed-work-context'
 import type { EvidenceQuantity } from './performed-dose-evidence'
 import { historyFieldProvenance, type HistoryWorkoutRow } from './planning-history'
+import { stableStringify } from './rolling-weekly-contracts'
 import { projectTodayWorkoutRecommendation } from './today-workout-recommendation'
 
 type CoachingContext = Awaited<ReturnType<typeof readCoachingContext>>
@@ -65,10 +66,13 @@ interface SetLine {
   effort: number | null
   extra: string | null
   perSide: boolean
+  hasRecordedRounds?: boolean
 }
 
 function setDetail(value: unknown): SetLine | null {
   if (!contextObject(value)) return null
+  const count = positiveWhole(value.sets)
+  const hasSavedId = typeof value.id === 'string' && uuid.test(value.id)
   const perLeg = positiveWhole(value.reps_per_leg)
   const reps = perLeg ?? positiveWhole(value.reps)
   const savedLoad = contextObject(value.load) ? value.load : null
@@ -77,39 +81,44 @@ function setDetail(value: unknown): SetLine | null {
     ? `${loadAmount} ${savedLoad.unit}`
     : typeof value.weight === 'string' ? value.weight.trim().slice(0, 32) || null : null
   const effort = rpe(value.rpe)
-  return reps !== null || load || effort !== null ? {
-    count: positiveWhole(value.sets) ?? 1, reps: reps === null ? null : String(reps), load, effort, extra: null, perSide: perLeg !== null,
+  return count !== null || hasSavedId || reps !== null || load || effort !== null ? {
+    count: count ?? 1, reps: reps === null ? null : String(reps), load, effort, extra: null, perSide: perLeg !== null,
   } : null
 }
 
-function firstUsableSets(...sources: unknown[]): SetLine[] {
+function firstUsableSets(explicitCount: number | null, ...sources: unknown[]): SetLine[] {
+  let counted: SetLine[] = []
   for (const source of sources) {
     if (!Array.isArray(source)) continue
     const entries = source.flatMap(value => setDetail(value) ?? [])
-    if (entries.length) return entries
+    if (entries.some(line => line.reps !== null || line.load !== null || line.effort !== null)) return entries
+    if (!counted.length) counted = entries
   }
-  return []
+  // A count-only list is useful when it supplies the only saved count.
+  return explicitCount === null ? counted : []
 }
 
 function recordLines(record: WorkRecord, nested: Work['nestedSetContexts']): SetLine[] {
   if ('recordedEvent' in record) {
     const recorded = record.recordedEvent.performed
+    const count = record.quantities.sets.kind === 'exact' ? positiveWhole(record.quantities.sets.value) : null
     // Aliases can contain the same source facts. Prefer the first usable list
     // without summing both or letting an empty primary list hide real sets.
-    const recordedSets = firstUsableSets(recorded.sets, recorded.set_details)
+    const recordedSets = firstUsableSets(count, recorded.sets, recorded.set_details)
     if (recordedSets.length) return recordedSets
     const distance = contextObject(recorded.distance) ? recorded.distance : null
     const distanceUnit = typeof distance?.unit === 'string' ? distance.unit.trim().slice(0, 10) : ''
     const secs = finite(recorded.time_s)
     const rounds = positiveWhole(record.segmentContext.recordedRounds)
+    const hasRecordedRounds = rounds !== null && rounds > 1
     const extras = [finite(distance?.value) !== null && distanceUnit ? `${distance?.value} ${distanceUnit}` : null,
-      secs !== null ? `${secs} s` : null, rounds !== null && rounds > 1 ? `${rounds} recorded rounds` : null].filter(Boolean)
+      secs !== null ? `${secs} s` : null, hasRecordedRounds ? `${rounds} recorded rounds` : null].filter(Boolean)
     const loadAmount = quantity(record.quantities.load)
-    const count = record.quantities.sets.kind === 'exact' ? positiveWhole(record.quantities.sets.value) : null
     return [{ count, reps: quantity(record.quantities.repetitions), load: loadAmount && record.loadUnit ? `${loadAmount} ${record.loadUnit}` : null,
-      effort: null, extra: extras.join(' · ') || null, perSide: false }]
+      effort: null, extra: extras.join(' · ') || null, perSide: false, hasRecordedRounds }]
   }
-  const legacySets = firstUsableSets(...nested.filter(item => item.workoutId === record.workoutId
+  const explicitCount = record.quantities.sets.kind === 'exact' ? positiveWhole(record.quantities.sets.value) : null
+  const legacySets = firstUsableSets(explicitCount, ...nested.filter(item => item.workoutId === record.workoutId
     && (item.sourcePath === `${record.sourcePath}.sets` || item.sourcePath === `${record.sourcePath}.set_details`))
     .map(item => item.recordedSets))
   if (legacySets.length) return legacySets
@@ -123,7 +132,6 @@ function recordLines(record: WorkRecord, nested: Work['nestedSetContexts']): Set
   const distanceMetres = finite(set?.distanceMetres)
   const effort = contextObject(record.effort) && record.effort.scale === 'RPE' && record.effort.scope === 'set'
     ? rpe(record.effort.value) : null
-  const explicitCount = record.quantities.sets.kind === 'exact' ? positiveWhole(record.quantities.sets.value) : null
   const extra = [distanceMetres !== null ? `${distanceMetres} m` : null,
     durationSeconds !== null ? `${durationSeconds} s` : duration ? `${duration} min` : null].filter(Boolean).join(' · ') || null
   return [{ count: explicitCount ?? (set ? 1 : null), reps: quantity(record.quantities.repetitions), load, effort, extra,
@@ -146,30 +154,44 @@ function renderMovements(work: Work, workoutId: string, blocks: unknown) {
   const warmups = warmupBlocks(blocks)
   type Amount = SetLine & { isHold: boolean; effortValues: Set<number>; notes: string[] }
   type Bucket = { name: string; isWarmup: boolean; notes: Set<string>; amounts: Map<string, Amount> }
-  const buckets = new Map<string, Bucket>()
-  for (const record of work.records) {
-    if (record.workoutId !== workoutId || record.completionState === 'explicitly_not_completed') continue
+  const identitiesByName = new Map<string, Set<string>>()
+  const eligible = work.records.filter(record => record.workoutId === workoutId && record.completionState !== 'explicitly_not_completed')
+  const namedRecords = eligible.map(record => {
     const savedName = record.recordedName?.trim().replace(/\s+/g, ' ')
     const timedHold = 'recordedEvent' in record && finite(record.recordedEvent.performed.time_s) !== null
       ? /^(.+?),\s*hold [1-9]\d*$/i.exec(savedName ?? '') : null
     const recordedName = timedHold?.[1].trim() ?? savedName
-    const name = recordedName?.slice(0, 100) || 'Recorded movement'
     const block = /^(?:blocks\.blocks|blocks)\[(\d+)\]/.exec(record.sourcePath)
     const isWarmup = record.role === 'preparation' || (block !== null && warmups.has(Number(block[1])))
+    const nameKey = JSON.stringify([isWarmup, recordedName ? ['name', recordedName.toLowerCase()] : ['source', record.sourcePath]])
+    const equipment = 'equipment' in record ? record.equipment : null
+    const protocol = 'protocol' in record ? record.protocol : null
+    const rawUnilateral = 'unilateralConvention' in record ? record.unilateralConvention : null
+    const unilateral = rawUnilateral === true ? 'per_side' : rawUnilateral
+    const identity = record.movementId ? JSON.stringify(['id', record.movementId])
+      : equipment !== null ? stableStringify(['equipment', equipment]) : null
+    if (identity !== null) {
+      const candidates = identitiesByName.get(nameKey) ?? new Set<string>()
+      candidates.add(identity)
+      identitiesByName.set(nameKey, candidates)
+    }
+    return {
+      record, blockPath: block?.[0], name: recordedName?.slice(0, 100) || 'Recorded movement', isWarmup,
+      nameKey, identity, timedHold, equipment, protocol, unilateral,
+    }
+  })
+  const buckets = new Map<string, Bucket>()
+  for (const { record, blockPath, name, isWarmup, nameKey, identity, timedHold, equipment, protocol, unilateral } of namedRecords) {
     const segment = 'segmentContext' in record ? record.segmentContext : null
-    const metadata = 'protocol' in record ? [record.role, record.protocol, record.equipment, record.unilateralConvention] : null
-    // A catalog ID can cover differently named recorded work, such as separate running drills.
-    const identity = recordedName
-      ? ['name', recordedName.toLowerCase(), record.movementId, !record.movementId && 'equipment' in record ? record.equipment : null]
-      : ['source', record.sourcePath]
-    const key = JSON.stringify([isWarmup, identity])
+    // Segmented logs lack catalog IDs. Use a sole candidate under the same
+    // recorded name and phase, leaving ambiguous names in their own bucket.
+    const candidates = identitiesByName.get(nameKey)
+    const matchingIdentity = candidates?.size === 1 ? candidates.values().next().value : null
+    const key = JSON.stringify([nameKey, identity ?? matchingIdentity])
     const notes = [...(record.basis === 'estimated_work' ? ['Estimated'] : []),
       ...(record.completionState === 'uncertain' ? ['Completion uncertain'] : [])]
     const bucket: Bucket = buckets.get(key) ?? { name, isWarmup, notes: new Set(), amounts: new Map() }
     buckets.set(key, bucket)
-    // A recorded round count belongs to its segment. It can group rows under a
-    // movement heading, but it cannot establish a set total across segments.
-    const roundScope = segment && segment.recordedRounds !== null && segment.recordedRounds !== 1 ? segment.sourcePath : null
     let hasAmount = false
     for (const savedLine of recordLines(record, work.nestedSetContexts)) {
       // A timed event explicitly numbered as a hold represents one hold. Keep
@@ -178,8 +200,12 @@ function renderMovements(work: Work, workoutId: string, blocks: unknown) {
       const line = isHold ? { ...savedLine, count: 1 } : savedLine
       if (line.count === null && !line.reps && !line.load && !line.extra && line.effort === null) continue
       hasAmount = true
-      const doseScope = line.count === null || isHold ? segment?.sourcePath ?? block?.[0] ?? record.sourcePath : null
-      const lineKey = JSON.stringify([roundScope, doseScope, isHold, metadata, record.basis, record.completionState,
+      // Round annotations describe their own segment. Explicit set lists
+      // carry their own counts and can combine across segments.
+      const doseScope = line.count === null || isHold || line.hasRecordedRounds
+        ? segment?.sourcePath ?? blockPath ?? record.sourcePath : null
+      const metadata = [record.role, protocol, equipment, line.perSide && unilateral === 'per_side' ? null : unilateral]
+      const lineKey = stableStringify([doseScope, isHold, metadata, record.basis, record.completionState,
         line.reps, line.load, line.extra, line.perSide])
       const matching = bucket.amounts.get(lineKey)
       if (matching) {

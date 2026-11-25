@@ -17,7 +17,9 @@ const lastWorkout = {
   sessionRpe: 7,
   movements: [
     { name: 'Easy cycle', measurements: ['5 min'], phase: 'warmup' },
-    { name: 'Front squat', measurements: ['3 sets × 5 reps'] },
+    { name: 'Front squat', measurements: ['1 set × 5 reps at 95 lb'], phase: 'warmup' },
+    { name: 'Front squat', measurements: ['3 sets × 5 reps at 155 lb', '1 set × 3 reps at 175 lb', '1 set × 5 reps at 70 kg'] },
+    { name: 'Wall sit', measurements: ['2 holds × 20 s', '1 hold × 30 s'] },
   ],
 }
 const recovery = { status: 'saved', recoveryScore: 79, sleepPerformance: 82, strainScore: 6 } as const
@@ -303,8 +305,18 @@ describe('SociusFit dashboard', () => {
     summary.click()
     expect(workout.open).toBe(true)
     expect(element('workout-rpe').textContent).toContain('7 / 10')
-    expect(element('recent-warmup').textContent).toContain('Easy cycle')
-    expect(element('recent').textContent).toContain('Front squat')
+    const displayedMovements = (id: string) => Array.from(element(id).children, movement => ({
+      heading: movement.querySelector('h4')?.textContent,
+      doses: Array.from(movement.querySelectorAll('.metrics > li'), dose => dose.textContent),
+    }))
+    expect(displayedMovements('recent-warmup')).toEqual([
+      { heading: 'Easy cycle', doses: ['5 min'] },
+      { heading: 'Front squat', doses: ['1 set × 5 reps at 95 lb'] },
+    ])
+    expect(displayedMovements('recent')).toEqual([
+      { heading: 'Front squat', doses: ['3 sets × 5 reps at 155 lb', '1 set × 3 reps at 175 lb', '1 set × 5 reps at 70 kg'] },
+      { heading: 'Wall sit', doses: ['2 holds × 20 s', '1 hold × 30 s'] },
+    ])
     summary.click()
     expect(workout.open).toBe(false)
   })
