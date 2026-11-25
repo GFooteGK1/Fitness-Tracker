@@ -97,6 +97,54 @@ describe('Workout Today source projection', () => {
     ])
   })
 
+  it('adds only saved set counts across blocks and segments with compatible doses', async () => {
+    const rows = contextRows()
+    const load = { value: 15, unit: 'lb' }
+    const set = { reps: 6, load }
+    rows.workouts = [workout(latest, localDate, { blocks: [
+      { block_type: 'STRENGTH', segments: [
+        { rounds: 4, events: [
+          { movement_name: 'Step up', performed: { sets: [set, set], set_details: [set, set] } },
+          { movement_name: 'Air squat', performed: { reps: 6 } },
+          { movement_name: 'Reverse lunge', performed: { sets: 1, reps: 6 } },
+        ] },
+        { rounds: 4, events: [
+          { movement_name: ' step  UP ', performed: { set_details: [{ ...set, sets: 2 }] } },
+          { movement_name: 'Air squat', performed: { reps: 6 } },
+          { movement_name: 'Reverse lunge', performed: { sets: 1, reps: 6 } },
+        ] },
+      ] },
+      { block_type: 'STRENGTH', segments: [{ events: [
+        { movement_name: 'Step up', performed: { ...set, sets: 1 } },
+        { movement_name: 'Step up', performed: { ...set, sets: 1, reps: 8 } },
+        { movement_name: 'Step up', performed: { ...set, sets: 1, load: { value: 20, unit: 'lb' } } },
+        { movement_name: 'Step up', performed: { ...set, sets: 1, load: { value: 15, unit: 'kg' } } },
+        { movement_name: 'Step up', performed: { sets: [{ reps_per_leg: 6, load }] } },
+      ] }] },
+    ] })]
+    expect((await read(rows)).lastWorkout.movements).toEqual([
+      { name: 'Step up', measurements: [
+        '5 sets × 6 reps at 15 lb', '1 set × 8 reps at 15 lb', '1 set × 6 reps at 20 lb',
+        '1 set × 6 reps at 15 kg', '1 set × 6 reps per side at 15 lb',
+      ] },
+      { name: 'Air squat', measurements: ['6 reps · 4 recorded rounds', '6 reps · 4 recorded rounds'] },
+      { name: 'Reverse lunge', measurements: ['1 set × 6 reps · 4 recorded rounds', '1 set × 6 reps · 4 recorded rounds'] },
+    ])
+  })
+
+  it('groups matching names and doses across segmented and legacy representations', async () => {
+    const rows = contextRows()
+    rows.workouts = [workout(latest, localDate, { blocks: [
+      { movements: [{ name: 'Barbell floor press', sets: 2, reps: 5, load: 95, unit: 'lb' }] },
+      { segments: [{ events: [
+        { movement_name: 'Barbell floor press', performed: { sets: 1, reps: 5, load: { value: 95, unit: 'lb' } } },
+      ] }] },
+    ] })]
+    expect((await read(rows)).lastWorkout.movements).toEqual([
+      { name: 'Barbell floor press', measurements: ['3 sets × 5 reps at 95 lb'] },
+    ])
+  })
+
   it('separates recorded warm-up from main work and groups the same movement across saved blocks', async () => {
     const rows = contextRows()
     rows.workouts = [workout(latest, localDate, { blocks: { blocks: [
@@ -134,11 +182,14 @@ describe('Workout Today source projection', () => {
     ])
   })
 
-  it('keeps differently named reviewed movements separate when they share a broad catalog ID', async () => {
+  it('keeps distinct recorded names and conflicting movement IDs separate', async () => {
     const rows = contextRows()
     const movements = [
       { name: 'Acceleration runs', movementId: 'run', sets: 1, durationSeconds: 6, setReportId: 'acceleration' },
       { name: 'Upright sprints', movementId: 'run', sets: 1, durationSeconds: 10, setReportId: 'upright' },
+      { name: 'Floor press', movementId: 'dumbbell_floor_press', sets: 1, reps: 6, load: 25, unit: 'lb', setReportId: 'db-press' },
+      { name: 'Floor press', movementId: 'barbell_floor_press', sets: 1, reps: 6, load: 25, unit: 'lb', setReportId: 'bb-press' },
+      { name: 'Floor press', sets: 1, reps: 6, load: 25, unit: 'lb', setReportId: 'unknown-press' },
     ]
     const blocks = [{ movements }]
     const setReportIds = movements.map(movement => movement.setReportId)
@@ -155,14 +206,21 @@ describe('Workout Today source projection', () => {
     expect((await read(rows)).lastWorkout.movements).toEqual([
       { name: 'Acceleration runs', measurements: ['1 set · 6 s'] },
       { name: 'Upright sprints', measurements: ['1 set · 10 s'] },
+      { name: 'Floor press', measurements: ['1 set × 6 reps at 25 lb'] },
+      { name: 'Floor press', measurements: ['1 set × 6 reps at 25 lb'] },
+      { name: 'Floor press', measurements: ['1 set × 6 reps at 25 lb'] },
     ])
   })
 
   it('uses the usable set-list alias without combining two representations of the same work', async () => {
     const rows = contextRows()
     const set = { reps: 6, load: { value: 25, unit: 'lb' } }
+    const savedSet = { id: '991cfa61-ad8b-45de-9328-cc6192fc6c19' }
     rows.workouts = [workout(latest, localDate, { blocks: [{ block_type: 'STRENGTH', segments: [{ events: [
       { movement_name: 'Step up', performed: { sets: [], set_details: [set, set] } },
+      { movement_name: 'Dead bug', performed: { sets: [savedSet], set_details: [savedSet] } },
+      { movement_name: 'Dead bug', performed: { set_details: [{ id: 'ffc092ad-e13b-415a-8c0f-ea6acb7a69cc' }] } },
+      { movement_name: 'Leg raise', performed: { sets: 2, reps: 4, set_details: [{ id: '680bdc08-0af3-4fb8-89b2-a1e49d289a1c' }] } },
     ] }] }, { movements: [
       { name: 'Squat', sets: [null], set_details: [set, set] },
       { name: 'Press', sets: [set, set], set_details: [set, set] },
@@ -171,6 +229,8 @@ describe('Workout Today source projection', () => {
       { name: 'Squat', measurements: ['2 sets × 6 reps at 25 lb'] },
       { name: 'Press', measurements: ['2 sets × 6 reps at 25 lb'] },
       { name: 'Step up', measurements: ['2 sets × 6 reps at 25 lb'] },
+      { name: 'Dead bug', measurements: ['2 sets'] },
+      { name: 'Leg raise', measurements: ['2 sets × 4 reps'] },
     ])
   })
 
