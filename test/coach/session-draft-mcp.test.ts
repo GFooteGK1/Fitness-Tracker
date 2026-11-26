@@ -253,6 +253,9 @@ describe('Today session draft over authenticated stateless MCP', () => {
     const { client, openClient, traces, updateDraft, writes } = await connect({ rows, storeDrafts: true })
     try {
       const tools = (await client.listTools()).tools
+      const draftPreparation = tools.find(tool => tool.name === prepareName)
+      expect(draftPreparation?.description).toContain(`For an ordinary preview, use ${showName}.`)
+      expect(draftPreparation?.description).toContain(`For an explicit request to save to Today, use ${saveName} when available.`)
       expect(tools).toContainEqual(expect.objectContaining({ name: showName, annotations: expect.objectContaining({ readOnlyHint: true }) }))
       expect(tools).toContainEqual(expect.objectContaining({ name: saveName,
         annotations: expect.objectContaining({ readOnlyHint: false, destructiveHint: false }),
@@ -723,8 +726,10 @@ describe('Today session draft over authenticated stateless MCP', () => {
     } finally { await client.close() }
   })
 
-  it('validates rest and light recovery on a verified scheduled rest day through the same tools', async () => {
+  it('previews rest and recovery without writing and saves confirmed full rest for the current day', async () => {
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
     const rows = seedRows()
+    rows.coach_daily_checkins[0].check_in_revision = checkInRevision
     const { plan, intent } = reviewedRollingWeek('2026-10-12')
     expect(plan.windowEnd).toBe(localDate)
     expect(plan.scheduledSessions.some(session => session.scheduledDate === localDate)).toBe(false)
@@ -738,9 +743,9 @@ describe('Today session draft over authenticated stateless MCP', () => {
       scheduled_date: session.scheduledDate, prescription: session.prescription, status: 'planned',
       completed_workout_id: null, completion_contract_version: null, has_reports: false,
     }))
-    const { client, writes } = await connect({ rows })
+    const { client, openClient, updateDraft, writes } = await connect({ rows, storeDrafts: true })
     try {
-      const prepared = await prepareReady(client)
+      const prepared = await prepareReady(client, { tzOffset, expectedLocalDate: localDate, expectedCheckInRevision: checkInRevision })
       expect(prepared.evidence).toMatchObject({
         daySchedule: 'scheduled_rest', hasPlannedSession: false,
         window: { startsOn: '2026-09-21', endsOn: localDate },
@@ -756,7 +761,8 @@ describe('Today session draft over authenticated stateless MCP', () => {
       const hiddenTraining = await client.callTool(show(prepared.contextId, { ...rest, mainWork: draft.mainWork }))
       expect(hiddenTraining.isError).toBe(true)
       const shownRest = await client.callTool(show(prepared.contextId, rest))
-      expect(shownRest.structuredContent).toMatchObject({ status: 'validated' })
+      expect(shownRest.structuredContent).toMatchObject({ status: 'validated', date: localDate })
+      expect(shownRest.structuredContent).not.toHaveProperty('savedToToday')
       expect(shownRest._meta?.sessionDraft).toMatchObject({
         dayType: 'rest', daySchedule: 'scheduled_rest', planUse: 'follow', warmUp: [], mainWork: [],
       })
@@ -766,7 +772,20 @@ describe('Today session draft over authenticated stateless MCP', () => {
       const shownRecovery = await client.callTool(show(prepared.contextId, recovery))
       expect(shownRecovery.structuredContent).toMatchObject({ status: 'validated' })
       expect(shownRecovery._meta?.sessionDraft).toMatchObject({ dayType: 'recovery', daySchedule: 'scheduled_rest' })
+      expect(updateDraft).not.toHaveBeenCalled()
+
+      const saved = await client.callTool(save(prepared.contextId, rest))
+      expect(saved.structuredContent).toMatchObject({ status: 'validated', date: localDate, savedToToday: true })
+      expect(updateDraft).toHaveBeenCalledTimes(1)
       expect(writes).not.toHaveBeenCalled()
+
+      const reopened = await openClient()
+      try {
+        const today = await reopened.callTool(readToday())
+        expect(today._meta?.today).toMatchObject({
+          date: localDate, sessionDraftStatus: 'saved', sessionDraft: shownRest._meta?.sessionDraft,
+        })
+      } finally { await reopened.close() }
     } finally { await client.close() }
   })
 
