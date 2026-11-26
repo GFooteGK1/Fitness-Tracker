@@ -1,4 +1,5 @@
 import { mcpHostBridgeScript } from './activity-app-ui'
+import { sociusCardStyles, sociusThemeStyles } from './socius-card-styles'
 
 /** A read-only projection of the draft approved by the server's validation step. */
 export const sessionDraftHtml = String.raw`<!doctype html>
@@ -8,31 +9,22 @@ export const sessionDraftHtml = String.raw`<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Session draft | SociusFit</title>
   <style>
-    :root {
-      color-scheme: light dark;
-      --background: light-dark(#ffffff, #20272b);
-      --foreground: light-dark(#202824, #f1f4f2);
-      --muted: light-dark(#58665f, #aab8b1);
-      --line: light-dark(#dce2dd, #364047);
-      --accent: light-dark(#216b55, #84dbc2);
-    }
-    :root[data-theme="light"] { color-scheme: light; }
-    :root[data-theme="dark"] { color-scheme: dark; }
+${sociusThemeStyles}
+${sociusCardStyles}
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
     body {
       margin: 0;
-      background: var(--background);
       color: var(--foreground);
-      font: 1rem/1.5 system-ui, sans-serif;
+      font: 1rem/1.55 system-ui, sans-serif;
       overflow-wrap: anywhere;
     }
-    main { padding: clamp(1rem, 4vw, 1.5rem); border: 1px solid var(--line); border-radius: 1rem; }
+    main { padding: .375rem; }
+    main > .socius-card { margin: 0; }
     h1, h2, h3, p, ul, dl, dd { margin: 0; }
-    h1 { font-size: 1.5rem; line-height: 1.2; margin-block: .25rem .5rem; }
-    h2 { font-size: 1.125rem; }
-    h3 { font-size: 1rem; }
-    #draft-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .2rem .75rem; }
+    h2 { font-size: 1.05rem; line-height: 1.35; }
+    h3 { font-size: 1rem; line-height: 1.35; }
+    #draft-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .2rem .75rem; margin-bottom: .35rem; }
     #draft-label strong { color: var(--accent); }
     time, .muted { color: var(--muted); }
     .group { border-top: 1px solid var(--line); margin-top: 1rem; padding-top: 1rem; }
@@ -43,51 +35,53 @@ export const sessionDraftHtml = String.raw`<!doctype html>
     .metrics div { min-width: 0; }
     dt { color: var(--muted); font-weight: 600; }
     .notes dt { margin-top: .5rem; }
-    summary { cursor: pointer; font-weight: 650; min-height: 44px; padding-block: .55rem; }
-    summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: .25rem; }
+    .group > summary { cursor: pointer; font-weight: 650; min-height: 44px; padding-block: .55rem; }
+    .group > summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     #edit-hint { margin-top: .75rem; }
   </style>
 </head>
 <body>
   <main>
-    <p id="draft-status" class="muted" role="status">Loading session draft…</p>
-    <article id="session-draft" aria-labelledby="draft-title" hidden>
-      <header>
-        <p id="draft-label"><strong id="draft-kind">Session draft</strong><time id="draft-date"></time></p>
-        <h1 id="draft-title"></h1>
-        <p id="draft-objective"></p>
-        <p id="plan-basis" class="muted"></p>
-        <p id="history-note" class="muted" hidden>Some saved workout evidence is unavailable.</p>
-      </header>
-      <section class="group" aria-labelledby="adjustment-title">
-        <h2 id="adjustment-title">Today’s adjustment</h2>
-        <p id="check-in-adjustment"></p>
-      </section>
-      <div id="session-phases"></div>
-      <section class="group" aria-labelledby="scale-title">
-        <h2 id="scale-title">When to scale or stop</h2>
-        <dl class="notes">
-          <dt>Scale when</dt><dd id="draft-scale"></dd>
-          <dt>Stop when</dt><dd id="draft-stop"></dd>
-        </dl>
-      </section>
-      <details class="group">
-        <summary>Why this session</summary>
-        <dl class="notes">
-          <dt>Goal</dt><dd id="draft-goal"></dd>
-          <dt>Four-week review</dt><dd id="draft-review"></dd>
-          <dt>Rationale</dt><dd id="draft-rationale"></dd>
-          <dt id="source-dates-label">Workout dates used</dt><dd id="source-dates"></dd>
-        </dl>
-      </details>
-      <p id="edit-hint" class="muted">Ask in chat to adjust this draft.</p>
-    </article>
+    <p id="draft-status" class="socius-card muted" role="status">Loading session draft…</p>
+    <details id="session-draft" class="socius-card" open hidden>
+      <summary><h1 id="draft-title"></h1></summary>
+      <div class="socius-card-body">
+        <header>
+          <p id="draft-label"><strong id="draft-kind">Session draft</strong><time id="draft-date"></time></p>
+          <p id="draft-objective"></p>
+          <p id="plan-basis" class="muted"></p>
+          <p id="history-note" class="muted" hidden>Some saved workout evidence is unavailable.</p>
+        </header>
+        <section class="group" aria-labelledby="adjustment-title">
+          <h2 id="adjustment-title">Today’s adjustment</h2>
+          <p id="check-in-adjustment"></p>
+        </section>
+        <div id="session-phases"></div>
+        <section class="group" aria-labelledby="scale-title">
+          <h2 id="scale-title">When to scale or stop</h2>
+          <dl class="notes">
+            <dt>Scale when</dt><dd id="draft-scale"></dd>
+            <dt>Stop when</dt><dd id="draft-stop"></dd>
+          </dl>
+        </section>
+        <details class="group">
+          <summary>Why this session</summary>
+          <dl class="notes">
+            <dt>Goal</dt><dd id="draft-goal"></dd>
+            <dt>Four-week review</dt><dd id="draft-review"></dd>
+            <dt>Rationale</dt><dd id="draft-rationale"></dd>
+            <dt id="source-dates-label">Workout dates used</dt><dd id="source-dates"></dd>
+          </dl>
+        </details>
+        <p id="edit-hint" class="muted">Ask in chat to adjust this draft.</p>
+      </div>
+    </details>
   </main>
   <script>
     (() => {
 ${mcpHostBridgeScript}
       const byId = id => document.getElementById(id);
-      const article = byId('session-draft');
+      const card = byId('session-draft');
       const status = byId('draft-status');
       const phases = [['warmUp', 'Warm-up'], ['mainWork', 'Main work'], ['supportingWork', 'Supporting work'], ['cooldown', 'Cool-down']];
       const textFields = ['title', 'objective', 'goal', 'weekReview', 'checkInAdjustment', 'rationale', 'scaleWhen', 'stopWhen'];
@@ -100,7 +94,7 @@ ${mcpHostBridgeScript}
       let resultReceived = false;
 
       function showError() {
-        article.hidden = true;
+        card.hidden = true;
         status.hidden = false;
         status.textContent = 'Session draft is unavailable.';
       }
@@ -178,7 +172,7 @@ ${mcpHostBridgeScript}
         byId('source-dates').hidden = dates.length === 0;
         byId('source-dates').textContent = dates.join(' · ');
         byId('session-phases').replaceChildren(sections);
-        article.hidden = false;
+        card.hidden = false;
         status.hidden = true;
       }
 

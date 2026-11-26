@@ -1,5 +1,6 @@
 export const nutritionStyles = String.raw`
-    #nutrition-card { display: grid; gap: .65rem; }
+    #nutrition-card { margin-top: .9rem; }
+    #nutrition-card .socius-card-body { display: grid; gap: .65rem; }
     #nutrition-progress, #nutrition-week-progress { display: grid; gap: .85rem; margin-block: .35rem; }
     .nutrition-macro { display: grid; min-width: 0; gap: .25rem; }
     .nutrition-macro progress {
@@ -14,19 +15,7 @@ export const nutritionStyles = String.raw`
       align-items: baseline;
       gap: .25rem .65rem;
     }
-    #nutrition-read-at { display: block; }
-    #nutrition-week { border: 1px solid var(--line); border-radius: .7rem; }
-    #nutrition-week > summary {
-      min-height: 44px;
-      padding: .65rem .75rem;
-      font-weight: 650;
-      cursor: pointer;
-    }
-    #nutrition-week > summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-    #nutrition-week[open] > summary { border-bottom: 1px solid var(--line); }
-    #nutrition-week-content { display: grid; gap: .65rem; padding: .75rem; }
-    #nutrition-log { margin-bottom: .65rem; }
-    #meal-chat { display: grid; gap: .65rem; margin-bottom: 1rem; }
+    #meal-chat { display: grid; gap: .65rem; }
     #meal-chat label { display: block; margin-bottom: .3rem; }
     #meal-chat textarea {
       width: 100%;
@@ -46,16 +35,21 @@ export const nutritionStyles = String.raw`
 
 export const nutritionCardMarkup = String.raw`
     <div id="nutrition-card" hidden>
-      <time id="nutrition-date" class="muted"></time>
-      <p id="nutrition-meal-count" class="muted" hidden></p>
-      <ul id="nutrition-progress" aria-label="Nutrition progress"></ul>
-      <p id="nutrition-meal-note" class="muted" hidden></p>
-      <p id="nutrition-target-note" class="muted" hidden></p>
-      <p class="muted">Totals reflect saved meals. Full-day intake is unknown.</p>
-      <time id="nutrition-read-at" class="muted"></time>
-      <details id="nutrition-week" hidden>
-        <summary>Week to date</summary>
-        <div id="nutrition-week-content">
+      <details id="nutrition-daily" class="socius-card" open>
+        <summary><h2>Daily totals</h2></summary>
+        <div class="socius-card-body">
+          <time id="nutrition-date" class="muted"></time>
+          <p id="nutrition-meal-count" class="muted" hidden></p>
+          <ul id="nutrition-progress" aria-label="Nutrition progress"></ul>
+          <p id="nutrition-meal-note" class="muted" hidden></p>
+          <p id="nutrition-target-note" class="muted" hidden></p>
+          <p class="muted">Totals reflect saved meals. Full-day intake is unknown.</p>
+          <time id="nutrition-read-at" class="muted"></time>
+        </div>
+      </details>
+      <details id="nutrition-week" class="socius-card" hidden>
+        <summary><h2>Week to date</h2></summary>
+        <div id="nutrition-week-content" class="socius-card-body">
           <p id="nutrition-week-range" class="muted" hidden></p>
           <p id="nutrition-week-coverage" class="muted" hidden></p>
           <p id="nutrition-week-basis" class="muted" hidden></p>
@@ -68,7 +62,7 @@ export const nutritionCardMarkup = String.raw`
 `
 
 export const mealChatMarkup = String.raw`
-    <section id="meal-chat" class="panel" aria-labelledby="meal-chat-title" hidden>
+    <section id="meal-chat" class="socius-card" aria-labelledby="meal-chat-title" hidden>
       <h2 id="meal-chat-title">Log food in chat</h2>
       <div>
         <label for="meal-chat-details">What did you eat? (optional)</label>

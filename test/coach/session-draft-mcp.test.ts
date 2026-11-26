@@ -16,7 +16,7 @@ const clock = '2026-10-19T00:13:53.447Z'
 const tzOffset = 360
 const localDate = '2026-10-18'
 const checkInRevision = '10000000-0000-4000-8000-000000000007'
-const draftResource = 'ui://socius/session-draft-v2.html'
+const draftResource = 'ui://socius/session-draft-v3.html'
 const prepareName = 'prepare_today_session_draft'
 const showName = 'show_today_session_draft'
 const saveName = 'save_today_session_draft'
@@ -225,10 +225,11 @@ describe('Today session draft over authenticated stateless MCP', () => {
       expect((await client.readResource({ uri: draftResource })).contents).toContainEqual(expect.objectContaining({
         uri: draftResource, mimeType: 'text/html;profile=mcp-app', text: expect.any(String),
       }))
-      const legacyUri = 'ui://socius/session-draft-v1.html'
-      expect((await client.readResource({ uri: legacyUri })).contents).toEqual(
-        (await client.readResource({ uri: draftResource })).contents.map(content => ({ ...content, uri: legacyUri })),
-      )
+      for (const legacyUri of ['ui://socius/session-draft-v1.html', 'ui://socius/session-draft-v2.html']) {
+        expect((await client.readResource({ uri: legacyUri })).contents).toEqual(
+          (await client.readResource({ uri: draftResource })).contents.map(content => ({ ...content, uri: legacyUri })),
+        )
+      }
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
