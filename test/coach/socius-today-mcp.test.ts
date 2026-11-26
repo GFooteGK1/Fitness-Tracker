@@ -19,13 +19,14 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v17.html'
+const resourceUri = 'ui://socius/today-v19.html'
 const legacyResourceUris = [
   'ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html',
   'ui://socius/today-v5.html', 'ui://socius/today-v6.html', 'ui://socius/today-v7.html',
   'ui://socius/today-v8.html', 'ui://socius/today-v9.html', 'ui://socius/today-v10.html', 'ui://socius/today-v11.html',
   'ui://socius/today-v12.html', 'ui://socius/today-v13.html', 'ui://socius/today-v14.html',
   'ui://socius/today-v15.html', 'ui://socius/today-v16.html',
+  'ui://socius/today-v17.html', 'ui://socius/today-v18.html',
 ]
 const activityUri = 'ui://socius/activity.html'
 const draftUri = 'ui://socius/session-draft-v2.html'
@@ -288,9 +289,61 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
     } finally { await client.close() }
   })
 
+  it('returns the daily and local week-to-date Nutrition views through the owner-only app tool', async () => {
+    vi.setSystemTime(new Date('2026-11-25T18:00:00Z'))
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    vi.stubEnv('SOCIUS_MCP_ACTIVITY_UI_ENABLED', 'true')
+    const meal = (id: string, date: string, protein: number) => ({
+      id, user_id: owner, meal_timestamp: date, total_protein: protein, total_carbs: 50, total_fat: 20, total_calories: 800,
+    })
+    const { client, writes, rows, traces } = await connect(owner, data => {
+      data.daily_targets = [{
+        target_protein: 200, target_carbs: 250, target_fat: 70, target_calories: 2430, tolerance_pct: 5,
+      }]
+      data.meals = [
+        meal('sunday', '2026-11-23T05:59:59.999Z', 500),
+        meal('monday', '2026-11-23T06:00:00.000Z', 200),
+        meal('wednesday', '2026-11-25T15:00:00.000Z', 250),
+        meal('thursday', '2026-11-26T06:00:00.000Z', 500),
+      ]
+    })
+    rows.meals.push({ ...meal('other-athlete', '2026-11-25T15:00:00.000Z', 900), user_id: other })
+    const readNutrition = { name: 'read_socius_nutrition', arguments: { timezone: 'America/Chicago' } }
+    try {
+      const response = await client.callTool(readNutrition)
+      expect(response.isError).not.toBe(true)
+      expect(response._meta).toMatchObject({ nutrition: {
+        date: '2026-11-25', totals: { protein: 250 }, targets: { protein: 200 },
+        weekToDate: { startDate: '2026-11-23', endDate: '2026-11-25', days: 3, loggedDays: 2,
+          mealStatus: 'available', totals: { protein: 450, carbs: 100, fat: 40, calories: 1600 },
+          targetStatus: 'available', targets: { protein: 600, carbs: 750, fat: 210, calories: 7290 } },
+      } })
+      expect(JSON.stringify(response.content)).not.toContain('450')
+      expect(response.structuredContent).toBeUndefined()
+      expect(JSON.stringify(response._meta)).not.toContain(owner)
+      rows.meals[1].total_protein = 225
+      expect((await client.callTool(readNutrition))._meta).toMatchObject({ nutrition: {
+        totals: { protein: 250 }, weekToDate: { totals: { protein: 475 } },
+      } })
+      expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner))).toBe(true)
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
   it('hydrates the widget with narrow saved facts for the browser-local date and keeps the model-visible result generic', async () => {
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
-    const { client, db, traces, writes, session } = await connect()
+    const name = 'Barbell floor press'
+    const dose = { reps: 5, load: { value: 95, unit: 'lb' } }
+    const grouped = { name, measurements: ['3 sets × 5 reps at 95 lb', '1 set × 3 reps at 95 lb'] }
+    const { client, db, traces, writes, session } = await connect(owner, rows => {
+      rows.workouts[0].blocks = [
+        { movements: [{ name, sets: 1, reps: 5, load: 95, unit: 'lb' }] },
+        { segments: [
+          { rounds: 2, events: [{ movement_name: name, performed: { sets: [dose, dose] } }] },
+          { events: [{ movement_name: name, performed: { ...dose, sets: 1, reps: 3 } }] },
+        ] },
+      ]
+    })
     try {
       for (const args of [{ tzOffset: 360, user_id: other }, { tzOffset: 841 }, { tzOffset: '360' }]) {
         const result = await client.callTool(today(args))
@@ -301,16 +354,17 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
 
       const result = await client.callTool(today({ tzOffset: 360 }))
       expect(result.isError).not.toBe(true)
-      const dashboard = result._meta?.today
+      const dashboard = result._meta?.today as { workoutRecoveryKey?: string } | undefined
       expect(dashboard).toMatchObject({
         date: '2026-10-18', readAt: now, sessionStatus: expect.any(String),
         sessions: [expect.objectContaining({ title })],
         workoutRecommendation: { source: 'accepted_plan', status: 'planned', title },
         lastWorkout: {
           date: '2026-10-18', sessionRpe: 7.5,
-          movements: expect.arrayContaining([expect.objectContaining({ name: 'Barbell floor press' })]),
+          movements: [grouped],
         },
-        recentStatus: expect.any(String), recentWork: expect.arrayContaining([expect.any(Object)]),
+        workoutRecoveryKey: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+        recentStatus: expect.any(String), recentWork: [{ ...grouped, date: localDate }],
         recovery: { status: 'stale', lastSyncAt: '2026-10-18T11:00:00.000Z', storedDate: '2026-10-18',
           recoveryScore: 71, sleepPerformance: 82, strainScore: 3, strainStatus: 'stale', strainStoredDate: '2026-10-18' },
       })
@@ -321,6 +375,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       expect(JSON.stringify(dashboard)).not.toContain(owner)
       expect(dashboard).not.toHaveProperty('assessmentGuidance')
       expect(JSON.stringify({ content: result.content, structuredContent: result.structuredContent })).not.toMatch(/Saved easy session|Barbell floor press/)
+      expect(JSON.stringify({ content: result.content, structuredContent: result.structuredContent })).not.toContain(dashboard?.workoutRecoveryKey)
       expect(traces.length).toBeGreaterThan(0)
       expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner))).toBe(true)
 

@@ -547,6 +547,7 @@ ${mcpHostBridgeScript}
       let todayReadRevision = 0;
       let whoopRefreshInFlight = false;
       let lastWhoopReadAt = null;
+      let displayedWorkoutRecoveryKey = null;
       const whoopRefreshIntervalMs = 30_000;
 
       function element(tag, text, className) {
@@ -865,7 +866,7 @@ ${mcpHostBridgeScript}
           ['Sleep ended', recovery.sleepEndedAt, false],
           ['Stored day strain date', recovery.strainStoredDate, true],
           ['Strain record updated', recovery.strainUpdatedAt, false],
-          ['Last successful batch sync', recovery.lastSyncAt, false],
+          ['Last successful batch timestamp', recovery.lastSyncAt, false],
         ]) {
           const time = element('time');
           if (!setTime(time, value, dateOnly)) continue;
@@ -884,9 +885,9 @@ ${mcpHostBridgeScript}
         const paired = effort?.status === 'paired' && hasRpe && isScore(effort.recoveryScore, 100);
         byId('workout-recovery').hidden = !hasRpe;
         comparison.hidden = !hasRpe;
-        setNote('workout-recovery-note', hasRpe && !paired ? 'No verified recovery score from before this workout.' : null);
+        setNote('workout-recovery-note', hasRpe && !paired ? 'No WHOOP recovery score verified for this workout.' : null);
         if (paired) {
-          const value = addMetric(comparison, 'Pre-workout WHOOP recovery', effort.recoveryScore + '%');
+          const value = addMetric(comparison, 'WHOOP recovery updated before workout', effort.recoveryScore + '%');
           const updated = element('time');
           if (setTime(updated, effort.recoveryUpdatedAt, false)) value.append(updated);
         }
@@ -915,6 +916,7 @@ ${mcpHostBridgeScript}
         renderAcceptedPlan(today);
         renderSafetyReview(today.workoutRecommendation);
         renderLastWorkout(today.lastWorkout);
+        displayedWorkoutRecoveryKey = today.workoutRecoveryKey ?? null;
         renderWorkoutRecovery(today.recovery.sessionEffort);
         renderRecovery(today.recovery);
         const readAt = byId('read-at');
@@ -1022,6 +1024,9 @@ ${mcpHostBridgeScript}
           if (result?.isError || !today?.recovery || today.date !== date) {
             setNote('whoop-refresh-status', 'Could not refresh saved WHOOP data.');
             return;
+          }
+          if (displayedWorkoutRecoveryKey && today.workoutRecoveryKey === displayedWorkoutRecoveryKey) {
+            renderWorkoutRecovery(today.recovery.sessionEffort);
           }
           renderRecovery(today.recovery);
         } catch {

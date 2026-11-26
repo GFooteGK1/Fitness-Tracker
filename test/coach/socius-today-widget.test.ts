@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { sociusTodayHtml } from '../../app/lib/coach/today-app-ui'
 import type { projectTodayRecovery } from '../../app/lib/coach/recovery-today-app'
 import type { TodayWorkoutRecommendation } from '../../app/lib/coach/today-workout-recommendation'
+import type { MacroTotals } from '../../app/lib/types/food-tracking'
 
 const date = '2026-11-20'
 const readAt = '2026-11-20T11:40:00.000Z'
@@ -18,7 +19,9 @@ const lastWorkout = {
   sessionRpe: 7,
   movements: [
     { name: 'Easy cycle', measurements: ['5 min'], phase: 'warmup' },
-    { name: 'Front squat', measurements: ['3 sets × 5 reps'] },
+    { name: 'Front squat', measurements: ['1 set × 5 reps at 95 lb'], phase: 'warmup' },
+    { name: 'Front squat', measurements: ['3 sets × 5 reps at 155 lb', '1 set × 3 reps at 175 lb', '1 set × 5 reps at 70 kg'] },
+    { name: 'Wall sit', measurements: ['2 holds × 20 s', '1 hold × 30 s'] },
   ],
 }
 const recovery = { status: 'saved', recoveryScore: 79, sleepPerformance: 82, strainScore: 6 } as const
@@ -48,12 +51,31 @@ interface HostRequest {
   params?: Record<string, unknown>
 }
 
+interface NutritionWeek {
+  startDate: string
+  endDate: string
+  days: number
+  mealStatus: 'available' | 'no_records' | 'partial' | 'unavailable'
+  loggedDays: number | null
+  totals: MacroTotals | null
+  targetStatus: 'available' | 'not_configured' | 'unavailable'
+  targets: MacroTotals | null
+}
+
+const dailyNutritionTargets = { protein: 120, carbs: 250, fat: 75, calories: 2155 }
+const nutritionWeek = {
+  startDate: '2026-11-16', endDate: date, days: 5, mealStatus: 'available', loggedDays: 4,
+  totals: { protein: 450, carbs: 1000, fat: 300, calories: 8500 },
+  targetStatus: 'available', targets: { protein: 600, carbs: 1250, fat: 375, calories: 10775 },
+} satisfies NutritionWeek
+
 function mountWidget(workoutRecommendation = initialRecommendation, browserClock?: DateConstructor, options: {
   savedCheckIn?: CheckIn
   savedRelativeCheckIn?: typeof relativeCheckIn
   oldServer?: boolean
   checkInEnabled?: boolean
   nutritionWritesEnabled?: boolean
+  nutritionTargets?: MacroTotals
   supportsDraft?: boolean
   draftSavingEnabled?: boolean
   savedDraft?: typeof recoveryDraft
@@ -61,6 +83,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   draftResponse?: 'reject' | 'error_result' | 'uncertain'
   hostContext?: Record<string, unknown>
   sessionEffort?: ReturnType<typeof projectTodayRecovery>['sessionEffort']
+  workoutRecoveryKey?: string
 } = {}) {
   const iframe = document.createElement('iframe')
   document.body.append(iframe)
@@ -70,6 +93,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   const widget = child.document
   const requests: HostRequest[] = []
   let mealCount = 0
+  let weekToDate: NutritionWeek | undefined
   const savedCheckIns = new Map<string, CheckIn>()
   if (options.savedCheckIn) savedCheckIns.set(date, options.savedCheckIn)
   let nextSaveReceipt: 'lost' | 'wrong_date' | 'wrong_values' | 'transport_rejection' | 'invalid_params' | 'not_saved' | undefined
@@ -77,6 +101,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   let todayDate = date
   let savedDraft = options.savedDraft
   let draftHeld = false
+  let workoutRecoveryKey = options.workoutRecoveryKey
   let todayRecovery: Partial<ReturnType<typeof projectTodayRecovery>> = { ...recovery, sessionEffort: options.sessionEffort }
   let holdNextToday = false
   let respondToHeldToday: (() => void) | undefined
@@ -121,7 +146,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
         result = { _meta: {
           today: {
             date: todayDate, readAt, workoutRecommendation, sessions: workoutRecommendation.sessions,
-            recentWork: [], lastWorkout, recovery: todayRecovery,
+            recentWork: [], lastWorkout, recovery: todayRecovery, workoutRecoveryKey,
             ...(options.oldServer ? { checkIn: legacy } : { assessment }),
             ...session,
           },
@@ -161,9 +186,11 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
       } } }
     } else if (request.params?.name === 'read_socius_nutrition') {
       result = { _meta: { nutrition: {
-        date, readAt, timezone: 'UTC', mealCount,
-        mealStatus: mealCount ? 'available' : 'no_records', targetStatus: 'not_configured',
+        date: todayDate, readAt: todayDate === date ? readAt : `${todayDate}T11:40:00.000Z`, timezone: 'UTC', mealCount,
+        mealStatus: mealCount ? 'available' : 'no_records', targetStatus: options.nutritionTargets ? 'available' : 'not_configured',
         totals: { protein: mealCount * 30, carbs: 0, fat: 0, calories: mealCount * 120 },
+        ...(options.nutritionTargets ? { targets: options.nutritionTargets } : {}),
+        ...(weekToDate ? { weekToDate } : {}),
       } } }
     }
     const respond = () => child.dispatchEvent(new MessageEvent('message', {
@@ -195,11 +222,13 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
       }))
     },
     setMealCount: (count: number) => { mealCount = count },
+    setNutritionWeek: (week?: NutritionWeek) => { weekToDate = week },
     setTodayDate: (value: string) => { todayDate = value },
     setSavedCheckIn: (checkIn: CheckIn) => { savedCheckIns.set(todayDate, checkIn) },
     setDraft: (draft: typeof recoveryDraft) => { savedDraft = draft },
     holdDraft: () => { draftHeld = true },
     setRecovery: (values: Partial<ReturnType<typeof projectTodayRecovery>>) => { todayRecovery = { ...recovery, ...values } },
+    setWorkoutRecoveryKey: (key: string | undefined) => { workoutRecoveryKey = key },
     holdNextToday: () => { holdNextToday = true },
     releaseHeldToday: () => { respondToHeldToday?.() },
     holdNextSave: () => { holdNextSave = true },
@@ -249,7 +278,7 @@ describe('SociusFit dashboard', () => {
     expect(element('load-error').hidden).toBe(true)
     expect(element('workout-recovery').hidden).toBe(false)
     expect(element('workout-recovery-metrics').textContent).toContain('Session RPE7 / 10')
-    expect(element('workout-recovery-note').textContent).toBe('No verified recovery score from before this workout.')
+    expect(element('workout-recovery-note').textContent).toBe('No WHOOP recovery score verified for this workout.')
   })
 
   it('opens Today with a workout effort paired with verified pre-workout recovery', async () => {
@@ -262,7 +291,7 @@ describe('SociusFit dashboard', () => {
     await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
     expect(element('load-error').hidden).toBe(true)
     const metrics = element('workout-recovery-metrics')
-    expect(metrics.textContent).toContain('Pre-workout WHOOP recovery72%')
+    expect(metrics.textContent).toContain('WHOOP recovery updated before workout72%')
     expect(metrics.textContent).toContain('Session RPE8 / 10')
     expect(Array.from(metrics.querySelectorAll('time'), time => time.dateTime)).toEqual([recoveryUpdatedAt, workoutAt])
   })
@@ -338,8 +367,18 @@ describe('SociusFit dashboard', () => {
     summary.click()
     expect(workout.open).toBe(true)
     expect(element('workout-rpe').textContent).toContain('7 / 10')
-    expect(element('recent-warmup').textContent).toContain('Easy cycle')
-    expect(element('recent').textContent).toContain('Front squat')
+    const displayedMovements = (id: string) => Array.from(element(id).children, movement => ({
+      heading: movement.querySelector('h4')?.textContent,
+      doses: Array.from(movement.querySelectorAll('.metrics > li'), dose => dose.textContent),
+    }))
+    expect(displayedMovements('recent-warmup')).toEqual([
+      { heading: 'Easy cycle', doses: ['5 min'] },
+      { heading: 'Front squat', doses: ['1 set × 5 reps at 95 lb'] },
+    ])
+    expect(displayedMovements('recent')).toEqual([
+      { heading: 'Front squat', doses: ['3 sets × 5 reps at 155 lb', '1 set × 3 reps at 175 lb', '1 set × 5 reps at 70 kg'] },
+      { heading: 'Wall sit', doses: ['2 holds × 20 s', '1 hold × 30 s'] },
+    ])
     summary.click()
     expect(workout.open).toBe(false)
   })
@@ -824,6 +863,53 @@ describe('SociusFit dashboard', () => {
     expect(todayCalls().at(-1)?.params?.arguments).toEqual({ tzOffset: expect.any(Number) })
   })
 
+  it('refreshes the preceding WHOOP score for the displayed workout and clears an invalidated pair', async () => {
+    const workoutAt = '2026-11-19T15:30:00Z'
+    const recoveryUpdatedAt = '2026-11-19T13:00:00Z'
+    const unpaired = { status: 'recovery_unavailable', rpe: 7, workoutAt, recoveryScore: null, recoveryUpdatedAt: null } as const
+    const paired = { ...unpaired, status: 'paired', recoveryScore: 72, recoveryUpdatedAt } as const
+    const { widget, element, setRecovery } = mountWidget(initialRecommendation, todayClock(), {
+      sessionEffort: unpaired, workoutRecoveryKey: 'displayed-revision',
+    })
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    const comparison = element('workout-recovery-metrics')
+    expect(element('workout-recovery-note').hidden).toBe(false)
+
+    setRecovery({ sessionEffort: paired })
+    vi.setSystemTime(new Date(2026, 10, 20, 14, 1))
+    widget.defaultView!.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => expect(comparison.textContent).toContain('72%'))
+    expect(element('workout-recovery-note').hidden).toBe(true)
+    expect(Array.from(comparison.querySelectorAll('time'), time => time.dateTime)).toEqual([recoveryUpdatedAt, workoutAt])
+
+    setRecovery({ sessionEffort: unpaired })
+    vi.setSystemTime(new Date(2026, 10, 20, 14, 2))
+    widget.defaultView!.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => expect(element('workout-recovery-note').hidden).toBe(false))
+    expect(comparison.textContent).toContain('Session RPE7 / 10')
+    expect(comparison.textContent).not.toContain('72%')
+  })
+
+  it.each(['changed-revision', undefined])('keeps the displayed workout comparison on refresh with key %s', async key => {
+    const workoutAt = '2026-11-19T15:30:00Z'
+    const recoveryUpdatedAt = '2026-11-19T13:00:00Z'
+    const paired = { status: 'paired', rpe: 7, workoutAt, recoveryScore: 72, recoveryUpdatedAt } as const
+    const { widget, element, setRecovery, setWorkoutRecoveryKey } = mountWidget(initialRecommendation, todayClock(), {
+      sessionEffort: paired, workoutRecoveryKey: 'displayed-revision',
+    })
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    const comparison = element('workout-recovery-metrics')
+    expect(comparison.textContent).toContain('72%')
+
+    setWorkoutRecoveryKey(key)
+    setRecovery({ recoveryScore: 64, sessionEffort: { ...paired, recoveryScore: 56 } })
+    vi.setSystemTime(new Date(2026, 10, 20, 14, 1))
+    widget.defaultView!.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => expect(element('recovery-percent').textContent).toBe('64%'))
+    expect(comparison.textContent).toContain('72%')
+    expect(comparison.textContent).not.toContain('56%')
+  })
+
   it('retains the saved check-in when a foreground WHOOP refresh finishes late', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 10, 20, 14))
@@ -883,11 +969,118 @@ describe('SociusFit dashboard', () => {
     await vi.waitFor(() => expect(element('nutrition-refresh').hidden).toBe(false))
     expect(element('nutrition-log').hidden).toBe(true)
     expect(element('nutrition-meal-count').textContent).toBe('0 saved meals')
+    expect(element('nutrition-week').hidden).toBe(true)
     setMealCount(1)
     element('nutrition-refresh').click()
     await vi.waitFor(() => expect(element('nutrition-meal-count').textContent).toBe('1 saved meal'))
     expect(element('nutrition-progress').textContent).toContain('30 g logged')
     expect(requests.filter(request => request.method === 'ui/message')).toHaveLength(0)
+  })
+
+  it('opens the week-to-date summary on Nutrition and refreshes both daily and weekly progress through the host', async () => {
+    const { widget, element, requests, setMealCount, setNutritionWeek, setTodayDate } = mountWidget(initialRecommendation, undefined, {
+      nutritionTargets: dailyNutritionTargets,
+    })
+    setMealCount(1)
+    setNutritionWeek(nutritionWeek)
+    const nutritionCalls = () => requests.filter(request => request.params?.name === 'read_socius_nutrition')
+    const proteinProgress = () => widget.querySelector<HTMLProgressElement>('#nutrition-week-progress [aria-label="Protein week-to-date progress"]')
+
+    await vi.waitFor(() => expect(element('show-nutrition').hidden).toBe(false))
+    expect(nutritionCalls()).toHaveLength(0)
+    element('show-nutrition').click()
+    await vi.waitFor(() => expect(element('nutrition-refresh').hidden).toBe(false))
+    expect(nutritionCalls()).toHaveLength(1)
+    expect(nutritionCalls()[0].params?.arguments).toEqual({ timezone: expect.any(String) })
+    expect(element('nutrition-progress').textContent).toContain('30 g logged')
+
+    const week = element('nutrition-week') as HTMLDetailsElement
+    const summary = week.querySelector<HTMLElement>('summary')!
+    expect(week.hidden).toBe(false)
+    expect(summary.textContent?.trim()).toMatch(/week to date/i)
+    expect(week.open).toBe(false)
+    summary.click()
+    expect(week.open).toBe(true)
+    expect(element('nutrition-week-range').textContent).toMatch(/16.*20/)
+    expect(element('nutrition-week-coverage').textContent).toContain('4 of 5 days with saved meals.')
+    expect(proteinProgress()).not.toBeNull()
+    expect(proteinProgress()!.value / proteinProgress()!.max).toBeCloseTo(0.75)
+    expect(element('nutrition-week-progress').textContent).toContain('75%')
+
+    setMealCount(2)
+    setNutritionWeek({ ...nutritionWeek, totals: { ...nutritionWeek.totals, protein: 480 } })
+    element('nutrition-refresh').click()
+    await vi.waitFor(() => expect(element('nutrition-week-progress').textContent).toContain('80%'))
+    expect(week.open).toBe(true)
+    expect(element('nutrition-meal-count').textContent).toBe('2 saved meals')
+    expect(element('nutrition-progress').textContent).toContain('60 g logged')
+    expect(nutritionCalls()).toHaveLength(2)
+
+    setTodayDate('2026-11-23')
+    setMealCount(0)
+    setNutritionWeek({
+      ...nutritionWeek, startDate: '2026-11-23', endDate: '2026-11-23', days: 1, loggedDays: 0, mealStatus: 'no_records',
+      totals: { protein: 0, carbs: 0, fat: 0, calories: 0 }, targets: dailyNutritionTargets,
+    })
+    element('nutrition-refresh').click()
+    await vi.waitFor(() => expect(element('nutrition-week-range').textContent).toMatch(/23/))
+    expect(element('nutrition-week-coverage').textContent).toContain('0 of 1 day with saved meals.')
+    expect(proteinProgress()!.value).toBe(0)
+    expect(element('nutrition-week-progress').textContent).toContain('0%')
+    expect(element('nutrition-meal-count').textContent).toBe('0 saved meals')
+    expect(element('nutrition-progress').textContent).toContain('0 g logged')
+    expect(nutritionCalls()).toHaveLength(3)
+    summary.click()
+    expect(week.open).toBe(false)
+    expect(requests.filter(request => request.method === 'ui/message')).toHaveLength(0)
+  })
+
+  it('preserves daily nutrition when weekly totals are unavailable or missing from an older host response', async () => {
+    const { widget, element, setMealCount, setNutritionWeek } = mountWidget(initialRecommendation, undefined, {
+      nutritionTargets: dailyNutritionTargets,
+    })
+    setMealCount(1)
+    setNutritionWeek(nutritionWeek)
+    await vi.waitFor(() => expect(element('show-nutrition').hidden).toBe(false))
+    element('show-nutrition').click()
+    await vi.waitFor(() => expect(element('nutrition-week').hidden).toBe(false))
+    element('nutrition-week').querySelector('summary')!.click()
+    expect(element('nutrition-week-progress').textContent).toContain('75%')
+
+    setNutritionWeek({ ...nutritionWeek, mealStatus: 'partial', loggedDays: null })
+    element('nutrition-refresh').click()
+    await vi.waitFor(() => expect(element('nutrition-week-progress').textContent).toContain('450 g subtotal'))
+    expect(element('nutrition-week-progress').textContent).toContain('600 g target')
+    expect(element('nutrition-week-coverage').textContent).toContain('Logged-day coverage is unavailable.')
+    expect(widget.querySelectorAll('#nutrition-week-progress progress')).toHaveLength(0)
+    expect(element('nutrition-week-progress').textContent).not.toContain('75%')
+    expect(element('nutrition-card').hidden).toBe(false)
+    expect(element('nutrition-progress').textContent).toContain('30 g logged')
+
+    setNutritionWeek({ ...nutritionWeek, mealStatus: 'unavailable', loggedDays: null, totals: null })
+    element('nutrition-refresh').click()
+    await vi.waitFor(() => expect(element('nutrition-week-meal-note').textContent).toBe('Logged macro totals are unavailable.'))
+    expect(element('nutrition-week-coverage').textContent).toContain('Logged-day coverage is unavailable.')
+    expect(widget.querySelectorAll('#nutrition-week-progress progress')).toHaveLength(0)
+    expect(element('nutrition-week-progress').textContent).not.toContain('75%')
+    expect(element('nutrition-card').hidden).toBe(false)
+    expect(element('nutrition-progress').textContent).toContain('30 g logged')
+
+    setNutritionWeek({ ...nutritionWeek, days: 0 })
+    element('nutrition-refresh').click()
+    await vi.waitFor(() => expect(element('nutrition-week').textContent).toContain('Week-to-date nutrition is unavailable.'))
+    expect(element('nutrition-week').hidden).toBe(false)
+    expect(element('nutrition-week-progress').children).toHaveLength(0)
+    expect(element('nutrition-card').hidden).toBe(false)
+    expect(element('nutrition-progress').textContent).toContain('30 g logged')
+
+    setNutritionWeek()
+    element('nutrition-refresh').click()
+    await vi.waitFor(() => expect(element('nutrition-week').hidden).toBe(true))
+    expect(element('nutrition-card').hidden).toBe(false)
+    expect(element('nutrition-progress').textContent).toContain('30 g logged')
+    expect(element('nutrition-progress').textContent).toContain('120 g target')
+    expect(element('nutrition-meal-count').textContent).toBe('1 saved meal')
   })
 
   it('keeps meal details across dashboard views and requests one unsent draft in the active chat', async () => {

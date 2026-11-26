@@ -58,6 +58,7 @@ export function contextClient(rows = contextRows(), options: {
         in: (key: string, values: unknown[]) => { filters.push(row => values.includes(row[key])); return q },
         gte: (key: string, value: string) => { filters.push(row => String(row[key]) >= value); return q },
         lte: (key: string, value: string) => { filters.push(row => String(row[key]) <= value); return q },
+        lt: (key: string, value: string) => { filters.push(row => String(row[key]) < value); return q },
         order: (key: string, settings: { ascending: boolean }) => { orders.push({ key, ...settings }); return q },
         limit: (limit: number) => { trace.limit = limit; return q },
         insert: writes, update: writes, upsert: writes, delete: writes,

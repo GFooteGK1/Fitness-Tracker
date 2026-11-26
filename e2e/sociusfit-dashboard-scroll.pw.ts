@@ -30,6 +30,11 @@ const toolResults = {
       date, readAt, timezone: 'America/Chicago', mealCount: 2, mealStatus: 'available', targetStatus: 'available',
       totals: { protein: 68, carbs: 84, fat: 31, calories: 887 },
       targets: { protein: 155, carbs: 210, fat: 70, calories: 2090 },
+      weekToDate: {
+        startDate: date, endDate: date, days: 1, loggedDays: 1, mealStatus: 'available', targetStatus: 'available',
+        totals: { protein: 68, carbs: 84, fat: 31, calories: 887 },
+        targets: { protein: 155, carbs: 210, fat: 70, calories: 2090 },
+      },
     },
   },
 }
@@ -207,6 +212,26 @@ async function updateComposerInset(page: Page, bottom: number) {
 for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
   test.describe(`SociusFit at ${viewport.width} × ${viewport.height}`, () => {
     test.use({ viewport, isMobile: true, hasTouch: true })
+
+    test('opens and collapses the Nutrition week-to-date card on mobile', async ({ page }) => {
+      const widget = await openDashboard(page)
+      await widget.getByRole('navigation', { name: 'SociusFit views' }).getByRole('button', { name: 'Nutrition' }).tap()
+      const week = widget.locator('#nutrition-week')
+      const summary = week.locator('summary')
+      await expect(summary).toBeVisible()
+      expect((await summary.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+      await expect(week).not.toHaveAttribute('open', '')
+      await summary.tap()
+      await expect(week).toHaveAttribute('open', '')
+      await expect(week.getByText('1 of 1 day with saved meals.')).toBeVisible()
+      await expect(week.getByLabel('Protein week-to-date progress')).toHaveAttribute('aria-valuetext', /43\.9%/)
+      await expect(widget.locator('#nutrition-progress')).toBeVisible()
+      await week.getByLabel('Calories week-to-date progress').scrollIntoViewIfNeeded()
+      await expect(week.getByLabel('Calories week-to-date progress')).toBeVisible()
+      await summary.tap()
+      await expect(week).not.toHaveAttribute('open', '')
+      await expect(widget.locator('#nutrition-progress')).toBeVisible()
+    })
 
     test('all dashboard tabs can scroll their last content above the chat composer', async ({ page }) => {
       const widget = await openDashboard(page)
