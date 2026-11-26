@@ -1,7 +1,9 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { CallToolRequestSchema, ErrorCode, ListResourcesRequestSchema, ListToolsRequestSchema, McpError, ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js'
+import { formatUTCAsLocalDateWithOffset } from '../timezone-utils'
 import { CoachingContextError } from './coaching-context'
-import { coachingContextTool, createCoachingContextTool, createOwnedCoachingContextReader, type AuthorizeContextRequest, type ContextToolPolicy } from './coaching-context-tool'
+import { assertVerifiedContextPrincipal, coachingContextTool, createCoachingContextTool, createOwnedCoachingContextReader, type AuthorizeContextRequest, type ContextToolPolicy } from './coaching-context-tool'
 import { coachingReferenceTool, createCoachingReferenceTool } from './coaching-reference-tool'
 import { coachingProfileTool, coachingRequirementInstructions, createCoachingRequirementTools, saveCoachingRequirementTool } from './coaching-requirement-tools'
 import { activityRecordTools, createActivityRecordTool } from './activity-record-tools'
@@ -12,14 +14,16 @@ import { createSociusNutritionTool, sociusNutritionTool } from './socius-nutriti
 import { createWorkoutTodayReader } from './workout-today-app'
 import { createOwnedWorkoutRecoveryReader } from './recovery-today-app'
 import { createSessionDraftEvidenceReader } from './session-draft-evidence'
-import { createSessionDraftTools, legacySessionDraftResourceUri, prepareTodaySessionDraftTool, sessionDraftInstructions, sessionDraftResource, sessionDraftResourceContents, showTodaySessionDraftTool } from './session-draft-tools'
+import { createSessionDraftTools, legacySessionDraftResourceUri, prepareTodaySessionDraftTool, saveSessionDraftInstructions, saveTodaySessionDraftTool, sessionDraftInstructions, sessionDraftResource, sessionDraftResourceContents, showTodaySessionDraftTool } from './session-draft-tools'
+import { readDailySessionDraft, saveDailySessionDraft } from './daily-session-draft'
 
 /** One owner-bound server instance per authenticated request/session. No listener,
  * deployment, token verifier or OAuth grant is created here. The caller supplies
  * the trusted request-local authorization callback; never share it across users.
  */
 export function createCoachingContextMcpServer(authorize: AuthorizeContextRequest, policy: ContextToolPolicy,
-  options: { writesEnabled?: boolean, todayEnabled?: boolean, activityEnabled?: boolean, coachingRequirementsEnabled?: boolean } = {}) {
+  options: { writesEnabled?: boolean; todayEnabled?: boolean; activityEnabled?: boolean; coachingRequirementsEnabled?: boolean
+    createDraftStorageClient?: () => SupabaseClient } = {}) {
   const reference = createCoachingReferenceTool(authorize, policy)
   const history = createActivityHistoryTool(authorize, policy)
   const activityEnabled = options.todayEnabled === true && options.activityEnabled === true
@@ -27,19 +31,46 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
   const coachingRequirementsEnabled = options.coachingRequirementsEnabled ?? process.env.SOCIUS_MCP_COACHING_REQUIREMENTS_ENABLED === 'true'
   const coachingRequirements = writesEnabled && coachingRequirementsEnabled ? createCoachingRequirementTools(authorize, policy) : null
   const saveCheckIn = options.todayEnabled && writesEnabled ? createSaveSociusTodayCheckInTool(authorize, policy) : null
+  const { createDraftStorageClient } = options
   const readTodayWorkout = options.todayEnabled ? createWorkoutTodayReader(authorize, policy) : undefined
   const tool = createCoachingContextTool(authorize, policy)
+  const authorizeDraftStorage = async () => {
+    const { principal, db } = await authorize()
+    assertVerifiedContextPrincipal(principal, policy)
+    const identity = await db.auth.getUser()
+    if (identity.error || identity.data.user?.id !== principal.subject) {
+      throw new CoachingContextError(401, 'Authenticated subject mismatch')
+    }
+    return { db, owner: principal.subject }
+  }
   const today = readTodayWorkout ? createSociusTodayTool(createOwnedCoachingContextReader(authorize, policy), {
     activityEnabled,
     nutritionEnabled: activityEnabled,
     nutritionWritesEnabled: activityEnabled && writesEnabled,
     checkInEnabled: Boolean(saveCheckIn),
+    sessionDraftSavingEnabled: Boolean(saveCheckIn && createDraftStorageClient),
     readWorkout: readTodayWorkout,
     readWorkoutRecovery: createOwnedWorkoutRecoveryReader(authorize, policy),
+    readSessionDraft: async (date, revision) => {
+      const { db, owner } = await authorizeDraftStorage()
+      return readDailySessionDraft(db, owner, date, revision)
+    },
   }) : null
   const activity = activityEnabled ? createSociusActivityTool(history) : null
   const nutrition = activityEnabled ? createSociusNutritionTool(authorize, policy) : null
-  const sessionDraft = today ? createSessionDraftTools(createSessionDraftEvidenceReader(authorize, policy)) : null
+  const sessionDraft = today ? createSessionDraftTools(createSessionDraftEvidenceReader(authorize, policy), saveCheckIn && createDraftStorageClient
+    ? async (date, tzOffset, revision, draft) => {
+      const { owner } = await authorizeDraftStorage()
+      if (date !== formatUTCAsLocalDateWithOffset(new Date().toISOString(), tzOffset)) {
+        throw new CoachingContextError(409, 'The local date changed. Open Today for the current date.')
+      }
+      try {
+        return saveDailySessionDraft(createDraftStorageClient(), owner, date, revision, draft)
+      } catch {
+        return 'unavailable'
+      }
+    }
+    : undefined) : null
   const activities = activityRecordTools.filter(tool => writesEnabled || tool.annotations.readOnlyHint)
   const server = new Server({ name: 'socius-coaching-context', version: '1.0.0' }, {
     capabilities: { tools: {}, ...(today ? { resources: {} } : {}) },
@@ -47,6 +78,7 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
       + ' For a training week or block, and when interpreting monthly training adherence, call get_coaching_reference for the programming guide. Select the domains that fit the task and use the saved athlete context.'
       + (activity ? ' Use show_socius_activity when the athlete asks to see a one-day activity card. Use get_activity_history for the underlying facts or when a text answer is needed.' : '')
       + (sessionDraft ? sessionDraftInstructions : '')
+      + (sessionDraft?.save ? saveSessionDraftInstructions : '')
       + (coachingRequirements ? coachingRequirementInstructions : '')
       + (writesEnabled ? ' A clear request to log consumed food is authorization to use create_meal, including for dictated or photo-interpreted meals. Keep the athlete’s stated calories, amounts and meal label in the record. Mark inferred values as estimates. Ask only for details you need to avoid a misleading entry. Use amend_meal for an explicit correction. Report a save only after confirmed readback; previews, analyses and hypothetical meals do not update the log.' : ''),
   })
@@ -58,7 +90,8 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
       { ...descriptor, securitySchemes, _meta: { securitySchemes } }
     ))
     const apps = today ? [sociusTodayTool, ...(saveCheckIn ? [saveSociusTodayCheckInTool] : []),
-      ...(activity ? [sociusActivityTool, sociusNutritionTool] : []), ...(sessionDraft ? [showTodaySessionDraftTool] : [])] : []
+      ...(activity ? [sociusActivityTool, sociusNutritionTool] : []), ...(sessionDraft ? [showTodaySessionDraftTool] : []),
+      ...(sessionDraft?.save ? [saveTodaySessionDraftTool] : [])] : []
     return { tools: [...tools, ...apps.map(app => ({ ...app, securitySchemes, _meta: { ...app._meta, securitySchemes } }))] }
   })
   if (today) {
@@ -92,6 +125,7 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
       [sociusNutritionTool.name]: nutrition,
       [prepareTodaySessionDraftTool.name]: sessionDraft?.prepare,
       [showTodaySessionDraftTool.name]: sessionDraft?.show,
+      [saveTodaySessionDraftTool.name]: sessionDraft?.save,
     }
     const handler = Object.hasOwn(selected, name) ? selected[name as keyof typeof selected]
       : record ? createActivityRecordTool(authorize, policy, record.name) : null

@@ -132,11 +132,13 @@ const reviewRequired = (message = 'Review your saved plan before drafting a sess
 const unavailable = (message: string) => ({ status: 'unavailable' as const, message })
 const needsInput = (message: string) => ({ status: 'needs_input' as const, message })
 
+export function projectSessionDraftRequirement(item: Context['requirements']['training_constraints']) {
+  return { status: item.status, value: item.value, source: item.source ? { id: item.source.id, version: item.source.version } : null }
+}
+
 function currentRequirements(requirements: Context['requirements']) {
-  return Object.fromEntries((['training_schedule', 'available_equipment', 'training_constraints', 'exercise_preferences'] as const).map(key => {
-    const item = requirements[key]
-    return [key, { status: item.status, value: item.value, source: item.source ? { id: item.source.id, version: item.source.version } : null }]
-  }))
+  const keys = ['training_schedule', 'available_equipment', 'training_constraints', 'exercise_preferences'] as const
+  return Object.fromEntries(keys.map(key => [key, projectSessionDraftRequirement(requirements[key])]))
 }
 
 function dayScheduleFor(date: string, programming: Context['acceptedProgramming']) {
@@ -166,7 +168,7 @@ function buildEvidence(context: Context, assessment: Extract<Context['dailyCheck
 }
 
 export type SessionDraftEvidence = ReturnType<typeof buildEvidence>
-export type DraftEvidenceResult = { status: 'ready'; evidence: SessionDraftEvidence }
+export type DraftEvidenceResult = { status: 'ready'; evidence: SessionDraftEvidence; checkInRevision?: string }
   | { status: 'needs_input' | 'review_required' | 'unavailable'; message: string }
 
 /** Use the existing authenticated reader and current plan safety boundary. Reads only. */
@@ -217,7 +219,7 @@ export function createSessionDraftEvidenceReader(authorize: AuthorizeContextRequ
     }
     const history = projectHistory(work)
     if (!history.workouts.length) return needsInput('Can you use SociusFit to log your completed sessions from the past four weeks before trying again?')
-    return { status: 'ready', evidence: buildEvidence(context, dailyCheckIn, work, history, goals, playbook,
+    return { status: 'ready', checkInRevision: dailyCheckIn.revision, evidence: buildEvidence(context, dailyCheckIn, work, history, goals, playbook,
       today, typeof planId === 'string' ? planId : null) }
   }
 }

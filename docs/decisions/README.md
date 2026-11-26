@@ -68,3 +68,5 @@
 - [ADR-0035: Supervised programming scope](ADR-0035-supervised-programming-scope.md) — locally accepted design for athlete/program enrollment, authenticated exact-content review and database-enforced access/recovery; implementation remains disabled.
 
 - [ADR-0029: Fractional workout effort and failed-save recovery](ADR-0029-fractional-workout-effort-and-failed-save-recovery.md) — exact session effort, transactional migration and owner-locked no-write proof without reopening failed identities.
+
+- [ADR-0054: Save today’s training session](ADR-0054-save-today-training-session.md) — proposed owner-scoped persistence of a validated draft for the current local day.

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import type { CoachingBearerDependencies, CoachingOAuthConfig } from '../../app/lib/auth/coaching-oauth'
-import { handleCoachingMcp } from '../../app/lib/coach/coaching-mcp-http'
+import type { CoachingOAuthConfig } from '../../app/lib/auth/coaching-oauth'
+import { handleCoachingMcp, type CoachingMcpDependencies } from '../../app/lib/coach/coaching-mcp-http'
 import { recommendationScope } from '../../app/lib/recommendations/context'
 import { coachingDecisionRows } from '../fixtures/coaching-decision-record'
 import { contextClient, contextRows, type ContextRows } from '../fixtures/coaching-context'
@@ -15,9 +15,11 @@ const other = '10000000-0000-4000-8000-000000000002'
 const clock = '2026-10-19T00:13:53.447Z'
 const tzOffset = 360
 const localDate = '2026-10-18'
+const checkInRevision = '10000000-0000-4000-8000-000000000007'
 const draftResource = 'ui://socius/session-draft-v2.html'
 const prepareName = 'prepare_today_session_draft'
 const showName = 'show_today_session_draft'
+const saveName = 'save_today_session_draft'
 const version = 'today-session-draft-v4'
 const firstWorkout = '10000000-0000-4000-8000-000000000021'
 const latestWorkout = '10000000-0000-4000-8000-000000000022'
@@ -97,8 +99,8 @@ function seedConcerningFeedback(rows: ContextRows, recordedAt: string) {
     'responses->>pain': 'concerning', responses: { outcome: 'stopped_early', sessionRpe: 7, energy: 'okay', pain: 'concerning', note: null } }]
 }
 
-async function connect({ subject = owner, rows = seedRows(), failTable, onSafetyFeedbackRead }: {
-  subject?: string; rows?: ContextRows; failTable?: string; onSafetyFeedbackRead?: () => void
+async function connect({ subject = owner, rows = seedRows(), failTable, onSafetyFeedbackRead, storeDrafts = false }: {
+  subject?: string; rows?: ContextRows; failTable?: string; onSafetyFeedbackRead?: () => void; storeDrafts?: boolean
 } = {}) {
   for (const records of Object.values(rows)) for (const row of records) row.user_id = subject
   const fixture = contextClient(rows, { failTable, onRead: (table, read) => {
@@ -106,6 +108,27 @@ async function connect({ subject = owner, rows = seedRows(), failTable, onSafety
     const query = fixture.traces.filter(trace => trace.table === table)[read - 1]
     if (query?.filters.some(([column]) => column === 'responses->>pain')) onSafetyFeedbackRead()
   } })
+  const updateDraft = vi.fn((patch: { session_draft: unknown }) => {
+    const filters = new Map<string, unknown>()
+    const query = {
+      eq(column: string, value: unknown) { filters.set(column, value); return query },
+      async select(columns: string) {
+        expect([...filters.keys()]).toEqual(['user_id', 'local_date', 'check_in_revision'])
+        const found = rows.coach_daily_checkins.filter(row => [...filters].every(([key, value]) => row[key] === value))
+        return { data: found.map(row => {
+          Object.assign(row, patch)
+          return Object.fromEntries(columns.split(',').map(column => [column, row[column]]))
+        }), error: null }
+      },
+    }
+    return query
+  })
+  const draftStorage = {
+    from: vi.fn((table: string) => {
+      expect(table).toBe('coach_daily_checkins')
+      return { update: updateDraft }
+    }),
+  } as unknown as typeof fixture.db
   Object.assign(fixture.db.auth, {
     getClaims: async () => ({ data: { claims: {
       iss: config.issuer, aud: config.resource, client_id: config.clientId, sub: subject,
@@ -114,8 +137,9 @@ async function connect({ subject = owner, rows = seedRows(), failTable, onSafety
     } }, error: null }),
     getUser: async () => ({ data: { user: { id: subject } }, error: null }),
   })
-  const dependencies: CoachingBearerDependencies = {
+  const dependencies: CoachingMcpDependencies = {
     client: () => fixture.db,
+    createDraftStorageClient: storeDrafts ? () => draftStorage : undefined,
     fetch: async (input, init) => {
       expect(String(input)).toBe(`${config.issuer}/oauth/userinfo`)
       expect(new Headers(init?.headers).get('authorization')).toBe('Bearer synthetic-token')
@@ -131,7 +155,7 @@ async function connect({ subject = owner, rows = seedRows(), failTable, onSafety
     }))
     return client
   }
-  return { ...fixture, client: await openClient(), openClient, rows }
+  return { ...fixture, client: await openClient(), openClient, rows, updateDraft }
 }
 
 const prepare = (arguments_: Record<string, unknown> = { tzOffset }) => ({ name: prepareName, arguments: arguments_ })
@@ -142,8 +166,8 @@ interface ReadyEvidence {
   evidence: { goals: { id: string }[] }
 }
 
-async function prepareReady(client: Client) {
-  const result = await client.callTool(prepare())
+async function prepareReady(client: Client, arguments_?: Record<string, unknown>) {
+  const result = await client.callTool(prepare(arguments_))
   expect(result.isError).not.toBe(true)
   expect(result.structuredContent).toMatchObject({ status: 'ready', workflowVersion: version,
     contextId: expect.any(String), evidence: { goals: [expect.objectContaining({ id: expect.any(String) })] } })
@@ -168,6 +192,10 @@ function validDraft(goalId: string) {
 }
 
 const show = (contextId: string, draft: unknown) => ({ name: showName, arguments: { tzOffset, contextId, draft } })
+const save = (contextId: string, draft: unknown) => ({ name: saveName, arguments: { tzOffset, contextId, draft } })
+const readToday = (draftOnly = false) => ({
+  name: 'open_socius_today', arguments: { tzOffset, ...(draftOnly ? { sessionDraftOnly: true } : {}) },
+})
 
 describe('Today session draft over authenticated stateless MCP', () => {
   beforeEach(() => {
@@ -175,6 +203,7 @@ describe('Today session draft over authenticated stateless MCP', () => {
     vi.setSystemTime(clock)
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
     vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'false')
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', undefined)
     vi.stubEnv('RECOMMENDATIONS_ENABLED', 'false')
   })
 
@@ -188,6 +217,10 @@ describe('Today session draft over authenticated stateless MCP', () => {
         expect(tools).toContainEqual(expect.objectContaining({ name, annotations: expect.objectContaining({ readOnlyHint: true }) }))
       }
       expect(tools.map(tool => tool.name)).not.toContain('save_socius_today_check_in')
+      const prepared = await prepareReady(client)
+      expect(tools.map(tool => tool.name)).not.toContain(saveName)
+      await expect(client.callTool(save(prepared.contextId, validDraft(prepared.evidence.goals[0].id))))
+        .rejects.toMatchObject({ code: -32602 })
       expect((await client.listResources()).resources).toContainEqual(expect.objectContaining({ uri: draftResource }))
       expect((await client.readResource({ uri: draftResource })).contents).toContainEqual(expect.objectContaining({
         uri: draftResource, mimeType: 'text/html;profile=mcp-app', text: expect.any(String),
@@ -200,16 +233,132 @@ describe('Today session draft over authenticated stateless MCP', () => {
     } finally { await client.close() }
   })
 
+  it('keeps Today check-ins available without advertising an unavailable draft writer', async () => {
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+    const { client } = await connect()
+    try {
+      const tools = (await client.listTools()).tools.map(tool => tool.name)
+      expect(tools).toContain('save_socius_today_check_in')
+      expect(tools).not.toContain(saveName)
+      const today = await client.callTool(readToday())
+      expect(today._meta).toMatchObject({ checkInEnabled: true })
+      expect(today._meta).not.toHaveProperty('sessionDraftSavingEnabled')
+    } finally { await client.close() }
+  })
+
+  it('saves only an explicit validated draft and reopens it on the same local day', async () => {
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+    const rows = seedRows()
+    rows.coach_daily_checkins[0].check_in_revision = checkInRevision
+    const { client, openClient, traces, updateDraft, writes } = await connect({ rows, storeDrafts: true })
+    try {
+      const tools = (await client.listTools()).tools
+      expect(tools).toContainEqual(expect.objectContaining({ name: showName, annotations: expect.objectContaining({ readOnlyHint: true }) }))
+      expect(tools).toContainEqual(expect.objectContaining({ name: saveName,
+        annotations: expect.objectContaining({ readOnlyHint: false, destructiveHint: false }),
+      }))
+      const before = await client.callTool(readToday())
+      expect(before._meta).toMatchObject({ sessionDraftSavingEnabled: true, today: { date: localDate,
+        sessionDraftStatus: 'missing', assessment: { revision: checkInRevision },
+      } })
+      const generic = await client.callTool({ name: 'get_coaching_context', arguments: { tzOffset } })
+      expect(generic.structuredContent).not.toHaveProperty('context.dailyCheckIn.revision')
+      const beforePolling = traces.length
+      const pending = await client.callTool(readToday(true))
+      expect(pending._meta?.today).toEqual({ date: localDate, sessionDraftStatus: 'missing' })
+      expect(traces.slice(beforePolling).map(trace => trace.table)).toEqual(['coach_daily_checkins'])
+
+      const prepared = await prepareReady(client)
+      expect(JSON.stringify(prepared)).not.toContain(checkInRevision)
+      const draft = validDraft(prepared.evidence.goals[0].id)
+      const preview = await client.callTool(show(prepared.contextId, draft))
+      expect(preview.structuredContent).toMatchObject({ status: 'validated' })
+      expect(preview.structuredContent).not.toHaveProperty('savedToToday')
+      expect(updateDraft).not.toHaveBeenCalled()
+      const notDateBound = await client.callTool(save(prepared.contextId, draft))
+      expect(notDateBound.isError).toBe(true)
+      expect(notDateBound.content).toMatchObject([{ type: 'text', text: expect.stringContaining('confirmed local date') }])
+      expect(updateDraft).not.toHaveBeenCalled()
+
+      const confirmed = await prepareReady(client, { tzOffset, expectedLocalDate: localDate, expectedCheckInRevision: checkInRevision })
+      const withWrongOffset = await client.callTool({ name: saveName,
+        arguments: { tzOffset: tzOffset + 60, contextId: confirmed.contextId, draft },
+      })
+      expect(withWrongOffset.isError).toBe(true)
+      expect(updateDraft).not.toHaveBeenCalled()
+      const saved = await client.callTool(save(confirmed.contextId, draft))
+      expect(saved.structuredContent).toMatchObject({ status: 'validated', savedToToday: true })
+      expect(updateDraft).toHaveBeenCalledTimes(1)
+      expect(writes).not.toHaveBeenCalled()
+      expect(rows.coach_daily_checkins[0].session_draft).toMatchObject({ date: localDate, draft: saved._meta?.sessionDraft })
+
+      const reopened = await openClient()
+      try {
+        for (const draftOnly of [false, true]) {
+          const result = await reopened.callTool(readToday(draftOnly))
+          expect(result._meta?.today).toMatchObject({ date: localDate, sessionDraftStatus: 'saved',
+            sessionDraft: saved._meta?.sessionDraft, assessment: { revision: checkInRevision },
+          })
+          expect(result._meta?.today).not.toHaveProperty('workoutRecommendation.reviewBeforeTraining', true)
+          expect(JSON.stringify(result.content)).not.toContain(draft.title)
+          expect(result.structuredContent).toBeUndefined()
+        }
+
+        seedCanonicalReview(rows, 'pause_review')
+        const held = await reopened.callTool(readToday(true))
+        expect(held._meta?.today).toMatchObject({ date: localDate, sessionDraftStatus: 'held',
+          workoutRecommendation: { reviewBeforeTraining: true },
+        })
+        expect(held._meta?.today).not.toHaveProperty('sessionDraft')
+        rows.coach_weekly_reviews = []
+        const restrictions = rows.coach_memories.find(row => row.memory_key === 'training_constraints')!
+        restrictions.version = 2
+        restrictions.content = { constraints: 'Avoid running during symptom recovery' }
+        const stale = await reopened.callTool(readToday(true))
+        expect(stale._meta?.today).toMatchObject({ date: localDate, sessionDraftStatus: 'missing' })
+        expect(stale._meta?.today).not.toHaveProperty('sessionDraft')
+
+        vi.setSystemTime('2026-10-19T06:00:01Z')
+        const tomorrow = await reopened.callTool(readToday(true))
+        expect(tomorrow._meta?.today).toEqual({ date: '2026-10-19', sessionDraftStatus: 'missing' })
+        expect(rows.coach_daily_checkins[0].session_draft).toBeDefined()
+      } finally { await reopened.close() }
+    } finally { await client.close() }
+  })
+
+  it('rejects a prepared draft if the check-in revision changed even when answers match again', async () => {
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+    const rows = seedRows()
+    rows.coach_daily_checkins[0].check_in_revision = checkInRevision
+    const { client, updateDraft } = await connect({ rows, storeDrafts: true })
+    try {
+      const expected = { tzOffset, expectedLocalDate: localDate, expectedCheckInRevision: checkInRevision }
+      const prepared = await prepareReady(client, expected)
+      rows.coach_daily_checkins[0].check_in_revision = '10000000-0000-4000-8000-000000000008'
+      const delayed = await client.callTool(prepare(expected))
+      expect(delayed.isError).toBe(true)
+      expect(delayed.content).toMatchObject([{ type: 'text', text: expect.stringContaining('saved check-in changed') }])
+      const stale = await client.callTool(save(prepared.contextId, validDraft(prepared.evidence.goals[0].id)))
+      expect(stale.isError).toBe(true)
+      expect(stale.content).toMatchObject([{ type: 'text', text: expect.stringContaining('evidence changed') }])
+      expect(updateDraft).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
   it('keeps draft tools and the rendering resource out of another verified athlete session', async () => {
-    const { client, db, writes } = await connect({ subject: other })
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+    const { client, db, writes, updateDraft } = await connect({ subject: other, storeDrafts: true })
     try {
       expect((await client.listTools()).tools.map(tool => tool.name)).not.toContain(prepareName)
       expect((await client.listTools()).tools.map(tool => tool.name)).not.toContain(showName)
+      expect((await client.listTools()).tools.map(tool => tool.name)).not.toContain(saveName)
       expect(client.getServerCapabilities()?.resources).toBeUndefined()
       await expect(client.callTool(prepare())).rejects.toMatchObject({ code: -32602 })
       await expect(client.callTool(show('a'.repeat(64), validDraft('goal:5k')))).rejects.toMatchObject({ code: -32602 })
+      await expect(client.callTool(save('a'.repeat(64), validDraft('goal:5k')))).rejects.toMatchObject({ code: -32602 })
       expect(db.from).not.toHaveBeenCalled()
       expect(writes).not.toHaveBeenCalled()
+      expect(updateDraft).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
 

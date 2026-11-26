@@ -9,26 +9,30 @@ const workflowVersion = 'today-session-draft-v4'
 const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const
 const timezoneOffset = { type: 'integer', minimum: -720, maximum: 840,
   description: 'Athlete’s current Date.getTimezoneOffset in minutes. Ask if unknown.' } as const
-const textFields = {
-  title: 120, objective: 280, goalId: 120, weekReview: 1000, checkInAdjustment: 500,
+const displayTextFields = {
+  title: 120, objective: 280, weekReview: 1000, checkInAdjustment: 500,
   rationale: 600, scaleWhen: 500, stopWhen: 500,
 } as const
+const textFields = { ...displayTextFields, goalId: 120 } as const
 const workFields = { activity: 120, dose: 200, effort: 120, rest: 120 } as const
 const phases = ['warmUp', 'mainWork', 'supportingWork', 'cooldown'] as const
 const planUses = ['follow', 'adjust', 'new'] as const
 const dayTypes = ['training', 'recovery', 'rest'] as const
 const maxWorkPerPhase = 5
 const maxSources = 12
+const daySchedules = ['planned', 'completed', 'skipped', 'scheduled_rest', 'unscheduled'] as const
 
 export const sessionDraftInstructions = ' For any request to recommend, draft, or adjust today’s training, use prepare_today_session_draft before authoring.'
-  + ' When Today includes expectedLocalDate and tzOffset, pass both values unchanged. Keep the draft bound to that saved date.'
+  + ' Pass the expectedLocalDate, tzOffset, and expectedCheckInRevision supplied by Today unchanged to prepare_today_session_draft. Keep the draft bound to that saved check-in.'
   + ' Treat an undated request for one personalized training session as a request for today unless another date is established.'
   + ' Use the reviewed playbook and compare the four weeks of known completed work against the active goals. State evidence gaps and compare only compatible sessions.'
   + ' Select one objective and use the saved check-in to adjust the dose. Respect the athlete’s current restrictions and available equipment. Start from the accepted session when appropriate and explain any adjustment.'
   + ' Run the workflow even without scheduled training. For daySchedule scheduled_rest, preserve the accepted rest day with planUse follow and a rest or light recovery draft. Treat unscheduled as an unknown schedule. Use empty exercise phases for full rest.'
   + ' On the 1-to-5 check-in, 1 is worst and 5 is best in every field. A 5 means very low stress, fatigue or soreness, very good sleep, or very high motivation. Treat relative-to-usual answers as qualitative.'
   + ' Ask one focused question if a missing constraint would change the session. When preparation is not ready or a call fails, relay the relevant message and resolve the issue before drafting. If the evidence changed, prepare it again.'
-  + ' Call show_today_session_draft to validate and display the session. Share only a validated draft. Use these two read-only tools for every daily session draft. Factual reads and general coaching references do not authorize a draft.'
+  + ' Call show_today_session_draft to validate and display ordinary chat drafts. Share only a validated draft. Use this workflow for every daily session draft. Factual reads and general coaching references do not authorize a draft.'
+
+export const saveSessionDraftInstructions = ' When the athlete explicitly asks to save a session draft in Today, including the verified check-in workflow that requests it, prepare against the confirmed expectedLocalDate and call save_today_session_draft to validate, save, and display it. Use one draft tool per result. If the save is uncertain, ask the athlete to check Today before retrying.'
 
 function textProperties(fields: Record<string, number>) {
   return Object.fromEntries(Object.entries(fields).map(([key, maxLength]) => [key, { type: 'string', minLength: 1, maxLength }]))
@@ -63,7 +67,9 @@ export const prepareTodaySessionDraftTool = {
   description: 'Use before authoring a requested Today draft or revision, including on a rest day. The fixed 28-day evidence, saved check-in, active goals, constraints, accepted schedule and reviewed playbook come from SociusFit. When ready, write one draft and call show_today_session_draft with the returned context ID. For any other result or tool error, resolve the issue before drafting a session.',
   inputSchema: { type: 'object', required: ['tzOffset'],
     properties: { tzOffset: timezoneOffset, expectedLocalDate: { type: 'string', format: 'date',
-      description: 'The exact verified local date of the check-in. Pass it unchanged when starting a draft from Today.' } },
+      description: 'The exact verified local date of the check-in. Pass it unchanged when starting a draft from Today.' },
+    expectedCheckInRevision: { type: 'string', format: 'uuid',
+      description: 'The exact check-in revision supplied by Today. Pass it unchanged when present.' } },
     additionalProperties: false },
   annotations: readOnly,
 } as const
@@ -78,6 +84,13 @@ export const showTodaySessionDraftTool = {
   _meta: { ui: { resourceUri: sessionDraftResource.uri, visibility: ['app', 'model'] } },
 } as const
 
+export const saveTodaySessionDraftTool = {
+  ...showTodaySessionDraftTool,
+  name: 'save_today_session_draft', title: 'Save today’s session draft',
+  description: 'Validate, save and display one editable training, recovery or rest draft when the athlete asks to save it in Today. First call prepare_today_session_draft with the confirmed expectedLocalDate. The new draft replaces the previous draft for this local date.',
+  annotations: { ...readOnly, readOnlyHint: false },
+} as const
+
 type DraftWork = Record<keyof typeof workFields, string>
 type SessionDraft = Record<keyof typeof textFields, string> & Record<typeof phases[number], DraftWork[]> & {
   dayType: typeof dayTypes[number]; planUse: typeof planUses[number]; sourceWorkoutIds: string[]
@@ -89,6 +102,17 @@ function isText(value: unknown, maxLength: number): value is string {
 
 function exactObject(value: unknown, keys: string[]): value is Record<string, unknown> {
   return contextObject(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key))
+}
+
+function validPhaseRows(value: unknown): value is DraftWork[] {
+  return Array.isArray(value) && value.length <= maxWorkPerPhase
+    && value.every(row => exactObject(row, Object.keys(workFields))
+      && Object.entries(workFields).every(([key, limit]) => isText(row[key], limit)))
+}
+
+function validPhases(draft: Record<typeof phases[number], DraftWork[]> & Pick<SessionDraft, 'dayType'>) {
+  return draft.dayType === 'rest' ? phases.every(phase => draft[phase].length === 0)
+    : draft.mainWork.length > 0 && (draft.dayType === 'recovery' || draft.warmUp.length > 0)
 }
 
 function readOffset(value: unknown) {
@@ -110,38 +134,117 @@ function parseSessionDraft(input: unknown): SessionDraft {
     throw new CoachingContextError(400, 'Supply one complete draft with a goal, rationale and distinct logged workout references')
   }
 
-  for (const phase of phases) {
-    const work = value[phase]
-    if (!Array.isArray(work) || work.length > maxWorkPerPhase
-      || !work.every(row => exactObject(row, Object.keys(workFields))
-        && Object.entries(workFields).every(([key, limit]) => isText(row[key], limit)))) {
-      throw new CoachingContextError(400, 'Supply activity, dose, effort and rest for each drafted exercise')
-    }
+  if (!phases.every(phase => validPhaseRows(value[phase]))) {
+    throw new CoachingContextError(400, 'Supply activity, dose, effort and rest for each drafted exercise')
   }
   const draft = value as SessionDraft
-  const validPhases = draft.dayType === 'rest' ? phases.every(phase => draft[phase].length === 0)
-    : draft.mainWork.length > 0 && (draft.dayType === 'recovery' || draft.warmUp.length > 0)
-  if (!validPhases) throw new CoachingContextError(400, 'Use phases that match the training, recovery or rest draft')
+  if (!validPhases(draft)) throw new CoachingContextError(400, 'Use phases that match the training, recovery or rest draft')
   return draft
 }
 
 type Evidence = Extract<DraftEvidenceResult, { status: 'ready' }>['evidence']
 
-function contextIdFor(evidence: Evidence) {
-  return createHash('sha256').update(stableStringify({ workflowVersion, evidence })).digest('hex')
+function fingerprint(value: unknown) {
+  return createHash('sha256').update(stableStringify(value)).digest('hex')
 }
 
-export function createSessionDraftTools(readEvidence: (tzOffset: number) => Promise<DraftEvidenceResult>) {
+function contextIdFor(evidence: Evidence, checkInRevision?: string, dateBoundOffset?: number) {
+  return fingerprint({ workflowVersion, evidence, ...(checkInRevision ? { checkInRevision } : {}),
+    ...(dateBoundOffset === undefined ? {} : { expectedLocalDate: evidence.date, tzOffset: dateBoundOffset }) })
+}
+
+export function sessionDraftSafetyBinding(restrictions: unknown, acceptedPlanId: string | null) {
+  return fingerprint({ restrictions, acceptedPlanId })
+}
+
+type ShownSessionDraft = Omit<SessionDraft, 'goalId' | 'sourceWorkoutIds'> & {
+  date: string; goal: string; daySchedule: Evidence['daySchedule']; sourceDates: string[]; historyComplete: boolean
+}
+type StoredSessionDraft = { date: string; safetyBinding: string; draft: ShownSessionDraft }
+const shownFields = { ...displayTextFields, goal: 500 }
+const shownKeys = [...Object.keys(shownFields), ...phases, 'date', 'daySchedule', 'dayType', 'planUse', 'sourceDates', 'historyComplete']
+
+export function readStoredSessionDraft(value: unknown, date: string, safetyBinding: string) {
+  if (!exactObject(value, ['date', 'safetyBinding', 'draft']) || value.date !== date) return { status: 'unavailable' } as const
+  if (value.safetyBinding !== safetyBinding) return { status: 'missing' } as const
+  const draft = value.draft
+  if (!exactObject(draft, shownKeys) || draft.date !== date || typeof draft.historyComplete !== 'boolean'
+    || !Object.entries(shownFields).every(([key, limit]) => isText(draft[key], limit))
+    || !daySchedules.some(schedule => draft.daySchedule === schedule)
+    || !dayTypes.some(dayType => draft.dayType === dayType) || !planUses.some(planUse => draft.planUse === planUse)
+    || !Array.isArray(draft.sourceDates) || draft.sourceDates.length < 1 || draft.sourceDates.length > maxSources
+    || !draft.sourceDates.every(sourceDate => typeof sourceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sourceDate) && sourceDate <= date)
+    || !phases.every(phase => validPhaseRows(draft[phase])) || !validPhases(draft as ShownSessionDraft)) {
+    return { status: 'unavailable' } as const
+  }
+  return { status: 'saved', draft: draft as ShownSessionDraft } as const
+}
+
+type SaveSessionDraft = (date: string, tzOffset: number, checkInRevision: string, draft: StoredSessionDraft) => Promise<'saved' | 'stale' | 'unavailable'>
+
+export function createSessionDraftTools(readEvidence: (tzOffset: number) => Promise<DraftEvidenceResult>, saveDraft?: SaveSessionDraft) {
+  async function displayDraft(input: unknown, persist?: SaveSessionDraft) {
+    if (!exactObject(input, ['tzOffset', 'contextId', 'draft']) || typeof input.contextId !== 'string' || !/^[a-f0-9]{64}$/.test(input.contextId)) {
+      throw new CoachingContextError(400, 'Prepare the coaching evidence before showing a draft')
+    }
+    const draft = parseSessionDraft(input.draft)
+    const tzOffset = readOffset(input.tzOffset)
+    const result = await readEvidence(tzOffset)
+    if (result.status !== 'ready') throw new CoachingContextError(409, result.message)
+    const { evidence, checkInRevision } = result
+    const dateBound = contextIdFor(evidence, checkInRevision, tzOffset) === input.contextId
+    if (!dateBound && contextIdFor(evidence, checkInRevision) !== input.contextId) {
+      throw new CoachingContextError(409, 'Today’s evidence changed. Prepare it again before showing a draft.')
+    }
+    if (persist && !dateBound) throw new CoachingContextError(409, 'Prepare the draft with the confirmed local date before saving it in Today.')
+
+    const goal = evidence.goals.find(goalEntry => goalEntry.id === draft.goalId)
+    const datesByWorkout = new Map(evidence.workouts.map(workout => [workout.id, workout.date]))
+    const sourceDates = draft.sourceWorkoutIds.map(id => datesByWorkout.get(id))
+    const matchesSchedule = evidence.daySchedule === 'scheduled_rest'
+      ? draft.planUse === 'follow' && draft.dayType !== 'training'
+      : evidence.hasPlannedSession
+        ? draft.planUse === 'adjust' || (draft.planUse === 'follow' && draft.dayType !== 'rest')
+        : draft.planUse === 'new'
+    if (!goal || !sourceDates.every(date => date !== undefined) || !matchesSchedule) {
+      throw new CoachingContextError(400, 'Use a prepared active goal, logged workouts and the correct accepted-session status')
+    }
+
+    const { date } = evidence
+    const { title, objective, weekReview, checkInAdjustment, rationale, dayType, planUse, warmUp, mainWork, supportingWork, cooldown, scaleWhen, stopWhen } = draft
+    const sessionDraft: ShownSessionDraft = { date, title, objective, goal: goal.statement, weekReview, checkInAdjustment, rationale, dayType, planUse,
+      daySchedule: evidence.daySchedule,
+      warmUp, mainWork, supportingWork, cooldown, scaleWhen, stopWhen,
+      sourceDates: [...new Set(sourceDates)].sort(), historyComplete: evidence.historyCoverage.complete }
+    if (persist) {
+      if (!checkInRevision) throw new CoachingContextError(503, 'Saving a draft in Today is currently unavailable.')
+      const safetyBinding = sessionDraftSafetyBinding(evidence.requirements.training_constraints, evidence.acceptedSession.planId)
+      const receipt = await persist(date, tzOffset, checkInRevision, { date, safetyBinding, draft: sessionDraft })
+      if (receipt === 'stale') throw new CoachingContextError(409, 'The saved check-in changed. Prepare it again before saving a draft.')
+      if (receipt !== 'saved') throw new CoachingContextError(503, 'Could not confirm the draft was saved. Check Today before trying again.')
+    }
+    return {
+      structuredContent: { status: 'validated', workflowVersion, contextId: input.contextId, date, ...(persist ? { savedToToday: true } : {}) },
+      content: [{ type: 'text' as const, text: persist ? 'The SociusFit session draft was saved in Today.' : 'The SociusFit session draft is ready to review.' }],
+      _meta: { sessionDraft },
+    }
+  }
+
   return {
     prepare: {
       async call(input: unknown) {
-        if (!exactObject(input, ['tzOffset']) && !exactObject(input, ['tzOffset', 'expectedLocalDate'])) {
+        if (!exactObject(input, ['tzOffset']) && !exactObject(input, ['tzOffset', 'expectedLocalDate'])
+          && !exactObject(input, ['tzOffset', 'expectedLocalDate', 'expectedCheckInRevision'])) {
           throw new CoachingContextError(400, 'Supply the timezone offset and the verified local date when available')
         }
         const tzOffset = readOffset(input.tzOffset)
-        const { expectedLocalDate } = input
+        const { expectedLocalDate, expectedCheckInRevision } = input
         if ('expectedLocalDate' in input && (typeof expectedLocalDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(expectedLocalDate))) {
           throw new CoachingContextError(400, 'Supply a verified local date in YYYY-MM-DD format')
+        }
+        if ('expectedCheckInRevision' in input && (typeof expectedCheckInRevision !== 'string'
+          || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(expectedCheckInRevision))) {
+          throw new CoachingContextError(400, 'Supply the verified check-in revision from Today')
         }
         const localDate = formatUTCAsLocalDateWithOffset(new Date().toISOString(), tzOffset)
         const staleMessage = 'The saved check-in was for a different local date. Open Today to draft for the current date.'
@@ -150,8 +253,12 @@ export function createSessionDraftTools(readEvidence: (tzOffset: number) => Prom
         if (expectedLocalDate !== undefined && result.status === 'ready' && expectedLocalDate !== result.evidence.date) {
           throw new CoachingContextError(409, staleMessage)
         }
+        if (expectedCheckInRevision !== undefined && result.status === 'ready' && expectedCheckInRevision !== result.checkInRevision) {
+          throw new CoachingContextError(409, 'The saved check-in changed. Open Today to use the current answers.')
+        }
         const structuredContent = result.status === 'ready'
-          ? { ...result, workflowVersion, contextId: contextIdFor(result.evidence) }
+          ? { status: result.status, evidence: result.evidence, workflowVersion,
+            contextId: contextIdFor(result.evidence, result.checkInRevision, expectedLocalDate === undefined ? undefined : tzOffset) }
           : { ...result, workflowVersion }
         const text = JSON.stringify(structuredContent)
         if (text.length > COACHING_CONTEXT_MAX_CHARACTERS) {
@@ -160,43 +267,7 @@ export function createSessionDraftTools(readEvidence: (tzOffset: number) => Prom
         return { structuredContent, content: [{ type: 'text' as const, text }] }
       },
     },
-    show: {
-      async call(input: unknown) {
-        if (!exactObject(input, ['tzOffset', 'contextId', 'draft']) || typeof input.contextId !== 'string' || !/^[a-f0-9]{64}$/.test(input.contextId)) {
-          throw new CoachingContextError(400, 'Prepare the coaching evidence before showing a draft')
-        }
-        const draft = parseSessionDraft(input.draft)
-        const result = await readEvidence(readOffset(input.tzOffset))
-        if (result.status !== 'ready') throw new CoachingContextError(409, result.message)
-        const { evidence } = result
-        if (contextIdFor(evidence) !== input.contextId) {
-          throw new CoachingContextError(409, 'Today’s evidence changed. Prepare it again before showing a draft.')
-        }
-
-        const goal = evidence.goals.find(goalEntry => goalEntry.id === draft.goalId)
-        const datesByWorkout = new Map(evidence.workouts.map(workout => [workout.id, workout.date]))
-        const sourceDates = draft.sourceWorkoutIds.map(id => datesByWorkout.get(id))
-        const matchesSchedule = evidence.daySchedule === 'scheduled_rest'
-          ? draft.planUse === 'follow' && draft.dayType !== 'training'
-          : evidence.hasPlannedSession
-            ? draft.planUse === 'adjust' || (draft.planUse === 'follow' && draft.dayType !== 'rest')
-            : draft.planUse === 'new'
-        if (!goal || sourceDates.some(date => date === undefined) || !matchesSchedule) {
-          throw new CoachingContextError(400, 'Use a prepared active goal, logged workouts and the correct accepted-session status')
-        }
-
-        const { date } = evidence
-        const { title, objective, weekReview, checkInAdjustment, rationale, dayType, planUse, warmUp, mainWork, supportingWork, cooldown, scaleWhen, stopWhen } = draft
-        const sessionDraft = { date, title, objective, goal: goal.statement, weekReview, checkInAdjustment, rationale, dayType, planUse,
-          daySchedule: evidence.daySchedule,
-          warmUp, mainWork, supportingWork, cooldown, scaleWhen, stopWhen,
-          sourceDates: [...new Set(sourceDates)].sort(), historyComplete: evidence.historyCoverage.complete }
-        return {
-          structuredContent: { status: 'validated', workflowVersion, contextId: input.contextId, date },
-          content: [{ type: 'text' as const, text: 'The SociusFit session draft is ready to review.' }],
-          _meta: { sessionDraft },
-        }
-      },
-    },
+    show: { call: (input: unknown) => displayDraft(input) },
+    save: saveDraft ? { call: (input: unknown) => displayDraft(input, saveDraft) } : null,
   }
 }

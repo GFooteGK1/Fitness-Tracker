@@ -59,6 +59,12 @@ ratings and retains historical relative answers with their scale. Today and
 `get_coaching_context` read the same saved answers. Today confirms the save and
 uses the native chat handoff to request the draft under ADR-0052. The chosen LLM owns
 workout authoring.
+
+The ADR-0054 candidate lets the confirmed check-in action save the validated draft
+to the owner’s local-day check-in row. The save is opt-in and uses the MCP writes
+flag. A changed assessment clears its draft. Today shows the saved session below
+the check-in when the local date, check-in revision, and training safety allow it.
+
 Saved WHOOP values appear second with their freshness and the comparison with a
 qualifying earlier score. WHOOP's local-day alignment is unverified and the
 check-in guidance does not use those values. The latest completed workout appears

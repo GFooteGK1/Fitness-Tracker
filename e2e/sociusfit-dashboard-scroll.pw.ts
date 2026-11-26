@@ -39,8 +39,26 @@ const toolResults = {
   },
 }
 
-async function openDashboard(page: Page) {
-  await page.clock.setFixedTime(new Date(readAt))
+type HostRequest = {
+  method: string
+  params?: {
+    name?: keyof typeof toolResults | 'save_socius_today_check_in'
+    arguments?: { date?: string, checkIn?: Record<string, number>, sessionDraftOnly?: boolean }
+    content?: { text: string }[]
+  }
+}
+
+const hostContext = { displayMode: 'fullscreen', platform: 'mobile', theme: 'dark' }
+
+function defaultHostResponse({ method, params }: HostRequest) {
+  if (method === 'ui/initialize') return { hostContext }
+  const name = params?.name
+  return { _meta: name && name !== 'save_socius_today_check_in' ? toolResults[name] : undefined }
+}
+
+async function openDashboard(page: Page, respond: (request: HostRequest) => unknown = defaultHostResponse) {
+  await page.clock.install({ time: new Date(readAt) })
+  await page.exposeFunction('sociusHostResponse', respond)
   await page.route('**/socius-test-widget', route => route.fulfill({
     contentType: 'text/html; charset=utf-8', body: sociusTodayHtml,
   }))
@@ -53,24 +71,120 @@ async function openDashboard(page: Page) {
         iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
         #composer { position: fixed; inset: auto 0 0; height: 140px; background: #20272b; color: white; }
       </style>
-      <iframe title="SociusFit" sandbox="allow-scripts" src="/socius-test-widget"></iframe>
+      <iframe title="SociusFit" sandbox="allow-scripts allow-forms" src="/socius-test-widget"></iframe>
       <div id="composer">ChatGPT follow-up composer</div>
       <script>
-        const results = ${JSON.stringify(toolResults)};
         const widget = document.querySelector('iframe');
-        window.addEventListener('message', event => {
+        window.addEventListener('message', async event => {
           if (event.source !== widget.contentWindow || event.data?.id == null) return;
-          const { id, method, params } = event.data;
-          const result = method === 'ui/initialize'
-            ? { hostContext: { displayMode: 'fullscreen', platform: 'mobile', theme: 'dark' } }
-            : { _meta: results[params?.name] };
-          widget.contentWindow.postMessage({ jsonrpc: '2.0', id, result }, '*');
+          const { id } = event.data;
+          const result = await window.sociusHostResponse(event.data);
+          event.source.postMessage({ jsonrpc: '2.0', id, result }, '*');
         });
       </script>`,
   }))
   await page.goto('/socius-test-host')
   return page.frameLocator('iframe[title="SociusFit"]')
 }
+
+test.describe('SociusFit Today’s training session', () => {
+  test.use({ isMobile: true, hasTouch: true })
+
+  test('opens independently from the check-in and retains the saved draft through the local day', async ({ page }) => {
+    const draft = {
+      date, dayType: 'training', title: 'Controlled lower-body strength', objective: 'Build squat strength.',
+      goal: 'Stronger lower body', weekReview: 'Two lower-body sessions are saved.',
+      rationale: 'Practice the squat at a manageable dose.', checkInAdjustment: 'Leave three reps in reserve today.',
+      warmUp: [{ activity: 'Bodyweight squat', dose: '2 sets × 8 reps', effort: 'Easy', rest: '30 seconds' }],
+      mainWork: [{ activity: 'Front squat', dose: '3 sets × 5 reps', effort: 'RPE 7', rest: '2 minutes' }],
+      supportingWork: [], cooldown: [], scaleWhen: 'Reps slow down.', stopWhen: 'Pain changes your technique.',
+      sourceDates: ['2026-11-22'], historyComplete: true,
+    }
+    const checkInRevision = '45c42d22-ed2a-47a9-a226-1f5064fe98ff'
+    let currentDate = date
+    let savedCheckIn: { date?: string, checkIn?: Record<string, number> } = {}
+    let requestText = ''
+    let draftReady = false
+    let completedDraft: typeof draft | undefined
+    const widget = await openDashboard(page, request => {
+      const { method, params } = request
+      if (method === 'ui/initialize') return { hostContext, hostCapabilities: { message: { text: {} } } }
+      if (method === 'ui/message') {
+        requestText = params?.content?.[0]?.text ?? ''
+        return {}
+      }
+      if (params?.name === 'save_socius_today_check_in') {
+        savedCheckIn = params.arguments ?? {}
+        return { _meta: { savedCheckIn: { ...savedCheckIn, revision: checkInRevision } } }
+      }
+      if (params?.name !== 'open_socius_today') return defaultHostResponse(request)
+
+      const isDraftRead = params.arguments?.sessionDraftOnly === true
+      if (isDraftRead && draftReady && savedCheckIn.date === draft.date && requestText.includes(checkInRevision)) {
+        completedDraft = draft
+      }
+      const sessionDraft = completedDraft?.date === currentDate ? completedDraft : undefined
+      const session = { date: currentDate, sessionDraftStatus: sessionDraft ? 'saved' : 'missing', sessionDraft }
+      if (isDraftRead) return { _meta: { today: session } }
+      const saved = toolResults.open_socius_today
+      const assessment = savedCheckIn.date === currentDate
+        ? { status: 'saved', scale: '1-to-5', checkIn: savedCheckIn.checkIn, revision: checkInRevision }
+        : { status: 'missing' }
+      return { _meta: { ...saved, sessionDraftSavingEnabled: true, today: { ...saved.today, ...session, assessment } } }
+    })
+
+    const checkIn = widget.locator('#check-in-panel')
+    const checkInToggle = checkIn.locator('summary').first()
+    const session = widget.locator('#training-session')
+    const sessionToggle = session.locator('summary').first()
+    const heading = session.getByRole('heading', { name: draft.title })
+    await expect(widget.getByLabel('Stress')).toBeEnabled()
+    await expect(checkInToggle.getByText('How I am feeling', { exact: true })).toBeVisible()
+    await expect(sessionToggle).toHaveText('Today’s training session')
+    await expect(checkIn).toHaveJSProperty('open', true)
+    await checkInToggle.tap()
+    await expect(checkIn).toHaveJSProperty('open', false)
+    await expect(session).toHaveJSProperty('open', false)
+    await checkInToggle.press('Enter')
+    await expect(checkIn).toHaveJSProperty('open', true)
+
+    for (const label of ['Stress', 'Fatigue', 'Sleep', 'Soreness', 'Motivation']) {
+      await widget.getByLabel(label).selectOption('4')
+    }
+    await widget.getByRole('button', { name: 'Save check-in & draft session' }).press('Enter')
+    await expect(session.getByText('Preparing today’s session in SociusFit chat…')).toBeVisible()
+    await expect(heading).toBeHidden()
+    expect(requestText).toContain(`expectedLocalDate ${date}`)
+    expect(requestText).toContain(`expectedCheckInRevision ${checkInRevision}`)
+    expect(requestText).toContain('save_today_session_draft')
+    draftReady = true
+    await page.clock.runFor(3_100)
+    await expect(heading).toBeVisible()
+    await expect(session.getByText('3 sets × 5 reps')).toBeVisible()
+    await expect(checkIn).toHaveJSProperty('open', false)
+
+    await sessionToggle.tap()
+    await expect(heading).toBeHidden()
+    await expect(checkIn).toHaveJSProperty('open', false)
+    await sessionToggle.press('Enter')
+    await expect(heading).toBeVisible()
+    await checkInToggle.tap()
+    await expect(widget.getByLabel('Stress')).toHaveValue('4')
+    await expect(session).toHaveJSProperty('open', true)
+
+    await page.reload()
+    await expect(heading).toBeVisible()
+    await expect(checkIn).toHaveJSProperty('open', false)
+
+    currentDate = '2026-11-24'
+    await page.clock.fastForward(12 * 60 * 60 * 1000 + 60_000)
+    await expect(widget.locator('#today-date')).toHaveAttribute('datetime', currentDate)
+    await expect(checkIn).toHaveJSProperty('open', true)
+    await expect(widget.getByLabel('Stress')).toHaveValue('')
+    await expect(session).toHaveJSProperty('open', false)
+    await expect(heading).toBeHidden()
+  })
+})
 
 async function overComposer(page: Page, locator: Locator) {
   const composer = await page.locator('#composer').boundingBox()
