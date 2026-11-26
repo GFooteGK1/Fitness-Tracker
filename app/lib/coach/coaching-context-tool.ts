@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { COACHING_CONTEXT_MAX_CHARACTERS, CoachingContextError, contextObject, parseCoachingContextRequest } from './coaching-context'
-import { readCoachingContext } from './coaching-context-server'
+import { projectCoachingContextRead, readCoachingContext } from './coaching-context-server'
 
 /** Unwired tool adapter. An MCP host must supply request-local, cryptographically
  * verified authorization and an owner-scoped database client; tool input supplies neither.
@@ -92,7 +92,7 @@ export function createCoachingContextTool(authorize: AuthorizeContextRequest, po
   return {
     descriptor: coachingContextTool,
     async call(input: unknown) {
-      const context = await read(input)
+      const context = projectCoachingContextRead(await read(input))
       const serialized = JSON.stringify(context)
       if (serialized.length > COACHING_CONTEXT_MAX_CHARACTERS) {
         throw new CoachingContextError(503, 'Coaching context exceeds the bounded response budget')

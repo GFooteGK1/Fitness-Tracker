@@ -7,6 +7,7 @@ import type { TodayWorkoutRecommendation } from '../../app/lib/coach/today-worko
 const date = '2026-11-20'
 const readAt = '2026-11-20T11:40:00.000Z'
 const draftAcknowledgement = 'Draft requested. If no draft appears, ask “Draft today’s session” in SociusFit chat.'
+const checkInRevision = '0c484fb3-0a2d-4481-aa32-cd06d83bc88f'
 const retiredControls = ['ask', 'activity-ask', 'workout-log', 'chat-prompt', 'copy-prompt', 'meal-chat-copy',
   'recommendation-result', 'recommendation-title', 'saved-guidance-title']
 
@@ -30,6 +31,14 @@ const initialRecommendation: TodayWorkoutRecommendation = {
 const usualCheckIn = { stress: 3, fatigue: 3, sleep: 3, soreness: 3, motivation: 3 }
 const harderCheckIn = { stress: 5, fatigue: 1, sleep: 2, soreness: 1, motivation: 2 }
 const relativeCheckIn = { stress: 'lower', fatigue: 'higher', sleep: 'worse', soreness: 'usual', motivation: 'higher' }
+const recoveryDraft = {
+  date, title: 'Easy spin before the next strength day', objective: 'Stay fresh for strength work',
+  dayType: 'recovery', checkInAdjustment: 'Shorten the ride after low sleep.',
+  warmUp: [], mainWork: [{ activity: 'Bike', dose: '20 minutes', effort: 'Easy', rest: 'None' }],
+  supportingWork: [], cooldown: [], scaleWhen: 'Cut the ride to 10 minutes if tired.',
+  stopWhen: 'Stop if pain increases.', goal: 'Build strength', weekReview: 'Recent strength work was consistent.',
+  rationale: 'Keep the main lift day fresh.', sourceDates: ['2026-11-19'], historyComplete: true,
+}
 type CheckIn = typeof usualCheckIn
 const checkInFields = Object.keys(usualCheckIn) as Array<keyof CheckIn>
 
@@ -46,6 +55,8 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   checkInEnabled?: boolean
   nutritionWritesEnabled?: boolean
   supportsDraft?: boolean
+  draftSavingEnabled?: boolean
+  savedDraft?: typeof recoveryDraft
   supportsActiveChat?: boolean
   draftResponse?: 'reject' | 'error_result' | 'uncertain'
   hostContext?: Record<string, unknown>
@@ -64,6 +75,8 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
   let nextSaveReceipt: 'lost' | 'wrong_date' | 'wrong_values' | 'transport_rejection' | 'invalid_params' | 'not_saved' | undefined
   let nextReadError = false
   let todayDate = date
+  let savedDraft = options.savedDraft
+  let draftHeld = false
   let todayRecovery: Partial<ReturnType<typeof projectTodayRecovery>> = { ...recovery, sessionEffort: options.sessionEffort }
   let holdNextToday = false
   let respondToHeldToday: (() => void) | undefined
@@ -92,9 +105,14 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
       else result = options.draftResponse === 'uncertain' ? null : {}
     } else if (request.params?.name === 'open_socius_today') {
       const checkIn = savedCheckIns.get(todayDate)
+      const draft = savedDraft?.date === todayDate ? savedDraft : undefined
+      const session = options.draftSavingEnabled ? {
+        sessionDraftStatus: draftHeld ? 'held' : checkIn && draft ? 'saved' : 'missing',
+        sessionDraft: !draftHeld && checkIn ? draft : undefined,
+      } : {}
       const legacy = todayDate === date && options.savedRelativeCheckIn
         ? { status: 'saved', checkIn: options.savedRelativeCheckIn } : { status: 'missing' }
-      const assessment = checkIn ? { status: 'saved', scale: '1-to-5', checkIn }
+      const assessment = checkIn ? { status: 'saved', scale: '1-to-5', checkIn, revision: checkInRevision }
         : legacy.status === 'saved' ? { ...legacy, scale: 'relative-to-usual' } : legacy
       if (nextReadError) {
         nextReadError = false
@@ -105,7 +123,9 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
             date: todayDate, readAt, workoutRecommendation, sessions: workoutRecommendation.sessions,
             recentWork: [], lastWorkout, recovery: todayRecovery,
             ...(options.oldServer ? { checkIn: legacy } : { assessment }),
+            ...session,
           },
+          sessionDraftSavingEnabled: options.draftSavingEnabled,
           activityEnabled: true,
           nutritionEnabled: true,
           ...(options.nutritionWritesEnabled ? { nutritionWritesEnabled: true } : {}),
@@ -114,7 +134,10 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
       }
     } else if (request.params?.name === 'save_socius_today_check_in') {
       const { date: savedDate, checkIn } = request.params.arguments as { date: string; checkIn: CheckIn }
-      if (nextSaveReceipt !== 'invalid_params' && nextSaveReceipt !== 'not_saved') savedCheckIns.set(savedDate, checkIn)
+      if (nextSaveReceipt !== 'invalid_params' && nextSaveReceipt !== 'not_saved') {
+        if (savedDraft?.date === savedDate) savedDraft = undefined
+        savedCheckIns.set(savedDate, checkIn)
+      }
       if (nextSaveReceipt === 'invalid_params') {
         error = { code: -32602, message: 'Tool arguments do not match the installed schema' }
       } else if (nextSaveReceipt === 'transport_rejection') {
@@ -123,6 +146,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
         result = nextSaveReceipt === 'lost' || nextSaveReceipt === 'not_saved' ? { isError: true } : { _meta: { savedCheckIn: {
           date: nextSaveReceipt === 'wrong_date' ? '2026-11-19' : savedDate,
           checkIn: nextSaveReceipt === 'wrong_values' ? usualCheckIn : checkIn,
+          revision: checkInRevision,
         } } }
       }
       nextSaveReceipt = undefined
@@ -173,6 +197,8 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
     setMealCount: (count: number) => { mealCount = count },
     setTodayDate: (value: string) => { todayDate = value },
     setSavedCheckIn: (checkIn: CheckIn) => { savedCheckIns.set(todayDate, checkIn) },
+    setDraft: (draft: typeof recoveryDraft) => { savedDraft = draft },
+    holdDraft: () => { draftHeld = true },
     setRecovery: (values: Partial<ReturnType<typeof projectTodayRecovery>>) => { todayRecovery = { ...recovery, ...values } },
     holdNextToday: () => { holdNextToday = true },
     releaseHeldToday: () => { respondToHeldToday?.() },
@@ -264,15 +290,24 @@ describe('SociusFit dashboard', () => {
     expect(style.getPropertyValue('--host-safe-bottom')).toBe('0px')
   })
 
-  it('orders today’s training, WHOOP, and collapsed last workout', async () => {
+  it('orders the check-in, today’s session, WHOOP, and collapsed last workout', async () => {
     const { element } = mountWidget()
     await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
     const panels = Array.from(element('today-content').children)
     expect(panels[0].contains(element('check-in-form'))).toBe(true)
-    expect(panels[1].contains(element('whoop-gauges'))).toBe(true)
-    expect(panels[2]).toBe(element('last-workout'))
+    expect(panels[1]).toBe(element('training-session'))
+    expect(panels[2].contains(element('whoop-gauges'))).toBe(true)
+    expect(panels[3]).toBe(element('last-workout'))
     expect(element('recovery-percent').textContent).toBe('79%')
-    expect(element('sessions-title').textContent).toBe('Today’s training')
+    expect(element('check-in-title').textContent).toBe('How I am feeling')
+    const checkIn = element('check-in-panel') as HTMLDetailsElement
+    const training = element('training-session') as HTMLDetailsElement
+    expect(checkIn.open).toBe(true)
+    expect(training.open).toBe(false)
+    training.querySelector('summary')!.click()
+    checkIn.querySelector('summary')!.click()
+    expect(checkIn.open).toBe(false)
+    expect(training.open).toBe(true)
     expect(element('check-in-next').hidden).toBe(true)
     expect(element('check-in-instructions').textContent).toBe('Rate each from 1 (worst) to 5 (best).')
     const strain = ['1 · Very high', '2 · High', '3 · Moderate', '4 · Low', '5 · Very low']
@@ -307,6 +342,56 @@ describe('SociusFit dashboard', () => {
     expect(element('recent').textContent).toContain('Front squat')
     summary.click()
     expect(workout.open).toBe(false)
+  })
+
+  it('requests persistence after confirmation and renders the later daily draft receipt', async () => {
+    const { element, requests, setDraft } = mountWidget(initialRecommendation, todayClock(), {
+      supportsDraft: true, draftSavingEnabled: true,
+    })
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    fillCheckIn(element, harderCheckIn)
+    element('check-in-submit').click()
+    await vi.waitFor(() => expect(element('draft-request-status').textContent).toContain('Preparing'))
+    const request = requests.find(item => item.method === 'ui/message')
+    expect(request?.params?.content).toEqual([{ type: 'text', text: expect.stringContaining('save_today_session_draft') }])
+    expect(request?.params?.content).toEqual([{ type: 'text', text: expect.stringContaining('expectedCheckInRevision ' + checkInRevision) }])
+    expect((element('check-in-panel') as HTMLDetailsElement).open).toBe(false)
+    expect((element('training-session') as HTMLDetailsElement).open).toBe(true)
+    expect(element('saved-session-draft').hidden).toBe(true)
+    setDraft(recoveryDraft)
+    element('draft-refresh').click()
+    await vi.waitFor(() => expect(element('saved-session-draft').hidden).toBe(false))
+    expect(requests.some(item => (item.params?.arguments as { sessionDraftOnly?: boolean })?.sessionDraftOnly)).toBe(true)
+    expect(element('saved-session-title').textContent).toBe(recoveryDraft.title)
+    expect(element('saved-session-phases').textContent).toContain('Bike20 minutesEffort Easy · Rest None')
+    expect(element('check-in-next').hidden).toBe(true)
+  })
+
+  it('rehydrates a saved session and removes it when a new safety hold arrives', async () => {
+    const { element, holdDraft, widget } = mountWidget(initialRecommendation, todayClock(), {
+      savedCheckIn: usualCheckIn, savedDraft: recoveryDraft, draftSavingEnabled: true,
+    })
+    await vi.waitFor(() => expect(element('saved-session-title').textContent).toBe(recoveryDraft.title))
+    expect((element('training-session') as HTMLDetailsElement).open).toBe(true)
+    holdDraft()
+    widget.dispatchEvent(new Event('visibilitychange'))
+    await vi.waitFor(() => expect(element('saved-session-draft').hidden).toBe(true))
+    expect(element('saved-session-title').textContent).toBe('')
+    expect(element('draft-empty').textContent).toContain('training safety status')
+  })
+
+  it.each([false, true])('reconciles a changed saved assessment without discarding local edits (%s)', async edited => {
+    const { element, setSavedCheckIn, setDraft } = mountWidget(initialRecommendation, todayClock(), {
+      savedCheckIn: usualCheckIn, draftSavingEnabled: true,
+    })
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    if (edited) choose(element('check-in-stress') as HTMLSelectElement, '2')
+    setSavedCheckIn(harderCheckIn)
+    setDraft(recoveryDraft)
+    element('draft-refresh').click()
+    await vi.waitFor(() => expect(element('saved-session-title').textContent).toBe(recoveryDraft.title))
+    expect(checkInValues(element)).toEqual(edited ? [2, 3, 3, 3, 3] : [5, 1, 2, 1, 2])
+    expect(element('check-in-status').textContent).toBe(edited ? 'Unsaved changes.' : 'Check-in saved for today.')
   })
 
   it('shows a safety review above the check-in and suppresses the draft prompt', async () => {

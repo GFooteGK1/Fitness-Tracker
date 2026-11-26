@@ -19,6 +19,10 @@ async function asOwner(userId: string) {
   await db.exec('SET LOCAL ROLE authenticated')
 }
 
+async function asDraftWriter() {
+  await db.exec('SET LOCAL ROLE service_role')
+}
+
 // Simulates the existing writer, including a rollback to the deployed binary.
 async function store(userId: string, date: string, checkIn: LegacyDailyCheckIn) {
   const { stress, fatigue, sleep, soreness, motivation } = checkIn
@@ -65,6 +69,21 @@ async function readRatings(userId: string, date: string) {
   `, [userId, date])).rows
 }
 
+async function readDraftState(userId: string, date: string) {
+  return (await db.query<{ revision: string; draft: { date: string; title: string } | null }>(`
+    SELECT check_in_revision AS revision, session_draft AS draft
+    FROM public.coach_daily_checkins WHERE user_id = $1 AND local_date = $2
+  `, [userId, date])).rows[0]
+}
+
+async function storeDraft(userId: string, date: string, revision: string, draft: { date: string; title: string }) {
+  return (await db.query(`
+    UPDATE public.coach_daily_checkins SET session_draft = $1::jsonb
+    WHERE user_id = $2 AND local_date = $3 AND check_in_revision = $4
+    RETURNING user_id
+  `, [JSON.stringify(draft), userId, date, revision])).rows
+}
+
 beforeAll(async () => {
   db = new PGlite()
   await db.exec(`
@@ -83,6 +102,7 @@ beforeAll(async () => {
   await db.exec(sqlFile('supabase/migrations/20261122002519_coach_daily_checkins.sql'))
   await store(owner, historicalDate, edited)
   await db.exec(sqlFile('supabase/migrations/20261122135004_coach_daily_checkin_ratings.sql'))
+  await db.exec(sqlFile('supabase/migrations/20261126132624_coach_daily_session_draft.sql'))
 }, 30_000)
 
 beforeEach(async () => { await db.exec('BEGIN') })
@@ -94,6 +114,7 @@ describe('daily coaching check-in persistence', () => {
     await asOwner(owner)
     expect(await read(owner, historicalDate)).toEqual([edited])
     expect(await readRatings(owner, historicalDate)).toEqual([noRatings])
+    expect(await readDraftState(owner, historicalDate)).toEqual({ revision: expect.any(String), draft: null })
   })
 
   it('stores exact ratings and updates the same date with its legacy projection', async () => {
@@ -166,6 +187,78 @@ describe('daily coaching check-in persistence', () => {
     expect(await read(owner, tomorrow)).toEqual([typical])
   })
 
+  it('retains a draft across same-day readback and unchanged numeric and legacy submissions', async () => {
+    await asOwner(owner)
+    await storeRatings(owner, today, rated)
+    const { revision } = await readDraftState(owner, today)
+    const draft = { date: today, title: 'Upper-body strength' }
+    await asDraftWriter()
+    expect(await storeDraft(owner, today, revision, draft)).toEqual([{ user_id: owner }])
+    await asOwner(owner)
+    await storeRatings(owner, today, rated)
+    await store(owner, today, toLegacyDailyCheckIn(rated))
+    expect(await readDraftState(owner, today)).toEqual({ revision, draft })
+    expect(await readDraftState(owner, tomorrow)).toBeUndefined()
+    await storeRatings(owner, tomorrow, rated)
+    expect(await readDraftState(owner, tomorrow)).toEqual({ revision: expect.any(String), draft: null })
+    expect(await readDraftState(owner, today)).toEqual({ revision, draft })
+  })
+
+  it('clears the draft on a check-in change and rejects a delayed save after the scores change back', async () => {
+    await asOwner(owner)
+    await storeRatings(owner, today, rated)
+    const draft = { date: today, title: 'Upper-body strength' }
+    const { revision: first } = await readDraftState(owner, today)
+    await asDraftWriter()
+    await storeDraft(owner, today, first, draft)
+    await asOwner(owner)
+    // 1 and 2 have the same qualitative projection but are different ratings.
+    await storeRatings(owner, today, { ...rated, stress: 2 })
+    const { revision: second, draft: invalidated } = await readDraftState(owner, today)
+    expect(invalidated).toBeNull()
+    expect(second).not.toBe(first)
+    await storeRatings(owner, today, rated)
+    const { revision: third } = await readDraftState(owner, today)
+    expect(third).not.toBe(first)
+    await asDraftWriter()
+    expect(await storeDraft(owner, today, first, draft)).toEqual([])
+    expect(await storeDraft(owner, today, third, draft)).toEqual([{ user_id: owner }])
+    await asOwner(owner)
+    await store(owner, today, edited)
+    expect(await readDraftState(owner, today)).toEqual({ revision: expect.not.stringMatching(third), draft: null })
+    expect(await readRatings(owner, today)).toEqual([noRatings])
+  })
+
+  it('keeps saved drafts private to the check-in owner', async () => {
+    await storeRatings(other, today, rated)
+    const { revision } = await readDraftState(other, today)
+    const draft = { date: today, title: 'Upper-body strength' }
+    await asDraftWriter()
+    await storeDraft(other, today, revision, draft)
+    await asOwner(owner)
+    expect(await readDraftState(other, today)).toBeUndefined()
+    await asOwner(other)
+    expect(await readDraftState(other, today)).toEqual({ revision, draft })
+  })
+
+  it('rejects a direct draft write by the authenticated check-in owner', async () => {
+    await asOwner(owner)
+    await storeRatings(owner, today, rated)
+    const { revision } = await readDraftState(owner, today)
+    await expect(storeDraft(owner, today, revision, { date: today, title: 'Upper-body strength' }))
+      .rejects.toMatchObject({ code: '42501' })
+  })
+
+  it('rejects a draft whose date differs from the saved check-in', async () => {
+    await asOwner(owner)
+    await storeRatings(owner, today, rated)
+    const { revision } = await readDraftState(owner, today)
+    await asDraftWriter()
+    await expect(storeDraft(owner, today, revision, { date: tomorrow, title: 'Upper-body strength' })).rejects.toMatchObject({
+      code: '23514', constraint: 'coach_daily_checkins_session_draft_date_check',
+    })
+  })
+
   it('hides other owners and rejects a cross-owner upsert', async () => {
     await storeRatings(other, today, rated)
     await asOwner(owner)
@@ -201,8 +294,24 @@ describe('daily coaching check-in persistence', () => {
     `)
     expect(rows).toEqual([
       { role: 'anon', can_read: false, can_insert: false, can_update: false, can_delete: false },
-      { role: 'authenticated', can_read: true, can_insert: true, can_update: true, can_delete: false },
+      { role: 'authenticated', can_read: true, can_insert: false, can_update: false, can_delete: false },
       { role: 'service_role', can_read: false, can_insert: false, can_update: false, can_delete: false },
+    ])
+    const { rows: columnGrants } = await db.query(`
+      SELECT role, column_name,
+        has_column_privilege(role, 'public.coach_daily_checkins', column_name, 'INSERT') AS can_insert,
+        has_column_privilege(role, 'public.coach_daily_checkins', column_name, 'UPDATE') AS can_update
+      FROM (VALUES ('authenticated'), ('service_role')) AS roles(role)
+      CROSS JOIN (VALUES ('check_in_revision'), ('session_draft'), ('stress_rating')) AS columns(column_name)
+      ORDER BY role, column_name
+    `)
+    expect(columnGrants).toEqual([
+      { role: 'authenticated', column_name: 'check_in_revision', can_insert: false, can_update: false },
+      { role: 'authenticated', column_name: 'session_draft', can_insert: false, can_update: false },
+      { role: 'authenticated', column_name: 'stress_rating', can_insert: true, can_update: true },
+      { role: 'service_role', column_name: 'check_in_revision', can_insert: false, can_update: false },
+      { role: 'service_role', column_name: 'session_draft', can_insert: false, can_update: true },
+      { role: 'service_role', column_name: 'stress_rating', can_insert: false, can_update: false },
     ])
     await store(owner, today, typical)
     await store(other, today, edited)

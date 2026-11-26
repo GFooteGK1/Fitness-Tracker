@@ -220,7 +220,16 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     button:disabled { opacity: .7; cursor: wait; }
     #retry { margin-top: .65rem; }
-    #check-in-form { margin-top: 1rem; }
+    #check-in-form { margin-top: .45rem; }
+    #check-in-panel > summary {
+      min-height: 44px;
+      padding-block: .55rem;
+      cursor: pointer;
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+    #check-in-panel > summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    #check-in-summary-status { margin-inline-start: .55rem; font-size: 1rem; font-weight: 400; }
     #check-in-relative { margin-top: .75rem; }
     .check-in-fields { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
     .check-in-fields legend { padding: 0; font-weight: 650; }
@@ -250,6 +259,9 @@ export const sociusTodayHtml = String.raw`<!doctype html>
       background: var(--warning-soft);
     }
     #accepted-plan-details { margin-top: .75rem; }
+    #training-session .workout-phase { border-top: 1px solid var(--line); padding-top: .75rem; }
+    #training-session .workout-phase li + li { margin-top: .65rem; }
+    #draft-refresh { margin-top: .65rem; }
     .workout-panel { padding: 0; }
     .workout-panel > summary {
       display: flex;
@@ -321,19 +333,20 @@ ${mealChatMarkup}
       <button id="retry" type="button">Try again</button>
     </section>
     <div id="today-content" hidden>
-      <section class="panel session-panel" aria-labelledby="sessions-title">
-        <h2 id="sessions-title">Today’s training</h2>
+      <section class="panel" aria-labelledby="check-in-title">
         <div id="saved-review" hidden>
           <h3 id="saved-review-title"></h3>
           <p id="saved-review-reason" class="section-note" hidden></p>
         </div>
+        <details id="check-in-panel" open>
+        <summary><span id="check-in-title">How I am feeling</span><span id="check-in-summary-status" class="muted" aria-hidden="true" hidden>Saved for today</span></summary>
         <details id="check-in-relative" class="recovery-timing" hidden>
           <summary>Saved answers compared with your usual</summary>
           <ul id="check-in-relative-answers" class="bullets"></ul>
         </details>
         <form id="check-in-form" autocomplete="off">
           <fieldset id="check-in-fields" class="check-in-fields" aria-describedby="check-in-instructions" disabled>
-            <legend>How do you feel today?</legend>
+            <legend>Today’s ratings</legend>
             <p id="check-in-instructions" class="muted">Rate each from 1 (worst) to 5 (best).</p>
             <div class="check-in-grid">
               <label>Stress
@@ -371,12 +384,43 @@ ${mealChatMarkup}
           <button id="check-in-submit" type="submit" disabled>Save check-in</button>
           <p id="check-in-status" role="status" class="muted"></p>
         </form>
-        <p id="check-in-next" class="section-note" tabindex="-1" hidden><span id="draft-request-status" role="status"></span><span id="draft-manual">Ask <strong>“Draft today’s session”</strong> in SociusFit chat.</span></p>
+        </details>
         <details id="accepted-plan-details" class="recovery-timing" hidden>
           <summary>Accepted plan for today</summary>
           <ul id="sessions"></ul>
         </details>
       </section>
+      <details id="training-session" class="panel session-panel workout-panel">
+        <summary><h2>Today’s training session</h2></summary>
+        <div class="workout-content">
+          <p id="draft-empty" class="muted">Save your check-in to get today’s session.</p>
+          <p id="check-in-next" tabindex="-1" hidden><span id="draft-request-status" role="status"></span><span id="draft-manual">Ask <strong id="draft-manual-prompt">“Draft today’s session”</strong> in SociusFit chat.</span></p>
+          <article id="saved-session-draft" aria-labelledby="saved-session-title" hidden>
+            <p id="saved-session-kind" class="entry-state"></p>
+            <h3 id="saved-session-title"></h3>
+            <p id="saved-session-objective"></p>
+            <p id="saved-session-adjustment" class="section-note"></p>
+            <div id="saved-session-phases"></div>
+            <dl class="workout-phase">
+              <div><dt>Scale when</dt><dd id="saved-session-scale"></dd></div>
+              <div><dt>Stop when</dt><dd id="saved-session-stop"></dd></div>
+            </dl>
+            <details class="recovery-timing workout-phase">
+              <summary>Why this session</summary>
+              <dl>
+                <div><dt>Goal</dt><dd id="saved-session-goal"></dd></div>
+                <div><dt>Four-week review</dt><dd id="saved-session-review"></dd></div>
+                <div><dt>Rationale</dt><dd id="saved-session-rationale"></dd></div>
+                <div><dt>Workout dates used</dt><dd id="saved-session-sources"></dd></div>
+              </dl>
+              <p id="saved-session-history" class="section-note muted" hidden>Some saved workout evidence is unavailable.</p>
+            </details>
+            <p class="section-note muted">Ask in SociusFit chat to adjust this draft.</p>
+          </article>
+          <button id="draft-refresh" class="secondary-action" type="button" hidden>Check for saved session</button>
+          <p id="draft-refresh-status" class="section-note muted" role="status" hidden></p>
+        </div>
+      </details>
       <section id="whoop-panel" class="panel" aria-labelledby="recovery-title">
         <h2 id="recovery-title">WHOOP</h2>
         <p id="recovery-status" class="recovery-state"></p>
@@ -493,6 +537,10 @@ ${mcpHostBridgeScript}
       let hostSupportsDraft = false;
       let draftInFlightDay = null;
       let draftRevision = 0;
+      let draftSavingEnabled = false;
+      let draftStatus = 'missing';
+      let draftPollTimer = null;
+      let draftReadInFlight = null;
       let dayTimer = null;
       let deviceDay = localDayKey(new Date());
       let dayRevision = 0;
@@ -608,7 +656,7 @@ ${mcpHostBridgeScript}
       }
 
       function canRequestDraft() {
-        return hostSupportsDraft && byId('saved-review').hidden;
+        return hostSupportsDraft && byId('saved-review').hidden && draftStatus !== 'held';
       }
 
       function setDraftFeedback(message, showManual = false) {
@@ -618,7 +666,47 @@ ${mcpHostBridgeScript}
 
       function resetDraftFeedback() {
         draftRevision += 1;
+        window.clearTimeout(draftPollTimer);
+        setNote('draft-refresh-status', null);
         setDraftFeedback('', true);
+      }
+
+      function renderTrainingSession(today) {
+        const draft = today.sessionDraft;
+        const kinds = { training: 'Training draft', recovery: 'Recovery draft', rest: 'Rest day draft' };
+        const phases = [['warmUp', 'Warm-up'], ['mainWork', 'Main work'],
+          ['supportingWork', 'Supporting work'], ['cooldown', 'Cool-down']];
+        const matchesDay = draft?.date === deviceDay && today.date === deviceDay;
+        const hasDraft = today.sessionDraftStatus === 'saved' && matchesDay && Object.hasOwn(kinds, draft.dayType)
+          && typeof draft.title === 'string' && phases.every(([key]) => Array.isArray(draft[key]));
+        draftStatus = !byId('saved-review').hidden ? 'held' : hasDraft ? 'saved'
+          : today.sessionDraftStatus === 'saved' ? 'unavailable' : today.sessionDraftStatus ?? 'missing';
+        const visible = draftStatus === 'saved';
+        byId('saved-session-draft').hidden = !visible;
+        byId('saved-session-kind').textContent = visible ? kinds[draft.dayType] : '';
+        const fields = { title: 'title', objective: 'objective', adjustment: 'checkInAdjustment', scale: 'scaleWhen',
+          stop: 'stopWhen', goal: 'goal', review: 'weekReview', rationale: 'rationale' };
+        for (const [id, key] of Object.entries(fields)) byId('saved-session-' + id).textContent = visible ? draft[key] : '';
+        byId('saved-session-sources').textContent = visible ? draft.sourceDates?.join(', ') ?? '' : '';
+        byId('saved-session-history').hidden = !visible || draft.historyComplete !== false;
+        byId('saved-session-phases').replaceChildren(...(visible ? phases.flatMap(([key, label]) => {
+          if (!draft[key].length) return [];
+          const phase = element('section', null, 'workout-phase');
+          const movements = element('ul', null, 'metrics');
+          for (const work of draft[key]) {
+            const item = element('li');
+            item.append(element('strong', work.activity), element('p', work.dose),
+              element('p', 'Effort ' + work.effort + ' · Rest ' + work.rest, 'muted'));
+            movements.append(item);
+          }
+          phase.append(element('h4', label), movements);
+          return [phase];
+        }) : []));
+        if (visible) {
+          window.clearTimeout(draftPollTimer);
+          setDraftFeedback('');
+        }
+        syncCheckInControls();
       }
 
       function syncCheckInControls() {
@@ -629,7 +717,18 @@ ${mcpHostBridgeScript}
         checkInSubmit.formNoValidate = !!unconfirmedCheckIn;
         checkInSubmit.textContent = unconfirmedCheckIn ? 'Check save status'
           : canRequestDraft() ? 'Save check-in & draft session' : 'Save check-in';
-        byId('check-in-next').hidden = !!unconfirmedCheckIn || !matchesSaved || !byId('saved-review').hidden;
+        byId('check-in-summary-status').hidden = !savedAssessment || !matchesSaved || !!unconfirmedCheckIn;
+        const held = draftStatus === 'held' || !byId('saved-review').hidden;
+        const stepAvailable = !unconfirmedCheckIn && matchesSaved && !held && draftStatus !== 'saved';
+        byId('check-in-next').hidden = !stepAvailable;
+        byId('draft-refresh').hidden = !draftSavingEnabled || !savedAssessment || held;
+        byId('draft-refresh').textContent = draftStatus === 'saved' ? 'Refresh saved session' : 'Check for saved session';
+        byId('draft-manual-prompt').textContent = draftSavingEnabled
+          ? '“Draft today’s session and save it to Today”' : '“Draft today’s session”';
+        setNote('draft-empty', held ? 'Review your training safety status before drafting a session.'
+          : draftStatus === 'unavailable' && savedAssessment ? 'The saved session is temporarily unavailable.'
+          : draftStatus === 'saved' || stepAvailable ? null
+          : 'Save your check-in to get today’s session.');
       }
 
       function renderCheckIn(today, features) {
@@ -638,6 +737,11 @@ ${mcpHostBridgeScript}
         unconfirmedCheckIn = null;
         resetDraftFeedback();
         checkInEnabled = !!today.assessment && features.checkInEnabled === true && assessment.status !== 'unavailable';
+        showSavedCheckInAnswers();
+        syncCheckInControls();
+      }
+
+      function showSavedCheckInAnswers() {
         const scores = savedAssessment?.scale === '1-to-5' ? savedAssessment.checkIn : null;
         for (const name of checkInInputs) byId('check-in-' + name).value = scores ? String(scores[name]) : '';
         if (savedAssessment?.scale === 'relative-to-usual') {
@@ -649,7 +753,6 @@ ${mcpHostBridgeScript}
         } else {
           setCheckInStatus(checkInEnabled ? '' : '1–5 check-ins are currently unavailable.');
         }
-        syncCheckInControls();
       }
 
       function editCheckIn() {
@@ -821,7 +924,11 @@ ${mcpHostBridgeScript}
 
       function render(today, features) {
         const hasDate = renderToday(today);
+        draftSavingEnabled = hasDate && features.sessionDraftSavingEnabled === true;
         renderCheckIn(today, { checkInEnabled: hasDate && features.checkInEnabled });
+        renderTrainingSession(today);
+        byId('check-in-panel').open = !savedAssessment;
+        byId('training-session').open = !!savedAssessment;
         const activityAvailable = features.activityEnabled === true && timezone && hasDate;
         const nutritionAvailable = features.nutritionEnabled === true && timezone;
         byId('show-activity').hidden = !activityAvailable;
@@ -926,11 +1033,88 @@ ${mcpHostBridgeScript}
         }
       }
 
-      async function requestSessionDraft(date, tzOffset, isCurrent) {
+      async function refreshSessionDraft(userRequested = false) {
+        const date = byId('today-date').dateTime;
+        const revision = draftRevision;
+        if (!draftSavingEnabled || !savedAssessment || unconfirmedCheckIn || checkInBusy
+          || host.closed || date !== deviceDay || activeView !== 'today' || document.visibilityState === 'hidden'
+          || draftReadInFlight === revision) return null;
+        const button = byId('draft-refresh');
+        const tzOffset = new Date().getTimezoneOffset();
+        const canRender = () => !host.closed && revision === draftRevision
+          && activeView === 'today' && document.visibilityState !== 'hidden'
+          && new Date().getTimezoneOffset() === tzOffset;
+        draftReadInFlight = revision;
+        if (userRequested) setNote('draft-refresh-status', 'Checking for today’s saved session…');
+        button.disabled = true;
+        try {
+          const result = await host.request('tools/call', {
+            name: 'open_socius_today', arguments: { tzOffset, sessionDraftOnly: true },
+          });
+          if (refreshTodayIfDateChanged() || !canRender()) return null;
+          const today = result?._meta?.today;
+          if (result?.isError || today?.date !== date || !today.sessionDraftStatus) {
+            renderTrainingSession({ sessionDraftStatus: 'unavailable' });
+            if (result?._meta?.['mcp/www_authenticate']) {
+              setNote('draft-refresh-status', 'Reconnect SociusFit in ChatGPT to load the saved session.');
+              return 'sign_in';
+            }
+          } else {
+            if (today.assessment) {
+              const assessment = parseAssessment(today.assessment);
+              const changed = assessment.scale !== savedAssessment?.scale
+                || !matchesCheckIn(assessment.checkIn, savedAssessment?.checkIn ?? {});
+              if (changed) {
+                const hadEdits = !matchesSavedAssessment(checkInValues());
+                setSavedAssessment(assessment);
+                if (hadEdits) setCheckInStatus('Unsaved changes.');
+                else showSavedCheckInAnswers();
+              }
+            }
+            if (today.workoutRecommendation) renderSafetyReview(today.workoutRecommendation);
+            renderTrainingSession(today);
+          }
+        } catch {
+          if (refreshTodayIfDateChanged() || !canRender()) return null;
+          renderTrainingSession({ sessionDraftStatus: 'unavailable' });
+        } finally {
+          if (draftReadInFlight === revision) {
+            draftReadInFlight = null;
+            button.disabled = false;
+          }
+        }
+        if (userRequested) setNote('draft-refresh-status', draftStatus === 'saved' ? 'Today’s session is ready.'
+          : draftStatus === 'unavailable' ? 'The saved session is temporarily unavailable.'
+          : draftStatus === 'missing' ? 'Today’s session hasn’t been saved yet.' : null);
+        return draftStatus;
+      }
+
+      function waitForSessionDraft(canReport) {
+        const delays = [3000, 5000, 8000, 12000, 15000, 15000];
+        function scheduleRead() {
+          if (!canReport() || draftStatus === 'saved' || draftStatus === 'held') return;
+          const delay = delays.shift();
+          if (delay === undefined) {
+            setDraftFeedback('Today’s session is still pending. Check for the saved session or continue in chat. ', true);
+            return;
+          }
+          draftPollTimer = window.setTimeout(async () => {
+            if (!canReport()) return;
+            const status = await refreshSessionDraft();
+            if (status !== 'sign_in') scheduleRead();
+            else setDraftFeedback('', true);
+          }, delay);
+        }
+        scheduleRead();
+      }
+
+      async function requestSessionDraft(date, tzOffset, checkInRevision, isCurrent) {
         if (!canRequestDraft() || !isCurrent() || activeView !== 'today'
           || document.visibilityState !== 'visible' || byId('today-date').dateTime !== date
           || date !== deviceDay || new Date().getTimezoneOffset() !== tzOffset
           || draftInFlightDay === dayRevision) return;
+        if (draftSavingEnabled && (typeof checkInRevision !== 'string'
+          || !/^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/.test(checkInRevision))) return;
         const day = dayRevision;
         const revision = draftRevision;
         const canReport = () => isCurrent() && revision === draftRevision;
@@ -942,15 +1126,27 @@ ${mcpHostBridgeScript}
             role: 'user',
             content: [{
               type: 'text',
-              text: 'Draft today’s session. Use expectedLocalDate ' + date + ' and browser tzOffset ' + tzOffset + ' minutes (JavaScript getTimezoneOffset).',
+              text: 'Draft today’s session. Use expectedLocalDate ' + date + ' and browser tzOffset ' + tzOffset + ' minutes (JavaScript getTimezoneOffset).'
+                + (draftSavingEnabled ? ' Pass expectedCheckInRevision ' + checkInRevision + ' unchanged to prepare_today_session_draft.'
+                  + ' Use save_today_session_draft to validate and save the session to Today.' : ''),
             }],
           });
           if (!result || typeof result !== 'object' || Array.isArray(result) || result.isError) {
             throw new Error('Draft request was not acknowledged');
           }
-          if (canReport()) setDraftFeedback('Draft requested. If no draft appears, ask “Draft today’s session” in SociusFit chat.');
+          if (canReport()) {
+            if (draftSavingEnabled) {
+              setDraftFeedback('Preparing today’s session in SociusFit chat…');
+              waitForSessionDraft(canReport);
+            } else {
+              setDraftFeedback('Draft requested. If no draft appears, ask “Draft today’s session” in SociusFit chat.');
+            }
+          }
         } catch {
-          if (canReport()) setDraftFeedback('Could not confirm the draft request. Check SociusFit chat before asking again. ', true);
+          if (canReport()) {
+            setDraftFeedback('Could not confirm the draft request. Check SociusFit chat before asking again. ', true);
+            if (draftSavingEnabled) waitForSessionDraft(canReport);
+          }
         } finally {
           if (draftInFlightDay === day) {
             draftInFlightDay = null;
@@ -973,6 +1169,7 @@ ${mcpHostBridgeScript}
           ? unconfirmedCheckIn.draftRequested && answersStillMatch
           : canRequestDraft();
         let confirmed = false;
+        let confirmedRevision;
         checkInBusy = true;
         resetDraftFeedback();
         syncCheckInControls();
@@ -995,6 +1192,7 @@ ${mcpHostBridgeScript}
             const receipt = result?._meta?.savedCheckIn;
             if (!result?.isError && receipt?.date === date && matchesCheckIn(receipt.checkIn, submittedAnswers)) {
               confirmed = true;
+              confirmedRevision = receipt.revision;
               return;
             }
             unconfirmedCheckIn = { answers: submittedAnswers, draftRequested, connectionRejected };
@@ -1018,7 +1216,9 @@ ${mcpHostBridgeScript}
           const { connectionRejected } = unconfirmedCheckIn;
           unconfirmedCheckIn = null;
           setSavedAssessment(stored);
+          renderTrainingSession(today);
           confirmed = stored.scale === '1-to-5' && matchesCheckIn(stored.checkIn, submittedAnswers);
+          confirmedRevision = stored.revision;
           if (!confirmed) {
             if (connectionRejected) {
               setCheckInStatus('The SociusFit connection rejected the check-in request. Select Refresh tools in SociusFit’s ChatGPT settings, then reopen the app and try again.', true);
@@ -1034,16 +1234,24 @@ ${mcpHostBridgeScript}
           if (revision === dayRevision) {
             checkInBusy = false;
             if (confirmed) {
+              if (!matchesSavedAssessment(submittedAnswers)) renderTrainingSession({});
               setSavedAssessment({ status: 'saved', scale: '1-to-5', checkIn: submittedAnswers });
               unconfirmedCheckIn = null;
               setCheckInStatus(answersStillMatch ? 'Check-in saved for today.'
                 : 'Your previous check-in was saved. Save again to use your edited answers.');
+              if (answersStillMatch && activeView === 'today') {
+                const focusWasInside = document.activeElement === document.body || checkInForm.contains(document.activeElement);
+                byId('check-in-panel').open = false;
+                byId('training-session').open = true;
+                syncCheckInControls();
+                if (focusWasInside) {
+                  const next = byId('check-in-next');
+                  (next.hidden ? byId('training-session').querySelector('summary') : next).focus();
+                }
+              }
             }
             syncCheckInControls();
-            if (confirmed && draftRequested) void requestSessionDraft(date, tzOffset, isCurrent);
-            const next = byId('check-in-next');
-            if (confirmed && !next.hidden && activeView === 'today' && (document.activeElement === document.body
-              || checkInForm.contains(document.activeElement))) next.focus();
+            if (confirmed && draftRequested) void requestSessionDraft(date, tzOffset, confirmedRevision, isCurrent);
           }
         }
       }
@@ -1065,7 +1273,11 @@ ${mcpHostBridgeScript}
         deviceDay = currentDay;
         dayRevision += 1;
         checkInBusy = false;
+        draftSavingEnabled = false;
         renderCheckIn({}, {});
+        renderTrainingSession({});
+        byId('check-in-panel').open = true;
+        byId('training-session').open = false;
         byId('accepted-plan-details').open = false;
         byId('last-workout').open = false;
         void loadToday();
@@ -1129,6 +1341,7 @@ ${mcpHostBridgeScript}
       function stopRefreshTimers() {
         stopNutritionRefresh();
         window.clearTimeout(dayTimer);
+        window.clearTimeout(draftPollTimer);
       }
 
       async function loadNutrition(userRequested = false) {
@@ -1179,7 +1392,10 @@ ${mcpHostBridgeScript}
 
       function handleForeground() {
         if (document.visibilityState === 'hidden') return;
-        if (!refreshTodayIfDateChanged()) void refreshWhoop();
+        if (!refreshTodayIfDateChanged()) {
+          void refreshWhoop();
+          void refreshSessionDraft();
+        }
         refreshNutrition();
       }
 
@@ -1192,7 +1408,10 @@ ${mcpHostBridgeScript}
           byId('show-' + key).setAttribute('aria-pressed', String(key === view));
           if (key !== 'today') byId(key + '-content').hidden = key !== view;
         }
-        if (view === 'today' && !refreshTodayIfDateChanged()) void refreshWhoop();
+        if (view === 'today' && !refreshTodayIfDateChanged()) {
+          void refreshWhoop();
+          void refreshSessionDraft();
+        }
         syncTodayVisibility();
         dashboardScroll.scrollTop = 0;
         stopNutritionRefresh();
@@ -1224,6 +1443,7 @@ ${mcpHostBridgeScript}
 
       checkInForm.addEventListener('change', editCheckIn);
       checkInForm.addEventListener('submit', submitCheckIn);
+      byId('draft-refresh').addEventListener('click', () => void refreshSessionDraft(true));
       byId('retry').addEventListener('click', loadToday);
       refreshTodayIfDateChanged();
       void loadToday();

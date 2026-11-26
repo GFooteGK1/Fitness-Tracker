@@ -19,13 +19,13 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v16.html'
+const resourceUri = 'ui://socius/today-v17.html'
 const legacyResourceUris = [
   'ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html',
   'ui://socius/today-v5.html', 'ui://socius/today-v6.html', 'ui://socius/today-v7.html',
   'ui://socius/today-v8.html', 'ui://socius/today-v9.html', 'ui://socius/today-v10.html', 'ui://socius/today-v11.html',
   'ui://socius/today-v12.html', 'ui://socius/today-v13.html', 'ui://socius/today-v14.html',
-  'ui://socius/today-v15.html',
+  'ui://socius/today-v15.html', 'ui://socius/today-v16.html',
 ]
 const activityUri = 'ui://socius/activity.html'
 const draftUri = 'ui://socius/session-draft-v2.html'
@@ -359,6 +359,22 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       } })
       expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner))).toBe(true)
       expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('returns the matching check-in revision only in private Today metadata', async () => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+    const revision = '10000000-0000-4000-8000-000000000007'
+    const checkIns = checkInStorage([{ user_id: owner, local_date: localDate, ...storedRatings, check_in_revision: revision }])
+    const { client } = await connect(owner, undefined, checkIns)
+    try {
+      const saved = await client.callTool(saveCall())
+      expect(saved._meta?.savedCheckIn).toEqual({ date: localDate, checkIn: answers, revision })
+      expect(JSON.stringify(saved.content)).not.toContain(revision)
+      const readBack = await client.callTool(today({ tzOffset: 360 }))
+      expect(readBack._meta?.today).toMatchObject({ assessment: { revision, checkIn: answers } })
+      expect(JSON.stringify(readBack.content)).not.toContain(revision)
     } finally { await client.close() }
   })
 

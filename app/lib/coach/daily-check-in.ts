@@ -40,8 +40,8 @@ export type LegacyDailyCheckIn = {
 }
 
 export type DailyCheckInRead =
-  | { status: 'saved'; scale: '1-to-5'; checkIn: DailyCheckIn }
-  | { status: 'saved'; scale: 'relative-to-usual'; checkIn: LegacyDailyCheckIn }
+  | { status: 'saved'; scale: '1-to-5'; checkIn: DailyCheckIn; revision?: string }
+  | { status: 'saved'; scale: 'relative-to-usual'; checkIn: LegacyDailyCheckIn; revision?: string }
   | { status: 'missing' }
   | { status: 'unavailable' }
 
@@ -90,20 +90,21 @@ export function toLegacyDailyCheckIn({ stress, fatigue, sleep, soreness, motivat
 }
 
 const table = 'coach_daily_checkins'
-const columns = 'user_id,local_date,stress,fatigue,sleep,soreness,motivation,stress_rating,fatigue_rating,sleep_rating,soreness_rating,motivation_rating'
+const columns = 'user_id,local_date,stress,fatigue,sleep,soreness,motivation,stress_rating,fatigue_rating,sleep_rating,soreness_rating,motivation_rating,check_in_revision'
 
 function parseSavedCheckIn(row: unknown, owner: string, date: string): Extract<DailyCheckInRead, { status: 'saved' }> | null {
   if (!isRecord(row) || row.user_id !== owner || row.local_date !== date) return null
+  const revision = typeof row.check_in_revision === 'string' && row.check_in_revision ? { revision: row.check_in_revision } : {}
   const ratings = { stress: row.stress_rating, fatigue: row.fatigue_rating, sleep: row.sleep_rating,
     soreness: row.soreness_rating, motivation: row.motivation_rating }
   const values = Object.values(ratings)
   if (!values.every(value => value === null) && !values.every(value => value === undefined)) {
     const checkIn = parseDailyCheckIn(ratings)
-    return checkIn ? { status: 'saved', scale: '1-to-5', checkIn } : null
+    return checkIn ? { status: 'saved', scale: '1-to-5', checkIn, ...revision } : null
   }
   const { stress, fatigue, sleep, soreness, motivation } = row
   const checkIn = parseLegacyDailyCheckIn({ stress, fatigue, sleep, soreness, motivation })
-  return checkIn ? { status: 'saved', scale: 'relative-to-usual', checkIn } : null
+  return checkIn ? { status: 'saved', scale: 'relative-to-usual', checkIn, ...revision } : null
 }
 
 export async function readDailyCheckIn(db: SupabaseClient, owner: string, date: string): Promise<DailyCheckInRead> {
@@ -133,11 +134,12 @@ export async function saveDailyCheckIn(db: SupabaseClient, owner: string, date: 
       .upsert({ ...legacy, ...ratingColumns, user_id: owner, local_date: date }, { onConflict: 'user_id,local_date' })
       .select(columns).single()
     const saved = error ? null : parseSavedCheckIn(data, owner, date)
+    const revision = saved?.revision ? { revision: saved.revision } : {}
     if (saved?.scale === '1-to-5') {
       const answers = ratings ? saved.checkIn : toLegacyDailyCheckIn(saved.checkIn)
-      if (checkInFields.every(field => answers[field] === checkIn[field])) return answers
+      if (checkInFields.every(field => answers[field] === checkIn[field])) return { checkIn: answers, ...revision }
     } else if (!ratings && saved && checkInFields.every(field => saved.checkIn[field] === legacy[field])) {
-      return saved.checkIn
+      return { checkIn: saved.checkIn, ...revision }
     }
   } catch {
     // A failed response may leave the save status unknown. The caller can read it back.

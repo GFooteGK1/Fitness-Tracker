@@ -319,3 +319,10 @@ export async function readCoachingContext(client: SupabaseClient, params: URLSea
   if (JSON.stringify(result).length > COACHING_CONTEXT_MAX_CHARACTERS) throw new CoachingContextError(503, 'Coaching context exceeds the bounded response budget')
   return result
 }
+
+export function projectCoachingContextRead(context: Awaited<ReturnType<typeof readCoachingContext>>) {
+  const { dailyCheckIn } = context
+  return dailyCheckIn.status === 'saved'
+    ? { ...context, dailyCheckIn: { status: dailyCheckIn.status, scale: dailyCheckIn.scale, checkIn: dailyCheckIn.checkIn } }
+    : context
+}
