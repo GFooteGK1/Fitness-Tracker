@@ -3,8 +3,9 @@ import { sociusActivityHtml } from './activity-app-ui'
 import { CoachingContextError, contextObject } from './coaching-context'
 import type { EvidenceQuantity } from './performed-dose-evidence'
 
+export const legacySociusActivityResourceUri = 'ui://socius/activity.html'
 export const sociusActivityResource = {
-  uri: 'ui://socius/activity.html',
+  uri: 'ui://socius/activity-v2.html',
   name: 'SociusFit Activity',
   mimeType: 'text/html;profile=mcp-app',
 } as const

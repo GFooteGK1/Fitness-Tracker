@@ -322,11 +322,10 @@ describe('SociusFit dashboard', () => {
   it('orders the check-in, today’s session, WHOOP, and collapsed last workout', async () => {
     const { element } = mountWidget()
     await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
-    const panels = Array.from(element('today-content').children)
-    expect(panels[0].contains(element('check-in-form'))).toBe(true)
-    expect(panels[1]).toBe(element('training-session'))
-    expect(panels[2].contains(element('whoop-gauges'))).toBe(true)
-    expect(panels[3]).toBe(element('last-workout'))
+    const cards = Array.from(element('today-content').querySelectorAll(':scope > details.socius-card'))
+    expect(cards.map(card => card.id)).toEqual([
+      'check-in-panel', 'accepted-plan-details', 'training-session', 'whoop-panel', 'last-workout',
+    ])
     expect(element('recovery-percent').textContent).toBe('79%')
     expect(element('check-in-title').textContent).toBe('How I am feeling')
     const checkIn = element('check-in-panel') as HTMLDetailsElement

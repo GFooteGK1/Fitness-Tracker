@@ -9,12 +9,12 @@ import { coachingProfileTool, coachingRequirementInstructions, createCoachingReq
 import { activityRecordTools, createActivityRecordTool } from './activity-record-tools'
 import { activityHistoryTool, createActivityHistoryTool } from './activity-history-tool'
 import { createSaveSociusTodayCheckInTool, createSociusTodayTool, legacySociusTodayResourceUris, saveSociusTodayCheckInTool, sociusTodayResource, sociusTodayResourceContents, sociusTodayTool } from './socius-today-app'
-import { createSociusActivityTool, sociusActivityResource, sociusActivityResourceContents, sociusActivityTool } from './socius-activity-app'
+import { createSociusActivityTool, legacySociusActivityResourceUri, sociusActivityResource, sociusActivityResourceContents, sociusActivityTool } from './socius-activity-app'
 import { createSociusNutritionTool, sociusNutritionTool } from './socius-nutrition-app'
 import { createWorkoutTodayReader } from './workout-today-app'
 import { createOwnedWorkoutRecoveryReader } from './recovery-today-app'
 import { createSessionDraftEvidenceReader } from './session-draft-evidence'
-import { createSessionDraftTools, legacySessionDraftResourceUri, prepareTodaySessionDraftTool, saveSessionDraftInstructions, saveTodaySessionDraftTool, sessionDraftInstructions, sessionDraftResource, sessionDraftResourceContents, showTodaySessionDraftTool } from './session-draft-tools'
+import { createSessionDraftTools, legacySessionDraftResourceUris, prepareTodaySessionDraftTool, saveSessionDraftInstructions, saveTodaySessionDraftTool, sessionDraftInstructions, sessionDraftResource, sessionDraftResourceContents, showTodaySessionDraftTool } from './session-draft-tools'
 import { readDailySessionDraft, saveDailySessionDraft } from './daily-session-draft'
 
 /** One owner-bound server instance per authenticated request/session. No listener,
@@ -100,8 +100,10 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
     }))
     server.setRequestHandler(ReadResourceRequestSchema, async ({ params }) => {
       const { uri } = params
-      if (activity && uri === sociusActivityResource.uri) return { contents: [sociusActivityResourceContents] }
-      if (sessionDraft && (uri === sessionDraftResource.uri || uri === legacySessionDraftResourceUri)) {
+      if (activity && (uri === sociusActivityResource.uri || uri === legacySociusActivityResourceUri)) {
+        return { contents: [{ ...sociusActivityResourceContents, uri }] }
+      }
+      if (sessionDraft && (uri === sessionDraftResource.uri || legacySessionDraftResourceUris.includes(uri))) {
         return { contents: [{ ...sessionDraftResourceContents, uri }] }
       }
       if (uri === sociusTodayResource.uri || legacySociusTodayResourceUris.includes(uri)) {

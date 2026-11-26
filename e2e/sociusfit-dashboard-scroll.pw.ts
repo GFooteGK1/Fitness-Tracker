@@ -53,6 +53,9 @@ const hostContext = { displayMode: 'fullscreen', platform: 'mobile', theme: 'dar
 function defaultHostResponse({ method, params }: HostRequest) {
   if (method === 'ui/initialize') return { hostContext }
   const name = params?.name
+  if (name === 'show_socius_activity' && params?.arguments?.date) {
+    return { _meta: { activity: { ...toolResults[name].activity, date: params.arguments.date } } }
+  }
   return { _meta: name && name !== 'save_socius_today_check_in' ? toolResults[name] : undefined }
 }
 
@@ -89,6 +92,70 @@ async function openDashboard(page: Page, respond: (request: HostRequest) => unkn
 
 test.describe('SociusFit Today’s training session', () => {
   test.use({ isMobile: true, hasTouch: true })
+
+  test('WHOOP shares the session card style and keeps saved recovery through disclosure and refresh', async ({ page }) => {
+    const saved = toolResults.open_socius_today
+    let recoveryScore = saved.today.recovery.recoveryScore
+    let reads = 0
+    const widget = await openDashboard(page, request => {
+      if (request.params?.name !== 'open_socius_today') return defaultHostResponse(request)
+      reads += 1
+      return { _meta: { ...saved, today: {
+        ...saved.today,
+        workoutRecoveryKey: 'displayed-workout',
+        recovery: {
+          ...saved.today.recovery, recoveryScore, recoveryUpdatedAt: readAt,
+          sessionEffort: { status: 'timing_unverified', rpe: 7 },
+        },
+      } } }
+    })
+
+    const session = widget.locator('#training-session')
+    const sessionSummary = widget.locator('#training-session > summary')
+    const whoop = widget.locator('#whoop-panel')
+    const whoopSummary = widget.locator('#whoop-panel > summary')
+    const details = whoop.locator('#whoop-details')
+    const score = whoop.locator('#recovery-percent')
+    await expect(sessionSummary).toBeVisible()
+    const sessionStyle = await session.evaluate(element => {
+      const style = getComputedStyle(element)
+      return { accent: style.borderTopColor, thickness: style.borderTopWidth, radius: style.borderTopLeftRadius }
+    })
+    expect(Number.parseFloat(sessionStyle.thickness)).toBeGreaterThan(1)
+    await expect(whoop).toHaveCSS('border-top-color', sessionStyle.accent)
+    await expect(whoop).toHaveCSS('border-top-width', sessionStyle.thickness)
+    await expect(whoop).toHaveCSS('border-top-left-radius', sessionStyle.radius)
+    expect((await whoopSummary.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+
+    await expect(whoop).toHaveJSProperty('open', true)
+    await expect(whoop.locator('#sleep-score-value')).toHaveText('79%')
+    await expect(score).toHaveText('36%')
+    await expect(whoop.locator('#strain-score-value')).toHaveText('0.5')
+    await widget.locator('#check-in-panel > summary').press('Enter')
+    await whoopSummary.press('Space')
+    await expect(whoop).toHaveJSProperty('open', false)
+    await expect(score).toBeHidden()
+    await whoopSummary.tap()
+    await expect(score).toBeVisible()
+    await expect(session).toHaveJSProperty('open', false)
+
+    await details.locator('summary').press('Enter')
+    await expect(details.getByText('Session RPE', { exact: true })).toBeVisible()
+    await expect(details.getByText('7 / 10', { exact: true })).toBeVisible()
+    await expect(details.locator('time')).toHaveAttribute('datetime', readAt)
+    await whoopSummary.press('Enter')
+    await expect(whoop).toHaveJSProperty('open', false)
+
+    recoveryScore = 64
+    await page.clock.runFor(30_100)
+    await widget.locator('html').evaluate(() => window.dispatchEvent(new Event('focus')))
+    await expect(score).toHaveText('64%')
+    await expect(whoop).toHaveJSProperty('open', false)
+    expect(reads).toBe(2)
+    await whoopSummary.tap()
+    await expect(score).toBeVisible()
+    await expect(details.getByText('7 / 10', { exact: true })).toBeVisible()
+  })
 
   test('opens independently from the check-in and retains the saved draft through the local day', async ({ page }) => {
     const draft = {
@@ -216,9 +283,16 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }
     test('opens and collapses the Nutrition week-to-date card on mobile', async ({ page }) => {
       const widget = await openDashboard(page)
       await widget.getByRole('navigation', { name: 'SociusFit views' }).getByRole('button', { name: 'Nutrition' }).tap()
+      const daily = widget.locator('#nutrition-daily')
+      const dailySummary = widget.locator('#nutrition-daily > summary')
       const week = widget.locator('#nutrition-week')
       const summary = week.locator('summary')
       await expect(summary).toBeVisible()
+      await expect(daily).toHaveJSProperty('open', true)
+      await dailySummary.press('Enter')
+      await expect(widget.locator('#nutrition-progress')).toBeHidden()
+      await dailySummary.tap()
+      await expect(widget.locator('#nutrition-progress')).toBeVisible()
       expect((await summary.boundingBox())?.height).toBeGreaterThanOrEqual(44)
       await expect(week).not.toHaveAttribute('open', '')
       await summary.tap()
@@ -260,6 +334,15 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }
       await expect(historyTab).toHaveAttribute('aria-pressed', 'true')
       await expect(widget.locator('#activity-load')).toBeEmpty()
       const lastWorkoutDetail = widget.getByText(finalWorkoutDetail, { exact: true })
+      const trainingHistory = widget.locator('#activity-card')
+      const historySummary = widget.locator('#activity-card > summary')
+      await expect(trainingHistory).toHaveJSProperty('open', true)
+      await expect(lastWorkoutDetail).toBeVisible()
+      await historySummary.press('Enter')
+      await expect(lastWorkoutDetail).toBeHidden()
+      await widget.getByRole('button', { name: 'Previous day' }).tap()
+      await expect(trainingHistory).toHaveJSProperty('open', true)
+      await expect(trainingHistory.locator('time')).toHaveAttribute('datetime', '2026-11-21')
       await expect(lastWorkoutDetail).toBeVisible()
       await scrollDown(lastWorkoutDetail)
 

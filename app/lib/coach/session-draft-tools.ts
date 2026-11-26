@@ -51,9 +51,12 @@ const draftProperties = {
 }
 const requiredDraftFields = Object.keys(draftProperties).filter(key => key !== 'dayType')
 
-export const legacySessionDraftResourceUri = 'ui://socius/session-draft-v1.html'
+export const legacySessionDraftResourceUris: readonly string[] = [
+  'ui://socius/session-draft-v1.html',
+  'ui://socius/session-draft-v2.html',
+]
 export const sessionDraftResource = {
-  uri: 'ui://socius/session-draft-v2.html', name: 'SociusFit session draft', mimeType: 'text/html;profile=mcp-app',
+  uri: 'ui://socius/session-draft-v3.html', name: 'SociusFit session draft', mimeType: 'text/html;profile=mcp-app',
 } as const
 
 export const sessionDraftResourceContents = {

@@ -1,3 +1,5 @@
+import { sociusCardStyles, sociusThemeStyles } from './socius-card-styles'
+
 export const activityStyles = String.raw`
     .view-switch, .activity-date-controls { display: flex; flex-wrap: wrap; gap: .5rem; }
     .view-switch { margin-top: .85rem; }
@@ -21,8 +23,8 @@ export const activityStyles = String.raw`
     .activity-date-field input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     #activity-load:not(:empty), #activity-retry { margin-top: .65rem; }
     #activity-card { margin-top: .9rem; }
-    #activity-card time { display: block; margin-bottom: .65rem; }
-    #activity-card .entry h3 { margin-bottom: .25rem; }
+    #activity-card > summary time { color: inherit; }
+    #activity-card .entry :is(h3, h4) { margin-bottom: .25rem; }
     .activity-columns { display: grid; gap: 1rem; }
     .activity-columns > section { min-width: 0; }
     .activity-detail { color: var(--muted); }
@@ -35,28 +37,30 @@ const activityWorkoutEntries = String.raw`          <p id="activity-workouts-not
           <ul id="activity-workouts"></ul>`
 
 export const trainingHistoryCardMarkup = String.raw`
-    <div id="activity-card" hidden>
-      <h2><time id="activity-card-date"></time></h2>
+    <details id="activity-card" class="socius-card" open hidden>
+      <summary><h2><time id="activity-card-date"></time></h2></summary>
+      <div class="socius-card-body">
 ${activityWorkoutEntries}
-    </div>
+      </div>
+    </details>
 `
 
 export const activityCardMarkup = String.raw`
-    <div id="activity-card" hidden>
-      <time id="activity-card-date"></time>
-      <div class="activity-columns" aria-label="Saved activity">
+    <details id="activity-card" class="socius-card" open hidden>
+      <summary><h2><time id="activity-card-date"></time></h2></summary>
+      <div class="socius-card-body activity-columns">
         <section aria-labelledby="activity-workouts-title">
-          <h2 id="activity-workouts-title">Workouts</h2>
+          <h3 id="activity-workouts-title">Workouts</h3>
 ${activityWorkoutEntries}
         </section>
         <section aria-labelledby="activity-meals-title">
-          <h2 id="activity-meals-title">Meals</h2>
+          <h3 id="activity-meals-title">Meals</h3>
           <p id="activity-meals-note" class="muted section-note" hidden></p>
           <ul id="activity-meals"></ul>
           <p id="activity-meals-coverage" class="muted section-note" hidden>Full-day intake is unknown.</p>
         </section>
       </div>
-    </div>
+    </details>
 `
 
 export const activityRendererScript = String.raw`
@@ -66,11 +70,6 @@ export const activityRendererScript = String.raw`
         }
         const date = new Date(activity.date + 'T12:00:00Z');
         if (!Number.isFinite(date.getTime())) throw new Error('Activity date missing');
-        const dateLabel = document.getElementById('activity-card-date');
-        dateLabel.dateTime = activity.date;
-        dateLabel.textContent = new Intl.DateTimeFormat(undefined, {
-          weekday: 'long', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
-        }).format(date);
 
         for (const domain of domains) {
           const records = activity[domain];
@@ -90,7 +89,7 @@ export const activityRendererScript = String.raw`
           const entries = records.entries.map(entry => {
             const item = document.createElement('li');
             item.className = 'entry';
-            const title = document.createElement('h3');
+            const title = document.createElement(domains.length === 1 ? 'h3' : 'h4');
             title.textContent = entry.label;
             item.append(title);
             if (Number.isInteger(entry.revision) && entry.revision > 1) {
@@ -116,7 +115,14 @@ export const activityRendererScript = String.raw`
         if (domains.includes('meals')) {
           document.getElementById('activity-meals-coverage').hidden = activity.meals.status === 'unavailable';
         }
-        document.getElementById('activity-card').hidden = false;
+        const card = document.getElementById('activity-card');
+        const dateLabel = document.getElementById('activity-card-date');
+        if (dateLabel.dateTime !== activity.date) card.open = true;
+        dateLabel.dateTime = activity.date;
+        dateLabel.textContent = new Intl.DateTimeFormat(undefined, {
+          weekday: 'long', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+        }).format(date);
+        card.hidden = false;
       }
 `
 
@@ -218,36 +224,28 @@ export const sociusActivityHtml = String.raw`<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Activity | SociusFit</title>
   <style>
-    :root {
-      color-scheme: light dark;
-      --background: light-dark(#ffffff, #20272b);
-      --foreground: light-dark(#202824, #f1f4f2);
-      --muted: light-dark(#58665f, #aab8b1);
-      --line: light-dark(#dce2dd, #364047);
-      --accent: light-dark(#216b55, #84dbc2);
-    }
-    :root[data-theme="light"] { color-scheme: light; }
-    :root[data-theme="dark"] { color-scheme: dark; }
+${sociusThemeStyles}
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
     body {
       margin: 0;
       background: var(--background);
       color: var(--foreground);
-      font: 1rem/1.5 system-ui, sans-serif;
+      font: 1rem/1.55 system-ui, sans-serif;
       overflow-wrap: anywhere;
     }
-    main { padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; }
-    h1, h2, h3, p { margin: 0; }
+    main { display: flow-root; padding: .75rem 1rem 0; }
+    h1, h2, h3, h4, p { margin: 0; }
     h1 { color: var(--accent); font-size: 1.25rem; }
-    h2 { font-size: 1.05rem; }
-    h3 { font-size: 1rem; }
+    h3 { font-size: 1.05rem; line-height: 1.35; }
+    h4 { font-size: 1rem; }
     #inline-status { margin-top: .35rem; }
     .muted, time { color: var(--muted); }
-    .section-note { margin-top: .4rem; }
+    .section-note { margin-top: .45rem; }
     ul { list-style: none; padding: 0; margin: 0; }
-    .entry { border-top: 1px solid var(--line); margin-top: .65rem; padding-top: .65rem; }
+    .entry { border-top: 1px solid var(--line); margin-top: .8rem; padding-top: .8rem; }
     .entry-state { color: var(--accent); font-weight: 600; }
+${sociusCardStyles}
 ${activityStyles}
   </style>
 </head>

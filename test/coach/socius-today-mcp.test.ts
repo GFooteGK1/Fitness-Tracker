@@ -19,17 +19,18 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v19.html'
+const resourceUri = 'ui://socius/today-v20.html'
 const legacyResourceUris = [
   'ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html',
   'ui://socius/today-v5.html', 'ui://socius/today-v6.html', 'ui://socius/today-v7.html',
   'ui://socius/today-v8.html', 'ui://socius/today-v9.html', 'ui://socius/today-v10.html', 'ui://socius/today-v11.html',
   'ui://socius/today-v12.html', 'ui://socius/today-v13.html', 'ui://socius/today-v14.html',
   'ui://socius/today-v15.html', 'ui://socius/today-v16.html',
-  'ui://socius/today-v17.html', 'ui://socius/today-v18.html',
+  'ui://socius/today-v17.html', 'ui://socius/today-v18.html', 'ui://socius/today-v19.html',
 ]
-const activityUri = 'ui://socius/activity.html'
-const draftUri = 'ui://socius/session-draft-v2.html'
+const legacyActivityUri = 'ui://socius/activity.html'
+const activityUri = 'ui://socius/activity-v2.html'
+const draftUri = 'ui://socius/session-draft-v3.html'
 const title = 'Saved easy session'
 const today = (args: Record<string, unknown>) => ({ name: 'open_socius_today', arguments: args })
 const typical = { stress: 'usual', fatigue: 'usual', sleep: 'usual' }
@@ -261,6 +262,9 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       }))
       expect((await client.listResources()).resources.map(({ uri }) => uri)).toEqual([resourceUri, activityUri, draftUri])
       const resource = await client.readResource({ uri: activityUri })
+      expect((await client.readResource({ uri: legacyActivityUri })).contents).toEqual(
+        resource.contents.map(content => ({ ...content, uri: legacyActivityUri })),
+      )
       expect(resource.contents).toMatchObject([{
         uri: activityUri, mimeType: 'text/html;profile=mcp-app',
         _meta: { 'openai/ui': { availableDisplayModes: ['inline'] } },

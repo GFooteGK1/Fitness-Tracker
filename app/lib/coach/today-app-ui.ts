@@ -1,5 +1,6 @@
 import { activityRendererScript, activityStyles, mcpHostBridgeScript, trainingHistoryCardMarkup } from './activity-app-ui'
 import { mealChatMarkup, mealChatScript, nutritionCardMarkup, nutritionRendererScript, nutritionStyles } from './nutrition-app-ui'
+import { sociusCardStyles, sociusThemeStyles } from './socius-card-styles'
 
 function scaleOptions(labels: string[]) {
   return labels.map((label, index) => '<option value="' + (index + 1) + '">' + (index + 1) + ' · ' + label + '</option>').join('\n')
@@ -17,23 +18,8 @@ export const sociusTodayHtml = String.raw`<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Today | SociusFit</title>
   <style>
-    :root {
-      color-scheme: light dark;
-      --background: light-dark(#f4f5f2, #14191d);
-      --surface: light-dark(#ffffff, #20272b);
-      --foreground: light-dark(#202824, #f1f4f2);
-      --muted: light-dark(#58665f, #aab8b1);
-      --line: light-dark(#dce2dd, #364047);
-      --accent: light-dark(#216b55, #84dbc2);
-      --action-text: light-dark(#ffffff, #10231c);
-      --accent-soft: light-dark(#e8f1ec, #243c34);
-      --warning: light-dark(#805000, #f1cd79);
-      --warning-soft: light-dark(#fff4d6, #383022);
-      --danger: light-dark(#a52b32, #ffadb2);
-      --danger-soft: light-dark(#fff0f0, #3c272d);
-    }
-    :root[data-theme="light"] { color-scheme: light; }
-    :root[data-theme="dark"] { color-scheme: dark; }
+${sociusThemeStyles}
+${sociusCardStyles}
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
     html, body { overflow: hidden; }
@@ -86,18 +72,6 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     h3 { font-size: 1.05rem; line-height: 1.35; }
     #today-date { display: block; margin-top: .45rem; }
     .muted, time, dd { color: var(--muted); }
-    .panel {
-      --panel-padding: clamp(1rem, 3vw, 1.5rem);
-      min-width: 0;
-      margin-bottom: 1rem;
-      padding: var(--panel-padding);
-      border: 1px solid var(--line);
-      border-radius: 1.1rem;
-      background: var(--surface);
-    }
-    .session-panel {
-      border-top: .25rem solid var(--accent);
-    }
     .section-note, .status-label { margin-top: .45rem; }
     ul { list-style: none; padding: 0; margin: 0; }
     .entry {
@@ -221,15 +195,13 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     button:disabled { opacity: .7; cursor: wait; }
     #retry { margin-top: .65rem; }
     #check-in-form { margin-top: .45rem; }
-    #check-in-panel > summary {
-      min-height: 44px;
-      padding-block: .55rem;
-      cursor: pointer;
-      font-size: 1.15rem;
-      font-weight: 700;
+    #check-in-panel > summary > h2 {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: .15rem .55rem;
     }
-    #check-in-panel > summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-    #check-in-summary-status { margin-inline-start: .55rem; font-size: 1rem; font-weight: 400; }
+    #check-in-summary-status { font-size: 1rem; font-weight: 400; letter-spacing: normal; }
     #check-in-relative { margin-top: .75rem; }
     .check-in-fields { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
     .check-in-fields legend { padding: 0; font-weight: 650; }
@@ -252,47 +224,21 @@ export const sociusTodayHtml = String.raw`<!doctype html>
     #check-in-submit:disabled { cursor: default; }
     .bullets { list-style: disc; padding-inline-start: 1.2rem; }
     #saved-review {
-      margin-top: .8rem;
+      margin-bottom: 1rem;
       padding: .75rem;
       border-inline-start: .25rem solid var(--warning);
       border-radius: .45rem;
       background: var(--warning-soft);
     }
-    #accepted-plan-details { margin-top: .75rem; }
     #training-session .workout-phase { border-top: 1px solid var(--line); padding-top: .75rem; }
     #training-session .workout-phase li + li { margin-top: .65rem; }
     #draft-refresh { margin-top: .65rem; }
-    .workout-panel { padding: 0; }
-    .workout-panel > summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: .6rem;
-      min-height: 44px;
-      padding: var(--panel-padding);
-      border-radius: inherit;
-      cursor: pointer;
-      list-style: none;
-    }
-    .workout-panel > summary::-webkit-details-marker { display: none; }
-    .workout-panel > summary::after {
-      content: '';
-      flex: 0 0 .55rem;
-      height: .55rem;
-      margin-inline-end: .2rem;
-      border: solid var(--accent);
-      border-width: 0 2px 2px 0;
-      transform: rotate(45deg);
-    }
-    .workout-panel[open] > summary::after { transform: rotate(225deg); }
-    .workout-panel > summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-    .workout-content { padding: 0 var(--panel-padding) var(--panel-padding); }
     #workout-date { margin-top: .45rem; }
     .workout-phase { margin-top: 1rem; }
     .workout-phase h4 { margin: 0; font-size: 1rem; }
     .secondary-action { color: var(--accent); border-color: var(--line); background: var(--surface); }
     #nutrition-refresh, #nutrition-retry, #nutrition-load:not(:empty) { margin-top: .65rem; }
-    #load-error { color: var(--danger); background: var(--danger-soft); }
+    #load-error { color: var(--danger); border-top-color: var(--danger); background: var(--danger-soft); }
     footer { color: var(--muted); }
     @media (min-width: 42rem) {
       #dashboard-scroll {
@@ -328,71 +274,73 @@ ${nutritionStyles}
     </header>
 ${mealChatMarkup}
     <p id="loading" class="muted" role="status">Loading your saved training…</p>
-    <section id="load-error" class="panel" hidden>
+    <section id="load-error" class="socius-card" hidden>
       <p id="error-message" role="alert"></p>
       <button id="retry" type="button">Try again</button>
     </section>
     <div id="today-content" hidden>
-      <section class="panel" aria-labelledby="check-in-title">
-        <div id="saved-review" hidden>
-          <h3 id="saved-review-title"></h3>
-          <p id="saved-review-reason" class="section-note" hidden></p>
+      <div id="saved-review" hidden>
+        <h3 id="saved-review-title"></h3>
+        <p id="saved-review-reason" class="section-note" hidden></p>
+      </div>
+      <details id="check-in-panel" class="socius-card" open>
+        <summary>
+          <h2><span id="check-in-title">How I am feeling</span><span id="check-in-summary-status" class="muted" hidden>Saved for today</span></h2>
+        </summary>
+        <div class="socius-card-body">
+          <details id="check-in-relative" class="recovery-timing" hidden>
+            <summary>Saved answers compared with your usual</summary>
+            <ul id="check-in-relative-answers" class="bullets"></ul>
+          </details>
+          <form id="check-in-form" autocomplete="off">
+            <fieldset id="check-in-fields" class="check-in-fields" aria-describedby="check-in-instructions" disabled>
+              <legend>Today’s ratings</legend>
+              <p id="check-in-instructions" class="muted">Rate each from 1 (worst) to 5 (best).</p>
+              <div class="check-in-grid">
+                <label>Stress
+                  <select id="check-in-stress" required>
+                    <option value="" selected disabled>Choose one</option>
+                    ${strainOptions}
+                  </select>
+                </label>
+                <label>Fatigue
+                  <select id="check-in-fatigue" required>
+                    <option value="" selected disabled>Choose one</option>
+                    ${strainOptions}
+                  </select>
+                </label>
+                <label>Sleep
+                  <select id="check-in-sleep" required>
+                    <option value="" selected disabled>Choose one</option>
+                    ${sleepOptions}
+                  </select>
+                </label>
+                <label>Soreness
+                  <select id="check-in-soreness" required>
+                    <option value="" selected disabled>Choose one</option>
+                    ${strainOptions}
+                  </select>
+                </label>
+                <label>Motivation
+                  <select id="check-in-motivation" required>
+                    <option value="" selected disabled>Choose one</option>
+                    ${motivationOptions}
+                  </select>
+                </label>
+              </div>
+            </fieldset>
+            <button id="check-in-submit" type="submit" disabled>Save check-in</button>
+            <p id="check-in-status" role="status" class="muted"></p>
+          </form>
         </div>
-        <details id="check-in-panel" open>
-        <summary><span id="check-in-title">How I am feeling</span><span id="check-in-summary-status" class="muted" aria-hidden="true" hidden>Saved for today</span></summary>
-        <details id="check-in-relative" class="recovery-timing" hidden>
-          <summary>Saved answers compared with your usual</summary>
-          <ul id="check-in-relative-answers" class="bullets"></ul>
-        </details>
-        <form id="check-in-form" autocomplete="off">
-          <fieldset id="check-in-fields" class="check-in-fields" aria-describedby="check-in-instructions" disabled>
-            <legend>Today’s ratings</legend>
-            <p id="check-in-instructions" class="muted">Rate each from 1 (worst) to 5 (best).</p>
-            <div class="check-in-grid">
-              <label>Stress
-                <select id="check-in-stress" required>
-                  <option value="" selected disabled>Choose one</option>
-                  ${strainOptions}
-                </select>
-              </label>
-              <label>Fatigue
-                <select id="check-in-fatigue" required>
-                  <option value="" selected disabled>Choose one</option>
-                  ${strainOptions}
-                </select>
-              </label>
-              <label>Sleep
-                <select id="check-in-sleep" required>
-                  <option value="" selected disabled>Choose one</option>
-                  ${sleepOptions}
-                </select>
-              </label>
-              <label>Soreness
-                <select id="check-in-soreness" required>
-                  <option value="" selected disabled>Choose one</option>
-                  ${strainOptions}
-                </select>
-              </label>
-              <label>Motivation
-                <select id="check-in-motivation" required>
-                  <option value="" selected disabled>Choose one</option>
-                  ${motivationOptions}
-                </select>
-              </label>
-            </div>
-          </fieldset>
-          <button id="check-in-submit" type="submit" disabled>Save check-in</button>
-          <p id="check-in-status" role="status" class="muted"></p>
-        </form>
-        </details>
-        <details id="accepted-plan-details" class="recovery-timing" hidden>
-          <summary>Accepted plan for today</summary>
-          <ul id="sessions"></ul>
-        </details>
-      </section>
-      <details id="training-session" class="panel session-panel workout-panel">
+      </details>
+      <details id="accepted-plan-details" class="socius-card" hidden>
+        <summary><h2>Accepted plan for today</h2></summary>
+        <div class="socius-card-body"><ul id="sessions"></ul></div>
+      </details>
+      <details id="training-session" class="socius-card">
         <summary><h2>Today’s training session</h2></summary>
-        <div class="workout-content">
+        <div class="socius-card-body">
           <p id="draft-empty" class="muted">Save your check-in to get today’s session.</p>
           <p id="check-in-next" tabindex="-1" hidden><span id="draft-request-status" role="status"></span><span id="draft-manual">Ask <strong id="draft-manual-prompt">“Draft today’s session”</strong> in SociusFit chat.</span></p>
           <article id="saved-session-draft" aria-labelledby="saved-session-title" hidden>
@@ -421,39 +369,41 @@ ${mealChatMarkup}
           <p id="draft-refresh-status" class="section-note muted" role="status" hidden></p>
         </div>
       </details>
-      <section id="whoop-panel" class="panel" aria-labelledby="recovery-title">
-        <h2 id="recovery-title">WHOOP</h2>
-        <p id="recovery-status" class="recovery-state"></p>
-        <p id="whoop-refresh-status" class="muted" role="status" hidden></p>
-        <p id="recovery-note" class="muted status-label" hidden></p>
-        <dl id="whoop-gauges" class="whoop-gauges">
-          <div class="whoop-gauge sleep">
-            <dt>Sleep<span id="sleep-note" class="whoop-gauge-note" hidden>Earlier saved date</span></dt>
-            <dd class="whoop-dial"><strong id="sleep-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
-          </div>
-          <div id="recovery-overview" class="whoop-gauge">
-            <dt>Recovery<span id="recovery-score-note" class="whoop-gauge-note" hidden>Earlier saved date</span></dt>
-            <dd class="whoop-dial"><strong id="recovery-percent"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
-          </div>
-          <div class="whoop-gauge strain">
-            <dt>Strain<span id="strain-note" class="whoop-gauge-note" hidden>Earlier saved date</span></dt>
-            <dd class="whoop-dial"><strong id="strain-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
-          </div>
-        </dl>
-        <details id="whoop-details" class="recovery-timing" hidden>
-          <summary>WHOOP details</summary>
-          <dl id="recovery-metrics" class="recovery-metrics" hidden></dl>
-          <dl id="recovery-dates"></dl>
-          <section id="workout-recovery" class="workout-recovery" aria-labelledby="workout-recovery-title" hidden>
-            <h3 id="workout-recovery-title">Last workout comparison</h3>
-            <p id="workout-recovery-note" class="muted" hidden></p>
-            <dl id="workout-recovery-metrics" hidden></dl>
-          </section>
-        </details>
-      </section>
-      <details id="last-workout" class="panel workout-panel">
+      <details id="whoop-panel" class="socius-card" open>
+        <summary><h2 id="recovery-title">WHOOP</h2></summary>
+        <div class="socius-card-body">
+          <p id="recovery-status" class="recovery-state"></p>
+          <p id="whoop-refresh-status" class="muted" role="status" hidden></p>
+          <p id="recovery-note" class="muted status-label" hidden></p>
+          <dl id="whoop-gauges" class="whoop-gauges">
+            <div class="whoop-gauge sleep">
+              <dt>Sleep<span id="sleep-note" class="whoop-gauge-note" hidden>Earlier saved date</span></dt>
+              <dd class="whoop-dial"><strong id="sleep-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
+            </div>
+            <div id="recovery-overview" class="whoop-gauge">
+              <dt>Recovery<span id="recovery-score-note" class="whoop-gauge-note" hidden>Earlier saved date</span></dt>
+              <dd class="whoop-dial"><strong id="recovery-percent"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
+            </div>
+            <div class="whoop-gauge strain">
+              <dt>Strain<span id="strain-note" class="whoop-gauge-note" hidden>Earlier saved date</span></dt>
+              <dd class="whoop-dial"><strong id="strain-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
+            </div>
+          </dl>
+          <details id="whoop-details" class="recovery-timing" hidden>
+            <summary>WHOOP details</summary>
+            <dl id="recovery-metrics" class="recovery-metrics" hidden></dl>
+            <dl id="recovery-dates"></dl>
+            <section id="workout-recovery" class="workout-recovery" aria-labelledby="workout-recovery-title" hidden>
+              <h3 id="workout-recovery-title">Last workout comparison</h3>
+              <p id="workout-recovery-note" class="muted" hidden></p>
+              <dl id="workout-recovery-metrics" hidden></dl>
+            </section>
+          </details>
+        </div>
+      </details>
+      <details id="last-workout" class="socius-card">
         <summary><h2 id="recent-title">Last workout logged</h2></summary>
-        <div class="workout-content">
+        <div class="socius-card-body">
           <time id="workout-date" hidden></time>
           <p id="workout-rpe" class="muted section-note" hidden></p>
           <p id="recent-note" class="muted section-note" hidden></p>
@@ -469,7 +419,7 @@ ${mealChatMarkup}
       </details>
       <footer>Read from SociusFit <time id="read-at"></time></footer>
     </div>
-    <section id="activity-content" class="panel" aria-labelledby="view-title" hidden>
+    <section id="activity-content" aria-labelledby="view-title" hidden>
       <div class="activity-date-controls">
         <label class="activity-date-field" for="activity-date">Workout date
           <input id="activity-date" type="date" min="0001-01-01" required>
@@ -481,7 +431,7 @@ ${mealChatMarkup}
       <button id="activity-retry" type="button" hidden>Try again</button>
 ${trainingHistoryCardMarkup}
     </section>
-    <section id="nutrition-content" class="panel" aria-labelledby="view-title" hidden>
+    <section id="nutrition-content" aria-labelledby="view-title" hidden>
       <button id="nutrition-log" type="button" aria-controls="meal-chat" aria-expanded="false" hidden>Log food in chat</button>
       <p id="nutrition-load" class="muted" role="status"></p>
       <button id="nutrition-retry" type="button" hidden>Try again</button>
