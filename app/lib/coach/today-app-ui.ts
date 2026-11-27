@@ -625,6 +625,7 @@ ${mcpHostBridgeScript}
 
       function renderTrainingSession(today) {
         const draft = today.sessionDraft;
+        const previousStatus = draftStatus;
         const kinds = { training: 'Training draft', recovery: 'Recovery draft', rest: 'Rest day draft' };
         const phases = [['warmUp', 'Warm-up'], ['mainWork', 'Main work'],
           ['supportingWork', 'Supporting work'], ['cooldown', 'Cool-down']];
@@ -633,6 +634,7 @@ ${mcpHostBridgeScript}
           && typeof draft.title === 'string' && phases.every(([key]) => Array.isArray(draft[key]));
         draftStatus = !byId('saved-review').hidden ? 'held' : hasDraft ? 'saved'
           : today.sessionDraftStatus === 'saved' ? 'unavailable' : today.sessionDraftStatus ?? 'missing';
+        if (draftStatus !== previousStatus) setNote('draft-refresh-status', null);
         const visible = draftStatus === 'saved';
         byId('saved-session-draft').hidden = !visible;
         byId('saved-session-kind').textContent = visible ? kinds[draft.dayType] : '';

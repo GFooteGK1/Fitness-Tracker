@@ -383,7 +383,7 @@ describe('SociusFit dashboard', () => {
   })
 
   it('requests persistence after confirmation and renders the later daily draft receipt', async () => {
-    const { element, requests, setDraft } = mountWidget(initialRecommendation, todayClock(), {
+    const { element, requests, setDraft, widget } = mountWidget(initialRecommendation, todayClock(), {
       supportsDraft: true, draftSavingEnabled: true,
     })
     await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
@@ -400,11 +400,12 @@ describe('SociusFit dashboard', () => {
     element('draft-refresh').click()
     await vi.waitFor(() => expect(element('draft-refresh-status').textContent).toBe('No saved session is available for today.'))
     setDraft(recoveryDraft)
-    element('draft-refresh').click()
+    widget.dispatchEvent(new Event('visibilitychange'))
     await vi.waitFor(() => expect(element('saved-session-draft').hidden).toBe(false))
     expect(requests.some(item => (item.params?.arguments as { sessionDraftOnly?: boolean })?.sessionDraftOnly)).toBe(true)
     expect(element('saved-session-title').textContent).toBe(recoveryDraft.title)
     expect(element('draft-empty').hidden).toBe(true)
+    expect(element('draft-refresh-status').hidden).toBe(true)
     expect(element('saved-session-phases').textContent).toContain('Bike20 minutesEffort Easy · Rest None')
     expect(element('check-in-next').hidden).toBe(true)
   })
@@ -415,11 +416,14 @@ describe('SociusFit dashboard', () => {
     })
     await vi.waitFor(() => expect(element('saved-session-title').textContent).toBe(recoveryDraft.title))
     expect((element('training-session') as HTMLDetailsElement).open).toBe(true)
+    element('draft-refresh').click()
+    await vi.waitFor(() => expect(element('draft-refresh-status').textContent).toBe('Today’s session is ready.'))
     holdDraft()
     widget.dispatchEvent(new Event('visibilitychange'))
     await vi.waitFor(() => expect(element('saved-session-draft').hidden).toBe(true))
     expect(element('saved-session-title').textContent).toBe('')
     expect(element('draft-empty').textContent).toContain('training safety status')
+    expect(element('draft-refresh-status').hidden).toBe(true)
   })
 
   it.each([false, true])('reconciles a changed saved assessment without discarding local edits (%s)', async edited => {
