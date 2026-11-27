@@ -5,7 +5,7 @@ export default function Home() {
       <div className="app-panel p-6 sm:p-8">
         <h1 className="text-3xl font-bold mb-2">Welcome to SociusFit</h1>
         <p className="app-muted text-lg mb-6">
-          Your AI-powered fitness companion for comprehensive workout and nutrition tracking
+          Track your workouts and meals in one place.
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
           <a 
