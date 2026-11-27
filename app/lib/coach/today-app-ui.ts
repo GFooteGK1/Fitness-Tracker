@@ -232,6 +232,7 @@ ${sociusCardStyles}
     }
     #training-session .workout-phase { border-top: 1px solid var(--line); padding-top: .75rem; }
     #training-session .workout-phase li + li { margin-top: .65rem; }
+    #training-session:not([data-held]):has(#draft-refresh-status:not([hidden])) #draft-empty { display: none; }
     #draft-refresh { margin-top: .65rem; }
     #workout-date { margin-top: .45rem; }
     .workout-phase { margin-top: 1rem; }
@@ -624,6 +625,7 @@ ${mcpHostBridgeScript}
 
       function renderTrainingSession(today) {
         const draft = today.sessionDraft;
+        const previousStatus = draftStatus;
         const kinds = { training: 'Training draft', recovery: 'Recovery draft', rest: 'Rest day draft' };
         const phases = [['warmUp', 'Warm-up'], ['mainWork', 'Main work'],
           ['supportingWork', 'Supporting work'], ['cooldown', 'Cool-down']];
@@ -632,6 +634,7 @@ ${mcpHostBridgeScript}
           && typeof draft.title === 'string' && phases.every(([key]) => Array.isArray(draft[key]));
         draftStatus = !byId('saved-review').hidden ? 'held' : hasDraft ? 'saved'
           : today.sessionDraftStatus === 'saved' ? 'unavailable' : today.sessionDraftStatus ?? 'missing';
+        if (draftStatus !== previousStatus) setNote('draft-refresh-status', null);
         const visible = draftStatus === 'saved';
         byId('saved-session-draft').hidden = !visible;
         byId('saved-session-kind').textContent = visible ? kinds[draft.dayType] : '';
@@ -660,6 +663,8 @@ ${mcpHostBridgeScript}
         syncCheckInControls();
       }
 
+      const missingDraftMessage = 'No saved session is available for today.';
+
       function syncCheckInControls() {
         const matchesSaved = matchesSavedAssessment(checkInValues());
         checkInFields.disabled = !checkInEnabled || checkInBusy;
@@ -670,6 +675,7 @@ ${mcpHostBridgeScript}
           : canRequestDraft() ? 'Save check-in & draft session' : 'Save check-in';
         byId('check-in-summary-status').hidden = !savedAssessment || !matchesSaved || !!unconfirmedCheckIn;
         const held = draftStatus === 'held' || !byId('saved-review').hidden;
+        byId('training-session').toggleAttribute('data-held', held);
         const stepAvailable = !unconfirmedCheckIn && matchesSaved && !held && draftStatus !== 'saved';
         byId('check-in-next').hidden = !stepAvailable;
         byId('draft-refresh').hidden = !draftSavingEnabled || !savedAssessment || held;
@@ -678,6 +684,7 @@ ${mcpHostBridgeScript}
           ? '“Draft today’s session and save it to Today”' : '“Draft today’s session”';
         setNote('draft-empty', held ? 'Review your training safety status before drafting a session.'
           : draftStatus === 'unavailable' && savedAssessment ? 'The saved session is temporarily unavailable.'
+          : draftStatus === 'missing' && savedAssessment && draftSavingEnabled ? missingDraftMessage
           : draftStatus === 'saved' || stepAvailable ? null
           : 'Save your check-in to get today’s session.');
       }
@@ -1040,7 +1047,7 @@ ${mcpHostBridgeScript}
         }
         if (userRequested) setNote('draft-refresh-status', draftStatus === 'saved' ? 'Today’s session is ready.'
           : draftStatus === 'unavailable' ? 'The saved session is temporarily unavailable.'
-          : draftStatus === 'missing' ? 'Today’s session hasn’t been saved yet.' : null);
+          : draftStatus === 'missing' ? missingDraftMessage : null);
         return draftStatus;
       }
 

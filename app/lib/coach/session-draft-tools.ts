@@ -30,9 +30,10 @@ export const sessionDraftInstructions = ' For any request to recommend, draft, o
   + ' Run the workflow even without scheduled training. For daySchedule scheduled_rest, preserve the accepted rest day with planUse follow and a rest or light recovery draft. Treat unscheduled as an unknown schedule. Use empty exercise phases for full rest.'
   + ' On the 1-to-5 check-in, 1 is worst and 5 is best in every field. A 5 means very low stress, fatigue or soreness, very good sleep, or very high motivation. Treat relative-to-usual answers as qualitative.'
   + ' Ask one focused question if a missing constraint would change the session. When preparation is not ready or a call fails, relay the relevant message and resolve the issue before drafting. If the evidence changed, prepare it again.'
-  + ' For ordinary chat previews, call show_today_session_draft to validate and display the draft. Share only a validated draft. Factual reads and general coaching references do not authorize a draft.'
+  + ' For ordinary chat previews, call show_today_session_draft to validate and display an unsaved draft. Tell the athlete the preview is unsaved. Share only a validated draft. Factual reads and general coaching references do not authorize a draft.'
+  + ' Confirm saving to Today only when save_today_session_draft returns savedToToday: true.'
 
-export const saveSessionDraftInstructions = ' When the athlete explicitly asks to save a session draft in Today, including the verified check-in workflow that requests it, prepare against the confirmed expectedLocalDate and call save_today_session_draft to validate, save, and display it. Use one draft tool per result. If the save is uncertain, ask the athlete to check Today before retrying.'
+export const saveSessionDraftInstructions = ' When the athlete explicitly asks to save a session draft in Today, including the verified check-in workflow that requests it, prepare against the confirmed expectedLocalDate and call save_today_session_draft to validate, save, and display it. Use one draft tool per result. If the save is uncertain, say so and ask the athlete to check Today before retrying.'
 
 function textProperties(fields: Record<string, number>) {
   return Object.fromEntries(Object.entries(fields).map(([key, maxLength]) => [key, { type: 'string', minLength: 1, maxLength }]))
@@ -54,9 +55,10 @@ const requiredDraftFields = Object.keys(draftProperties).filter(key => key !== '
 export const legacySessionDraftResourceUris: readonly string[] = [
   'ui://socius/session-draft-v1.html',
   'ui://socius/session-draft-v2.html',
+  'ui://socius/session-draft-v3.html',
 ]
 export const sessionDraftResource = {
-  uri: 'ui://socius/session-draft-v3.html', name: 'SociusFit session draft', mimeType: 'text/html;profile=mcp-app',
+  uri: 'ui://socius/session-draft-v4.html', name: 'SociusFit session draft', mimeType: 'text/html;profile=mcp-app',
 } as const
 
 export const sessionDraftResourceContents = {
@@ -79,7 +81,7 @@ export const prepareTodaySessionDraftTool = {
 
 export const showTodaySessionDraftTool = {
   name: 'show_today_session_draft', title: 'Show today’s session draft',
-  description: 'Validate and display one editable training, recovery or rest draft after prepare_today_session_draft. Cite the active goal and logged workout evidence and explain the check-in adjustment. Supply runnable details for exercise or empty phases for full rest.',
+  description: 'Validate and display one unsaved training, recovery or rest preview after prepare_today_session_draft. This read-only tool returns savedToToday: false. Cite the active goal and logged workout evidence and explain the check-in adjustment. Supply runnable details for exercise or empty phases for full rest.',
   inputSchema: { type: 'object', required: ['tzOffset', 'contextId', 'draft'], additionalProperties: false,
     properties: { tzOffset: timezoneOffset, contextId: { type: 'string', pattern: '^[a-f0-9]{64}$' },
       draft: { type: 'object', required: requiredDraftFields, properties: draftProperties, additionalProperties: false } } },
@@ -90,7 +92,7 @@ export const showTodaySessionDraftTool = {
 export const saveTodaySessionDraftTool = {
   ...showTodaySessionDraftTool,
   name: 'save_today_session_draft', title: 'Save today’s session draft',
-  description: 'Validate, save and display one editable training, recovery or rest draft when the athlete asks to save it in Today. First call prepare_today_session_draft with the confirmed expectedLocalDate. The new draft replaces the previous draft for this local date.',
+  description: 'Validate, save and display one editable training, recovery or rest draft when the athlete asks to save it in Today. First call prepare_today_session_draft with the confirmed expectedLocalDate. The new draft replaces the previous draft for this local date. Confirm saving only when this tool returns savedToToday: true.',
   annotations: { ...readOnly, readOnlyHint: false },
 } as const
 
@@ -227,8 +229,8 @@ export function createSessionDraftTools(readEvidence: (tzOffset: number) => Prom
       if (receipt !== 'saved') throw new CoachingContextError(503, 'Could not confirm the draft was saved. Check Today before trying again.')
     }
     return {
-      structuredContent: { status: 'validated', workflowVersion, contextId: input.contextId, date, ...(persist ? { savedToToday: true } : {}) },
-      content: [{ type: 'text' as const, text: persist ? 'The SociusFit session draft was saved in Today.' : 'The SociusFit session draft is ready to review.' }],
+      structuredContent: { status: 'validated', workflowVersion, contextId: input.contextId, date, savedToToday: Boolean(persist) },
+      content: [{ type: 'text' as const, text: persist ? 'The SociusFit session draft was saved in Today.' : 'This SociusFit session draft is an unsaved preview.' }],
       _meta: { sessionDraft },
     }
   }

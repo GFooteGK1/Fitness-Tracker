@@ -16,7 +16,7 @@ const clock = '2026-10-19T00:13:53.447Z'
 const tzOffset = 360
 const localDate = '2026-10-18'
 const checkInRevision = '10000000-0000-4000-8000-000000000007'
-const draftResource = 'ui://socius/session-draft-v3.html'
+const draftResource = 'ui://socius/session-draft-v4.html'
 const prepareName = 'prepare_today_session_draft'
 const showName = 'show_today_session_draft'
 const saveName = 'save_today_session_draft'
@@ -99,8 +99,8 @@ function seedConcerningFeedback(rows: ContextRows, recordedAt: string) {
     'responses->>pain': 'concerning', responses: { outcome: 'stopped_early', sessionRpe: 7, energy: 'okay', pain: 'concerning', note: null } }]
 }
 
-async function connect({ subject = owner, rows = seedRows(), failTable, onSafetyFeedbackRead, storeDrafts = false }: {
-  subject?: string; rows?: ContextRows; failTable?: string; onSafetyFeedbackRead?: () => void; storeDrafts?: boolean
+async function connect({ subject = owner, rows = seedRows(), failTable, onSafetyFeedbackRead, storeDrafts = false, loseDraftReceipt = false }: {
+  subject?: string; rows?: ContextRows; failTable?: string; onSafetyFeedbackRead?: () => void; storeDrafts?: boolean; loseDraftReceipt?: boolean
 } = {}) {
   for (const records of Object.values(rows)) for (const row of records) row.user_id = subject
   const fixture = contextClient(rows, { failTable, onRead: (table, read) => {
@@ -115,10 +115,11 @@ async function connect({ subject = owner, rows = seedRows(), failTable, onSafety
       async select(columns: string) {
         expect([...filters.keys()]).toEqual(['user_id', 'local_date', 'check_in_revision'])
         const found = rows.coach_daily_checkins.filter(row => [...filters].every(([key, value]) => row[key] === value))
-        return { data: found.map(row => {
+        const data = found.map(row => {
           Object.assign(row, patch)
           return Object.fromEntries(columns.split(',').map(column => [column, row[column]]))
-        }), error: null }
+        })
+        return loseDraftReceipt ? { data: null, error: { message: 'Connection lost after updating the row' } } : { data, error: null }
       },
     }
     return query
@@ -225,7 +226,7 @@ describe('Today session draft over authenticated stateless MCP', () => {
       expect((await client.readResource({ uri: draftResource })).contents).toContainEqual(expect.objectContaining({
         uri: draftResource, mimeType: 'text/html;profile=mcp-app', text: expect.any(String),
       }))
-      for (const legacyUri of ['ui://socius/session-draft-v1.html', 'ui://socius/session-draft-v2.html']) {
+      for (const legacyUri of ['ui://socius/session-draft-v1.html', 'ui://socius/session-draft-v2.html', 'ui://socius/session-draft-v3.html']) {
         expect((await client.readResource({ uri: legacyUri })).contents).toEqual(
           (await client.readResource({ uri: draftResource })).contents.map(content => ({ ...content, uri: legacyUri })),
         )
@@ -276,11 +277,12 @@ describe('Today session draft over authenticated stateless MCP', () => {
       expect(JSON.stringify(prepared)).not.toContain(checkInRevision)
       const draft = validDraft(prepared.evidence.goals[0].id)
       const preview = await client.callTool(show(prepared.contextId, draft))
-      expect(preview.structuredContent).toMatchObject({ status: 'validated' })
-      expect(preview.structuredContent).not.toHaveProperty('savedToToday')
+      expect(preview.structuredContent).toMatchObject({ status: 'validated', savedToToday: false })
+      expect(preview.content).toMatchObject([{ type: 'text', text: expect.stringContaining('unsaved preview') }])
       expect(updateDraft).not.toHaveBeenCalled()
       const notDateBound = await client.callTool(save(prepared.contextId, draft))
       expect(notDateBound.isError).toBe(true)
+      expect(notDateBound.structuredContent).toBeUndefined()
       expect(notDateBound.content).toMatchObject([{ type: 'text', text: expect.stringContaining('confirmed local date') }])
       expect(updateDraft).not.toHaveBeenCalled()
 
@@ -292,6 +294,7 @@ describe('Today session draft over authenticated stateless MCP', () => {
       expect(updateDraft).not.toHaveBeenCalled()
       const saved = await client.callTool(save(confirmed.contextId, draft))
       expect(saved.structuredContent).toMatchObject({ status: 'validated', savedToToday: true })
+      expect(saved.content).toMatchObject([{ type: 'text', text: expect.stringContaining('saved in Today') }])
       expect(updateDraft).toHaveBeenCalledTimes(1)
       expect(writes).not.toHaveBeenCalled()
       expect(rows.coach_daily_checkins[0].session_draft).toMatchObject({ date: localDate, draft: saved._meta?.sessionDraft })
@@ -326,6 +329,27 @@ describe('Today session draft over authenticated stateless MCP', () => {
         const tomorrow = await reopened.callTool(readToday(true))
         expect(tomorrow._meta?.today).toEqual({ date: '2026-10-19', sessionDraftStatus: 'missing' })
         expect(rows.coach_daily_checkins[0].session_draft).toBeDefined()
+      } finally { await reopened.close() }
+    } finally { await client.close() }
+  })
+
+  it('withholds a save confirmation when the response is lost and reads the draft without another write', async () => {
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+    const rows = seedRows()
+    rows.coach_daily_checkins[0].check_in_revision = checkInRevision
+    const { client, openClient, updateDraft } = await connect({ rows, storeDrafts: true, loseDraftReceipt: true })
+    try {
+      const prepared = await prepareReady(client, { tzOffset, expectedLocalDate: localDate, expectedCheckInRevision: checkInRevision })
+      const draft = validDraft(prepared.evidence.goals[0].id)
+      const attempted = await client.callTool(save(prepared.contextId, draft))
+      expect(attempted.isError).toBe(true)
+      expect(attempted.structuredContent).toBeUndefined()
+      expect(attempted.content).toMatchObject([{ type: 'text', text: expect.stringContaining('Could not confirm the draft was saved') }])
+      const reopened = await openClient()
+      try {
+        const today = await reopened.callTool(readToday())
+        expect(today._meta?.today).toMatchObject({ sessionDraftStatus: 'saved', sessionDraft: { title: draft.title } })
+        expect(updateDraft).toHaveBeenCalledTimes(1)
       } finally { await reopened.close() }
     } finally { await client.close() }
   })
@@ -762,8 +786,7 @@ describe('Today session draft over authenticated stateless MCP', () => {
       const hiddenTraining = await client.callTool(show(prepared.contextId, { ...rest, mainWork: draft.mainWork }))
       expect(hiddenTraining.isError).toBe(true)
       const shownRest = await client.callTool(show(prepared.contextId, rest))
-      expect(shownRest.structuredContent).toMatchObject({ status: 'validated', date: localDate })
-      expect(shownRest.structuredContent).not.toHaveProperty('savedToToday')
+      expect(shownRest.structuredContent).toMatchObject({ status: 'validated', date: localDate, savedToToday: false })
       expect(shownRest._meta?.sessionDraft).toMatchObject({
         dayType: 'rest', daySchedule: 'scheduled_rest', planUse: 'follow', warmUp: [], mainWork: [],
       })

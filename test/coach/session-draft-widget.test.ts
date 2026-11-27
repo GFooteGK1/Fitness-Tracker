@@ -50,6 +50,7 @@ describe('SociusFit inline session draft', () => {
 
     expect(element('session-draft').hidden).toBe(false)
     expect(element('draft-status').hidden).toBe(true)
+    expect(element('draft-save-status').hidden).toBe(true)
     expect(element('draft-title').textContent).toBe(draft.title)
     expect(element('plan-basis').textContent).toBe('Based on the accepted session')
     expect(element('draft-date').getAttribute('datetime')).toBe(draft.date)
@@ -64,6 +65,14 @@ describe('SociusFit inline session draft', () => {
     expect(element('source-dates').textContent).toContain('2026')
     expect(element('edit-hint').textContent).toBe('Ask in chat to adjust this draft.')
     expect(post.mock.calls.map(([message]) => message.method)).not.toContain('tools/call')
+  })
+
+  it.each([[false, 'Unsaved preview'], [true, 'Saved to Today']] as const)('labels a draft with save receipt %s', (savedToToday, label) => {
+    const { element, deliver } = mountDraft()
+    deliver({ structuredContent: { savedToToday }, _meta: { sessionDraft: draft } })
+
+    expect(element('draft-save-status').hidden).toBe(false)
+    expect(element('draft-save-status').textContent).toBe(label)
   })
 
   it('requires validated metadata from the host and renders submitted strings as plain text', () => {
