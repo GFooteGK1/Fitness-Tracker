@@ -422,6 +422,7 @@ describe('SociusFit dashboard', () => {
     widget.dispatchEvent(new Event('visibilitychange'))
     await vi.waitFor(() => expect(element('saved-session-draft').hidden).toBe(true))
     expect(element('saved-session-title').textContent).toBe('')
+    expect(element('training-session').hasAttribute('data-held')).toBe(true)
     expect(element('draft-empty').textContent).toContain('training safety status')
     expect(element('draft-refresh-status').hidden).toBe(true)
   })

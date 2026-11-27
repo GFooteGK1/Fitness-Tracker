@@ -232,7 +232,7 @@ ${sociusCardStyles}
     }
     #training-session .workout-phase { border-top: 1px solid var(--line); padding-top: .75rem; }
     #training-session .workout-phase li + li { margin-top: .65rem; }
-    #training-session:has(#draft-refresh-status:not([hidden])) #draft-empty { display: none; }
+    #training-session:not([data-held]):has(#draft-refresh-status:not([hidden])) #draft-empty { display: none; }
     #draft-refresh { margin-top: .65rem; }
     #workout-date { margin-top: .45rem; }
     .workout-phase { margin-top: 1rem; }
@@ -675,6 +675,7 @@ ${mcpHostBridgeScript}
           : canRequestDraft() ? 'Save check-in & draft session' : 'Save check-in';
         byId('check-in-summary-status').hidden = !savedAssessment || !matchesSaved || !!unconfirmedCheckIn;
         const held = draftStatus === 'held' || !byId('saved-review').hidden;
+        byId('training-session').toggleAttribute('data-held', held);
         const stepAvailable = !unconfirmedCheckIn && matchesSaved && !held && draftStatus !== 'saved';
         byId('check-in-next').hidden = !stepAvailable;
         byId('draft-refresh').hidden = !draftSavingEnabled || !savedAssessment || held;
