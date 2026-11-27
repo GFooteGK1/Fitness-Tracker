@@ -15,6 +15,16 @@ When working on this codebase:
 4. **Follow mobile-first principles** — 44px touch targets, 16px min fonts, one-handed operation
 5. **Enforce RLS everywhere** — All user tables must have row-level security policies
 
+### Routine production releases
+
+Greg’s standing approval covers routine SociusFit application and documentation changes he directs in `GFooteGK1/Fitness-Tracker`. Codex owns the release through commit, branch push, pull request, protected merge to `main`, automatic Vercel deployment, and verification on `www.sociusfit.com`. Carry a qualifying release through its checks and close it after production verification. Honor any narrower instruction, change-specific acceptance requirement, or release hold.
+
+Before merging, resolve material review findings and confirm passing scoped tests, GitHub CI for the current PR head and base, and a READY Vercel Preview for that head. Confirm `main` is bound to production and automatic domain assignment is active. Record the current healthy production deployment’s commit and ID, verify Vercel rollback eligibility and compatibility with the affected user path, and keep that fallback in the release checkpoint. Refresh the evidence if the head, base, or production changes. Use the reviewed head for the merge.
+
+After merging, confirm Vercel serves the expected merge from the canonical domain and smoke-check the affected path. If the release causes a material production regression, confirm it still serves the domain and recheck the recorded fallback. Restore it under explicit production recovery approval, which may be included in the release instructions. Verify recovery on the canonical domain and record the rollback and any promotion hold. If an operation is interrupted or its result is uncertain, read GitHub and Vercel state before retrying.
+
+Pause for separate approval for database migrations or data operations, access or credential changes, production settings or infrastructure changes, billing, and destructive actions. Hold a release with an unsafe or unverified fallback until a safe candidate is verified or a separate recovery plan is approved. Follow the [migration release procedure](docs/migrations/README.md#migration-release-procedure) before any push, merge, or release that could trigger database work. See [ADR-0055](docs/decisions/ADR-0055-routine-production-release-authority.md) for the release boundary and recovery details.
+
 ---
 
 ## Project Overview

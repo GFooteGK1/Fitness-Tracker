@@ -70,3 +70,5 @@
 - [ADR-0029: Fractional workout effort and failed-save recovery](ADR-0029-fractional-workout-effort-and-failed-save-recovery.md) — exact session effort, transactional migration and owner-locked no-write proof without reopening failed identities.
 
 - [ADR-0054: Save today’s training session](ADR-0054-save-today-training-session.md) — proposed owner-scoped persistence of a validated draft for the current local day.
+
+- [ADR-0055: Routine production release authority](ADR-0055-routine-production-release-authority.md) — Codex-owned routine releases with protected merge, production verification, and an eligible fallback.
