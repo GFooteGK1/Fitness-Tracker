@@ -19,7 +19,7 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v20.html'
+const resourceUri = 'ui://socius/today-v21.html'
 const legacyResourceUris = [
   'ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html',
   'ui://socius/today-v5.html', 'ui://socius/today-v6.html', 'ui://socius/today-v7.html',
@@ -27,10 +27,11 @@ const legacyResourceUris = [
   'ui://socius/today-v12.html', 'ui://socius/today-v13.html', 'ui://socius/today-v14.html',
   'ui://socius/today-v15.html', 'ui://socius/today-v16.html',
   'ui://socius/today-v17.html', 'ui://socius/today-v18.html', 'ui://socius/today-v19.html',
+  'ui://socius/today-v20.html',
 ]
 const legacyActivityUri = 'ui://socius/activity.html'
 const activityUri = 'ui://socius/activity-v2.html'
-const draftUri = 'ui://socius/session-draft-v3.html'
+const draftUri = 'ui://socius/session-draft-v4.html'
 const title = 'Saved easy session'
 const today = (args: Record<string, unknown>) => ({ name: 'open_socius_today', arguments: args })
 const typical = { stress: 'usual', fatigue: 'usual', sleep: 'usual' }
@@ -197,10 +198,12 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       expect(client.getServerCapabilities()?.resources).toEqual({})
       expect(client.getInstructions()).toContain('use prepare_today_session_draft before authoring')
       expect(client.getInstructions()).toContain('Factual reads and general coaching references do not authorize a draft.')
+      expect(client.getInstructions()).toContain('Confirm saving to Today only when save_today_session_draft returns savedToToday: true.')
       const tools = (await client.listTools()).tools
       expect(tools.find(tool => tool.name === 'get_coaching_context')?.description).toContain('factual context')
       expect(tools.find(tool => tool.name === 'prepare_today_session_draft')?.description).toContain('including on a rest day')
       expect(tools.find(tool => tool.name === 'prepare_today_session_draft')?.description).toContain('any other result or tool error')
+      expect(tools.find(tool => tool.name === 'show_today_session_draft')?.description).toContain('savedToToday: false')
       expect(tools).toEqual(expect.arrayContaining([expect.objectContaining({
         name: today({}).name, annotations: expect.objectContaining({ readOnlyHint: true }),
         icons: ['light', 'dark'].map(theme => ({

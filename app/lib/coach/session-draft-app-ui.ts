@@ -28,7 +28,7 @@ ${sociusCardStyles}
     #draft-label strong { color: var(--accent); }
     time, .muted { color: var(--muted); }
     .group { border-top: 1px solid var(--line); margin-top: 1rem; padding-top: 1rem; }
-    #plan-basis, #history-note { margin-top: .5rem; }
+    #draft-save-status, #plan-basis, #history-note { margin-top: .5rem; }
     .phase ul { list-style: none; padding: 0; }
     .phase li { margin-top: .65rem; }
     .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem .75rem; }
@@ -48,6 +48,7 @@ ${sociusCardStyles}
       <div class="socius-card-body">
         <header>
           <p id="draft-label"><strong id="draft-kind">Session draft</strong><time id="draft-date"></time></p>
+          <p id="draft-save-status" class="muted" hidden></p>
           <p id="draft-objective"></p>
           <p id="plan-basis" class="muted"></p>
           <p id="history-note" class="muted" hidden>Some saved workout evidence is unavailable.</p>
@@ -115,7 +116,7 @@ ${mcpHostBridgeScript}
         return element;
       }
 
-      function renderDraft(draft) {
+      function renderDraft(draft, savedToToday) {
         const dayType = draft?.dayType ?? 'training';
         if (!draft || !textFields.every(key => hasText(draft[key])) || typeof draft.historyComplete !== 'boolean'
           || typeof draft.planUse !== 'string' || !Object.hasOwn(planLabels, draft.planUse)
@@ -156,6 +157,9 @@ ${mcpHostBridgeScript}
         byId('draft-date').dateTime = draft.date;
         byId('draft-date').textContent = date;
         byId('draft-kind').textContent = dayLabels[dayType];
+        const saveStatus = byId('draft-save-status');
+        saveStatus.textContent = savedToToday === true ? 'Saved to Today' : savedToToday === false ? 'Unsaved preview' : '';
+        saveStatus.hidden = saveStatus.textContent === '';
         byId('draft-title').textContent = draft.title;
         byId('draft-objective').textContent = draft.objective;
         byId('plan-basis').textContent = draft.daySchedule === 'scheduled_rest' ? 'Scheduled rest day'
@@ -182,7 +186,7 @@ ${mcpHostBridgeScript}
           clearTimeout(waiting);
           try {
             if (result?.isError) throw new Error('Tool call failed');
-            renderDraft(result?._meta?.sessionDraft);
+            renderDraft(result?._meta?.sessionDraft, result?.structuredContent?.savedToToday);
           } catch {
             showError();
           }

@@ -232,6 +232,7 @@ ${sociusCardStyles}
     }
     #training-session .workout-phase { border-top: 1px solid var(--line); padding-top: .75rem; }
     #training-session .workout-phase li + li { margin-top: .65rem; }
+    #training-session:has(#draft-refresh-status:not([hidden])) #draft-empty { display: none; }
     #draft-refresh { margin-top: .65rem; }
     #workout-date { margin-top: .45rem; }
     .workout-phase { margin-top: 1rem; }
@@ -660,6 +661,8 @@ ${mcpHostBridgeScript}
         syncCheckInControls();
       }
 
+      const missingDraftMessage = 'No saved session is available for today.';
+
       function syncCheckInControls() {
         const matchesSaved = matchesSavedAssessment(checkInValues());
         checkInFields.disabled = !checkInEnabled || checkInBusy;
@@ -678,6 +681,7 @@ ${mcpHostBridgeScript}
           ? '“Draft today’s session and save it to Today”' : '“Draft today’s session”';
         setNote('draft-empty', held ? 'Review your training safety status before drafting a session.'
           : draftStatus === 'unavailable' && savedAssessment ? 'The saved session is temporarily unavailable.'
+          : draftStatus === 'missing' && savedAssessment && draftSavingEnabled ? missingDraftMessage
           : draftStatus === 'saved' || stepAvailable ? null
           : 'Save your check-in to get today’s session.');
       }
@@ -1040,7 +1044,7 @@ ${mcpHostBridgeScript}
         }
         if (userRequested) setNote('draft-refresh-status', draftStatus === 'saved' ? 'Today’s session is ready.'
           : draftStatus === 'unavailable' ? 'The saved session is temporarily unavailable.'
-          : draftStatus === 'missing' ? 'Today’s session hasn’t been saved yet.' : null);
+          : draftStatus === 'missing' ? missingDraftMessage : null);
         return draftStatus;
       }
 
