@@ -4,6 +4,8 @@
 - **Date:** 2026-11-26
 - **Related:** [ADR-0039](ADR-0039-chosen-llm-and-durable-context.md), [ADR-0050](ADR-0050-one-daily-session-drafting-workflow.md), [ADR-0052](ADR-0052-start-draft-after-today-check-in.md)
 
+[ADR-0056](ADR-0056-save-today-recommendations-by-default.md) supersedes the separate save confirmation for an ordinary Today recommendation and defines how requested edits are recorded.
+
 ## Context
 
 The Today check-in already persists for the athlete’s local calendar date. A confirmed submission asks the chosen chat model to draft the session. The validated draft appears in the chat that authored it. The athlete wants the session below the collapsible check-in and available from Today throughout the same local day.
