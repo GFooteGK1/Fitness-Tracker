@@ -1,5 +1,6 @@
 import type { createServerClient } from '@/app/lib/auth/supabase-server'
 import type { DashboardNarrativeStore } from '@/app/lib/dashboard-narrative-service'
+import { isRepMaxType, REP_MAX_TYPES } from '@/app/lib/pr-detection'
 import type {
   DashboardDailyFact,
   DashboardNarrativeFacts,
@@ -88,6 +89,7 @@ function mapPersonalRecord(row: Record<string, unknown>): DashboardPersonalRecor
   if (
     typeof row.exercise !== 'string' ||
     typeof row.pr_type !== 'string' ||
+    !isRepMaxType(row.pr_type) ||
     typeof row.achieved_at !== 'string' ||
     value === null
   ) return null
@@ -165,10 +167,7 @@ function recentPersonalRecords(rows: PersonalRecordRow[]): DashboardPersonalReco
     }
 
     const existingValue = numberOrNull(existing.value)
-    const isBetter = row.pr_type === 'time'
-      ? existingValue === null || value < existingValue
-      : existingValue === null || value > existingValue
-    if (isBetter) unique.set(key, row)
+    if (existingValue === null || value > existingValue) unique.set(key, row)
   }
 
   return [...unique.values()]
@@ -222,6 +221,7 @@ export function createDashboardNarrativeStore(
           .from('personal_records')
           .select('id, workout_id, exercise, pr_type, value, previous_value, achieved_at')
           .eq('user_id', userId)
+          .in('pr_type', REP_MAX_TYPES)
           .order('achieved_at', { ascending: false })
           .order('id', { ascending: false })
           .limit(50),

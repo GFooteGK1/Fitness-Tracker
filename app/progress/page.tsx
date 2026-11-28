@@ -120,7 +120,7 @@ export default function Progress() {
               {recentPRs.length ? <ul className="mt-3 divide-y divide-[var(--line)]">
                 {recentPRs.map(pr => <li key={pr.id} className="flex items-start justify-between gap-4 py-4">
                   <div className="min-w-0"><p className="break-words text-sm font-medium">{pr.exercise}</p><p className="app-muted mt-1 text-xs">{personalRecordLabels[pr.pr_type]}</p></div>
-                  <div className="shrink-0 text-right"><p className="text-sm font-semibold tabular-nums text-[var(--accent)]">{formatPRValue(pr.pr_type, Number(pr.value))}</p><p className="app-muted mt-1 text-xs">{new Date(pr.achieved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p></div>
+                  <div className="shrink-0 text-right"><p className="text-sm font-semibold tabular-nums text-[var(--accent)]">{formatPRValue(Number(pr.value))}</p><p className="app-muted mt-1 text-xs">{new Date(pr.achieved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</p></div>
                 </li>)}
               </ul> : <p className="app-muted py-4 text-sm">Your first results establish a baseline. Improvements will appear here.</p>}
             </>}

@@ -7,12 +7,9 @@ vi.mock('@/app/lib/auth/supabase-server', () => ({
 import { POST } from '@/app/api/check-prs/route'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 
-// These legacy writer tests model the pre-migration schema, not an empty installed schema.
-const legacySchema = () => query({ data: null, error: { code: '42703' } })
-
 function query(result: unknown) {
   const chain: Record<string, ReturnType<typeof vi.fn>> = {}
-  for (const method of ['select', 'eq', 'neq', 'order', 'limit', 'upsert', 'maybeSingle']) {
+  for (const method of ['select', 'eq', 'in', 'upsert', 'maybeSingle']) {
     chain[method] = vi.fn(() => chain)
   }
   chain.then = vi.fn((resolve?: (value: unknown) => unknown) =>
@@ -20,156 +17,130 @@ function query(result: unknown) {
   return chain
 }
 
+function mockSupabase(from: ReturnType<typeof vi.fn>, userId: string | null = 'user-1') {
+  vi.mocked(createServerClient).mockResolvedValue({
+    auth: {
+      getUser: vi.fn().mockResolvedValue({
+        data: { user: userId ? { id: userId } : null },
+        error: null,
+      }),
+    },
+    from,
+  } as never)
+}
+
+function request(body: unknown) {
+  return new Request('http://localhost/api/check-prs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
 describe('POST /api/check-prs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('reads current audited projections without recalculating from stale client blocks', async () => {
-    const schema = query({ data: [], error: null })
+  it('reads saved rep-max projections and ignores stale client blocks', async () => {
     const workout = query({ data: { id: 'workout-1', capture_revision: 3 }, error: null })
-    const records = query({ data: [{ exercise: 'Squat', pr_type: 'weight', value: 100, previous_value: 95 }], error: null })
-    const from = vi.fn().mockReturnValueOnce(schema).mockReturnValueOnce(workout).mockReturnValueOnce(records)
-    vi.mocked(createServerClient).mockResolvedValue({ auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } }, error: null })) }, from } as never)
-    const response = await POST(new Request('http://localhost/api/check-prs', { method: 'POST',
-      body: JSON.stringify({ workoutId: 'workout-1', blocks: [{ block_type: 'STRENGTH', segments: [{ events: [{ movement_name: 'Squat', performed: { reps: 1, load: { value: 999, unit: 'lb' } } }] }] }] }) }))
-    expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({ captureRevision: 3, prs: [{ newRecord: 100, previousBest: 95, isPR: true }] })
-    expect(workout.eq).toHaveBeenCalledWith('user_id', 'user-1')
-    expect(records.eq).toHaveBeenCalledWith('workout_id', 'workout-1')
-    for (const chain of [schema, workout, records]) expect(chain.upsert).not.toHaveBeenCalled()
-  })
+    const records = query({
+      data: [
+        { exercise: 'Back Squat', pr_type: '3rm', value: '285', previous_value: '275' },
+        { exercise: 'Bench Press', pr_type: '5rm', value: '225', previous_value: null },
+      ],
+      error: null,
+    })
+    const from = vi.fn().mockReturnValueOnce(workout).mockReturnValueOnce(records)
+    mockSupabase(from)
 
-  it('uses the workout-level uniqueness key when storing detected records', async () => {
-    const history = query({ data: [], error: null })
-    const workouts = query({ data: [], error: null })
-    const write = query({ error: null })
-    const from = vi.fn()
-      .mockReturnValueOnce(legacySchema())
-      .mockReturnValueOnce(history)
-      .mockReturnValueOnce(workouts)
-      .mockReturnValueOnce(write)
-
-    vi.mocked(createServerClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: 'user-1' } },
-          error: null,
-        }),
-      },
-      from,
-    } as never)
-
-    const response = await POST(new Request('http://localhost/api/check-prs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        workoutId: 'workout-1',
-        blocks: [{
-          block_type: 'STRENGTH',
-          segments: [{
-            rounds: 1,
-            events: Array.from({ length: 3 }, () => ({
-              movement_name: 'Back Squat',
-              performed: { reps: 3, load: { value: 285, unit: 'lb' } },
-            })),
-          }],
-        }],
-      }),
+    const response = await POST(request({
+      workoutId: 'workout-1',
+      blocks: [{
+        block_type: 'STRENGTH',
+        segments: [{ events: [{
+          movement_name: 'Back Squat',
+          performed: { reps: 3, load: { value: 999, unit: 'lb' } },
+        }] }],
+      }],
     }))
 
     expect(response.status).toBe(200)
     const body = await response.json()
-    expect(body.prs).toEqual([])
-    expect(body.baselinesRecorded).toBeGreaterThan(0)
-    expect(write.upsert).toHaveBeenCalledWith(
-      expect.any(Array),
-      {
-        onConflict: 'user_id,workout_id,exercise,pr_type',
-        ignoreDuplicates: true,
-      },
-    )
+    expect(body).toMatchObject({
+      captureRevision: 3,
+      projectionsStatus: 'supported_reported_quantities_only',
+      baselinesRecorded: 1,
+    })
+    expect(body.prs).toHaveLength(1)
+    expect(body.prs[0]).toMatchObject({
+      exercise: 'Back Squat', prType: '3rm', newRecord: 285, previousBest: 275, isPR: true,
+    })
+    expect(from.mock.calls).toEqual([['workouts'], ['personal_records']])
+    expect(workout.eq).toHaveBeenCalledWith('id', 'workout-1')
+    expect(workout.eq).toHaveBeenCalledWith('user_id', 'user-1')
+    expect(workout.maybeSingle).toHaveBeenCalledOnce()
+    expect(records.eq).toHaveBeenCalledWith('user_id', 'user-1')
+    expect(records.eq).toHaveBeenCalledWith('workout_id', 'workout-1')
+    expect(records.in).toHaveBeenCalledWith('pr_type', ['1rm', '3rm', '5rm'])
+    expect(records.upsert).not.toHaveBeenCalled()
   })
 
-  it('compares session volume with aggregated historical session volume', async () => {
-    const history = query({ data: [], error: null })
-    const workouts = query({
-      data: [{
-        blocks: [
-          {
-            block_type: 'STRENGTH',
-            segments: [{
-              rounds: 1,
-              events: [{
-                movement_name: 'Deadlift',
-                performed: { reps: 5, load: { value: 200, unit: 'lb' } },
-              }],
-            }],
-          },
-          {
-            block_type: 'STRENGTH',
-            segments: [{
-              rounds: 1,
-              events: [{
-                movement_name: 'Deadlift',
-                performed: { reps: 5, load: { value: 200, unit: 'lb' } },
-              }],
-            }],
-          },
-        ],
-      }],
-      error: null,
-    })
-    const write = query({ error: null })
-    const from = vi.fn()
-      .mockReturnValueOnce(legacySchema())
-      .mockReturnValueOnce(history)
-      .mockReturnValueOnce(workouts)
-      .mockReturnValueOnce(write)
+  it('accepts a saved workout ID without client blocks', async () => {
+    const workout = query({ data: { id: 'workout-1', capture_revision: 1 }, error: null })
+    const records = query({ data: [], error: null })
+    const from = vi.fn().mockReturnValueOnce(workout).mockReturnValueOnce(records)
+    mockSupabase(from)
 
-    vi.mocked(createServerClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: 'user-1' } },
-          error: null,
-        }),
-      },
-      from,
-    } as never)
-
-    const response = await POST(new Request('http://localhost/api/check-prs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        workoutId: 'workout-current',
-        blocks: [
-          {
-            block_type: 'STRENGTH',
-            segments: [{
-              rounds: 1,
-              events: [{
-                movement_name: 'Deadlift',
-                performed: { reps: 5, load: { value: 200, unit: 'lb' } },
-              }],
-            }],
-          },
-          {
-            block_type: 'STRENGTH',
-            segments: [{
-              rounds: 1,
-              events: [{
-                movement_name: 'Deadlift',
-                performed: { reps: 5, load: { value: 200, unit: 'lb' } },
-              }],
-            }],
-          },
-        ],
-      }),
-    }))
+    const response = await POST(request({ workoutId: 'workout-1' }))
 
     expect(response.status).toBe(200)
-    expect((await response.json()).prs.filter(
-      (pr: { prType: string }) => pr.prType === 'volume',
-    )).toHaveLength(0)
+    expect(await response.json()).toMatchObject({ prs: [], baselinesRecorded: 0 })
+  })
+
+  it('returns 401 before querying when authentication fails', async () => {
+    const from = vi.fn()
+    mockSupabase(from, null)
+
+    const response = await POST(request({ workoutId: 'workout-1' }))
+
+    expect(response.status).toBe(401)
+    expect(from).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, '', '  ', 42])('rejects an invalid workout ID %j', async (workoutId) => {
+    const from = vi.fn()
+    mockSupabase(from)
+
+    const response = await POST(request({ workoutId }))
+
+    expect(response.status).toBe(400)
+    expect(from).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['the owned workout is missing', { data: null, error: null }],
+    ['the capture revision column is missing', { data: null, error: { code: '42703' } }],
+  ])('cannot read projections when %s', async (_reason, workoutResult) => {
+    const workout = query(workoutResult)
+    const from = vi.fn().mockReturnValueOnce(workout)
+    mockSupabase(from)
+
+    const response = await POST(request({ workoutId: 'workout-1', blocks: [] }))
+
+    expect(response.status).toBe(404)
+    expect(from.mock.calls).toEqual([['workouts']])
+  })
+
+  it('returns 503 when the saved projections cannot be read', async () => {
+    const workout = query({ data: { id: 'workout-1', capture_revision: 1 }, error: null })
+    const records = query({ data: null, error: { code: '42P01' } })
+    const from = vi.fn().mockReturnValueOnce(workout).mockReturnValueOnce(records)
+    mockSupabase(from)
+
+    const response = await POST(request({ workoutId: 'workout-1' }))
+
+    expect(response.status).toBe(503)
+    expect(records.upsert).not.toHaveBeenCalled()
   })
 })

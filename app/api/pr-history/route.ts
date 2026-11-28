@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
+import { isRepMaxType, REP_MAX_TYPES } from '@/app/lib/pr-detection'
 
-const PR_TYPES = new Set(['weight', 'reps', 'time', 'volume'])
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100
 const MAX_OFFSET = 10_000
@@ -41,8 +41,8 @@ export async function GET(request: Request) {
     if (offset === null) {
       return apiError(`offset must be an integer between 0 and ${MAX_OFFSET}`, 400)
     }
-    if (prType && !PR_TYPES.has(prType)) {
-      return apiError('prType must be one of: weight, reps, time, volume', 400)
+    if (prType && !isRepMaxType(prType)) {
+      return apiError('prType must be one of: 1rm, 3rm, 5rm', 400)
     }
     if (exercise && exercise.length > 100) {
       return apiError('exercise must be 100 characters or fewer', 400)
@@ -53,7 +53,9 @@ export async function GET(request: Request) {
       .from('personal_records')
       .select('*', { count: 'exact' })
       .eq('user_id', user.id)
+      .in('pr_type', REP_MAX_TYPES)
       .order('achieved_at', { ascending: false })
+      .order('id', { ascending: false })
       .range(offset, offset + limit - 1)
 
     if (exercise) {
@@ -85,6 +87,7 @@ export async function GET(request: Request) {
       .from('personal_records')
       .select('achieved_at')
       .eq('user_id', user.id)
+      .in('pr_type', REP_MAX_TYPES)
       .gt('previous_value', 0)
 
     if (allError) {

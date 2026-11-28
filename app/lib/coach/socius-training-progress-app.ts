@@ -1,5 +1,5 @@
 import { readOwnedWorkoutSummary } from '../owned-workout-summary'
-import { formatPRValue, personalRecordLabels, type PRResult } from '../pr-detection'
+import { formatPRValue, personalRecordLabels, REP_MAX_TYPES, type RepMaxType } from '../pr-detection'
 import { formatUTCAsLocalDateInZone, getZonedDateWindow } from '../timezone-utils'
 import { CoachingContextError, contextObject } from './coaching-context'
 import { assertVerifiedContextPrincipal, type AuthorizeContextRequest, type ContextToolPolicy } from './coaching-context-tool'
@@ -30,7 +30,8 @@ export function createSociusTrainingProgressTool(authorize: AuthorizeContextRequ
       let month: ReturnType<typeof getZonedDateWindow>
       try {
         const date = formatUTCAsLocalDateInZone(asOf.toISOString(), timezone)
-        month = getZonedDateWindow(`${date.slice(0, 7)}-01`, date, timezone, 31)
+        // Rep-max projections encode the saved workout date at UTC midnight.
+        month = getZonedDateWindow(`${date.slice(0, 7)}-01`, date, 'UTC', 31)
       } catch {
         throw new CoachingContextError(400, 'Supply a named IANA timezone')
       }
@@ -44,10 +45,10 @@ export function createSociusTrainingProgressTool(authorize: AuthorizeContextRequ
       const [workouts, records, monthCount] = await Promise.allSettled([
         readOwnedWorkoutSummary(db, owner, { asOf, timezone }),
         db.from('personal_records').select('user_id, exercise, pr_type, value, achieved_at')
-          .eq('user_id', owner).gt('previous_value', 0)
+          .eq('user_id', owner).in('pr_type', REP_MAX_TYPES).gt('previous_value', 0)
           .order('achieved_at', { ascending: false }).order('id', { ascending: false }).limit(5),
         db.from('personal_records').select('id', { count: 'exact', head: true })
-          .eq('user_id', owner).gt('previous_value', 0)
+          .eq('user_id', owner).in('pr_type', REP_MAX_TYPES).gt('previous_value', 0)
           .gte('achieved_at', month.startUtc).lt('achieved_at', month.endUtcExclusive),
       ])
 
@@ -56,9 +57,10 @@ export function createSociusTrainingProgressTool(authorize: AuthorizeContextRequ
       const entries = recordRows && !wrongOwner
         ? recordRows.map(record => ({
           exercise: record.exercise,
-          type: personalRecordLabels[record.pr_type as PRResult['prType']],
-          value: formatPRValue(record.pr_type, Number(record.value)),
-          date: formatUTCAsLocalDateInZone(record.achieved_at, timezone),
+          type: personalRecordLabels[record.pr_type as RepMaxType],
+          value: formatPRValue(Number(record.value)),
+          // The rep-max projection stores the workout's saved date as UTC midnight.
+          date: record.achieved_at.slice(0, 10),
         })) : null
       const progress = {
         timezone,

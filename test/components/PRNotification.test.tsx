@@ -4,9 +4,9 @@ import '@testing-library/jest-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, cleanup } from '@testing-library/react'
 import PRNotification from '@/app/components/PRNotification'
-import { detectPRsFromBlocks, type PRResult } from '@/app/lib/pr-detection'
+import type { PRResult } from '@/app/lib/pr-detection'
 
-const improvement: PRResult = { isPR: true, exercise: 'Back squat', prType: 'weight', previousBest: 200, newRecord: 225, improvement: '+25 lbs' }
+const improvement: PRResult = { isPR: true, exercise: 'Bench Press', prType: '1rm', previousBest: 200, newRecord: 225 }
 
 describe('quiet record feedback', () => {
   afterEach(() => { cleanup(); vi.useRealTimers() })
@@ -14,11 +14,11 @@ describe('quiet record feedback', () => {
     const { container } = render(<PRNotification prs={[]} onDismiss={vi.fn()} />)
     expect(container.firstChild).toBeNull()
   })
-  it.each([['weight', 'Max weight'], ['reps', 'Repetitions'], ['time', 'Time'], ['volume', 'Session volume']] as const)('identifies the %s comparison', (prType, label) => {
+  it.each([['1rm', '1RM'], ['3rm', '3RM'], ['5rm', '5RM']] as const)('identifies the %s comparison', (prType, label) => {
     render(<PRNotification prs={[{ ...improvement, prType }]} onDismiss={vi.fn()} />)
     expect(screen.getByText(label)).toBeInTheDocument()
-    expect(screen.getByText('Back squat')).toBeInTheDocument()
-    expect(screen.getByText('+25 lbs')).toBeInTheDocument()
+    expect(screen.getByText('Bench Press')).toBeInTheDocument()
+    expect(screen.getByText('225 lbs')).toBeInTheDocument()
   })
   it('can be dismissed with Escape or a downward swipe', () => {
     const dismiss = vi.fn()
@@ -37,7 +37,7 @@ describe('quiet record feedback', () => {
   it('groups records without a timer and dismisses explicitly', () => {
     vi.useFakeTimers()
     const dismiss = vi.fn()
-    render(<PRNotification prs={[improvement, { ...improvement, exercise: 'Deadlift' }]} onDismiss={dismiss} />)
+    render(<PRNotification prs={[improvement, { ...improvement, exercise: 'Power Clean' }]} onDismiss={dismiss} />)
     expect(screen.getByText('2 new personal records')).toBeInTheDocument()
     vi.advanceTimersByTime(30000)
     expect(dismiss).not.toHaveBeenCalled()
@@ -45,8 +45,5 @@ describe('quiet record feedback', () => {
     expect(dismiss).toHaveBeenCalledOnce()
     cleanup()
     vi.useRealTimers()
-  })
-  it('does not interpret a cardio duration as a faster-is-better benchmark', () => {
-    expect(detectPRsFromBlocks([{ block_type: 'CARDIO', title: 'Cool Down Walk', block_score: { time_s: 480 } }], [{ exercise: 'Cool Down Walk', pr_type: 'time', value: 600 }])).toEqual([])
   })
 })

@@ -1,180 +1,52 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
-import { detectPRsFromBlocks, type WorkoutBlock } from '@/app/lib/pr-detection'
-import { auditedCaptureInstalled } from '@/app/lib/capture/compatibility'
+import { REP_MAX_TYPES, type RepMaxType } from '@/app/lib/pr-detection'
 
 export async function POST(request: Request) {
   try {
     const supabase = await createServerClient()
-
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return apiError('Unauthorized', 401)
+    if (authError || !user) return apiError('Unauthorized', 401)
+
+    const payload = await request.json().catch(() => null)
+    const workoutId = payload?.workoutId
+    if (typeof workoutId !== 'string' || !workoutId.trim()) {
+      return apiError('workoutId is required', 400)
     }
 
-    const { workoutId, blocks } = await request.json() as {
-      workoutId: string;
-      blocks: WorkoutBlock[];
-    }
-
-    if (await auditedCaptureInstalled(supabase)) {
-      const { data: workout, error } = await supabase.from('workouts').select('id,capture_revision').eq('id', workoutId).eq('user_id', user.id).maybeSingle()
-      if (error || !workout) return apiError('Workout unavailable', 404)
-      const { data: records, error: recordsError } = await supabase.from('personal_records').select('*').eq('user_id', user.id).eq('workout_id', workoutId)
-      if (recordsError) return apiError('Record projections unavailable', 503)
-      // Canonical save/amend transactions own projections. Stale client blocks cannot recreate an old record.
-      return NextResponse.json({ prs: (records ?? []).map(record => ({ exercise: record.exercise, prType: record.pr_type,
-        newRecord: Number(record.value), previousBest: Number(record.previous_value ?? 0), isPR: record.previous_value !== null })),
-        captureRevision: workout.capture_revision, projectionsStatus: 'supported_reported_quantities_only' })
-    }
-
-    if (!workoutId || !blocks || !Array.isArray(blocks)) {
-      return apiError('workoutId and blocks are required', 400)
-    }
-
-    // Gather all exercise names and WOD titles from this workout
-    const exerciseNames = new Set<string>()
-    for (const block of blocks) {
-      if (block.title) exerciseNames.add(block.title.toLowerCase())
-      if (block.segments) {
-        for (const seg of block.segments) {
-          if (!seg.events) continue
-          for (const event of seg.events) {
-            exerciseNames.add(event.movement_name.toLowerCase())
-            // Also add reps-at-weight keys
-            const load = event.performed?.load?.value
-            if (load && load > 0) {
-              exerciseNames.add(`${event.movement_name.toLowerCase()}@${load}lb`)
-            }
-          }
-        }
-      }
-    }
-
-    // Fetch user's historical PRs for these exercises
-    const { data: historicalPRs, error: prError } = await supabase
-      .from('personal_records')
-      .select('exercise, pr_type, value')
+    const { data: workout, error } = await supabase.from('workouts')
+      .select('id, capture_revision')
+      .eq('id', workoutId)
       .eq('user_id', user.id)
+      .maybeSingle()
+    if (error || !workout) return apiError('Workout unavailable', 404)
 
-    if (prError) {
-      console.error('Error fetching historical PRs:', prError)
-      return apiError('Failed to fetch PR history', 500)
-    }
-
-    // Also check block_scores for historical data (for users without PR records yet)
-    const { data: historicalBlocks, error: blockError } = await supabase
-      .from('workouts')
-      .select('blocks')
+    // The canonical save or amendment owns the PR projection.
+    const { data: records, error: recordsError } = await supabase.from('personal_records')
+      .select('exercise,pr_type,value,previous_value')
       .eq('user_id', user.id)
-      .neq('id', workoutId)
-      .order('workout_date', { ascending: false })
-      .limit(200)
+      .eq('workout_id', workoutId)
+      .in('pr_type', REP_MAX_TYPES)
+    if (recordsError) return apiError('Record projections unavailable', 503)
 
-    if (blockError) {
-      console.error('Error fetching historical workouts:', blockError)
-    }
+    const rows = records ?? []
+    const prs = rows.filter(record => record.previous_value !== null).map(record => ({
+      exercise: record.exercise,
+      prType: record.pr_type as RepMaxType,
+      newRecord: Number(record.value),
+      previousBest: Number(record.previous_value),
+      isPR: true,
+    }))
 
-    // Build historical records from both sources
-    const historicalRecords: Array<{ exercise: string; pr_type: string; value: number }> = []
-
-    // From personal_records table
-    if (historicalPRs) {
-      for (const pr of historicalPRs) {
-        historicalRecords.push({
-          exercise: pr.exercise,
-          pr_type: pr.pr_type,
-          value: Number(pr.value),
-        })
-      }
-    }
-
-    // From historical workout blocks (to catch data from before PR tracking)
-    if (historicalBlocks) {
-      for (const workout of historicalBlocks) {
-        const wBlocks = workout.blocks as WorkoutBlock[]
-        if (!wBlocks) continue
-        const volumeByExercise = new Map<string, { exercise: string; value: number }>()
-        for (const block of wBlocks) {
-          if (block.segments) {
-            for (const seg of block.segments) {
-              if (!seg.events) continue
-              const rounds = seg.rounds ?? 1
-              for (const event of seg.events) {
-                const name = event.movement_name
-                const load = event.performed?.load?.value
-                const reps = event.performed?.reps
-                if (load && load > 0) {
-                  historicalRecords.push({ exercise: name, pr_type: 'weight', value: load })
-                  if (reps && reps > 0) {
-                    historicalRecords.push({
-                      exercise: `${name} @ ${load} lbs`,
-                      pr_type: 'reps',
-                      value: reps,
-                    })
-                    const volume = rounds * reps * load
-                    const key = name.toLowerCase()
-                    const current = volumeByExercise.get(key)
-                    if (current) {
-                      current.value += volume
-                    } else {
-                      volumeByExercise.set(key, { exercise: name, value: volume })
-                    }
-                  }
-                }
-              }
-            }
-          }
-          if (block.block_type === 'FOR_TIME' && block.block_score?.time_s && block.title) {
-            historicalRecords.push({
-              exercise: block.title,
-              pr_type: 'time',
-              value: block.block_score.time_s,
-            })
-          }
-        }
-        for (const volume of volumeByExercise.values()) {
-          historicalRecords.push({
-            exercise: volume.exercise,
-            pr_type: 'volume',
-            value: volume.value,
-          })
-        }
-      }
-    }
-
-    // Detect PRs
-    const prs = detectPRsFromBlocks(blocks, historicalRecords)
-
-    // Store detected PRs
-    if (prs.length > 0) {
-      const prRecords = prs.map(pr => ({
-        user_id: user.id,
-        exercise: pr.exercise,
-        pr_type: pr.prType,
-        value: pr.newRecord,
-        previous_value: pr.previousBest > 0 ? pr.previousBest : null,
-        workout_id: workoutId,
-        achieved_at: new Date().toISOString(),
-      }))
-
-      const { error: insertError } = await supabase
-        .from('personal_records')
-        .upsert(prRecords, {
-          onConflict: 'user_id,workout_id,exercise,pr_type',
-          ignoreDuplicates: true,
-        })
-
-      if (insertError) {
-        console.error('Error storing PRs:', insertError)
-        return apiError('Workout saved, but records could not be saved. Try checking records again.', 500)
-      }
-    }
-
-    return NextResponse.json({ prs: prs.filter(pr => pr.isPR), baselinesRecorded: prs.filter(pr => !pr.isPR).length })
+    return NextResponse.json({
+      prs,
+      baselinesRecorded: rows.length - prs.length,
+      captureRevision: workout.capture_revision,
+      projectionsStatus: 'supported_reported_quantities_only',
+    })
   } catch (error) {
     console.error('PR check error:', error)
-    return apiError('Failed to check PRs', 500, error instanceof Error ? error.message : 'Unknown error')
+    return apiError('Failed to check PRs', 500)
   }
 }

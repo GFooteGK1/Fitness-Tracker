@@ -308,7 +308,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
     vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
     vi.stubEnv('SOCIUS_MCP_ACTIVITY_UI_ENABLED', 'true')
     const pr = (id: string, exercise: string, achieved_at: string, previous_value: number | null = 60) => ({
-      id, exercise, achieved_at, pr_type: 'weight', value: '75', previous_value,
+      id, exercise, achieved_at, pr_type: '3rm', value: '75', previous_value,
     })
     const { client, rows, writes, traces } = await connect(owner, data => {
       data.workouts = [
@@ -320,10 +320,11 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         { id: 'future', workout_date: '2026-12-01', blocks: [{ block_type: 'STRENGTH' }] },
       ]
       data.personal_records = [
-        pr('recent-pr', 'Front squat', '2026-12-01T05:00:00Z'),
-        pr('month-start', 'Strict press', '2026-11-01T05:00:00Z'),
+        pr('recent-pr', 'Front squat', '2026-11-30T00:00:00.000Z'),
+        pr('month-start', 'Strict press', '2026-11-01T00:00:00.000Z'),
         pr('baseline', 'First attempt', '2026-11-23T10:00:00Z', null),
-        ...Array.from({ length: 6 }, (_, index) => pr(`past-${index}`, `Older PR ${index}`, '2026-11-01T04:59:59Z')),
+        { ...pr('legacy', 'Legacy volume', '2026-11-30T00:00:00.000Z'), pr_type: 'volume' },
+        ...Array.from({ length: 6 }, (_, index) => pr(`past-${index}`, `Older PR ${index}`, '2026-10-31T00:00:00.000Z')),
       ]
     })
     rows.workouts.push({ id: 'other-workout', user_id: other, workout_date: '2026-11-28', blocks: [{ block_type: 'CARDIO' }] })
@@ -343,15 +344,15 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         records: {
           monthCount: 2,
           entries: expect.arrayContaining([
-            { exercise: 'Front squat', type: 'Max weight', value: '75 lbs', date: '2026-11-30' },
-            { exercise: 'Strict press', type: 'Max weight', value: '75 lbs', date: '2026-11-01' },
+            { exercise: 'Front squat', type: '3RM', value: '75 lbs', date: '2026-11-30' },
+            { exercise: 'Strict press', type: '3RM', value: '75 lbs', date: '2026-11-01' },
           ]),
         },
       })
       expect(progress).toHaveProperty('records.entries.length', 5)
       expect(result.structuredContent).toBeUndefined()
       expect(JSON.stringify(result.content)).not.toContain('Front squat')
-      expect(JSON.stringify(progress)).not.toMatch(/Another athlete|First attempt|Private past workout|recent-pr/)
+      expect(JSON.stringify(progress)).not.toMatch(/Another athlete|First attempt|Private past workout|recent-pr|Legacy volume/)
       expect(traces.map(trace => trace.table).sort()).toEqual(['personal_records', 'personal_records', 'workouts', 'workouts'])
       expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner))).toBe(true)
       expect(writes).not.toHaveBeenCalled()
@@ -364,7 +365,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
     const { client, rows, writes } = await connect(owner, undefined, undefined, { foreignRows: true })
     rows.workouts.push({ id: 'other-workout', user_id: other, workout_date: localDate })
     rows.personal_records = [{ id: 'other-pr', user_id: other, exercise: 'Private exercise',
-      pr_type: 'weight', value: 70, previous_value: 60, achieved_at: '2026-10-18T10:00:00Z' }]
+      pr_type: '3rm', value: 70, previous_value: 60, achieved_at: '2026-10-18T10:00:00Z' }]
     try {
       const result = await client.callTool({ name: 'read_socius_training_progress', arguments: { timezone: 'America/Chicago' } })
       expect(result._meta?.progress).toMatchObject({ workouts: null, records: { entries: null, monthCount: null } })

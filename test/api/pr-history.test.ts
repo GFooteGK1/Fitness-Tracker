@@ -17,6 +17,7 @@ function createQuery(result: QueryResult) {
   const query = {
     select: vi.fn(),
     eq: vi.fn(),
+    in: vi.fn(),
     gt: vi.fn(),
     order: vi.fn(),
     range: vi.fn(),
@@ -25,7 +26,7 @@ function createQuery(result: QueryResult) {
       Promise.resolve(resolve ? resolve(result) : result)),
   }
 
-  for (const method of ['select', 'eq', 'gt', 'order', 'range', 'ilike'] as const) {
+  for (const method of ['select', 'eq', 'in', 'gt', 'order', 'range', 'ilike'] as const) {
     query[method].mockReturnValue(query)
   }
 
@@ -93,8 +94,8 @@ describe('GET /api/pr-history', () => {
   })
 
   it('applies filters and pagination and returns summary counts', async () => {
-    const records = [{ id: 'pr-1', exercise: 'Back Squat', pr_type: 'weight' }]
-    const { client, from, historyQuery } = createSupabase(
+    const records = [{ id: 'pr-1', exercise: 'Back Squat', pr_type: '3rm' }]
+    const { client, from, historyQuery, summaryQuery } = createSupabase(
       { data: records, error: null, count: 1 },
       {
         data: [
@@ -108,7 +109,7 @@ describe('GET /api/pr-history', () => {
     )
     vi.mocked(createServerClient).mockResolvedValue(client as never)
 
-    const response = await GET(request('?exercise=%20Back%20Squat%20&prType=weight&limit=20&offset=10'))
+    const response = await GET(request('?exercise=%20Back%20Squat%20&prType=3rm&limit=20&offset=10'))
     const body = await response.json()
 
     expect(response.status).toBe(200)
@@ -124,10 +125,32 @@ describe('GET /api/pr-history', () => {
     })
     expect(from).toHaveBeenNthCalledWith(1, 'personal_records')
     expect(from).toHaveBeenNthCalledWith(2, 'personal_records')
+    expect(historyQuery.select).toHaveBeenCalledWith('*', { count: 'exact' })
+    expect(historyQuery.eq).toHaveBeenCalledWith('user_id', 'user-1')
+    expect(historyQuery.in).toHaveBeenCalledWith('pr_type', ['1rm', '3rm', '5rm'])
     expect(historyQuery.range).toHaveBeenCalledWith(10, 29)
     expect(historyQuery.ilike).toHaveBeenCalledWith('exercise', '%Back Squat%')
-    expect(historyQuery.eq).toHaveBeenCalledWith('pr_type', 'weight')
+    expect(historyQuery.eq).toHaveBeenCalledWith('pr_type', '3rm')
     expect(historyQuery.gt).toHaveBeenCalledWith('previous_value', 0)
+    expect(summaryQuery.in).toHaveBeenCalledWith('pr_type', ['1rm', '3rm', '5rm'])
+    expect(summaryQuery.eq.mock.calls).toEqual([['user_id', 'user-1']])
+    expect(summaryQuery.ilike).not.toHaveBeenCalled()
+    expect(summaryQuery.range).not.toHaveBeenCalled()
+  })
+
+  it('includes rep-max baselines in history when requested', async () => {
+    const records = [{ id: 'pr-1', exercise: 'Bench Press', pr_type: '1rm', previous_value: null }]
+    const { client, historyQuery, summaryQuery } = createSupabase({ data: records, error: null, count: 1 })
+    vi.mocked(createServerClient).mockResolvedValue(client as never)
+
+    const response = await GET(request('?includeBaselines=true'))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ records, total: 1, summary: { allTime: 0 } })
+    expect(historyQuery.in).toHaveBeenCalledWith('pr_type', ['1rm', '3rm', '5rm'])
+    expect(historyQuery.gt).not.toHaveBeenCalled()
+    expect(summaryQuery.in).toHaveBeenCalledWith('pr_type', ['1rm', '3rm', '5rm'])
+    expect(summaryQuery.gt).toHaveBeenCalledWith('previous_value', 0)
   })
 
   it.each([
@@ -137,7 +160,11 @@ describe('GET /api/pr-history', () => {
     ['?offset=-1', 'offset must be an integer between 0 and 10000'],
     ['?offset=1.5', 'offset must be an integer between 0 and 10000'],
     ['?offset=10001', 'offset must be an integer between 0 and 10000'],
-    ['?prType=distance', 'prType must be one of: weight, reps, time, volume'],
+    ['?prType=distance', 'prType must be one of: 1rm, 3rm, 5rm'],
+    ['?prType=weight', 'prType must be one of: 1rm, 3rm, 5rm'],
+    ['?prType=reps', 'prType must be one of: 1rm, 3rm, 5rm'],
+    ['?prType=time', 'prType must be one of: 1rm, 3rm, 5rm'],
+    ['?prType=volume', 'prType must be one of: 1rm, 3rm, 5rm'],
     [`?exercise=${'x'.repeat(101)}`, 'exercise must be 100 characters or fewer'],
   ])('rejects invalid query %s', async (query, expectedError) => {
     const { client, from } = createSupabase()
