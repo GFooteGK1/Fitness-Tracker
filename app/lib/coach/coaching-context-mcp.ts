@@ -44,6 +44,10 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
     }
     return { db, owner: principal.subject }
   }
+  const readSessionDraft = async (date: string, revision?: string) => {
+    const { db, owner } = await authorizeDraftStorage()
+    return readDailySessionDraft(db, owner, date, revision)
+  }
   const today = readTodayWorkout ? createSociusTodayTool(createOwnedCoachingContextReader(authorize, policy), {
     activityEnabled,
     nutritionEnabled: activityEnabled,
@@ -52,25 +56,23 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
     readWorkout: readTodayWorkout,
     readWorkoutRecovery: createOwnedWorkoutRecoveryReader(authorize, policy),
     readTodayRecovery: createOwnedTodayRecoveryReader(authorize, policy),
-    readSessionDraft: async (date, revision) => {
-      const { db, owner } = await authorizeDraftStorage()
-      return readDailySessionDraft(db, owner, date, revision)
-    },
+    readSessionDraft,
   }) : null
   const activity = activityEnabled ? createSociusActivityTool(history) : null
   const nutrition = activityEnabled ? createSociusNutritionTool(authorize, policy) : null
   const trainingProgress = activityEnabled ? createSociusTrainingProgressTool(authorize, policy) : null
   const sessionDraft = today ? createSessionDraftTools(createSessionDraftEvidenceReader(authorize, policy), saveCheckIn && createDraftStorageClient
-    ? async (date, tzOffset, revision, draft) => {
-      const { owner } = await authorizeDraftStorage()
-      if (date !== formatUTCAsLocalDateWithOffset(new Date().toISOString(), tzOffset)) {
-        throw new CoachingContextError(409, 'The local date changed. Open Today for the current date.')
-      }
-      try {
-        return saveDailySessionDraft(createDraftStorageClient(), owner, date, revision, draft)
-      } catch {
-        return 'unavailable'
-      }
+    ? { read: readSessionDraft, async save(tzOffset, revision, baselineRevision, draft) {
+        const { owner } = await authorizeDraftStorage()
+        if (draft.date !== formatUTCAsLocalDateWithOffset(new Date().toISOString(), tzOffset)) {
+          throw new CoachingContextError(409, 'The local date changed. Open Today for the current date.')
+        }
+        try {
+          return await saveDailySessionDraft(createDraftStorageClient(), owner, draft.date, revision, baselineRevision, draft)
+        } catch {
+          return 'unavailable'
+        }
+      }, confirm: (tzOffset, date, revision, expected) => today.confirmSessionDraft(tzOffset, date, revision, expected).catch(() => false),
     }
     : undefined) : null
   const activities = activityRecordTools.filter(tool => writesEnabled || tool.annotations.readOnlyHint)

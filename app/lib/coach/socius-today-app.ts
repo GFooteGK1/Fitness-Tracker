@@ -11,6 +11,7 @@ import {
 import { projectTodayRecovery, type createOwnedTodayRecoveryReader, type createOwnedWorkoutRecoveryReader } from './recovery-today-app'
 import { projectSessionDraftRequirement } from './session-draft-evidence'
 import { readStoredSessionDraft, sessionDraftSafetyBinding } from './session-draft-tools'
+import { stableStringify } from './rolling-weekly-contracts'
 import { sociusTodayHtml } from './today-app-ui'
 import { trainingRecordsOrigin } from './training-progress-app-ui'
 import type { createWorkoutTodayReader } from './workout-today-app'
@@ -141,7 +142,7 @@ type WorkoutToday = Awaited<ReturnType<ReturnType<typeof createWorkoutTodayReade
 type WorkoutRecovery = Awaited<ReturnType<ReturnType<typeof createOwnedWorkoutRecoveryReader>>>
 type ReadSessionDraft = (date: string, revision?: string) => ReturnType<typeof readDailySessionDraft>
 
-async function projectSessionDraft(context: CoachingContext, workout: WorkoutToday, readDraft: ReadSessionDraft) {
+async function projectSessionDraft(context: CoachingContext, workout: WorkoutToday, readDraft: ReadSessionDraft, expected?: unknown) {
   const { dailyCheckIn, localDate, requirements } = context
   if (dailyCheckIn.status !== 'saved') return { sessionDraftStatus: dailyCheckIn.status } as const
   const restrictions = requirements.training_constraints
@@ -151,6 +152,7 @@ async function projectSessionDraft(context: CoachingContext, workout: WorkoutTod
 
   const stored = await readDraft(localDate, dailyCheckIn.revision)
   if (stored.status !== 'saved') return { sessionDraftStatus: stored.status } as const
+  if (expected !== undefined && stableStringify(stored.draft) !== stableStringify(expected)) return { sessionDraftStatus: 'missing' } as const
   const acceptedPlan: unknown = context.acceptedProgramming?.plan
   const acceptedPlanId = contextObject(acceptedPlan) && typeof acceptedPlan.id === 'string' ? acceptedPlan.id : null
   const safetyBinding = sessionDraftSafetyBinding(projectSessionDraftRequirement(restrictions), acceptedPlanId)
@@ -232,7 +234,21 @@ export function createSociusTodayTool(
     readSessionDraft: ReadSessionDraft
   },
 ) {
+  async function readTodaySnapshot(tzOffset: number, expected?: unknown) {
+    const context = await readContext({ tzOffset, days: 7 })
+    const workout = await options.readWorkout(context)
+    const session = await projectSessionDraft(context, workout, options.readSessionDraft, expected)
+    return { context, workout, session }
+  }
+
   return {
+    async confirmSessionDraft(tzOffset: number, date: string, revision: string, expected: unknown) {
+      const { context, session } = await readTodaySnapshot(tzOffset, expected)
+      return context.localDate === date
+        && context.dailyCheckIn.status === 'saved' && context.dailyCheckIn.revision === revision
+        && session.sessionDraftStatus === 'saved'
+        && formatUTCAsLocalDateWithOffset(new Date().toISOString(), tzOffset) === date
+    },
     async call(input: unknown) {
       if (!contextObject(input) || Object.keys(input).some(key => !['tzOffset', 'checkIn', 'sessionDraftOnly', 'whoopOnly'].includes(key))) {
         throw new CoachingContextError(400, 'Reopen Today to view your saved check-in.')
@@ -267,9 +283,7 @@ export function createSociusTodayTool(
         // snapshot until there is a stored draft that could be displayed.
         if (stored.status !== 'saved') return { content, _meta: { today: { date, sessionDraftStatus: stored.status } } }
       }
-      const context = await readContext({ tzOffset, days: 7 })
-      const workout = await options.readWorkout(context)
-      const session = await projectSessionDraft(context, workout, options.readSessionDraft)
+      const { context, workout, session } = await readTodaySnapshot(tzOffset)
       const assessment = context.dailyCheckIn
       if (draftOnly) {
         const { title, reason, reviewBeforeTraining } = projectWorkoutRecommendation(workout)

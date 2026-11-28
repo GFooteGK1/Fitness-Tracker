@@ -4,8 +4,9 @@ import { stableStringify } from './rolling-weekly-contracts'
 
 const table = 'coach_daily_checkins'
 const columns = 'user_id,local_date,check_in_revision,session_draft'
+const draftRevisionColumn = 'session_draft->>revision'
 
-type DailySessionDraftRead =
+export type DailySessionDraftRead =
   | { status: 'saved'; revision: string; draft: unknown }
   | { status: 'missing' }
   | { status: 'unavailable' }
@@ -28,14 +29,15 @@ export async function readDailySessionDraft(db: SupabaseClient, owner: string, d
   }
 }
 
-/** A legacy update must preserve versioned drafts and their feedback after rollback. */
-export async function saveDailySessionDraft(db: SupabaseClient, owner: string, date: string, revision: string, draft: unknown): Promise<'saved' | 'stale' | 'unavailable'> {
+/** Update only the check-in and draft revisions used when validating this draft. */
+export async function saveDailySessionDraft(db: SupabaseClient, owner: string, date: string, revision: string,
+  baselineRevision: string | null, draft: unknown): Promise<'saved' | 'stale' | 'unavailable'> {
   if (!contextObject(draft) || draft.date !== date) return 'unavailable'
   try {
-    const { data, error } = await db.from(table).update({ session_draft: draft })
+    const current = db.from(table).update({ session_draft: draft })
       .eq('user_id', owner).eq('local_date', date).eq('check_in_revision', revision)
-      .is('session_draft->>revision', null)
-      .select(columns)
+    const { data, error } = await (baselineRevision === null ? current.is(draftRevisionColumn, null)
+      : current.eq(draftRevisionColumn, baselineRevision)).select(columns)
     if (error || !Array.isArray(data) || data.length > 1) return 'unavailable'
     if (!data.length) return 'stale'
     const row = data[0]

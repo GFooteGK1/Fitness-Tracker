@@ -60,10 +60,12 @@ ratings and retains historical relative answers with their scale. Today and
 uses the native chat handoff to request the draft under ADR-0052. The chosen LLM owns
 workout authoring.
 
-The ADR-0054 candidate lets the confirmed check-in action save the validated draft
-to the owner’s local-day check-in row. The save is opt-in and uses the MCP writes
-flag. A changed assessment clears its draft. Today shows the saved session below
-the check-in when the local date, check-in revision, and training safety allow it.
+ADR-0054 and ADR-0056 store validated Today recommendations in the owner’s
+local-day check-in row behind the MCP writes flag. A normal request for today's
+session saves it. Explicit previews use the read-only tool. An athlete-requested
+edit conditionally replaces the current draft and records the athlete's feedback
+with that revision. Today confirms the exact draft through the normal read path.
+Changed check-in answers clear the associated draft and edit history.
 
 Saved WHOOP values appear second with source dates and the comparison with a
 qualifying earlier score. Today checks for newer saved readings while the WHOOP
