@@ -322,6 +322,9 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       data.personal_records = [
         pr('recent-pr', 'Front squat', '2026-12-01T05:00:00Z'),
         pr('month-start', 'Strict press', '2026-11-01T05:00:00Z'),
+        { ...pr('rep-month-start', 'Power Clean', '2026-11-01T00:00:00Z'), pr_type: '3rm' },
+        { ...pr('rep-recent', 'Power Snatch', '2026-11-30T00:00:00Z'), pr_type: '1rm' },
+        { ...pr('rep-next-month', 'Power Clean and Jerk', '2026-12-01T00:00:00Z'), pr_type: '5rm' },
         pr('baseline', 'First attempt', '2026-11-23T10:00:00Z', null),
         ...Array.from({ length: 6 }, (_, index) => pr(`past-${index}`, `Older PR ${index}`, '2026-11-01T04:59:59Z')),
       ]
@@ -341,10 +344,11 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         timezone: 'America/Chicago',
         workouts: { currentMonth: 'November 2026', monthToDate: 1, totalWorkouts: 502, strengthSessions: 2, metcons: 1, cardio: 500 },
         records: {
-          monthCount: 2,
+          monthCount: 4,
           entries: expect.arrayContaining([
             { exercise: 'Front squat', type: 'Max weight', value: '75 lbs', date: '2026-11-30' },
             { exercise: 'Strict press', type: 'Max weight', value: '75 lbs', date: '2026-11-01' },
+            { exercise: 'Power Snatch', type: '1RM', value: '75 lbs', date: '2026-11-30' },
           ]),
         },
       })
@@ -352,7 +356,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       expect(result.structuredContent).toBeUndefined()
       expect(JSON.stringify(result.content)).not.toContain('Front squat')
       expect(JSON.stringify(progress)).not.toMatch(/Another athlete|First attempt|Private past workout|recent-pr/)
-      expect(traces.map(trace => trace.table).sort()).toEqual(['personal_records', 'personal_records', 'workouts', 'workouts'])
+      expect(traces.map(trace => trace.table).sort()).toEqual(['personal_records', 'personal_records', 'personal_records', 'workouts', 'workouts'])
       expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner))).toBe(true)
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }

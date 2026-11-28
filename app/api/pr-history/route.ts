@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
+import { isRepMaxType, PR_TYPES } from '@/app/lib/pr-detection'
+import { formatUTCAsLocalDateInZone, parseDateString } from '@/app/lib/timezone-utils'
 
-const PR_TYPES = new Set(['weight', 'reps', 'time', 'volume'])
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100
 const MAX_OFFSET = 10_000
@@ -41,8 +42,8 @@ export async function GET(request: Request) {
     if (offset === null) {
       return apiError(`offset must be an integer between 0 and ${MAX_OFFSET}`, 400)
     }
-    if (prType && !PR_TYPES.has(prType)) {
-      return apiError('prType must be one of: weight, reps, time, volume', 400)
+    if (prType && !PR_TYPES.some(type => type === prType)) {
+      return apiError(`prType must be one of: ${PR_TYPES.join(', ')}`, 400)
     }
     if (exercise && exercise.length > 100) {
       return apiError('exercise must be 100 characters or fewer', 400)
@@ -83,7 +84,7 @@ export async function GET(request: Request) {
     // Get all records for summary (unfiltered by exercise/type)
     const { data: allRecords, error: allError } = await supabase
       .from('personal_records')
-      .select('achieved_at')
+      .select('achieved_at, pr_type')
       .eq('user_id', user.id)
       .gt('previous_value', 0)
 
@@ -100,7 +101,9 @@ export async function GET(request: Request) {
     if (allRecords) {
       totalCount = allRecords.length
       for (const rec of allRecords) {
-        const d = new Date(rec.achieved_at)
+        const d = isRepMaxType(rec.pr_type)
+          ? parseDateString(formatUTCAsLocalDateInZone(rec.achieved_at, 'UTC'))
+          : new Date(rec.achieved_at)
         if (d >= startOfYear) yearCount++
         if (d >= startOfMonth) monthCount++
         if (d >= startOfWeek) weekCount++

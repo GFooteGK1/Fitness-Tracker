@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/app/lib/auth/AuthContext'
 import ProtectedRoute from '@/app/components/auth/ProtectedRoute'
-import { formatPRValue } from '@/app/lib/pr-detection'
+import { formatPRDate, formatPRValue, isRepMaxType, personalRecordLabels, REP_MAX_TYPES, type PRType } from '@/app/lib/pr-detection'
 
 interface PRRecord {
   id: string
   exercise: string
-  pr_type: 'weight' | 'reps' | 'time' | 'volume'
+  pr_type: PRType
   value: number
   previous_value: number | null
   achieved_at: string
@@ -22,7 +22,8 @@ interface PRSummary {
   allTime: number
 }
 
-const PR_TYPE_LABELS: Record<string, string> = {
+const PR_TYPE_LABELS: Record<PRType, string> = {
+  ...personalRecordLabels,
   weight: 'Max Weight',
   reps: 'Rep Record',
   time: 'Time Record',
@@ -141,6 +142,7 @@ export default function PRHistory() {
             <option value="reps">Rep Record</option>
             <option value="time">Time Record</option>
             <option value="volume">Volume Record</option>
+            {REP_MAX_TYPES.map(type => <option key={type} value={type}>{PR_TYPE_LABELS[type]}</option>)}
           </select>
         </div>
 
@@ -190,8 +192,8 @@ export default function PRHistory() {
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                         {record.exercise}
                       </h3>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${PR_TYPE_COLORS[record.pr_type]}`}>
-                        {record.previous_value ? PR_TYPE_LABELS[record.pr_type] : 'Baseline'}
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${PR_TYPE_COLORS[record.pr_type] ?? PR_TYPE_COLORS.weight}`}>
+                        {record.previous_value || isRepMaxType(record.pr_type) ? PR_TYPE_LABELS[record.pr_type] : 'Baseline'}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
@@ -208,7 +210,7 @@ export default function PRHistory() {
                     </div>
                   </div>
                   <div className="text-right text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap ml-4">
-                    {new Date(record.achieved_at).toLocaleDateString('en-US', {
+                    {formatPRDate(record.pr_type, record.achieved_at, {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',

@@ -2,14 +2,14 @@
 
 import React, { useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { type PRResult, formatPRValue } from '@/app/lib/pr-detection'
+import { type PRResult, formatPRValue, personalRecordLabels } from '@/app/lib/pr-detection'
 
 interface PRNotificationProps {
   prs: PRResult[]
   onDismiss: () => void
 }
 
-const labels = { weight: 'Max weight', reps: 'Repetitions', time: 'Time', volume: 'Session volume' }
+const labels = { ...personalRecordLabels, reps: 'Repetitions', time: 'Time', volume: 'Session volume' }
 
 export default function PRNotification({ prs, onDismiss }: PRNotificationProps) {
   const records = prs.filter(pr => pr.isPR && pr.previousBest > 0)
