@@ -176,10 +176,17 @@ test.describe('SociusFit Today’s training session', () => {
     await expect(details.getByText('7 / 10', { exact: true })).toBeVisible()
 
     recoveryScore = 68
-    await whoop.getByRole('button', { name: 'Refresh saved WHOOP' }).tap()
+    const checkWhoop = whoop.getByRole('button', { name: 'Check for saved updates' })
+    await checkWhoop.tap()
     await expect(score).toHaveText('68%')
+    await expect(whoop.getByRole('status')).toHaveText('Showing updated WHOOP readings.')
     await expect(details.getByText('7 / 10', { exact: true })).toBeVisible()
     expect(compactReads).toBe(1)
+
+    await checkWhoop.tap()
+    await expect(whoop.getByRole('status')).toHaveText('Your last check found no new saved WHOOP readings.')
+    await expect(whoop.getByText('Sync Now', { exact: true })).toBeVisible()
+    expect(compactReads).toBe(2)
   })
 
   test('opens independently from the check-in and retains the saved draft through the local day', async ({ page }) => {

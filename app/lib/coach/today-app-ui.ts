@@ -239,6 +239,7 @@ ${sociusCardStyles}
     .workout-phase { margin-top: 1rem; }
     .workout-phase h4 { margin: 0; font-size: 1rem; }
     .secondary-action { color: var(--accent); border-color: var(--line); background: var(--surface); }
+    #whoop-refresh-status:empty { margin: 0; }
     #nutrition-refresh, #nutrition-retry, #nutrition-load:not(:empty) { margin-top: .65rem; }
     #load-error { color: var(--danger); border-top-color: var(--danger); background: var(--danger-soft); }
     footer { color: var(--muted); }
@@ -372,7 +373,6 @@ ${nutritionStyles}
         <summary><h2 id="recovery-title">WHOOP</h2></summary>
         <div class="socius-card-body">
           <p id="recovery-status" class="recovery-state"></p>
-          <p id="whoop-refresh-status" class="muted" role="status" hidden></p>
           <p id="recovery-note" class="muted status-label" hidden></p>
           <dl id="whoop-gauges" class="whoop-gauges">
             <div class="whoop-gauge sleep">
@@ -397,9 +397,12 @@ ${nutritionStyles}
               <p id="workout-recovery-note" class="muted" hidden></p>
               <dl id="workout-recovery-metrics" hidden></dl>
             </section>
-            <p class="section-note muted">To request a new import, select Sync Now under WHOOP in your SociusFit profile.</p>
           </details>
-          <button id="whoop-refresh" class="secondary-action" type="button">Refresh saved WHOOP</button>
+          <button id="whoop-refresh" class="secondary-action" type="button">Check for saved updates</button>
+          <p id="whoop-refresh-status" class="section-note muted" role="status"></p>
+          <p class="section-note muted">To import from WHOOP, select <strong>Sync Now</strong> under WHOOP in your SociusFit profile.</p>
+          <button id="whoop-settings" class="secondary-action" type="button" hidden>Open WHOOP settings</button>
+          <p id="whoop-settings-status" class="section-note muted" role="status" hidden></p>
         </div>
       </details>
       <details id="last-workout" class="socius-card">
@@ -496,7 +499,9 @@ ${mcpHostBridgeScript}
       let whoopSignInRequired = false;
       let whoopRefreshTimer = null;
       let lastWhoopReadAt = null;
+      let displayedWhoopReadings = null;
       let displayedWorkoutRecoveryKey = null;
+      let supportsOpenLink = false;
       const whoopRefreshMinAgeMs = 30_000;
       const whoopRefreshIntervalMs = 120_000;
 
@@ -766,6 +771,14 @@ ${mcpHostBridgeScript}
       }
 
       function renderRecovery(recovery) {
+        const readings = JSON.stringify([
+          recovery.recoveryScore, recovery.recoveryScoreStatus, recovery.storedDate, recovery.recoveryUpdatedAt,
+          recovery.hrvMs, recovery.restingHeartRate, recovery.sleepPerformance, recovery.sleepScoreStatus,
+          recovery.sleepStoredDate, recovery.sleepUpdatedAt, recovery.sleepEndedAt, recovery.sleepInBedMinutes,
+          recovery.strainScore, recovery.strainStatus, recovery.strainStoredDate, recovery.strainUpdatedAt,
+        ]);
+        const changed = readings !== displayedWhoopReadings;
+        displayedWhoopReadings = readings;
         const labels = {
           stale: 'Stale',
           unverified: 'Freshness unverified',
@@ -832,8 +845,8 @@ ${mcpHostBridgeScript}
         byId('whoop-details').hidden = metrics.hidden && dates.hidden && byId('workout-recovery').hidden;
         lastWhoopReadAt = Date.now();
         whoopSignInRequired = false;
-        setNote('whoop-refresh-status', null);
         syncWhoopRefreshTimer();
+        return changed;
       }
 
       function renderWorkoutRecovery(effort) {
@@ -922,6 +935,7 @@ ${mcpHostBridgeScript}
         if (retry.disabled || host.closed) return;
         const revision = dayRevision;
         todayReadRevision += 1;
+        byId('whoop-refresh-status').textContent = '';
         retry.disabled = true;
         byId('error-message').textContent = '';
         syncTodayVisibility();
@@ -933,6 +947,8 @@ ${mcpHostBridgeScript}
           if (!initialized) {
             const capabilities = await host.initialize('SociusFit Today', 'fullscreen');
             trainingProgress.setCapabilities(capabilities);
+            supportsOpenLink = Boolean(capabilities.openLinks);
+            byId('whoop-settings').hidden = !supportsOpenLink && typeof window.openai?.openExternal !== 'function';
             hostSupportsDraft = Boolean(capabilities.message?.text);
             initialized = true;
           }
@@ -961,18 +977,23 @@ ${mcpHostBridgeScript}
         const date = byId('today-date').dateTime;
         if (host.closed || activeView !== 'today' || document.visibilityState === 'hidden'
           || (whoopOnly && !byId('whoop-panel').open)
-          || whoopRefreshInFlight || byId('retry').disabled || checkInBusy
+          || whoopRefreshInFlight || byId('retry').disabled
           || !date || byId('error-message').textContent || lastWhoopReadAt === null
           || (!userRequested && (whoopSignInRequired || Date.now() - lastWhoopReadAt < whoopRefreshMinAgeMs))) return;
         const revision = todayReadRevision;
         const refreshButton = byId('whoop-refresh');
+        const refreshStatus = byId('whoop-refresh-status');
+        if (checkInBusy) {
+          if (userRequested) refreshStatus.textContent = 'Check again after your check-in finishes saving.';
+          return;
+        }
         const tzOffset = new Date().getTimezoneOffset();
         const canRender = () => !host.closed && revision === todayReadRevision
           && activeView === 'today' && document.visibilityState !== 'hidden' && new Date().getTimezoneOffset() === tzOffset;
         whoopRefreshInFlight = true;
         refreshButton.disabled = true;
         lastWhoopReadAt = Date.now();
-        if (userRequested) setNote('whoop-refresh-status', 'Checking for updated WHOOP data…');
+        if (userRequested) refreshStatus.textContent = 'Checking for saved WHOOP updates…';
         try {
           const result = await host.request('tools/call', {
             name: 'open_socius_today',
@@ -982,27 +1003,31 @@ ${mcpHostBridgeScript}
           if (result?._meta?.['mcp/www_authenticate']) {
             whoopSignInRequired = true;
             syncWhoopRefreshTimer();
-            setNote('whoop-refresh-status', 'Reconnect SociusFit in ChatGPT to refresh WHOOP.');
+            refreshStatus.textContent = 'Reconnect SociusFit in ChatGPT, then check again.';
             return;
           }
           const today = result?._meta?.today;
           if (result?.isError || !today?.recovery || today.date !== date) {
-            setNote('whoop-refresh-status', 'Could not refresh saved WHOOP data.');
+            if (userRequested) refreshStatus.textContent = 'Could not check saved WHOOP data. Try again.';
             return;
           }
           if (displayedWorkoutRecoveryKey && today.workoutRecoveryKey === displayedWorkoutRecoveryKey) {
             renderWorkoutRecovery(today.recovery.sessionEffort);
           }
-          renderRecovery(today.recovery);
-          if (userRequested) setNote('whoop-refresh-status', 'Saved WHOOP readings refreshed.');
+          const changed = renderRecovery(today.recovery);
+          if (userRequested) {
+            refreshStatus.textContent = today.recovery.status === 'disconnected' ? 'WHOOP is disconnected. Open your profile to reconnect.'
+              : today.recovery.status === 'unavailable' ? 'No saved WHOOP readings are available.'
+              : changed ? 'Showing updated WHOOP readings.' : 'Your last check found no new saved WHOOP readings.';
+          }
         } catch {
-          if (!refreshTodayIfDateChanged() && canRender()) {
-            setNote('whoop-refresh-status', 'Could not refresh saved WHOOP data.');
+          if (!refreshTodayIfDateChanged() && canRender() && userRequested) {
+            refreshStatus.textContent = 'Could not check saved WHOOP data. Try again.';
           }
         } finally {
           whoopRefreshInFlight = false;
           refreshButton.disabled = false;
-          if (userRequested && revision === todayReadRevision && !canRender()) setNote('whoop-refresh-status', null);
+          if (userRequested && revision === todayReadRevision && !canRender()) refreshStatus.textContent = '';
         }
       }
 
@@ -1412,6 +1437,25 @@ ${mcpHostBridgeScript}
         if (event.currentTarget.isConnected) syncWhoopRefreshTimer();
       });
       byId('whoop-refresh').addEventListener('click', () => void refreshWhoop({ userRequested: true, whoopOnly: true }));
+      byId('whoop-settings').addEventListener('click', async event => {
+        const button = event.currentTarget;
+        if (host.closed || button.hidden || button.disabled) return;
+        const url = 'https://www.sociusfit.com/profile#whoop';
+        button.disabled = true;
+        setNote('whoop-settings-status', null);
+        try {
+          if (typeof window.openai?.openExternal === 'function') {
+            await window.openai.openExternal({ href: url });
+          } else if (supportsOpenLink) {
+            const result = await host.request('ui/open-link', { url });
+            if (result?.isError) throw new Error('WHOOP settings could not open');
+          }
+        } catch {
+          if (!host.closed) setNote('whoop-settings-status', 'Could not open your WHOOP settings.');
+        } finally {
+          button.disabled = false;
+        }
+      });
       activityDate.addEventListener('change', loadActivity);
       byId('activity-retry').addEventListener('click', loadActivity);
 
