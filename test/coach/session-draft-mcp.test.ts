@@ -112,9 +112,13 @@ async function connect({ subject = owner, rows = seedRows(), failTable, onSafety
     const filters = new Map<string, unknown>()
     const query = {
       eq(column: string, value: unknown) { filters.set(column, value); return query },
+      is(column: string, value: null) { filters.set(column, value); return query },
       async select(columns: string) {
-        expect([...filters.keys()]).toEqual(['user_id', 'local_date', 'check_in_revision'])
-        const found = rows.coach_daily_checkins.filter(row => [...filters].every(([key, value]) => row[key] === value))
+        expect([...filters.keys()]).toEqual(['user_id', 'local_date', 'check_in_revision', 'session_draft->>revision'])
+        const found = rows.coach_daily_checkins.filter(row => [...filters].every(([key, value]) => {
+          if (key !== 'session_draft->>revision') return row[key] === value
+          return ((row.session_draft as { revision?: string } | null)?.revision ?? null) === value
+        }))
         const data = found.map(row => {
           Object.assign(row, patch)
           return Object.fromEntries(columns.split(',').map(column => [column, row[column]]))
@@ -351,6 +355,33 @@ describe('Today session draft over authenticated stateless MCP', () => {
         expect(today._meta?.today).toMatchObject({ sessionDraftStatus: 'saved', sessionDraft: { title: draft.title } })
         expect(updateDraft).toHaveBeenCalledTimes(1)
       } finally { await reopened.close() }
+    } finally { await client.close() }
+  })
+
+  it('loads a versioned draft after rollback without exposing the attached edit feedback', async () => {
+    vi.stubEnv('SOCIUS_MCP_WRITES_ENABLED', 'true')
+    const rows = seedRows()
+    const row = rows.coach_daily_checkins[0]
+    row.check_in_revision = checkInRevision
+    const { client, updateDraft } = await connect({ rows, storeDrafts: true })
+    try {
+      const prepared = await prepareReady(client, { tzOffset, expectedLocalDate: localDate, expectedCheckInRevision: checkInRevision })
+      const draft = validDraft(prepared.evidence.goals[0].id)
+      expect((await client.callTool(save(prepared.contextId, draft))).structuredContent).toMatchObject({ savedToToday: true })
+
+      const revision = 'dc4938b9-4130-4599-a97d-0ff43d761fea'
+      const text = 'Replace the hills with easy cycling.'
+      row.session_draft = { ...(row.session_draft as Record<string, unknown>), revision,
+        editFeedback: [{ text, recordedAt: new Date().toISOString(), draftRevision: revision, previousDraftRevision: null }] }
+
+      const today = await client.callTool(readToday())
+      expect(today._meta?.today).toMatchObject({ sessionDraftStatus: 'saved', sessionDraft: { title: draft.title } })
+      expect(JSON.stringify(today)).not.toContain(text)
+      const savedVersion = structuredClone(row.session_draft)
+      const staleSave = await client.callTool(save(prepared.contextId, { ...draft, title: 'Legacy overwrite' }))
+      expect(staleSave.isError).toBe(true)
+      expect(row.session_draft).toEqual(savedVersion)
+      expect(updateDraft).toHaveBeenCalledTimes(2)
     } finally { await client.close() }
   })
 

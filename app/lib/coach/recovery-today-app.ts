@@ -1,7 +1,8 @@
+import { formatUTCAsLocalDateWithOffset } from '../timezone-utils'
 import { CoachingContextError, contextObject, type ContextRow } from './coaching-context'
-import { selectOnlyClient } from './coaching-context-server'
+import { readRecoverySources, selectOnlyClient } from './coaching-context-server'
 import { assertVerifiedContextPrincipal, type AuthorizeContextRequest, type ContextToolPolicy } from './coaching-context-tool'
-import { qualifiedRecoveryBefore, type projectContextRecovery } from './external-recovery-context'
+import { projectContextRecovery, qualifiedRecoveryBefore } from './external-recovery-context'
 
 export interface WorkoutRecoveryEvidence {
   performedAt: string | null
@@ -23,6 +24,26 @@ function workoutTime(workout: WorkoutRecoveryEvidence | null | undefined) {
   const at = workout?.performedAt
   return at && /^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(at) && Number.isFinite(Date.parse(at)) && Date.parse(at) <= Date.now()
     ? at : null
+}
+
+export function createOwnedTodayRecoveryReader(authorize: AuthorizeContextRequest, policy: ContextToolPolicy) {
+  return async (tzOffset: number) => {
+    const { principal, db } = await authorize()
+    assertVerifiedContextPrincipal(principal, policy)
+    const identity = await db.auth.getUser()
+    if (identity.error || identity.data.user?.id !== principal.subject) {
+      throw new CoachingContextError(401, 'Authenticated subject mismatch')
+    }
+
+    const sources = Object.fromEntries(await readRecoverySources(selectOnlyClient(db), principal.subject))
+    if (Object.values(sources).some(source => source.status === 'unavailable' || source.status === 'truncated')) {
+      throw new CoachingContextError(503, 'Saved WHOOP data is temporarily unavailable')
+    }
+    const readAt = new Date().toISOString()
+    const date = formatUTCAsLocalDateWithOffset(readAt, tzOffset)
+    const recovery = projectTodayRecovery(projectContextRecovery(sources, readAt, date), tzOffset)
+    return { date, recovery }
+  }
 }
 
 /** Pair retrospectively using the provider's score update time. A later valid
@@ -69,16 +90,25 @@ function metricNumber(row: ContextRow | null, key: string, max = Infinity) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= max ? value : null
 }
 
-function savedScoreStatus(score: number | null, sourceStatus: string) {
-  return score === null ? 'unavailable' : sourceStatus === 'stale' ? 'stale' : 'stored'
+function savedScoreStatus(score: number | null, earlier: boolean) {
+  return score === null ? 'unavailable' : earlier ? 'stale' : 'stored'
 }
 
 /** Dashboard-only saved WHOOP facts. The external context's conservative
  * freshness contract remains intact and the presentation does not infer risk,
  * training readiness or a causal effect from one paired session. */
-export function projectTodayRecovery(recovery: ReturnType<typeof projectContextRecovery>,
+export function projectTodayRecovery(recovery: ReturnType<typeof projectContextRecovery>, tzOffset: number,
   workout?: WorkoutRecoveryEvidence | null, pairedScore?: RecoveryBeforeWorkout | null) {
   const { recovery: metric, sleep, strain } = recovery.metrics
+  const { requestedLocalDate, utcDate } = recovery.calendarLabels
+  function hasEarlierDate(reading: typeof metric, providerDate: string | null) {
+    // Use a retained source timestamp when available. Untimed storage dates
+    // are UTC labels and can straddle a different local calendar day.
+    if (reading.providerTiming.status === 'recorded' && providerDate) {
+      return formatUTCAsLocalDateWithOffset(providerDate, tzOffset) < requestedLocalDate
+    }
+    return !!reading.storedDate && reading.storedDate < utcDate && reading.storedDate < requestedLocalDate
+  }
   const canDisplay = recovery.connected !== false
   const storedMetric = canDisplay && metric.source.status === 'available' && !['invalid', 'future'].includes(metric.status)
     ? metric.record : null
@@ -92,9 +122,11 @@ export function projectTodayRecovery(recovery: ReturnType<typeof projectContextR
   const sleepPerformance = metricNumber(storedSleep, 'sleep_performance_percentage', 100)
   const sleepInBedMs = metricNumber(storedSleep, 'total_sleep_duration_ms')
   const strainScore = metricNumber(storedStrain, 'strain', 21)
-  const strainStatus = savedScoreStatus(strainScore, strain.status)
+  const earlierRecovery = hasEarlierDate(metric, metric.providerCreatedAt)
+  const sleepStatus = savedScoreStatus(sleepPerformance, hasEarlierDate(sleep, sleep.intervalEnd))
+  const strainStatus = savedScoreStatus(strainScore, hasEarlierDate(strain, strain.providerCreatedAt))
   const hasRecoveryOrSleep = [recoveryScore, hrvMs, restingHeartRate, sleepPerformance, sleepInBedMs].some(value => value !== null)
-  const stale = (metric.status === 'stale' && storedMetric !== null) || (!hasRecoveryOrSleep && strainStatus === 'stale')
+  const stale = (earlierRecovery && storedMetric !== null) || (!hasRecoveryOrSleep && strainStatus === 'stale')
   const status = recovery.connected === false ? 'disconnected'
     : stale ? 'stale'
       : !hasRecoveryOrSleep && strainScore === null ? 'unavailable'
@@ -107,11 +139,11 @@ export function projectTodayRecovery(recovery: ReturnType<typeof projectContextR
     lastSyncAt: recovery.batch.timeStatus === 'recorded' ? recovery.batch.lastSuccessfulBatchAt : null,
     storedDate: storedMetric ? metric.storedDate : null,
     recoveryScore,
-    recoveryScoreStatus: savedScoreStatus(recoveryScore, metric.status),
+    recoveryScoreStatus: savedScoreStatus(recoveryScore, earlierRecovery),
     hrvMs,
     restingHeartRate,
     sleepPerformance,
-    sleepScoreStatus: savedScoreStatus(sleepPerformance, sleep.status),
+    sleepScoreStatus: sleepStatus,
     sleepStoredDate: sleepPerformance === null ? null : sleep.storedDate,
     sleepInBedMinutes: sleepInBedMs === null ? null : Math.round(sleepInBedMs / 60_000),
     strainScore,

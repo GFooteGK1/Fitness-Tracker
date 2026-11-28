@@ -1,15 +1,13 @@
 import { sociusCardStyles, sociusThemeStyles } from './socius-card-styles'
 
 export const activityStyles = String.raw`
-    .view-switch, .activity-date-controls { display: flex; flex-wrap: wrap; gap: .5rem; }
-    .view-switch { margin-top: .85rem; }
-    .view-switch button[aria-pressed="false"], .activity-date-controls button {
+    .view-switch { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .85rem; }
+    .view-switch button[aria-pressed="false"] {
       color: var(--foreground);
       background: var(--surface);
       border-color: var(--line);
     }
-    .activity-date-controls { align-items: end; }
-    .activity-date-field { display: grid; gap: .2rem; }
+    .activity-date-field { display: grid; justify-items: start; gap: .2rem; }
     .activity-date-field input {
       min-height: 44px;
       max-width: 100%;

@@ -56,6 +56,10 @@ export function contextClient(rows = contextRows(), options: {
         select: (columns: string) => { trace.columns = columns; return q },
         eq: (key: string, value: unknown) => { trace.filters.push([key, value]); filters.push(row => options.foreignRows && key === 'user_id' || row[key] === value); return q },
         in: (key: string, values: unknown[]) => { filters.push(row => values.includes(row[key])); return q },
+        gt: (key: string, value: number | string) => {
+          filters.push(row => typeof value === 'number' ? Number(row[key]) > value : String(row[key]) > value)
+          return q
+        },
         gte: (key: string, value: string) => { filters.push(row => String(row[key]) >= value); return q },
         lte: (key: string, value: string) => { filters.push(row => String(row[key]) <= value); return q },
         lt: (key: string, value: string) => { filters.push(row => String(row[key]) < value); return q },

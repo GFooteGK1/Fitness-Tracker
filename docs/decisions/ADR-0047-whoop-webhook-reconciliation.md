@@ -35,10 +35,14 @@ batch completion cannot move a valid checkpoint or its counts backwards.
 The migration adds no tables, grants, or backfill.
 Other owners' unversioned records continue to use the existing writer.
 
-Today refreshes the WHOOP section when it returns to the foreground or
-the athlete returns to the tab, using the existing owner read. Its
-provider timestamps are separate from the scheduled batch timestamp.
-Refresh preserves the current check-in and training guidance.
+Today refreshes the WHOOP section on foreground return and when the athlete
+returns to the Today tab. The open, visible WHOOP card also checks the saved
+owner readings every two minutes and provides a refresh button. Both use the
+same saved WHOOP sources. The provider timestamps remain separate from the
+batch timestamp. Earlier-reading labels use the athlete's local day when a
+retained source timestamp is available. Refresh preserves the current
+check-in and training guidance. To request a new provider import, the athlete
+can use Sync Now in the SociusFit profile.
 
 ## Alternatives and limits
 

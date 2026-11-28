@@ -8,20 +8,18 @@ import PerformanceMonitor from '@/app/components/PerformanceMonitor'
 import { WhoopMetricsCard } from '@/app/components/whoop/WhoopMetricsCard'
 import ExportDialog from '@/app/components/ExportDialog'
 import { AppIcon } from '@/app/components/AppIcon'
-import { formatPRValue } from '@/app/lib/pr-detection'
+import { formatPRValue, personalRecordLabels, type PRResult } from '@/app/lib/pr-detection'
 import { getTimezoneOffset } from '@/app/lib/timezone-utils'
 import type { DashboardWorkoutAggregates } from '@/app/lib/aggregates/dashboard'
 
 interface RecentPR {
   id: string
   exercise: string
-  pr_type: 'weight' | 'reps' | 'time' | 'volume'
+  pr_type: PRResult['prType']
   value: number
   previous_value: number | null
   achieved_at: string
 }
-
-const recordLabels = { weight: 'Max weight', reps: 'Rep record', time: 'Time record', volume: 'Volume record' }
 
 export default function Progress() {
   const { user } = useAuth()
@@ -121,7 +119,7 @@ export default function Progress() {
               {prCount > 0 && <p className="app-muted mt-1 text-sm">{prCount} {prCount === 1 ? 'improvement' : 'improvements'} this month</p>}
               {recentPRs.length ? <ul className="mt-3 divide-y divide-[var(--line)]">
                 {recentPRs.map(pr => <li key={pr.id} className="flex items-start justify-between gap-4 py-4">
-                  <div className="min-w-0"><p className="break-words text-sm font-medium">{pr.exercise}</p><p className="app-muted mt-1 text-xs">{recordLabels[pr.pr_type]}</p></div>
+                  <div className="min-w-0"><p className="break-words text-sm font-medium">{pr.exercise}</p><p className="app-muted mt-1 text-xs">{personalRecordLabels[pr.pr_type]}</p></div>
                   <div className="shrink-0 text-right"><p className="text-sm font-semibold tabular-nums text-[var(--accent)]">{formatPRValue(pr.pr_type, Number(pr.value))}</p><p className="app-muted mt-1 text-xs">{new Date(pr.achieved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p></div>
                 </li>)}
               </ul> : <p className="app-muted py-4 text-sm">Your first results establish a baseline. Improvements will appear here.</p>}

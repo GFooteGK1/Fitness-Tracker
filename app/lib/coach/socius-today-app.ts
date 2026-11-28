@@ -8,10 +8,11 @@ import {
   dailyCheckInSchema, legacyDailyCheckInSchema, parseDailyCheckIn, parseLegacyDailyCheckIn,
   saveDailyCheckIn, toLegacyDailyCheckIn,
 } from './daily-check-in'
-import { projectTodayRecovery, type createOwnedWorkoutRecoveryReader } from './recovery-today-app'
+import { projectTodayRecovery, type createOwnedTodayRecoveryReader, type createOwnedWorkoutRecoveryReader } from './recovery-today-app'
 import { projectSessionDraftRequirement } from './session-draft-evidence'
 import { readStoredSessionDraft, sessionDraftSafetyBinding } from './session-draft-tools'
 import { sociusTodayHtml } from './today-app-ui'
+import { trainingRecordsOrigin } from './training-progress-app-ui'
 import type { createWorkoutTodayReader } from './workout-today-app'
 
 export const legacySociusTodayResourceUris: readonly string[] = [
@@ -34,11 +35,12 @@ export const legacySociusTodayResourceUris: readonly string[] = [
   'ui://socius/today-v18.html',
   'ui://socius/today-v19.html',
   'ui://socius/today-v20.html',
+  'ui://socius/today-v21.html',
 ]
 
 export const sociusTodayResource = {
   // ChatGPT uses the URI as a cache key. Bump it when releasing changes to the widget.
-  uri: 'ui://socius/today-v21.html',
+  uri: 'ui://socius/today-v22.html',
   name: 'SociusFit Today',
   mimeType: 'text/html;profile=mcp-app',
 } as const
@@ -66,6 +68,7 @@ export const sociusTodayTool = {
     properties: {
       tzOffset: { type: 'integer', minimum: -720, maximum: 840 },
       sessionDraftOnly: { type: 'boolean', const: true, description: 'Refresh only the saved session draft for the same local date.' },
+      whoopOnly: { type: 'boolean', const: true, description: 'Refresh only the saved WHOOP readings for the current local date.' },
     },
     additionalProperties: false,
   },
@@ -128,6 +131,7 @@ export const sociusTodayResourceContents = {
   text: sociusTodayHtml,
   _meta: {
     ui: { csp: { connectDomains: [], resourceDomains: [] } },
+    'openai/widgetCSP': { redirect_domains: [trainingRecordsOrigin] },
     'openai/ui': { availableDisplayModes: ['fullscreen'] },
   },
 }
@@ -211,7 +215,7 @@ function projectToday(context: CoachingContext, workout: WorkoutToday, pairedRec
     sessions,
     recentStatus: lastWorkout.status,
     recentWork: lastWorkout.movements.map(record => ({ ...record, date: lastWorkout.date })),
-    recovery: projectTodayRecovery(context.recovery, workoutEvidence, pairedRecovery),
+    recovery: projectTodayRecovery(context.recovery, context.timezoneOffset, workoutEvidence, pairedRecovery),
   }
 }
 
@@ -220,23 +224,27 @@ export function createSociusTodayTool(
   options: {
     activityEnabled: boolean
     nutritionEnabled: boolean
-    nutritionWritesEnabled: boolean
     checkInEnabled: boolean
     sessionDraftSavingEnabled: boolean
     readWorkout: ReturnType<typeof createWorkoutTodayReader>
     readWorkoutRecovery: ReturnType<typeof createOwnedWorkoutRecoveryReader>
+    readTodayRecovery: ReturnType<typeof createOwnedTodayRecoveryReader>
     readSessionDraft: ReadSessionDraft
   },
 ) {
   return {
     async call(input: unknown) {
-      if (!contextObject(input) || Object.keys(input).some(key => key !== 'tzOffset' && key !== 'checkIn' && key !== 'sessionDraftOnly')) {
+      if (!contextObject(input) || Object.keys(input).some(key => !['tzOffset', 'checkIn', 'sessionDraftOnly', 'whoopOnly'].includes(key))) {
         throw new CoachingContextError(400, 'Reopen Today to view your saved check-in.')
       }
       // Cached pre-save widgets can still send their old three-field preview.
       // Return only an update notice, and never interpret or save those answers.
       const cachedPreview = 'checkIn' in input
       const draftOnly = 'sessionDraftOnly' in input
+      const whoopOnly = 'whoopOnly' in input
+      if (whoopOnly && (cachedPreview || draftOnly || input.whoopOnly !== true || !('tzOffset' in input))) {
+        throw new CoachingContextError(400, 'Refresh saved WHOOP readings with your current timezone offset.')
+      }
       if (draftOnly && (cachedPreview || input.sessionDraftOnly !== true || !('tzOffset' in input))) {
         throw new CoachingContextError(400, 'Refresh the saved Today draft with your current timezone offset.')
       }
@@ -251,6 +259,7 @@ export function createSociusTodayTool(
       if (!validOffset(tzOffset)) {
         throw new CoachingContextError(400, 'Invalid timezone offset')
       }
+      if (whoopOnly) return { content, _meta: { today: await options.readTodayRecovery(tzOffset) } }
       const date = formatUTCAsLocalDateWithOffset(new Date().toISOString(), tzOffset)
       if (draftOnly) {
         const stored = await options.readSessionDraft(date)
@@ -288,7 +297,6 @@ export function createSociusTodayTool(
         },
         ...(options.activityEnabled ? { activityEnabled: true } : {}),
         ...(options.nutritionEnabled ? { nutritionEnabled: true } : {}),
-        ...(options.nutritionWritesEnabled ? { nutritionWritesEnabled: true } : {}),
         ...(options.checkInEnabled ? { checkInEnabled: true } : {}),
         ...(options.sessionDraftSavingEnabled ? { sessionDraftSavingEnabled: true } : {}),
       } }

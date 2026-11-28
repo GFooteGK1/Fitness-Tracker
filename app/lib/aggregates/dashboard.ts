@@ -7,6 +7,8 @@
  * another compute-only aggregate module (ADR-0001).
  */
 
+import { formatUTCAsLocalDateInZone, formatUTCAsLocalDateWithOffset } from '../timezone-utils'
+
 export type WorkoutCategory = 'strength' | 'metcon' | 'cardio'
 
 export interface DashboardWorkoutRow {
@@ -24,8 +26,9 @@ export interface DashboardWorkoutAggregates {
   currentMonth: string
 }
 
-interface AggregateOptions {
+export interface DashboardWorkoutAggregateOptions {
   asOf?: Date
+  timezone?: string
   timezoneOffsetMinutes?: number
 }
 
@@ -111,15 +114,14 @@ export function categorizeWorkout(blocks: unknown, inputText: string | null): Se
 
 export function computeDashboardWorkoutAggregates(
   workouts: readonly DashboardWorkoutRow[],
-  options: AggregateOptions = {},
+  options: DashboardWorkoutAggregateOptions = {},
 ): DashboardWorkoutAggregates {
-  const asOf = options.asOf ?? new Date()
-  const timezoneOffsetMinutes = options.timezoneOffsetMinutes ?? 0
-  const localNow = new Date(asOf.getTime() - timezoneOffsetMinutes * 60_000)
-  const currentYear = localNow.getUTCFullYear()
-  const currentMonthNumber = localNow.getUTCMonth() + 1
-  const monthStart = `${currentYear}-${String(currentMonthNumber).padStart(2, '0')}-01`
-  const localDate = `${currentYear}-${String(currentMonthNumber).padStart(2, '0')}-${String(localNow.getUTCDate()).padStart(2, '0')}`
+  const asOf = (options.asOf ?? new Date()).toISOString()
+  const localDate = options.timezone
+    ? formatUTCAsLocalDateInZone(asOf, options.timezone)
+    : formatUTCAsLocalDateWithOffset(asOf, options.timezoneOffsetMinutes ?? 0)
+  const monthStart = `${localDate.slice(0, 7)}-01`
+  const [year, month] = localDate.split('-')
 
   let strengthSessions = 0
   let metcons = 0
@@ -140,6 +142,6 @@ export function computeDashboardWorkoutAggregates(
     strengthSessions,
     metcons,
     cardio,
-    currentMonth: `${MONTH_NAMES[currentMonthNumber - 1]} ${currentYear}`,
+    currentMonth: `${MONTH_NAMES[Number(month) - 1]} ${year}`,
   }
 }

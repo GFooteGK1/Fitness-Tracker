@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { isValidTimezoneOffset } from '@/app/lib/timezone-utils'
-import { computeDashboardWorkoutAggregates } from '@/app/lib/aggregates/dashboard'
+import { readOwnedWorkoutSummary } from '@/app/lib/owned-workout-summary'
 
 export async function GET(request: Request) {
   try {
@@ -31,18 +31,7 @@ export async function GET(request: Request) {
       )
     }
 
-    // Single optimized query for all workout data including blocks for type categorization
-    const { data: workouts, error: workoutsError } = await supabase
-      .from('workouts')
-      .select('id, workout_date, created_at, blocks, input_text')
-      .eq('user_id', user.id)
-      .order('workout_date', { ascending: false })
-    
-    if (workoutsError) {
-      throw new Error(`Failed to fetch workouts: ${workoutsError.message}`)
-    }
-
-    const stats = computeDashboardWorkoutAggregates(workouts ?? [], {
+    const stats = await readOwnedWorkoutSummary(supabase, user.id, {
       timezoneOffsetMinutes: tzOffset,
     })
 
