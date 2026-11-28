@@ -1,6 +1,7 @@
 import { activityRendererScript, activityStyles, mcpHostBridgeScript, trainingHistoryCardMarkup } from './activity-app-ui'
-import { mealChatMarkup, mealChatScript, nutritionCardMarkup, nutritionRendererScript, nutritionStyles } from './nutrition-app-ui'
+import { nutritionCardMarkup, nutritionRendererScript, nutritionStyles } from './nutrition-app-ui'
 import { sociusCardStyles, sociusThemeStyles } from './socius-card-styles'
+import { trainingProgressMarkup, trainingProgressScript, trainingProgressStyles } from './training-progress-app-ui'
 
 function scaleOptions(labels: string[]) {
   return labels.map((label, index) => '<option value="' + (index + 1) + '">' + (index + 1) + ' · ' + label + '</option>').join('\n')
@@ -250,9 +251,7 @@ ${sociusCardStyles}
       .check-in-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
 ${activityStyles}
-    @media (max-width: 29rem) {
-      #activity-content .activity-date-field { flex-basis: 100%; justify-items: start; }
-    }
+${trainingProgressStyles}
     @media (max-width: 23rem) {
       .view-switch { gap: .35rem; }
       .view-switch button { padding-inline: .35rem; }
@@ -269,11 +268,10 @@ ${nutritionStyles}
       <time id="today-date" hidden></time>
       <nav id="view-switch" class="view-switch" aria-label="SociusFit views" hidden>
         <button id="show-today" type="button" aria-pressed="true" aria-controls="today-content">Today</button>
-        <button id="show-activity" type="button" aria-pressed="false" aria-controls="activity-content" hidden>Training history</button>
+        <button id="show-activity" type="button" aria-pressed="false" aria-controls="activity-content" hidden>Training Activity</button>
         <button id="show-nutrition" type="button" aria-pressed="false" aria-controls="nutrition-content" hidden>Nutrition</button>
       </nav>
     </header>
-${mealChatMarkup}
     <p id="loading" class="muted" role="status">Loading your saved training…</p>
     <section id="load-error" class="socius-card" hidden>
       <p id="error-message" role="alert"></p>
@@ -378,15 +376,15 @@ ${mealChatMarkup}
           <p id="recovery-note" class="muted status-label" hidden></p>
           <dl id="whoop-gauges" class="whoop-gauges">
             <div class="whoop-gauge sleep">
-              <dt>Sleep<span id="sleep-note" class="whoop-gauge-note" hidden>Earlier saved date</span></dt>
+              <dt>Sleep<span id="sleep-note" class="whoop-gauge-note" hidden>Earlier WHOOP data</span></dt>
               <dd class="whoop-dial"><strong id="sleep-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
             </div>
             <div id="recovery-overview" class="whoop-gauge">
-              <dt>Recovery<span id="recovery-score-note" class="whoop-gauge-note" hidden>Earlier saved date</span></dt>
+              <dt>Recovery<span id="recovery-score-note" class="whoop-gauge-note" hidden>Earlier WHOOP data</span></dt>
               <dd class="whoop-dial"><strong id="recovery-percent"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
             </div>
             <div class="whoop-gauge strain">
-              <dt>Strain<span id="strain-note" class="whoop-gauge-note" hidden>Earlier saved date</span></dt>
+              <dt>Strain<span id="strain-note" class="whoop-gauge-note" hidden>Earlier WHOOP data</span></dt>
               <dd class="whoop-dial"><strong id="strain-score-value"></strong><span class="whoop-gauge-alternative" hidden>Unavailable</span></dd>
             </div>
           </dl>
@@ -399,7 +397,9 @@ ${mealChatMarkup}
               <p id="workout-recovery-note" class="muted" hidden></p>
               <dl id="workout-recovery-metrics" hidden></dl>
             </section>
+            <p class="section-note muted">To request a new import, select Sync Now under WHOOP in your SociusFit profile.</p>
           </details>
+          <button id="whoop-refresh" class="secondary-action" type="button">Refresh saved WHOOP</button>
         </div>
       </details>
       <details id="last-workout" class="socius-card">
@@ -421,19 +421,15 @@ ${mealChatMarkup}
       <footer>Read from SociusFit <time id="read-at"></time></footer>
     </div>
     <section id="activity-content" aria-labelledby="view-title" hidden>
-      <div class="activity-date-controls">
-        <label class="activity-date-field" for="activity-date">Workout date
-          <input id="activity-date" type="date" min="0001-01-01" required>
-        </label>
-        <button id="previous-day" type="button">Previous day</button>
-        <button id="next-day" type="button">Next day</button>
-      </div>
+${trainingProgressMarkup}
+      <label class="activity-date-field" for="activity-date">Workout date
+        <input id="activity-date" type="date" min="0001-01-01" required>
+      </label>
       <p id="activity-load" class="muted" role="status"></p>
       <button id="activity-retry" type="button" hidden>Try again</button>
 ${trainingHistoryCardMarkup}
     </section>
     <section id="nutrition-content" aria-labelledby="view-title" hidden>
-      <button id="nutrition-log" type="button" aria-controls="meal-chat" aria-expanded="false" hidden>Log food in chat</button>
       <p id="nutrition-load" class="muted" role="status"></p>
       <button id="nutrition-retry" type="button" hidden>Try again</button>
 ${nutritionCardMarkup}
@@ -446,7 +442,7 @@ ${nutritionCardMarkup}
       const byId = id => document.getElementById(id);
 ${activityRendererScript}
 ${nutritionRendererScript}
-${mealChatScript}
+${trainingProgressScript}
 ${mcpHostBridgeScript}
       const dashboardScroll = byId('dashboard-scroll');
       const host = createMcpHostBridge({
@@ -464,7 +460,6 @@ ${mcpHostBridgeScript}
           }
         },
       });
-      const mealChat = setupMealChat(host, byId);
       const activityDate = byId('activity-date');
       const checkInForm = byId('check-in-form');
       const checkInSubmit = byId('check-in-submit');
@@ -475,6 +470,7 @@ ${mcpHostBridgeScript}
         worse: 'Worse than usual', better: 'Better than usual',
       };
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const trainingProgress = setupTrainingProgress(host, timezone);
       let initialized = false;
       let activityRequest = 0;
       let activeView = 'today';
@@ -497,9 +493,12 @@ ${mcpHostBridgeScript}
       let dayRevision = 0;
       let todayReadRevision = 0;
       let whoopRefreshInFlight = false;
+      let whoopSignInRequired = false;
+      let whoopRefreshTimer = null;
       let lastWhoopReadAt = null;
       let displayedWorkoutRecoveryKey = null;
-      const whoopRefreshIntervalMs = 30_000;
+      const whoopRefreshMinAgeMs = 30_000;
+      const whoopRefreshIntervalMs = 120_000;
 
       function element(tag, text, className) {
         const node = document.createElement(tag);
@@ -832,7 +831,9 @@ ${mcpHostBridgeScript}
         dates.hidden = !dates.childElementCount;
         byId('whoop-details').hidden = metrics.hidden && dates.hidden && byId('workout-recovery').hidden;
         lastWhoopReadAt = Date.now();
+        whoopSignInRequired = false;
         setNote('whoop-refresh-status', null);
+        syncWhoopRefreshTimer();
       }
 
       function renderWorkoutRecovery(effort) {
@@ -868,7 +869,6 @@ ${mcpHostBridgeScript}
             activityDate.value = today.date;
             if (activeView === 'activity') void loadActivity();
           }
-          byId('next-day').disabled = !activityDate.value || activityDate.value >= activityDate.max;
         }
         renderAcceptedPlan(today);
         renderSafetyReview(today.workoutRecommendation);
@@ -892,11 +892,12 @@ ${mcpHostBridgeScript}
         const nutritionAvailable = features.nutritionEnabled === true && timezone;
         byId('show-activity').hidden = !activityAvailable;
         byId('show-nutrition').hidden = !nutritionAvailable;
-        mealChat.setAvailable(nutritionAvailable && features.nutritionWritesEnabled === true);
         byId('view-switch').hidden = !activityAvailable && !nutritionAvailable;
         if (activityAvailable && !activityDate.max) {
           activityDate.max = today.date;
-          activityDate.value = moveDay(today.date, -1) || today.date;
+          const latestWorkoutDate = today.lastWorkout?.date;
+          activityDate.value = latestWorkoutDate ?? '';
+          if (!activityDate.validity.valid) activityDate.value = today.date;
         }
       }
 
@@ -931,8 +932,8 @@ ${mcpHostBridgeScript}
           }
           if (!initialized) {
             const capabilities = await host.initialize('SociusFit Today', 'fullscreen');
+            trainingProgress.setCapabilities(capabilities);
             hostSupportsDraft = Boolean(capabilities.message?.text);
-            mealChat.setCapabilities(capabilities);
             initialized = true;
           }
           const result = await host.request('tools/call', {
@@ -956,24 +957,31 @@ ${mcpHostBridgeScript}
         }
       }
 
-      async function refreshWhoop() {
+      async function refreshWhoop({ userRequested = false, whoopOnly = false } = {}) {
         const date = byId('today-date').dateTime;
         if (host.closed || activeView !== 'today' || document.visibilityState === 'hidden'
+          || (whoopOnly && !byId('whoop-panel').open)
           || whoopRefreshInFlight || byId('retry').disabled || checkInBusy
           || !date || byId('error-message').textContent || lastWhoopReadAt === null
-          || Date.now() - lastWhoopReadAt < whoopRefreshIntervalMs) return;
+          || (!userRequested && (whoopSignInRequired || Date.now() - lastWhoopReadAt < whoopRefreshMinAgeMs))) return;
         const revision = todayReadRevision;
+        const refreshButton = byId('whoop-refresh');
+        const tzOffset = new Date().getTimezoneOffset();
         const canRender = () => !host.closed && revision === todayReadRevision
-          && activeView === 'today' && document.visibilityState !== 'hidden';
+          && activeView === 'today' && document.visibilityState !== 'hidden' && new Date().getTimezoneOffset() === tzOffset;
         whoopRefreshInFlight = true;
+        refreshButton.disabled = true;
         lastWhoopReadAt = Date.now();
+        if (userRequested) setNote('whoop-refresh-status', 'Checking for updated WHOOP data…');
         try {
           const result = await host.request('tools/call', {
             name: 'open_socius_today',
-            arguments: { tzOffset: new Date().getTimezoneOffset() },
+            arguments: whoopOnly ? { tzOffset, whoopOnly: true } : { tzOffset },
           });
           if (refreshTodayIfDateChanged() || !canRender()) return;
           if (result?._meta?.['mcp/www_authenticate']) {
+            whoopSignInRequired = true;
+            syncWhoopRefreshTimer();
             setNote('whoop-refresh-status', 'Reconnect SociusFit in ChatGPT to refresh WHOOP.');
             return;
           }
@@ -986,12 +994,15 @@ ${mcpHostBridgeScript}
             renderWorkoutRecovery(today.recovery.sessionEffort);
           }
           renderRecovery(today.recovery);
+          if (userRequested) setNote('whoop-refresh-status', 'Saved WHOOP readings refreshed.');
         } catch {
           if (!refreshTodayIfDateChanged() && canRender()) {
             setNote('whoop-refresh-status', 'Could not refresh saved WHOOP data.');
           }
         } finally {
           whoopRefreshInFlight = false;
+          refreshButton.disabled = false;
+          if (userRequested && revision === todayReadRevision && !canRender()) setNote('whoop-refresh-status', null);
         }
       }
 
@@ -1246,16 +1257,6 @@ ${mcpHostBridgeScript}
         return true;
       }
 
-      function moveDay(value, step) {
-        // Work in UTC calendar days so navigation never skips or repeats a date at daylight-saving changes.
-        const date = new Date(value + 'T12:00:00Z');
-        if (!Number.isFinite(date.getTime())) return null;
-        date.setUTCDate(date.getUTCDate() + step);
-        if (date.getUTCFullYear() < 1 || date.getUTCFullYear() > 9999) return null;
-        return [String(date.getUTCFullYear()).padStart(4, '0'),
-          String(date.getUTCMonth() + 1).padStart(2, '0'), String(date.getUTCDate()).padStart(2, '0')].join('-');
-      }
-
       async function loadActivity() {
         if (host.closed) return;
         const call = ++activityRequest;
@@ -1264,8 +1265,6 @@ ${mcpHostBridgeScript}
         const retry = byId('activity-retry');
         byId('activity-card').hidden = true;
         retry.hidden = true;
-        byId('previous-day').disabled = !date || date <= activityDate.min;
-        byId('next-day').disabled = !date || date >= activityDate.max;
         if (!activityDate.validity.valid) {
           status.textContent = 'Choose a date on or before today.';
           return;
@@ -1300,8 +1299,24 @@ ${mcpHostBridgeScript}
         nutritionRefresh = null;
       }
 
+      function stopWhoopRefresh() {
+        if (whoopRefreshTimer !== null) window.clearInterval(whoopRefreshTimer);
+        whoopRefreshTimer = null;
+      }
+
+      function syncWhoopRefreshTimer() {
+        if (host.closed || activeView !== 'today' || document.visibilityState === 'hidden'
+          || !byId('whoop-panel').open || whoopSignInRequired || lastWhoopReadAt === null
+          || byId('recovery-status').dataset.state === 'disconnected') {
+          stopWhoopRefresh();
+        } else if (whoopRefreshTimer === null) {
+          whoopRefreshTimer = window.setInterval(() => void refreshWhoop({ whoopOnly: true }), whoopRefreshIntervalMs);
+        }
+      }
+
       function stopRefreshTimers() {
         stopNutritionRefresh();
+        stopWhoopRefresh();
         window.clearTimeout(dayTimer);
         window.clearTimeout(draftPollTimer);
       }
@@ -1353,6 +1368,7 @@ ${mcpHostBridgeScript}
       }
 
       function handleForeground() {
+        syncWhoopRefreshTimer();
         if (document.visibilityState === 'hidden') return;
         if (!refreshTodayIfDateChanged()) {
           void refreshWhoop();
@@ -1364,7 +1380,7 @@ ${mcpHostBridgeScript}
       function openView(view) {
         if (activeView === view || byId('show-' + view).hidden) return;
         activeView = view;
-        const views = { today: 'Today', activity: 'Training history', nutrition: 'Nutrition' };
+        const views = { today: 'Today', activity: 'Training Activity', nutrition: 'Nutrition' };
         byId('view-title').textContent = views[view];
         for (const key of Object.keys(views)) {
           byId('show-' + key).setAttribute('aria-pressed', String(key === view));
@@ -1376,19 +1392,13 @@ ${mcpHostBridgeScript}
         }
         syncTodayVisibility();
         dashboardScroll.scrollTop = 0;
+        syncWhoopRefreshTimer();
         stopNutritionRefresh();
         if (view === 'activity') void loadActivity();
         if (view === 'nutrition') {
           refreshNutrition();
           nutritionRefresh = window.setInterval(refreshNutrition, 30_000);
         }
-      }
-
-      function changeDay(step) {
-        const date = moveDay(activityDate.value, step);
-        if (!date || date > activityDate.max) return;
-        activityDate.value = date;
-        void loadActivity();
       }
 
       for (const view of ['today', 'activity', 'nutrition']) {
@@ -1398,9 +1408,11 @@ ${mcpHostBridgeScript}
       byId('nutrition-refresh').addEventListener('click', () => void loadNutrition(true));
       document.addEventListener('visibilitychange', handleForeground);
       window.addEventListener('focus', handleForeground);
+      byId('whoop-panel').addEventListener('toggle', event => {
+        if (event.currentTarget.isConnected) syncWhoopRefreshTimer();
+      });
+      byId('whoop-refresh').addEventListener('click', () => void refreshWhoop({ userRequested: true, whoopOnly: true }));
       activityDate.addEventListener('change', loadActivity);
-      byId('previous-day').addEventListener('click', () => changeDay(-1));
-      byId('next-day').addEventListener('click', () => changeDay(1));
       byId('activity-retry').addEventListener('click', loadActivity);
 
       checkInForm.addEventListener('change', editCheckIn);

@@ -11,8 +11,9 @@ import { activityHistoryTool, createActivityHistoryTool } from './activity-histo
 import { createSaveSociusTodayCheckInTool, createSociusTodayTool, legacySociusTodayResourceUris, saveSociusTodayCheckInTool, sociusTodayResource, sociusTodayResourceContents, sociusTodayTool } from './socius-today-app'
 import { createSociusActivityTool, legacySociusActivityResourceUri, sociusActivityResource, sociusActivityResourceContents, sociusActivityTool } from './socius-activity-app'
 import { createSociusNutritionTool, sociusNutritionTool } from './socius-nutrition-app'
+import { createSociusTrainingProgressTool, sociusTrainingProgressTool } from './socius-training-progress-app'
 import { createWorkoutTodayReader } from './workout-today-app'
-import { createOwnedWorkoutRecoveryReader } from './recovery-today-app'
+import { createOwnedTodayRecoveryReader, createOwnedWorkoutRecoveryReader } from './recovery-today-app'
 import { createSessionDraftEvidenceReader } from './session-draft-evidence'
 import { createSessionDraftTools, legacySessionDraftResourceUris, prepareTodaySessionDraftTool, saveSessionDraftInstructions, saveTodaySessionDraftTool, sessionDraftInstructions, sessionDraftResource, sessionDraftResourceContents, showTodaySessionDraftTool } from './session-draft-tools'
 import { readDailySessionDraft, saveDailySessionDraft } from './daily-session-draft'
@@ -46,11 +47,11 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
   const today = readTodayWorkout ? createSociusTodayTool(createOwnedCoachingContextReader(authorize, policy), {
     activityEnabled,
     nutritionEnabled: activityEnabled,
-    nutritionWritesEnabled: activityEnabled && writesEnabled,
     checkInEnabled: Boolean(saveCheckIn),
     sessionDraftSavingEnabled: Boolean(saveCheckIn && createDraftStorageClient),
     readWorkout: readTodayWorkout,
     readWorkoutRecovery: createOwnedWorkoutRecoveryReader(authorize, policy),
+    readTodayRecovery: createOwnedTodayRecoveryReader(authorize, policy),
     readSessionDraft: async (date, revision) => {
       const { db, owner } = await authorizeDraftStorage()
       return readDailySessionDraft(db, owner, date, revision)
@@ -58,6 +59,7 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
   }) : null
   const activity = activityEnabled ? createSociusActivityTool(history) : null
   const nutrition = activityEnabled ? createSociusNutritionTool(authorize, policy) : null
+  const trainingProgress = activityEnabled ? createSociusTrainingProgressTool(authorize, policy) : null
   const sessionDraft = today ? createSessionDraftTools(createSessionDraftEvidenceReader(authorize, policy), saveCheckIn && createDraftStorageClient
     ? async (date, tzOffset, revision, draft) => {
       const { owner } = await authorizeDraftStorage()
@@ -90,7 +92,7 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
       { ...descriptor, securitySchemes, _meta: { securitySchemes } }
     ))
     const apps = today ? [sociusTodayTool, ...(saveCheckIn ? [saveSociusTodayCheckInTool] : []),
-      ...(activity ? [sociusActivityTool, sociusNutritionTool] : []), ...(sessionDraft ? [showTodaySessionDraftTool] : []),
+      ...(activity ? [sociusActivityTool, sociusNutritionTool, sociusTrainingProgressTool] : []), ...(sessionDraft ? [showTodaySessionDraftTool] : []),
       ...(sessionDraft?.save ? [saveTodaySessionDraftTool] : [])] : []
     return { tools: [...tools, ...apps.map(app => ({ ...app, securitySchemes, _meta: { ...app._meta, securitySchemes } }))] }
   })
@@ -125,6 +127,7 @@ export function createCoachingContextMcpServer(authorize: AuthorizeContextReques
       [saveSociusTodayCheckInTool.name]: saveCheckIn,
       [sociusActivityTool.name]: activity,
       [sociusNutritionTool.name]: nutrition,
+      [sociusTrainingProgressTool.name]: trainingProgress,
       [prepareTodaySessionDraftTool.name]: sessionDraft?.prepare,
       [showTodaySessionDraftTool.name]: sessionDraft?.show,
       [saveTodaySessionDraftTool.name]: sessionDraft?.save,

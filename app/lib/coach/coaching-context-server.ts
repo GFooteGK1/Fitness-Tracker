@@ -96,17 +96,8 @@ interface ProgrammingRead {
   value: SavedProgramming | null
 }
 
-async function readSources(db: SupabaseClient, owner: string, asOf: string, localDate: string) {
-  const entries = await Promise.all([
-    ...REQUIREMENT_KEYS.map(async key => [key, await readRows(db, owner, 'coach_memories', memoryFields,
-      query => query.eq('memory_key', key).order('version', { ascending: false }), 1, true)] as const),
-    readRows(db, owner, 'user_profiles', 'user_id,fitness_goals,created_at,updated_at').then(value => ['profile', value] as const),
-    readRows(db, owner, 'coach_context_revisions', 'user_id,revision').then(value => ['revision', value] as const),
-    readRows(db, owner, 'coach_strength_assessments', 'id,user_id,movement,variation,load,unit,reps,assessed_on,is_true_rep_max,rir,rpe,athlete_confidence,estimated_1rm,estimate_kind,calculator_version,provenance,created_at,updated_at',
-      query => query.lte('assessed_on', localDate).lte('created_at', asOf).order('assessed_on', { ascending: false }).order('id', { ascending: true }),
-      EXTERNAL_ASSESSMENT_LIMIT).then(value => ['strength_assessments', value] as const),
-    readRows(db, owner, 'training_programs', 'id,user_id,title,goal_summary,start_date,end_date,status,program_mode,active_plan_version_id,direction,updated_at,created_at',
-      query => query.eq('status', 'active').order('start_date', { ascending: false }), 2).then(value => ['program', value] as const),
+export function readRecoverySources(db: SupabaseClient, owner: string) {
+  return Promise.all([
     readRows(db, owner, 'whoop_tokens', 'user_id,id').then(value => ['connection', value] as const),
     readRows(db, owner, 'whoop_sync_status', 'user_id,status,last_sync_at,next_sync_at,records_synced,error_message,created_at,updated_at').then(value => ['sync', value] as const),
     readRows(db, owner, 'whoop_recovery', `id,user_id,cycle_id,date,recovery_score,resting_heart_rate,hrv_rmssd_milli,created_at,${providerTimingFields},provider_sleep_id`,
@@ -116,7 +107,22 @@ async function readSources(db: SupabaseClient, owner: string, asOf: string, loca
     readRows(db, owner, 'whoop_cycles', `id,user_id,cycle_id,date,strain,created_at,${providerTimingFields}`,
       query => query.order('date', { ascending: false }).order('id', { ascending: false }), 1, true).then(value => ['strain', value] as const),
   ])
-  return Object.fromEntries(entries) as Record<string, ContextSource>
+}
+
+async function readSources(db: SupabaseClient, owner: string, asOf: string, localDate: string) {
+  const [recovery, ...entries] = await Promise.all([
+    readRecoverySources(db, owner),
+    ...REQUIREMENT_KEYS.map(async key => [key, await readRows(db, owner, 'coach_memories', memoryFields,
+      query => query.eq('memory_key', key).order('version', { ascending: false }), 1, true)] as const),
+    readRows(db, owner, 'user_profiles', 'user_id,fitness_goals,created_at,updated_at').then(value => ['profile', value] as const),
+    readRows(db, owner, 'coach_context_revisions', 'user_id,revision').then(value => ['revision', value] as const),
+    readRows(db, owner, 'coach_strength_assessments', 'id,user_id,movement,variation,load,unit,reps,assessed_on,is_true_rep_max,rir,rpe,athlete_confidence,estimated_1rm,estimate_kind,calculator_version,provenance,created_at,updated_at',
+      query => query.lte('assessed_on', localDate).lte('created_at', asOf).order('assessed_on', { ascending: false }).order('id', { ascending: true }),
+      EXTERNAL_ASSESSMENT_LIMIT).then(value => ['strength_assessments', value] as const),
+    readRows(db, owner, 'training_programs', 'id,user_id,title,goal_summary,start_date,end_date,status,program_mode,active_plan_version_id,direction,updated_at,created_at',
+      query => query.eq('status', 'active').order('start_date', { ascending: false }), 2).then(value => ['program', value] as const),
+  ])
+  return Object.fromEntries([...entries, ...recovery]) as Record<string, ContextSource>
 }
 
 /** Certify the final dated slots against the accepted week before inferring a rest day. */

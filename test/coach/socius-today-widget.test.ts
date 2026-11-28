@@ -9,7 +9,8 @@ const date = '2026-11-20'
 const readAt = '2026-11-20T11:40:00.000Z'
 const draftAcknowledgement = 'Draft requested. If no draft appears, ask “Draft today’s session” in SociusFit chat.'
 const checkInRevision = '0c484fb3-0a2d-4481-aa32-cd06d83bc88f'
-const retiredControls = ['ask', 'activity-ask', 'workout-log', 'chat-prompt', 'copy-prompt', 'meal-chat-copy',
+const retiredControls = ['ask', 'activity-ask', 'workout-log', 'chat-prompt', 'copy-prompt', 'meal-chat', 'nutrition-log',
+  'previous-day', 'next-day', 'meal-chat-copy',
   'recommendation-result', 'recommendation-title', 'saved-guidance-title']
 
 const lastWorkout = {
@@ -69,31 +70,53 @@ const nutritionWeek = {
   targetStatus: 'available', targets: { protein: 600, carbs: 1250, fat: 375, calories: 10775 },
 } satisfies NutritionWeek
 
+const trainingProgress = {
+  workouts: { currentMonth: 'November 2026', monthToDate: 3, totalWorkouts: 12, strengthSessions: 8, metcons: 4, cardio: 5 },
+  records: {
+    monthCount: 1,
+    entries: [{ exercise: '<img src=x> Front squat', type: 'Max weight', value: '185 lbs', date: '2026-11-18' }],
+  },
+}
+
 function mountWidget(workoutRecommendation = initialRecommendation, browserClock?: DateConstructor, options: {
   savedCheckIn?: CheckIn
   savedRelativeCheckIn?: typeof relativeCheckIn
   oldServer?: boolean
   checkInEnabled?: boolean
-  nutritionWritesEnabled?: boolean
+  lastWorkoutDate?: string
   nutritionTargets?: MacroTotals
   supportsDraft?: boolean
+  supportsRecordsLink?: boolean
   draftSavingEnabled?: boolean
   savedDraft?: typeof recoveryDraft
-  supportsActiveChat?: boolean
   draftResponse?: 'reject' | 'error_result' | 'uncertain'
   hostContext?: Record<string, unknown>
   sessionEffort?: ReturnType<typeof projectTodayRecovery>['sessionEffort']
   workoutRecoveryKey?: string
+  captureIntervals?: boolean
 } = {}) {
   const iframe = document.createElement('iframe')
   document.body.append(iframe)
   const child = iframe.contentWindow!
   if (browserClock) Object.defineProperty(child, 'Date', { value: browserClock })
+  const intervals = new Map<number, { callback: () => void; delay?: number }>()
+  if (options.captureIntervals) {
+    let intervalId = 0
+    vi.spyOn(child, 'setInterval').mockImplementation((callback, delay) => {
+      const id = ++intervalId
+      if (typeof callback === 'function') intervals.set(id, { callback: () => callback(), delay })
+      return id
+    })
+    vi.spyOn(child, 'clearInterval').mockImplementation(id => { if (id !== undefined) intervals.delete(id) })
+  }
   const host = child.parent
   const widget = child.document
   const requests: HostRequest[] = []
   let mealCount = 0
   let weekToDate: NutritionWeek | undefined
+  let progress: { workouts: typeof trainingProgress.workouts | null; records: {
+    entries: typeof trainingProgress.records.entries | null; monthCount: number | null
+  } } = trainingProgress
   const savedCheckIns = new Map<string, CheckIn>()
   if (options.savedCheckIn) savedCheckIns.set(date, options.savedCheckIn)
   let nextSaveReceipt: 'lost' | 'wrong_date' | 'wrong_values' | 'transport_rejection' | 'invalid_params' | 'not_saved' | undefined
@@ -116,12 +139,11 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
     let result: unknown
     let error: { code: number; message: string } | undefined
     if (request.method === 'ui/initialize') {
-      const supportsActiveChat = options.supportsActiveChat ?? !options.supportsDraft
       result = {
         hostContext: options.hostContext,
         hostCapabilities: {
           ...(options.supportsDraft ? { message: { text: {} } } : {}),
-          ...(supportsActiveChat ? { experimental: { 'openai/message': {} } } : {}),
+          ...(options.supportsRecordsLink ? { openLinks: {} } : {}),
         },
       }
     } else if (request.method === 'ui/message') {
@@ -142,18 +164,20 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
       if (nextReadError) {
         nextReadError = false
         result = { isError: true }
+      } else if ((request.params.arguments as { whoopOnly?: boolean } | undefined)?.whoopOnly) {
+        result = { _meta: { today: { date: todayDate, recovery: todayRecovery } } }
       } else {
         result = { _meta: {
           today: {
             date: todayDate, readAt, workoutRecommendation, sessions: workoutRecommendation.sessions,
-            recentWork: [], lastWorkout, recovery: todayRecovery, workoutRecoveryKey,
+            recentWork: [], lastWorkout: { ...lastWorkout, date: options.lastWorkoutDate ?? lastWorkout.date },
+            recovery: todayRecovery, workoutRecoveryKey,
             ...(options.oldServer ? { checkIn: legacy } : { assessment }),
             ...session,
           },
           sessionDraftSavingEnabled: options.draftSavingEnabled,
           activityEnabled: true,
           nutritionEnabled: true,
-          ...(options.nutritionWritesEnabled ? { nutritionWritesEnabled: true } : {}),
           checkInEnabled: options.checkInEnabled ?? true,
         } }
       }
@@ -178,12 +202,19 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
     } else if (request.params?.name === 'show_socius_activity') {
       const selected = request.params.arguments as { date: string; timezone: string }
       const entries = selected.date === '2026-11-07'
-        ? [{ label: 'Saved workout', revision: 2, details: ['Dumbbell row · 3 sets'] }] : []
+        ? [{ label: 'Saved workout', revision: 2, details: ['Dumbbell row · 3 sets'] }]
+        : selected.date === (options.lastWorkoutDate ?? lastWorkout.date)
+          ? [{ label: 'Saved workout', revision: 1, details: ['Front squat · 3 sets'] }] : []
       result = { _meta: { activity: {
         ...selected,
         workouts: { status: entries.length ? 'available' : 'no_records', entries },
         meals: { status: 'available', entries: [{ label: 'Logged lunch', revision: 1, details: ['Turkey sandwich'] }] },
       } } }
+    } else if (request.method === 'ui/open-link') {
+      result = {}
+    } else if (request.params?.name === 'read_socius_training_progress') {
+      const { timezone } = request.params.arguments as { timezone: string }
+      result = { _meta: { progress: { timezone, ...progress } } }
     } else if (request.params?.name === 'read_socius_nutrition') {
       result = { _meta: { nutrition: {
         date: todayDate, readAt: todayDate === date ? readAt : `${todayDate}T11:40:00.000Z`, timezone: 'UTC', mealCount,
@@ -216,6 +247,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
     widget,
     element: (id: string) => widget.getElementById(id)!,
     requests,
+    intervals,
     updateHostContext: (params: Record<string, unknown>, source = host) => {
       child.dispatchEvent(new MessageEvent('message', {
         source, data: { jsonrpc: '2.0', method: 'ui/notifications/host-context-changed', params },
@@ -223,6 +255,7 @@ function mountWidget(workoutRecommendation = initialRecommendation, browserClock
     },
     setMealCount: (count: number) => { mealCount = count },
     setNutritionWeek: (week?: NutritionWeek) => { weekToDate = week },
+    setTrainingProgress: (value: typeof progress) => { progress = value },
     setTodayDate: (value: string) => { todayDate = value },
     setSavedCheckIn: (checkIn: CheckIn) => { savedCheckIns.set(todayDate, checkIn) },
     setDraft: (draft: typeof recoveryDraft) => { savedDraft = draft },
@@ -871,6 +904,45 @@ describe('SociusFit dashboard', () => {
     expect(todayCalls().at(-1)?.params?.arguments).toEqual({ tzOffset: expect.any(Number) })
   })
 
+  it('rereads stored WHOOP metrics every two minutes only while the card is visible', async () => {
+    const { widget, element, requests, intervals, setRecovery } = mountWidget(initialRecommendation, todayClock(), { captureIntervals: true })
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    expect([...intervals.values()].map(timer => timer.delay)).toEqual([120_000])
+
+    setRecovery({ recoveryScore: 61, strainScore: 9 })
+    vi.setSystemTime(new Date(2026, 10, 20, 14, 2))
+    intervals.values().next().value!.callback()
+    await vi.waitFor(() => expect(element('recovery-percent').textContent).toBe('61%'))
+    expect(requests.at(-1)?.params?.arguments).toEqual({ tzOffset: expect.any(Number), whoopOnly: true })
+    expect(element('strain-score-value').textContent).toBe('9.0')
+
+    Object.defineProperty(widget, 'visibilityState', { value: 'hidden', configurable: true })
+    widget.dispatchEvent(new Event('visibilitychange'))
+    expect(intervals.size).toBe(0)
+    Object.defineProperty(widget, 'visibilityState', { value: 'visible', configurable: true })
+    widget.dispatchEvent(new Event('visibilitychange'))
+    expect(intervals.size).toBe(1)
+    const card = element('whoop-panel') as HTMLDetailsElement
+    card.open = false
+    card.dispatchEvent(new Event('toggle'))
+    expect(intervals.size).toBe(0)
+  })
+
+  it('refreshes WHOOP immediately on request and retains displayed metrics if the read fails', async () => {
+    const { element, requests, setRecovery, failNextRead } = mountWidget(initialRecommendation, todayClock())
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    failNextRead()
+    element('whoop-refresh').click()
+    await vi.waitFor(() => expect(element('whoop-refresh-status').textContent).toBe('Could not refresh saved WHOOP data.'))
+    expect(element('recovery-percent').textContent).toBe('79%')
+
+    setRecovery({ recoveryScore: 63 })
+    element('whoop-refresh').click()
+    await vi.waitFor(() => expect(element('recovery-percent').textContent).toBe('63%'))
+    expect(element('whoop-refresh-status').textContent).toBe('Saved WHOOP readings refreshed.')
+    expect(requests.at(-1)?.params?.arguments).toEqual({ tzOffset: expect.any(Number), whoopOnly: true })
+  })
+
   it('refreshes the preceding WHOOP score for the displayed workout and clears an invalidated pair', async () => {
     const workoutAt = '2026-11-19T15:30:00Z'
     const recoveryUpdatedAt = '2026-11-19T13:00:00Z'
@@ -938,27 +1010,61 @@ describe('SociusFit dashboard', () => {
     expect(element('check-in-next').hidden).toBe(false)
   })
 
-  it('shows dated workouts and refreshes Nutrition without enabling meal logging for read-only access', async () => {
+  it('loads progress on expansion and keeps record availability independent from the workout summary', async () => {
+    const { element, requests, setTrainingProgress, widget } = mountWidget(initialRecommendation, todayClock(), { supportsRecordsLink: true })
+    await vi.waitFor(() => expect(element('show-activity').hidden).toBe(false))
+    element('show-activity').click()
+    const panel = element('training-progress') as HTMLDetailsElement
+    const progressReads = () => requests.filter(request => request.params?.name === 'read_socius_training_progress')
+    expect(panel.open).toBe(false)
+    expect(progressReads()).toHaveLength(0)
+    panel.querySelector('summary')!.click()
+    await vi.waitFor(() => expect(element('training-progress-content').hidden).toBe(false))
+    expect(progressReads()).toHaveLength(1)
+    expect(element('progress-month-label').textContent).toBe('Workouts in November 2026')
+    expect(element('progress-month-workouts').textContent).toBe('3')
+    expect(element('progress-all-workouts').textContent).toBe('12')
+    expect(element('progress-strength').textContent).toBe('8')
+    expect(element('progress-metcons').textContent).toBe('4')
+    expect(element('progress-cardio').textContent).toBe('5')
+    expect(element('progress-record-count').textContent).toBe('1 improvement this month')
+    expect(element('progress-recent-records').textContent).toContain('<img src=x> Front squat')
+    expect(element('progress-recent-records').textContent).toContain('185 lbs')
+    expect(widget.querySelector('#progress-recent-records img')).toBeNull()
+
+    expect(element('training-records-link').hidden).toBe(false)
+    element('training-records-link').click()
+    expect(requests).toContainEqual(expect.objectContaining({
+      method: 'ui/open-link', params: { url: 'https://www.sociusfit.com/pr-history' },
+    }))
+
+    setTrainingProgress({ workouts: null, records: { entries: [], monthCount: 0 } })
+    element('training-progress-refresh').click()
+    await vi.waitFor(() => expect(element('progress-record-note').textContent).toContain('first results establish a baseline'))
+    expect(element('progress-workout-counts').hidden).toBe(true)
+    expect(element('progress-workout-note').textContent).toContain('could not load')
+    expect(element('progress-record-count').hidden).toBe(true)
+  })
+
+  it('opens Training Activity on the last workout and jumps directly to another workout date', async () => {
     const { widget, element, requests, setMealCount } = mountWidget({
       status: 'unscheduled', source: 'accepted_plan', title: 'No workout scheduled today', reason: null, sessions: [],
-    })
+    }, undefined, { lastWorkoutDate: '2026-11-18' })
     await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
     expect(element('accepted-plan-details').hidden).toBe(true)
     for (const id of retiredControls) expect(widget.getElementById(id)).toBeNull()
 
     expect(element('show-today').textContent).toBe('Today')
-    expect(element('show-activity').textContent).toBe('Training history')
+    expect(element('show-activity').textContent).toBe('Training Activity')
     element('show-activity').click()
     await vi.waitFor(() => expect(element('activity-card').hidden).toBe(false))
-    expect(element('view-title').textContent).toBe('Training history')
+    expect(element('view-title').textContent).toBe('Training Activity')
     const workoutDate = element('activity-date') as HTMLInputElement
     expect(widget.querySelector('label[for="activity-date"]')?.textContent?.trim()).toBe('Workout date')
     expect(workoutDate.type).toBe('date')
     expect(workoutDate.max).toBe(date)
-    expect(workoutDate.value).toBe('2026-11-19')
-    expect(element('activity-workouts-note').textContent).toBe('No workouts were logged for this date.')
-    element('previous-day').click()
-    await vi.waitFor(() => expect(element('activity-card').hidden).toBe(false))
+    expect(workoutDate.value).toBe('2026-11-18')
+    expect(element('activity-workouts').textContent).toContain('Front squat · 3 sets')
 
     workoutDate.value = '2026-11-07'
     workoutDate.dispatchEvent(new Event('change', { bubbles: true }))
@@ -971,11 +1077,11 @@ describe('SociusFit dashboard', () => {
     workoutDate.dispatchEvent(new Event('change', { bubbles: true }))
     expect(element('activity-load').textContent).toBe('Choose a date on or before today.')
     expect(requests.filter(request => request.params?.name === 'show_socius_activity').map(request => request.params?.arguments))
-      .toMatchObject([{ date: '2026-11-19' }, { date: '2026-11-18' }, { date: '2026-11-07' }])
+      .toMatchObject([{ date: '2026-11-18' }, { date: '2026-11-07' }])
 
     element('show-nutrition').click()
     await vi.waitFor(() => expect(element('nutrition-refresh').hidden).toBe(false))
-    expect(element('nutrition-log').hidden).toBe(true)
+    expect(widget.getElementById('nutrition-log')).toBeNull()
     expect(element('nutrition-meal-count').textContent).toBe('0 saved meals')
     expect(element('nutrition-week').hidden).toBe(true)
     setMealCount(1)
@@ -1089,80 +1195,5 @@ describe('SociusFit dashboard', () => {
     expect(element('nutrition-progress').textContent).toContain('30 g logged')
     expect(element('nutrition-progress').textContent).toContain('120 g target')
     expect(element('nutrition-meal-count').textContent).toBe('1 saved meal')
-  })
-
-  it('keeps meal details across dashboard views and requests one unsent draft in the active chat', async () => {
-    const { element, requests, holdNextDraft, releaseHeldDraft } = mountWidget(initialRecommendation, undefined, {
-      nutritionWritesEnabled: true, supportsDraft: true, supportsActiveChat: true,
-    })
-    const chatRequests = () => requests.filter(request => request.method === 'ui/message')
-    await vi.waitFor(() => expect(element('show-nutrition').hidden).toBe(false))
-    element('show-nutrition').click()
-    await vi.waitFor(() => expect(element('nutrition-log').hidden).toBe(false))
-    element('nutrition-log').click()
-
-    const panel = element('meal-chat')
-    const details = element('meal-chat-details') as HTMLTextAreaElement
-    const openChat = element('meal-chat-open') as HTMLButtonElement
-    details.value = 'A turkey sandwich for lunch.'
-    details.dispatchEvent(new Event('input', { bubbles: true }))
-    expect(panel.hidden).toBe(false)
-    expect(chatRequests()).toHaveLength(0)
-
-    element('show-activity').click()
-    await vi.waitFor(() => expect(element('activity-card').hidden).toBe(false))
-    expect(panel.closest('[hidden]')).toBeNull()
-    element('show-today').click()
-    expect(panel.closest('[hidden]')).toBeNull()
-    expect(details.value).toBe('A turkey sandwich for lunch.')
-
-    holdNextDraft()
-    openChat.click()
-    openChat.click()
-    expect(chatRequests()).toHaveLength(1)
-    expect(chatRequests()[0].params).toEqual({
-      role: 'user',
-      content: [{ type: 'text', text: expect.stringMatching(/^I want to log food I ate\.[\s\S]*A turkey sandwich for lunch\./) }],
-      _meta: { 'openai/message': { target: 'active', send: false } },
-    })
-    releaseHeldDraft()
-    await vi.waitFor(() => expect(element('meal-chat-status').textContent).toMatch(/review, edit, and send/i))
-    expect(details.readOnly).toBe(true)
-    details.dispatchEvent(new Event('input', { bubbles: true }))
-    openChat.click()
-    expect(chatRequests()).toHaveLength(1)
-    expect(panel.closest('[hidden]')).toBeNull()
-    expect(requests.some(request => request.params?.name === 'create_meal')).toBe(false)
-  })
-
-  it.each([
-    { mode: 'no chat capability', supportsDraft: false, supportsActiveChat: false, requests: 0 },
-    { mode: 'standard text support only', supportsDraft: true, supportsActiveChat: false, requests: 0 },
-    { mode: 'active routing support only', supportsDraft: false, supportsActiveChat: true, requests: 0 },
-    { mode: 'host rejection', supportsDraft: true, supportsActiveChat: true, requests: 1 },
-  ])('preserves the meal details and points to chat for $mode', async ({ supportsDraft, supportsActiveChat, requests: expectedRequests }) => {
-    const { element, requests } = mountWidget(initialRecommendation, undefined, {
-      nutritionWritesEnabled: true, supportsDraft, supportsActiveChat, draftResponse: 'reject',
-    })
-    await vi.waitFor(() => expect(element('show-nutrition').hidden).toBe(false))
-    element('show-nutrition').click()
-    await vi.waitFor(() => expect(element('nutrition-log').hidden).toBe(false))
-    element('nutrition-log').click()
-    const details = element('meal-chat-details') as HTMLTextAreaElement
-    details.value = 'One bowl of oatmeal.'
-    details.dispatchEvent(new Event('input', { bubbles: true }))
-    element('meal-chat-open').click()
-
-    await vi.waitFor(() => expect(element('meal-chat-status').textContent).toMatch(/log the meal directly/i))
-    expect(element('meal-chat').closest('[hidden]')).toBeNull()
-    expect(details.value).toBe('One bowl of oatmeal.')
-    expect(details.readOnly).toBe(expectedRequests === 1)
-    expect(requests.filter(request => request.method === 'ui/message')).toHaveLength(expectedRequests)
-    expect(requests.some(request => request.params?.name === 'create_meal')).toBe(false)
-
-    element('meal-chat-close').click()
-    expect(element('meal-chat').hidden).toBe(true)
-    element('nutrition-log').click()
-    expect(details.value).toBe('')
   })
 })

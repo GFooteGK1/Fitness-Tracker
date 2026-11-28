@@ -65,16 +65,17 @@ to the owner’s local-day check-in row. The save is opt-in and uses the MCP wri
 flag. A changed assessment clears its draft. Today shows the saved session below
 the check-in when the local date, check-in revision, and training safety allow it.
 
-Saved WHOOP values appear second with their freshness and the comparison with a
-qualifying earlier score. WHOOP's local-day alignment is unverified and the
-check-in guidance does not use those values. The latest completed workout appears
-third in a collapsed card and groups saved sets without rewriting the workout.
+Saved WHOOP values appear second with source dates and the comparison with a
+qualifying earlier score. Today checks for newer saved readings while the WHOOP
+card is visible and expanded. Provider timestamps inform the dashboard's
+local-day labels. Check-in guidance does not use those values. The latest
+completed workout appears third in a collapsed card and groups saved sets.
 
-Training history in Today uses the owner-scoped Activity tool to display saved workouts
-by local date. The inline Activity card also shows logged meals. Nutrition reads macro
-totals and current targets when its tab opens or becomes visible and while it remains
-open. These views perform read-only requests. Meal creation and correction continue
-through the existing capture and receipt paths.
+Training Activity uses owner-scoped reads for training totals, workout mix, recent
+personal records, and past workouts. Its date picker opens on the latest saved
+workout when available. The inline Activity card also shows logged meals. Nutrition
+reads macro totals and current targets while its tab is visible. Meal creation and
+correction use the existing chat capture and receipt paths.
 
 ADR-0041 adds the separately approved owner-only cron GET: the existing bearer
 secret is checked before privileged work; only an existing fixed-owner connection

@@ -3,6 +3,7 @@ import { sociusTodayHtml } from '../app/lib/coach/today-app-ui'
 
 const date = '2026-11-23'
 const readAt = '2026-11-23T18:00:00Z'
+const latestWorkoutDate = '2026-11-19'
 const finalWorkoutDetail = 'Cooldown: easy walk · 5 min'
 const toolResults = {
   open_socius_today: {
@@ -10,19 +11,32 @@ const toolResults = {
       date, readAt, sessions: [], recentWork: [],
       recovery: { status: 'saved', recoveryScore: 36, sleepPerformance: 79, strainScore: 0.5 },
       lastWorkout: {
-        status: 'available', date: '2026-11-22',
+        status: 'available', date: latestWorkoutDate,
         movements: [{ name: 'Front squat', measurements: ['3 sets × 5 reps'] }],
       },
     },
-    checkInEnabled: true, activityEnabled: true, nutritionEnabled: true, nutritionWritesEnabled: true,
+    checkInEnabled: true, activityEnabled: true, nutritionEnabled: true,
   },
   show_socius_activity: {
     activity: {
-      date: '2026-11-22', timezone: 'America/Chicago',
+      date: latestWorkoutDate, timezone: 'America/Chicago',
       workouts: { status: 'available', entries: [{
         label: 'Strength session', revision: 1,
         details: [...Array.from({ length: 16 }, (_, index) => `Saved set ${index + 1} · 5 reps`), finalWorkoutDetail],
       }] },
+    },
+  },
+  read_socius_training_progress: {
+    progress: {
+      timezone: 'America/Chicago',
+      workouts: { currentMonth: 'November 2026', monthToDate: 7, totalWorkouts: 40, strengthSessions: 20, metcons: 8, cardio: 17 },
+      records: {
+        monthCount: 3,
+        entries: [{
+          exercise: 'Single-arm overhead kettlebell reverse lunge with a long recorded movement name',
+          type: 'Max weight', date: '2026-11-18', value: '62.5 lbs',
+        }],
+      },
     },
   },
   read_socius_nutrition: {
@@ -43,7 +57,7 @@ type HostRequest = {
   method: string
   params?: {
     name?: keyof typeof toolResults | 'save_socius_today_check_in'
-    arguments?: { date?: string, checkIn?: Record<string, number>, sessionDraftOnly?: boolean }
+    arguments?: { date?: string, checkIn?: Record<string, number>, sessionDraftOnly?: boolean, whoopOnly?: boolean }
     content?: { text: string }[]
   }
 }
@@ -97,9 +111,14 @@ test.describe('SociusFit Today’s training session', () => {
     const saved = toolResults.open_socius_today
     let recoveryScore = saved.today.recovery.recoveryScore
     let reads = 0
+    let compactReads = 0
     const widget = await openDashboard(page, request => {
       if (request.params?.name !== 'open_socius_today') return defaultHostResponse(request)
       reads += 1
+      if (request.params.arguments?.whoopOnly) {
+        compactReads += 1
+        return { _meta: { today: { date, recovery: { ...saved.today.recovery, recoveryScore, recoveryUpdatedAt: readAt } } } }
+      }
       return { _meta: { ...saved, today: {
         ...saved.today,
         workoutRecoveryKey: 'displayed-workout',
@@ -155,6 +174,12 @@ test.describe('SociusFit Today’s training session', () => {
     await whoopSummary.tap()
     await expect(score).toBeVisible()
     await expect(details.getByText('7 / 10', { exact: true })).toBeVisible()
+
+    recoveryScore = 68
+    await whoop.getByRole('button', { name: 'Refresh saved WHOOP' }).tap()
+    await expect(score).toHaveText('68%')
+    await expect(details.getByText('7 / 10', { exact: true })).toBeVisible()
+    expect(compactReads).toBe(1)
   })
 
   test('opens independently from the check-in and retains the saved draft through the local day', async ({ page }) => {
@@ -280,6 +305,32 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }
   test.describe(`SociusFit at ${viewport.width} × ${viewport.height}`, () => {
     test.use({ viewport, isMobile: true, hasTouch: true })
 
+    test('shows training progress above the workout list and fits long records on mobile', async ({ page }) => {
+      let progressReads = 0
+      const widget = await openDashboard(page, request => {
+        if (request.params?.name === 'read_socius_training_progress') progressReads += 1
+        return defaultHostResponse(request)
+      })
+      await widget.getByRole('button', { name: 'Training Activity' }).tap()
+      const card = widget.locator('#training-progress')
+      const summary = card.locator('summary')
+      await expect(card).toHaveJSProperty('open', false)
+      await expect.poll(() => overComposer(page, summary)).toBe(true)
+      expect(progressReads).toBe(0)
+      expect((await summary.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+      await summary.tap()
+      await expect(card.getByRole('heading', { name: 'Training summary' })).toBeVisible()
+      await expect(card.locator('#progress-month-workouts')).toHaveText('7')
+      await expect(card.locator('#progress-all-workouts')).toHaveText('40')
+      await expect(card.getByText('3 improvements this month')).toBeVisible()
+      await expect(card.getByText('62.5 lbs')).toBeVisible()
+      expect(progressReads).toBe(1)
+      const fitsViewport = await widget.locator('#dashboard-scroll').evaluate(scroll => scroll.scrollWidth <= scroll.clientWidth)
+      expect(fitsViewport).toBe(true)
+      await summary.press('Enter')
+      await expect(card).toHaveJSProperty('open', false)
+    })
+
     test('opens and collapses the Nutrition week-to-date card on mobile', async ({ page }) => {
       const widget = await openDashboard(page)
       await widget.getByRole('navigation', { name: 'SociusFit views' }).getByRole('button', { name: 'Nutrition' }).tap()
@@ -320,16 +371,16 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }
       await viewSwitch.getByRole('button', { name: 'Nutrition' }).tap()
       const refresh = widget.getByRole('button', { name: 'Refresh totals' })
       await expect(refresh).toBeEnabled()
+      await expect(widget.getByRole('button', { name: 'Log food in chat' })).toHaveCount(0)
       if (viewport.width === 390) {
         await updateComposerInset(page, 224)
-        await widget.getByRole('button', { name: 'Log food in chat' }).tap()
-        await expect(widget.getByLabel('What did you eat? (optional)')).toBeVisible()
+        await widget.locator('#nutrition-week > summary').tap()
       }
       await scrollDown(refresh)
       await tapInPlace(page, refresh)
       await expect(widget.getByText('Nutrition totals refreshed.')).toBeVisible()
 
-      const historyTab = viewSwitch.getByRole('button', { name: 'Training history' })
+      const historyTab = viewSwitch.getByRole('button', { name: 'Training Activity' })
       await historyTab.tap()
       await expect(historyTab).toHaveAttribute('aria-pressed', 'true')
       await expect(widget.locator('#activity-load')).toBeEmpty()
@@ -337,10 +388,14 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }
       const trainingHistory = widget.locator('#activity-card')
       const historySummary = widget.locator('#activity-card > summary')
       await expect(trainingHistory).toHaveJSProperty('open', true)
+      const workoutDate = widget.getByLabel('Workout date')
+      await expect(workoutDate).toHaveValue(latestWorkoutDate)
+      await expect(trainingHistory.locator('time')).toHaveAttribute('datetime', latestWorkoutDate)
+      await expect(widget.getByRole('button', { name: /Previous day|Next day/ })).toHaveCount(0)
       await expect(lastWorkoutDetail).toBeVisible()
       await historySummary.press('Enter')
       await expect(lastWorkoutDetail).toBeHidden()
-      await widget.getByRole('button', { name: 'Previous day' }).tap()
+      await workoutDate.fill('2026-11-21')
       await expect(trainingHistory).toHaveJSProperty('open', true)
       await expect(trainingHistory.locator('time')).toHaveAttribute('datetime', '2026-11-21')
       await expect(lastWorkoutDetail).toBeVisible()

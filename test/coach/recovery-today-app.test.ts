@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ContextSource } from '@/app/lib/coach/coaching-context'
 import { projectContextRecovery, qualifiedRecoveryBefore } from '@/app/lib/coach/external-recovery-context'
-import { createOwnedWorkoutRecoveryReader, projectTodayRecovery } from '@/app/lib/coach/recovery-today-app'
+import { createOwnedTodayRecoveryReader, createOwnedWorkoutRecoveryReader, projectTodayRecovery } from '@/app/lib/coach/recovery-today-app'
 import { projectProviderTiming } from '@/app/lib/whoop/provider-timing'
 import { contextClient, contextOwner, contextRows } from '../fixtures/coaching-context'
 import { legacyIdentity, providerPayload, timingNow } from '../fixtures/whoop-provider-timing'
@@ -33,22 +33,22 @@ describe('WHOOP Today and retained recovery before a logged workout', () => {
   it('shows saved scores, in-bed time and last sync without converting them into measurement age', () => {
     const context = recoveryContext()
     expect(context.metrics.recovery).toMatchObject({ usableAsCurrent: false, observedAt: null })
-    expect(projectTodayRecovery(context)).toMatchObject({ status: 'saved', lastSyncAt: timingNow, recoveryScore: 71.25, hrvMs: 42.125,
+    expect(projectTodayRecovery(context, 0)).toMatchObject({ status: 'saved', lastSyncAt: timingNow, recoveryScore: 71.25, hrvMs: 42.125,
       restingHeartRate: 51.5, sleepPerformance: 82, sleepInBedMinutes: 480,
       recoveryUpdatedAt: '2026-10-19T11:30:00.123456Z', sleepEndedAt: null, sessionEffort: { status: 'no_workout' } })
-    expect(projectTodayRecovery(recoveryContext(source([{ ...recoveryRow(), timing_provenance: null }])))).toMatchObject({
+    expect(projectTodayRecovery(recoveryContext(source([{ ...recoveryRow(), timing_provenance: null }])), 0)).toMatchObject({
       status: 'unverified', recoveryScore: 71.25, recoveryUpdatedAt: null,
     })
-    expect(projectTodayRecovery({ ...context, connected: false })).toMatchObject({ status: 'disconnected', recoveryScore: null, sleepPerformance: null })
+    expect(projectTodayRecovery({ ...context, connected: false }, 0)).toMatchObject({ status: 'disconnected', recoveryScore: null, sleepPerformance: null })
   })
 
   it.each([0, 12.45, 21])('retains the WHOOP cycle strain score %s on its native scale', strain => {
     const cycle = { ...contextRows().whoop_cycles[0], date: '2026-10-19', strain }
     const context = recoveryContext(source([]), source([cycle]), source([]))
-    expect(projectTodayRecovery(context)).toMatchObject({ status: 'unverified',
+    expect(projectTodayRecovery(context, 0)).toMatchObject({ status: 'unverified',
       strainScore: strain, strainStatus: 'stored', strainStoredDate: '2026-10-19', sessionEffort: { status: 'no_workout' },
     })
-    expect(projectTodayRecovery({ ...context, connected: false })).toMatchObject({ status: 'disconnected',
+    expect(projectTodayRecovery({ ...context, connected: false }, 0)).toMatchObject({ status: 'disconnected',
       strainScore: null, strainStatus: 'unavailable', strainStoredDate: null,
     })
   })
@@ -56,25 +56,54 @@ describe('WHOOP Today and retained recovery before a logged workout', () => {
   it('identifies a stale saved cycle score independently and uses it as a stale-only read', () => {
     const strain = source([{ ...contextRows().whoop_cycles[0], strain: 0 }])
     const projection = { strainScore: 0, strainStatus: 'stale', strainStoredDate: '2026-10-18' }
-    expect(projectTodayRecovery(recoveryContext(undefined, strain))).toMatchObject({ status: 'saved', ...projection })
-    expect(projectTodayRecovery(recoveryContext(source([]), strain, source([])))).toMatchObject({ status: 'stale', ...projection })
+    expect(projectTodayRecovery(recoveryContext(undefined, strain), 0)).toMatchObject({ status: 'saved', ...projection })
+    expect(projectTodayRecovery(recoveryContext(source([]), strain, source([])), 0)).toMatchObject({ status: 'stale', ...projection })
   })
 
   it('keeps each reading status and retained provider update separate from batch sync time', () => {
     const sleep = { ...legacyIdentity('sleep', contextOwner), date: '2026-10-18', sleep_performance_percentage: 82 }
+    const sleepPayload = { ...providerPayload('sleep'), start: '2026-10-18T02:00:00Z', end: '2026-10-18T10:30:00Z' }
     const strain = { ...legacyIdentity('cycle', contextOwner), strain: 9 }
     const context = recoveryContext(
       undefined,
       source([{ ...strain, ...projectProviderTiming('cycle', providerPayload('cycle'), strain, timingNow) }]),
-      source([{ ...sleep, ...projectProviderTiming('sleep', providerPayload('sleep'), sleep, timingNow) }]),
+      source([{ ...sleep, ...projectProviderTiming('sleep', sleepPayload, sleep, timingNow) }]),
     )
-    expect(projectTodayRecovery(context)).toMatchObject({
+    expect(projectTodayRecovery(context, 0)).toMatchObject({
       recoveryScoreStatus: 'stored', sleepScoreStatus: 'stale', strainStatus: 'stored',
       recoveryUpdatedAt: '2026-10-19T11:30:00.123456Z',
       sleepUpdatedAt: '2026-10-19T11:30:00.123456Z', sleepStoredDate: '2026-10-18',
       strainUpdatedAt: '2026-10-19T11:30:00.123456Z',
       lastSyncAt: timingNow,
     })
+  })
+
+  it('does not label same-local-day WHOOP data as earlier when UTC rolls over', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime('2026-10-20T01:45:00Z')
+    const rows = contextRows()
+    rows.whoop_recovery = [recoveryRow()]
+    const sleep = { ...legacyIdentity('sleep', contextOwner), sleep_performance_percentage: 82, is_nap: false }
+    const strain = { ...legacyIdentity('cycle', contextOwner), strain: 9 }
+    rows.whoop_sleep = [{ ...sleep, ...projectProviderTiming('sleep', providerPayload('sleep'), sleep, timingNow) }]
+    rows.whoop_cycles = [{ ...strain, ...projectProviderTiming('cycle', providerPayload('cycle'), strain, timingNow) }]
+    const { db, traces, writes } = contextClient(rows)
+    const principal = { ...policy, subject: contextOwner, role: 'authenticated', expiresAt: Date.now() + 86_400_000 }
+    const read = createOwnedTodayRecoveryReader(async () => ({ db, principal }), policy)
+
+    expect(await read(360)).toMatchObject({ date: '2026-10-19', recovery: {
+      recoveryScoreStatus: 'stored', sleepScoreStatus: 'stored', strainStatus: 'stored',
+    } })
+    expect(traces.map(trace => trace.table).sort()).toEqual([
+      'whoop_cycles', 'whoop_recovery', 'whoop_sleep', 'whoop_sync_status', 'whoop_tokens',
+    ])
+    expect(traces.every(trace => trace.filters.some(filter => filter[0] === 'user_id' && filter[1] === contextOwner))).toBe(true)
+    expect(writes).not.toHaveBeenCalled()
+
+    vi.setSystemTime('2026-10-19T15:00:00Z')
+    expect(await read(-600)).toMatchObject({ date: '2026-10-20', recovery: {
+      recoveryScoreStatus: 'stale', sleepScoreStatus: 'stale', strainStatus: 'stale',
+    } })
   })
 
   it('does not display invalid or future cycle strain as a score', () => {
@@ -84,7 +113,7 @@ describe('WHOOP Today and retained recovery before a logged workout', () => {
       { ...cycle, date: 'invalid' }, { ...cycle, date: '2026-10-20' }, { ...cycle, created_at: '2026-10-19T16:00:00Z' },
     ]
     for (const row of rows) {
-      expect(projectTodayRecovery(recoveryContext(source([]), source([row]), source([])))).toMatchObject({
+      expect(projectTodayRecovery(recoveryContext(source([]), source([row]), source([])), 0)).toMatchObject({
         status: 'unavailable', strainScore: null, strainStatus: 'unavailable', strainStoredDate: null,
       })
     }
@@ -117,9 +146,9 @@ describe('WHOOP Today and retained recovery before a logged workout', () => {
     expect(await read({ ...workout, rpeOrigin: 'model_estimated' })).toBeNull()
     expect(traces).toHaveLength(0)
     const pair = await read(workout)
-    expect(projectTodayRecovery(recoveryContext(), workout, pair).sessionEffort).toMatchObject({ status: 'paired',
+    expect(projectTodayRecovery(recoveryContext(), 0, workout, pair).sessionEffort).toMatchObject({ status: 'paired',
       rpe: 7.5, workoutAt, recoveryScore: 71.25, recoveryUpdatedAt: '2026-10-19T11:30:00.123456Z' })
-    expect(projectTodayRecovery(recoveryContext(), { ...workout, performedAt: null }, pair).sessionEffort.status).toBe('timing_unverified')
+    expect(projectTodayRecovery(recoveryContext(), 0, { ...workout, performedAt: null }, pair).sessionEffort.status).toBe('timing_unverified')
     expect(traces[0]).toMatchObject({ table: 'whoop_recovery', filters: [['user_id', contextOwner], ['provider_score_state', 'SCORED']], limit: 20 })
     expect(writes).not.toHaveBeenCalled()
 
@@ -136,7 +165,7 @@ describe('WHOOP Today and retained recovery before a logged workout', () => {
     const principal = { ...policy, subject: contextOwner, role: 'authenticated', expiresAt: Date.now() + 60000 }
     const read = createOwnedWorkoutRecoveryReader(async () => ({ db, principal }), policy)
     await expect(read(workout)).resolves.toBeNull()
-    expect(projectTodayRecovery(recoveryContext(), workout, null)).toMatchObject({ recoveryScore: 71.25,
+    expect(projectTodayRecovery(recoveryContext(), 0, workout, null)).toMatchObject({ recoveryScore: 71.25,
       sessionEffort: { status: 'recovery_unavailable', rpe: 7.5 } })
 
     vi.mocked(db.from).mockClear()

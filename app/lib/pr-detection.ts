@@ -7,6 +7,13 @@ export interface PRResult {
   improvement: string;
 }
 
+export const personalRecordLabels: Record<PRResult['prType'], string> = {
+  weight: 'Max weight',
+  reps: 'Rep record',
+  time: 'Time record',
+  volume: 'Volume record',
+}
+
 export interface WorkoutBlock {
   block_type: string;
   title?: string;

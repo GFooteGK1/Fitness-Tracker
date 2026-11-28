@@ -21,6 +21,9 @@ const dayTypes = ['training', 'recovery', 'rest'] as const
 const maxWorkPerPhase = 5
 const maxSources = 12
 const daySchedules = ['planned', 'completed', 'skipped', 'scheduled_rest', 'unscheduled'] as const
+const revisionPattern = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/
+const maxFeedbackLength = 400
+const maxFeedbackEntries = 12
 
 export const sessionDraftInstructions = ' For any request to recommend, draft, or adjust today’s training, use prepare_today_session_draft before authoring.'
   + ' Pass the expectedLocalDate, tzOffset, and expectedCheckInRevision supplied by Today unchanged to prepare_today_session_draft. Keep the draft bound to that saved check-in.'
@@ -165,12 +168,32 @@ export function sessionDraftSafetyBinding(restrictions: unknown, acceptedPlanId:
 type ShownSessionDraft = Omit<SessionDraft, 'goalId' | 'sourceWorkoutIds'> & {
   date: string; goal: string; daySchedule: Evidence['daySchedule']; sourceDates: string[]; historyComplete: boolean
 }
+type EditFeedback = { text: string; recordedAt: string; draftRevision: string; previousDraftRevision: string | null }
+const legacyStoredKeys = ['date', 'safetyBinding', 'draft']
 type StoredSessionDraft = { date: string; safetyBinding: string; draft: ShownSessionDraft }
 const shownFields = { ...displayTextFields, goal: 500 }
 const shownKeys = [...Object.keys(shownFields), ...phases, 'date', 'daySchedule', 'dayType', 'planUse', 'sourceDates', 'historyComplete']
 
+function validRevision(value: unknown): value is string {
+  return typeof value === 'string' && revisionPattern.test(value)
+}
+
+function validEditFeedback(value: unknown): value is EditFeedback {
+  return exactObject(value, ['text', 'recordedAt', 'draftRevision', 'previousDraftRevision'])
+    && isText(value.text, maxFeedbackLength) && typeof value.recordedAt === 'string' && Number.isFinite(Date.parse(value.recordedAt))
+    && validRevision(value.draftRevision) && (value.previousDraftRevision === null || validRevision(value.previousDraftRevision))
+}
+
+function readStoredDraftMetadata(value: unknown): { revision: string | null; editFeedback: EditFeedback[] } | null {
+  if (exactObject(value, legacyStoredKeys)) return { revision: null, editFeedback: [] }
+  if (!exactObject(value, [...legacyStoredKeys, 'revision', 'editFeedback']) || !validRevision(value.revision)
+    || !Array.isArray(value.editFeedback) || value.editFeedback.length > maxFeedbackEntries
+    || !value.editFeedback.every(validEditFeedback)) return null
+  return { revision: value.revision, editFeedback: value.editFeedback }
+}
+
 export function readStoredSessionDraft(value: unknown, date: string, safetyBinding: string) {
-  if (!exactObject(value, ['date', 'safetyBinding', 'draft']) || value.date !== date) return { status: 'unavailable' } as const
+  if (!readStoredDraftMetadata(value) || !contextObject(value) || value.date !== date) return { status: 'unavailable' } as const
   if (value.safetyBinding !== safetyBinding) return { status: 'missing' } as const
   const draft = value.draft
   if (!exactObject(draft, shownKeys) || draft.date !== date || typeof draft.historyComplete !== 'boolean'
@@ -225,7 +248,7 @@ export function createSessionDraftTools(readEvidence: (tzOffset: number) => Prom
       if (!checkInRevision) throw new CoachingContextError(503, 'Saving a draft in Today is currently unavailable.')
       const safetyBinding = sessionDraftSafetyBinding(evidence.requirements.training_constraints, evidence.acceptedSession.planId)
       const receipt = await persist(date, tzOffset, checkInRevision, { date, safetyBinding, draft: sessionDraft })
-      if (receipt === 'stale') throw new CoachingContextError(409, 'The saved check-in changed. Prepare it again before saving a draft.')
+      if (receipt === 'stale') throw new CoachingContextError(409, 'The saved check-in or draft changed. Reopen Today before saving a draft.')
       if (receipt !== 'saved') throw new CoachingContextError(503, 'Could not confirm the draft was saved. Check Today before trying again.')
     }
     return {

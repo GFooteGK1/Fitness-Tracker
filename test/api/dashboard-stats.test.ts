@@ -16,11 +16,12 @@ function createSupabase({
   data = [] as unknown[],
   error = null as { message: string } | null,
 } = {}) {
-  const order = vi.fn().mockResolvedValue({ data, error })
+  const limit = vi.fn().mockResolvedValue({ data, error })
   const query = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
-    order,
+    order: vi.fn().mockReturnThis(),
+    limit,
   }
   const from = vi.fn().mockReturnValue(query)
 
@@ -73,6 +74,7 @@ describe('GET /api/dashboard-stats', () => {
     const { client, query } = createSupabase({
       data: [{
         id: 'workout-1',
+        user_id: 'user-1',
         workout_date: '2026-07-22',
         created_at: '2026-07-22T12:00:00Z',
         blocks: [{ block_type: 'STRENGTH' }],
@@ -101,6 +103,16 @@ describe('GET /api/dashboard-stats', () => {
 
     expect(response.status).toBe(500)
     expect(await response.json()).toEqual({ error: 'Failed to fetch workouts: query failed' })
+  })
+
+  it('rejects a returned workout from a different owner', async () => {
+    const { client } = createSupabase({ data: [{ id: 'private-workout', user_id: 'user-2' }] })
+    vi.mocked(createServerClient).mockResolvedValue(client as never)
+
+    const response = await GET(new Request('http://localhost/api/dashboard-stats'))
+
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ error: 'Workout summary is unavailable' })
   })
 
   it('categorizes supported persisted legacy types while preserving owner scope, dates and cache policy', async () => {

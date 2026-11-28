@@ -19,7 +19,7 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v21.html'
+const resourceUri = 'ui://socius/today-v22.html'
 const legacyResourceUris = [
   'ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html',
   'ui://socius/today-v5.html', 'ui://socius/today-v6.html', 'ui://socius/today-v7.html',
@@ -27,7 +27,7 @@ const legacyResourceUris = [
   'ui://socius/today-v12.html', 'ui://socius/today-v13.html', 'ui://socius/today-v14.html',
   'ui://socius/today-v15.html', 'ui://socius/today-v16.html',
   'ui://socius/today-v17.html', 'ui://socius/today-v18.html', 'ui://socius/today-v19.html',
-  'ui://socius/today-v20.html',
+  'ui://socius/today-v20.html', 'ui://socius/today-v21.html',
 ]
 const legacyActivityUri = 'ui://socius/activity.html'
 const activityUri = 'ui://socius/activity-v2.html'
@@ -74,7 +74,8 @@ function checkInStorage(records: ContextRows[string] = []) {
   return { storage, upsert }
 }
 
-async function connect(subject = owner, setup?: (rows: ContextRows) => void, checkIns?: ReturnType<typeof checkInStorage>) {
+async function connect(subject = owner, setup?: (rows: ContextRows) => void, checkIns?: ReturnType<typeof checkInStorage>,
+  fixtureOptions?: Parameters<typeof contextClient>[1]) {
   const rows = contextRows()
   rows.workouts = [{ ...workSnapshot().workouts[0], id: 'owner-saved-workout', workout_date: '2026-10-18',
     execution_status: 'completed', rpe: 7.5,
@@ -83,7 +84,7 @@ async function connect(subject = owner, setup?: (rows: ContextRows) => void, che
   setup?.(rows)
   for (const records of Object.values(rows)) for (const row of records) row.user_id = subject
   if (checkIns) rows[checkInTable] = checkIns.storage.records
-  const fixture = contextClient(rows)
+  const fixture = contextClient(rows, fixtureOptions)
   if (checkIns) {
     const from = vi.mocked(fixture.db.from)
     const original = from.getMockImplementation()!
@@ -150,6 +151,8 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       await expect(client.callTool({ name: 'show_socius_activity', arguments: { date: '2026-10-18', timezone: 'America/Chicago' } }))
         .rejects.toMatchObject({ code: -32602 })
       await expect(client.callTool({ name: 'read_socius_nutrition', arguments: { timezone: 'America/Chicago' } }))
+        .rejects.toMatchObject({ code: -32602 })
+      await expect(client.callTool({ name: 'read_socius_training_progress', arguments: { timezone: 'America/Chicago' } }))
         .rejects.toMatchObject({ code: -32602 })
       for (const uri of [resourceUri, ...legacyResourceUris]) {
         const resource = await request(config.resource, {
@@ -263,6 +266,10 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         name: 'read_socius_nutrition', annotations: expect.objectContaining({ readOnlyHint: true }),
         _meta: expect.objectContaining({ ui: { visibility: ['app'] } }),
       }))
+      expect(tools).toContainEqual(expect.objectContaining({
+        name: 'read_socius_training_progress', annotations: expect.objectContaining({ readOnlyHint: true }),
+        _meta: expect.objectContaining({ ui: { visibility: ['app'] } }),
+      }))
       expect((await client.listResources()).resources.map(({ uri }) => uri)).toEqual([resourceUri, activityUri, draftUri])
       const resource = await client.readResource({ uri: activityUri })
       expect((await client.readResource({ uri: legacyActivityUri })).contents).toEqual(
@@ -277,7 +284,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       const result = await client.callTool(today({ tzOffset: 360 }))
       expect(result._meta?.activityEnabled).toBe(true)
       expect(result._meta?.nutritionEnabled).toBe(true)
-      expect(result._meta?.nutritionWritesEnabled).toBe(true)
+      expect(result._meta?.nutritionWritesEnabled).toBeUndefined()
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
@@ -292,6 +299,76 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       expect(result._meta?.nutritionEnabled).toBe(true)
       expect(result._meta?.nutritionWritesEnabled).toBeUndefined()
       expect((await client.listTools()).tools.map(tool => tool.name)).not.toContain('create_meal')
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('projects all saved workouts and recent improvements using the owner’s local month', async () => {
+    vi.setSystemTime(new Date('2026-12-01T05:30:00Z'))
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    vi.stubEnv('SOCIUS_MCP_ACTIVITY_UI_ENABLED', 'true')
+    const pr = (id: string, exercise: string, achieved_at: string, previous_value: number | null = 60) => ({
+      id, exercise, achieved_at, pr_type: 'weight', value: '75', previous_value,
+    })
+    const { client, rows, writes, traces } = await connect(owner, data => {
+      data.workouts = [
+        ...Array.from({ length: 500 }, (_, index) => ({
+          id: `history-${String(index).padStart(3, '0')}`, workout_date: '2026-10-20',
+          blocks: [{ block_type: 'CARDIO' }], input_text: 'Private past workout text',
+        })),
+        { id: 'recent', workout_date: '2026-11-30', blocks: [{ block_type: 'STRENGTH' }, { block_type: 'EMOM' }] },
+        { id: 'future', workout_date: '2026-12-01', blocks: [{ block_type: 'STRENGTH' }] },
+      ]
+      data.personal_records = [
+        pr('recent-pr', 'Front squat', '2026-12-01T05:00:00Z'),
+        pr('month-start', 'Strict press', '2026-11-01T05:00:00Z'),
+        pr('baseline', 'First attempt', '2026-11-23T10:00:00Z', null),
+        ...Array.from({ length: 6 }, (_, index) => pr(`past-${index}`, `Older PR ${index}`, '2026-11-01T04:59:59Z')),
+      ]
+    })
+    rows.workouts.push({ id: 'other-workout', user_id: other, workout_date: '2026-11-28', blocks: [{ block_type: 'CARDIO' }] })
+    rows.personal_records.push({ ...pr('other-pr', 'Another athlete’s PR', '2026-11-30T12:00:00Z'), user_id: other })
+    const progressCall = { name: 'read_socius_training_progress', arguments: { timezone: 'America/Chicago' } }
+    try {
+      await expect(client.callTool({ ...progressCall, arguments: { timezone: 'UTC', owner: other } }))
+        .resolves.toMatchObject({ isError: true })
+      await expect(client.callTool({ ...progressCall, arguments: { timezone: '+05:00' } }))
+        .resolves.toMatchObject({ isError: true })
+      expect(traces).toHaveLength(0)
+      const result = await client.callTool(progressCall)
+      const progress = result._meta?.progress
+      expect(progress).toMatchObject({
+        timezone: 'America/Chicago',
+        workouts: { currentMonth: 'November 2026', monthToDate: 1, totalWorkouts: 502, strengthSessions: 2, metcons: 1, cardio: 500 },
+        records: {
+          monthCount: 2,
+          entries: expect.arrayContaining([
+            { exercise: 'Front squat', type: 'Max weight', value: '75 lbs', date: '2026-11-30' },
+            { exercise: 'Strict press', type: 'Max weight', value: '75 lbs', date: '2026-11-01' },
+          ]),
+        },
+      })
+      expect(progress).toHaveProperty('records.entries.length', 5)
+      expect(result.structuredContent).toBeUndefined()
+      expect(JSON.stringify(result.content)).not.toContain('Front squat')
+      expect(JSON.stringify(progress)).not.toMatch(/Another athlete|First attempt|Private past workout|recent-pr/)
+      expect(traces.map(trace => trace.table).sort()).toEqual(['personal_records', 'personal_records', 'workouts', 'workouts'])
+      expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner))).toBe(true)
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('withholds training progress if a provider returns rows outside the queried owner', async () => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    vi.stubEnv('SOCIUS_MCP_ACTIVITY_UI_ENABLED', 'true')
+    const { client, rows, writes } = await connect(owner, undefined, undefined, { foreignRows: true })
+    rows.workouts.push({ id: 'other-workout', user_id: other, workout_date: localDate })
+    rows.personal_records = [{ id: 'other-pr', user_id: other, exercise: 'Private exercise',
+      pr_type: 'weight', value: 70, previous_value: 60, achieved_at: '2026-10-18T10:00:00Z' }]
+    try {
+      const result = await client.callTool({ name: 'read_socius_training_progress', arguments: { timezone: 'America/Chicago' } })
+      expect(result._meta?.progress).toMatchObject({ workouts: null, records: { entries: null, monthCount: null } })
+      expect(JSON.stringify(result)).not.toContain('Private exercise')
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
@@ -372,8 +449,8 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
         },
         workoutRecoveryKey: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
         recentStatus: expect.any(String), recentWork: [{ ...grouped, date: localDate }],
-        recovery: { status: 'stale', lastSyncAt: '2026-10-18T11:00:00.000Z', storedDate: '2026-10-18',
-          recoveryScore: 71, sleepPerformance: 82, strainScore: 3, strainStatus: 'stale', strainStoredDate: '2026-10-18' },
+        recovery: { status: 'unverified', lastSyncAt: '2026-10-18T11:00:00.000Z', storedDate: '2026-10-18',
+          recoveryScore: 71, sleepPerformance: 82, strainScore: 3, strainStatus: 'stored', strainStoredDate: '2026-10-18' },
       })
       expect(JSON.stringify(dashboard)).toContain('Barbell floor press')
       expect(JSON.stringify(dashboard)).not.toContain('private workout')
@@ -390,6 +467,32 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       const reads = traces.length
       await expect(client.callTool(today({ tzOffset: 360 }))).rejects.toThrow()
       expect(traces).toHaveLength(reads)
+      expect(writes).not.toHaveBeenCalled()
+    } finally { await client.close() }
+  })
+
+  it('refreshes only saved WHOOP metrics with owner-scoped reads and private output', async () => {
+    vi.stubEnv('SOCIUS_MCP_TODAY_OWNER_ID', owner)
+    const { client, traces, writes } = await connect(owner)
+    try {
+      for (const args of [{ whoopOnly: true }, { tzOffset: 360, whoopOnly: false },
+        { tzOffset: 360, whoopOnly: true, sessionDraftOnly: true }]) {
+        const rejected = await client.callTool(today(args))
+        expect(rejected.isError).toBe(true)
+      }
+      expect(traces).toHaveLength(0)
+
+      const result = await client.callTool(today({ tzOffset: 360, whoopOnly: true }))
+      expect(result.isError).not.toBe(true)
+      expect(result._meta?.today).toEqual({ date: localDate, recovery: expect.objectContaining({
+        recoveryScore: 71, sleepPerformance: 82, strainScore: 3,
+      }) })
+      expect(result.content).toEqual([{ type: 'text', text: 'SociusFit Today opened.' }])
+      expect(result.structuredContent).toBeUndefined()
+      expect(traces.map(trace => trace.table).sort()).toEqual([
+        'whoop_cycles', 'whoop_recovery', 'whoop_sleep', 'whoop_sync_status', 'whoop_tokens',
+      ])
+      expect(traces.every(trace => trace.filters.some(([key, value]) => key === 'user_id' && value === owner))).toBe(true)
       expect(writes).not.toHaveBeenCalled()
     } finally { await client.close() }
   })
@@ -411,7 +514,7 @@ describe('private Socius Today sidebar over authenticated stateless MCP', () => 
       const initial = await client.callTool(today({ tzOffset: 360 }))
       expect(initial._meta?.today).toMatchObject({ checkIn: { status: 'missing' },
         sessions: [expect.objectContaining({ title, status: 'planned' })],
-        recovery: { recoveryScore: 12, status: 'stale' } })
+        recovery: { recoveryScore: 12, status: 'unverified' } })
       expect(initial._meta?.today).not.toHaveProperty('assessmentGuidance')
       expect(initial.content).toEqual([{ type: 'text', text: 'SociusFit Today opened.' }])
       expect(initial.structuredContent).toBeUndefined()

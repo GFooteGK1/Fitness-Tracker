@@ -15,22 +15,6 @@ export const nutritionStyles = String.raw`
       align-items: baseline;
       gap: .25rem .65rem;
     }
-    #meal-chat { display: grid; gap: .65rem; }
-    #meal-chat label { display: block; margin-bottom: .3rem; }
-    #meal-chat textarea {
-      width: 100%;
-      min-height: 5rem;
-      padding: .55rem .65rem;
-      border: 1px solid var(--line);
-      border-radius: .6rem;
-      background: var(--surface);
-      color: var(--foreground);
-      font: inherit;
-      font-size: max(1rem, 16px);
-      resize: vertical;
-    }
-    #meal-chat textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-    .meal-chat-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 `
 
 export const nutritionCardMarkup = String.raw`
@@ -59,104 +43,6 @@ export const nutritionCardMarkup = String.raw`
         </div>
       </details>
     </div>
-`
-
-export const mealChatMarkup = String.raw`
-    <section id="meal-chat" class="socius-card" aria-labelledby="meal-chat-title" hidden>
-      <h2 id="meal-chat-title">Log food in chat</h2>
-      <div>
-        <label for="meal-chat-details">What did you eat? (optional)</label>
-        <textarea id="meal-chat-details" rows="3" aria-describedby="meal-chat-help"></textarea>
-      </div>
-      <p id="meal-chat-help" class="muted">You can add a photo or dictate in the ChatGPT composer.</p>
-      <div class="meal-chat-actions">
-        <button id="meal-chat-open" type="button">Prepare chat draft</button>
-        <button id="meal-chat-close" class="secondary-action" type="button">Close meal draft</button>
-      </div>
-      <p id="meal-chat-status" class="muted" role="status"></p>
-    </section>
-`
-
-export const mealChatScript = String.raw`
-      function setupMealChat(host, byId) {
-        const launcher = byId('nutrition-log');
-        const panel = byId('meal-chat');
-        const details = byId('meal-chat-details');
-        const open = byId('meal-chat-open');
-        const close = byId('meal-chat-close');
-        const status = byId('meal-chat-status');
-        const composerInstructions = 'Open SociusFit from the side panel of your conversation, or log the meal directly in that chat.';
-        let supportsEditableDraft = false;
-
-        function resetFeedback() {
-          open.disabled = false;
-          status.textContent = '';
-        }
-
-        launcher.addEventListener('click', () => {
-          if (launcher.hidden) return;
-          panel.hidden = false;
-          launcher.setAttribute('aria-expanded', 'true');
-          details.focus();
-        });
-        close.addEventListener('click', () => {
-          panel.hidden = true;
-          launcher.setAttribute('aria-expanded', 'false');
-          details.readOnly = false;
-          details.value = '';
-          resetFeedback();
-          const returnFocus = launcher.closest('[hidden]') ? document.querySelector('.view-switch [aria-pressed="true"]') : launcher;
-          returnFocus?.focus();
-        });
-        details.addEventListener('input', () => {
-          if (!details.readOnly) resetFeedback();
-        });
-
-        open.addEventListener('click', async () => {
-          if (host.closed || panel.hidden || open.disabled) return;
-          if (!supportsEditableDraft) {
-            status.textContent = composerInstructions;
-            return;
-          }
-          const meal = details.value.trim();
-          const prompt = 'I want to log food I ate. Use the details I include. Ask for any required details that are missing, then save the meal in SociusFit and confirm the save.'
-            + (meal ? '\n\n' + meal : '');
-          open.disabled = true;
-
-          // The host appends to the composer. Keep each attempt to one append, even if the acknowledgment is lost.
-          details.readOnly = true;
-          close.disabled = true;
-          status.textContent = 'Preparing your draft in the active ChatGPT conversation…';
-          try {
-            const result = await host.request('ui/message', {
-              role: 'user',
-              content: [{ type: 'text', text: prompt }],
-              _meta: { 'openai/message': { target: 'active', send: false } },
-            });
-            if (!result || typeof result !== 'object' || Array.isArray(result) || result.isError) {
-              throw new Error('Draft request was not acknowledged');
-            }
-            status.textContent = 'Review, edit, and send your draft in the ChatGPT composer.';
-          } catch {
-            status.textContent = 'Check the ChatGPT composer for the draft. If it is missing, log the meal directly in that chat.';
-          } finally {
-            close.disabled = false;
-          }
-        });
-
-        return {
-          setAvailable(available) {
-            launcher.hidden = !available;
-            if (!available && !panel.hidden) {
-              panel.hidden = true;
-              launcher.setAttribute('aria-expanded', 'false');
-            }
-          },
-          setCapabilities(capabilities) {
-            supportsEditableDraft = Boolean(capabilities.message?.text && capabilities.experimental?.['openai/message']);
-          },
-        };
-      }
 `
 
 export const nutritionRendererScript = String.raw`
