@@ -37,12 +37,11 @@ export const legacySociusTodayResourceUris: readonly string[] = [
   'ui://socius/today-v19.html',
   'ui://socius/today-v20.html',
   'ui://socius/today-v21.html',
-  'ui://socius/today-v22.html',
 ]
 
 export const sociusTodayResource = {
-  // ChatGPT uses the URI as a cache key. Bump it when releasing changes to the widget.
-  uri: 'ui://socius/today-v23.html',
+  // ChatGPT uses the URI as a cache key. Keep it for compatible updates so cached tools work after rollback.
+  uri: 'ui://socius/today-v22.html',
   name: 'SociusFit Today',
   mimeType: 'text/html;profile=mcp-app',
 } as const

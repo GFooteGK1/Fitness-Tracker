@@ -19,7 +19,7 @@ const config: CoachingOAuthConfig = {
   redirectUri: 'https://chatgpt.com/connector/oauth/synthetic-callback',
   resourceMetadataUrl: 'https://socius.synthetic.invalid/.well-known/oauth-protected-resource/api/mcp',
 }
-const resourceUri = 'ui://socius/today-v23.html'
+const resourceUri = 'ui://socius/today-v22.html'
 const legacyResourceUris = [
   'ui://socius/today.html', 'ui://socius/today-v2.html', 'ui://socius/today-v4.html',
   'ui://socius/today-v5.html', 'ui://socius/today-v6.html', 'ui://socius/today-v7.html',
@@ -27,7 +27,7 @@ const legacyResourceUris = [
   'ui://socius/today-v12.html', 'ui://socius/today-v13.html', 'ui://socius/today-v14.html',
   'ui://socius/today-v15.html', 'ui://socius/today-v16.html',
   'ui://socius/today-v17.html', 'ui://socius/today-v18.html', 'ui://socius/today-v19.html',
-  'ui://socius/today-v20.html', 'ui://socius/today-v21.html', 'ui://socius/today-v22.html',
+  'ui://socius/today-v20.html', 'ui://socius/today-v21.html',
 ]
 const legacyActivityUri = 'ui://socius/activity.html'
 const activityUri = 'ui://socius/activity-v2.html'
