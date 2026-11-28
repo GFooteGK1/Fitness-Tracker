@@ -738,6 +738,11 @@ Workout Input → Processing → Storage → Query/Analysis
 └─ Google Sheets → CSV Import → Workout Data
 ```
 
+Audited workout capture maintains Personal Records in `personal_records` from
+completed sets of exactly 1, 3, or 5 reps. The web and ChatGPT read this
+projection. Named workout benchmarks use `benchmark_prs`. See
+[ADR-0057](../decisions/ADR-0057-personal-record-rep-maxes.md).
+
 ### **Dependencies:**
 - **AI Services**: provider-neutral `complete()` seam for OCR text extraction
 - **Browser APIs**: Web Speech API for voice input

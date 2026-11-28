@@ -2,14 +2,12 @@
 
 import React, { useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { type PRResult, formatPRValue, personalRecordLabels } from '@/app/lib/pr-detection'
+import { formatPRValue, personalRecordLabels, type PRResult } from '@/app/lib/pr-detection'
 
 interface PRNotificationProps {
   prs: PRResult[]
   onDismiss: () => void
 }
-
-const labels = { ...personalRecordLabels, reps: 'Repetitions', time: 'Time', volume: 'Session volume' }
 
 export default function PRNotification({ prs, onDismiss }: PRNotificationProps) {
   const records = prs.filter(pr => pr.isPR && pr.previousBest > 0)
@@ -34,9 +32,8 @@ export default function PRNotification({ prs, onDismiss }: PRNotificationProps) 
     <ul className="mt-4 divide-y divide-[var(--line)]">
       {records.map((pr, index) => <li key={`${pr.exercise}-${pr.prType}-${index}`} className="py-3">
         <p className="font-semibold">{pr.exercise}</p>
-        <p className="app-muted text-sm">{labels[pr.prType]}</p>
-        <p className="app-muted mt-1 text-sm">{formatPRValue(pr.prType, pr.previousBest)} → <span className="font-semibold text-[var(--accent)]">{formatPRValue(pr.prType, pr.newRecord)}</span></p>
-        <p className="mt-1 text-sm">{pr.improvement}</p>
+        <p className="app-muted text-sm">{personalRecordLabels[pr.prType]}</p>
+        <p className="app-muted mt-1 text-sm">{formatPRValue(pr.previousBest)} → <span className="font-semibold text-[var(--accent)]">{formatPRValue(pr.newRecord)}</span></p>
       </li>)}
     </ul>
     <Link href="/pr-history" onClick={onDismiss} className="app-secondary mt-3 w-full">View records</Link>

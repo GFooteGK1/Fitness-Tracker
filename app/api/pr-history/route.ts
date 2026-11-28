@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/app/lib/auth/supabase-server'
 import { apiError } from '@/app/lib/api-response'
-import { isRepMaxType, PR_TYPES } from '@/app/lib/pr-detection'
-import { formatUTCAsLocalDateInZone, parseDateString } from '@/app/lib/timezone-utils'
+import { isRepMaxType, REP_MAX_TYPES } from '@/app/lib/pr-detection'
 
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100
@@ -42,8 +41,8 @@ export async function GET(request: Request) {
     if (offset === null) {
       return apiError(`offset must be an integer between 0 and ${MAX_OFFSET}`, 400)
     }
-    if (prType && !PR_TYPES.some(type => type === prType)) {
-      return apiError(`prType must be one of: ${PR_TYPES.join(', ')}`, 400)
+    if (prType && !isRepMaxType(prType)) {
+      return apiError('prType must be one of: 1rm, 3rm, 5rm', 400)
     }
     if (exercise && exercise.length > 100) {
       return apiError('exercise must be 100 characters or fewer', 400)
@@ -54,7 +53,9 @@ export async function GET(request: Request) {
       .from('personal_records')
       .select('*', { count: 'exact' })
       .eq('user_id', user.id)
+      .in('pr_type', REP_MAX_TYPES)
       .order('achieved_at', { ascending: false })
+      .order('id', { ascending: false })
       .range(offset, offset + limit - 1)
 
     if (exercise) {
@@ -84,8 +85,9 @@ export async function GET(request: Request) {
     // Get all records for summary (unfiltered by exercise/type)
     const { data: allRecords, error: allError } = await supabase
       .from('personal_records')
-      .select('achieved_at, pr_type')
+      .select('achieved_at')
       .eq('user_id', user.id)
+      .in('pr_type', REP_MAX_TYPES)
       .gt('previous_value', 0)
 
     if (allError) {
@@ -101,9 +103,7 @@ export async function GET(request: Request) {
     if (allRecords) {
       totalCount = allRecords.length
       for (const rec of allRecords) {
-        const d = isRepMaxType(rec.pr_type)
-          ? parseDateString(formatUTCAsLocalDateInZone(rec.achieved_at, 'UTC'))
-          : new Date(rec.achieved_at)
+        const d = new Date(rec.achieved_at)
         if (d >= startOfYear) yearCount++
         if (d >= startOfMonth) monthCount++
         if (d >= startOfWeek) weekCount++

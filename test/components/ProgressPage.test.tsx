@@ -23,7 +23,7 @@ afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 describe('Progress page', () => {
   it('keeps training totals, overlapping categories, record values, and export available', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => response(url.startsWith('/api/dashboard-stats') ? stats : {
-      records: [{ id: 'pr-1', exercise: 'Back squat', pr_type: 'weight', value: 225, previous_value: 215, achieved_at: '2026-09-04T15:00:00Z' }], summary: { thisMonth: 1 }
+      records: [{ id: 'pr-1', exercise: 'Bench Press', pr_type: '5rm', value: 225, previous_value: 215, achieved_at: '2026-09-04T00:00:00Z' }], summary: { thisMonth: 1 }
     })))
     render(<Progress />)
     const summary = screen.getByRole('region', { name: 'Training summary' })
@@ -32,25 +32,12 @@ describe('Progress page', () => {
     expect(within(summary).getByText('30')).toBeInTheDocument()
     expect(within(summary).getByText(/more than one category/)).toBeInTheDocument()
     expect(await screen.findByText('225 lbs')).toBeInTheDocument()
+    expect(screen.getByText('5RM')).toBeInTheDocument()
+    expect(screen.getByText('Sep 4')).toBeInTheDocument()
     expect(screen.getByText('1 improvement this month')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Export' }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'View records' })).toHaveAttribute('href', '/pr-history')
-  })
-
-  it('renders rep-max civil dates beside legacy records', async () => {
-    vi.stubGlobal('fetch', vi.fn(async (url: string) => response(url.startsWith('/api/dashboard-stats') ? stats : {
-      records: [
-        { id: 'pr-1', exercise: 'Back squat', pr_type: 'weight', value: 225, previous_value: 215, achieved_at: '2026-09-04T15:00:00Z' },
-        { id: 'pr-2', exercise: 'Power Clean', pr_type: '3rm', value: 175, previous_value: 170, achieved_at: '2026-09-01T00:00:00Z' },
-      ],
-      summary: { thisMonth: 2 },
-    })))
-    render(<Progress />)
-    expect(await screen.findByText('3RM')).toBeInTheDocument()
-    expect(screen.getByText('175 lbs')).toBeInTheDocument()
-    expect(screen.getByText('Sep 1')).toBeInTheDocument()
-    expect(screen.getByText('Max weight')).toBeInTheDocument()
   })
 
   it('distinguishes confirmed empty training and records from loading', async () => {
@@ -86,20 +73,30 @@ describe('Progress page', () => {
   })
 })
 
-describe('Personal Records history', () => {
-  it('renders both formats and sends the rep-max filter to the API', async () => {
-    const fetch = vi.fn(async () => response({ records: [
-      { id: 'pr-1', exercise: 'Back squat', pr_type: 'weight', value: 225, previous_value: 215, achieved_at: '2026-09-04T15:00:00Z' },
-      { id: 'pr-2', exercise: 'Power Clean', pr_type: '3rm', value: 175, previous_value: 170, achieved_at: '2026-09-01T00:00:00Z' },
-    ] }))
-    vi.stubGlobal('fetch', fetch)
+describe('Records page', () => {
+  it('shows a first-attempt baseline with its rep count and filters by rep max', async () => {
+    const baseline = { id: 'first', exercise: 'Power Clean', pr_type: '3rm', value: 185, previous_value: null, achieved_at: '2026-09-04T00:00:00Z' }
+    const fetchRecords = vi.fn(async (url: string) => {
+      const params = new URL(url, 'https://example.test').searchParams
+      const showBaseline = params.get('includeBaselines') === 'true'
+        && (!params.get('prType') || params.get('prType') === baseline.pr_type)
+      return response({ records: showBaseline ? [baseline] : [], summary: { thisWeek: 0, thisMonth: 0, thisYear: 0, allTime: 0 } })
+    })
+    vi.stubGlobal('fetch', fetchRecords)
     render(<PRHistory />)
 
-    expect(await screen.findByText('Power Clean')).toBeInTheDocument()
-    expect(screen.getByText('175 lbs')).toBeInTheDocument()
-    expect(screen.getByText('Sep 1, 2026')).toBeInTheDocument()
-    expect(screen.getByText('225 lbs')).toBeInTheDocument()
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '3rm' } })
-    await waitFor(() => expect(fetch).toHaveBeenLastCalledWith('/api/pr-history?prType=3rm&limit=100'))
+    expect(screen.getByRole('checkbox', { name: 'Include first-attempt baselines' })).toBeChecked()
+    expect(await screen.findByRole('heading', { name: 'Power Clean' })).toBeInTheDocument()
+    expect(screen.getByText('3RM', { selector: 'span' })).toBeInTheDocument()
+    expect(screen.getByText('185 lbs')).toBeInTheDocument()
+    expect(screen.getByText('Sep 4, 2026')).toBeInTheDocument()
+    expect(screen.getByText('Baseline recorded')).toBeInTheDocument()
+
+    const repFilter = screen.getByRole('combobox', { name: 'Rep max' })
+    expect(within(repFilter).getAllByRole('option').map(option => option.textContent))
+      .toEqual(['All rep maxes', '1RM', '3RM', '5RM'])
+    fireEvent.change(repFilter, { target: { value: '1rm' } })
+    expect(await screen.findByRole('heading', { name: 'No matching records' })).toBeInTheDocument()
+    expect(fetchRecords).toHaveBeenLastCalledWith(expect.stringContaining('prType=1rm'))
   })
 })

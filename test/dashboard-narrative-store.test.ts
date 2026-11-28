@@ -3,7 +3,7 @@ import { createDashboardNarrativeStore } from '@/app/lib/dashboard-narrative-sto
 
 function resolvedChain(result: unknown) {
   const chain: Record<string, unknown> = {}
-  for (const method of ['select', 'eq', 'is', 'order', 'limit', 'gte', 'lte']) {
+  for (const method of ['select', 'eq', 'in', 'is', 'order', 'limit', 'gte', 'lte']) {
     chain[method] = vi.fn(() => chain)
   }
   chain.maybeSingle = vi.fn().mockResolvedValue(result)
@@ -16,14 +16,14 @@ describe('dashboard narrative Supabase store', () => {
     const defaultTemplate = resolvedChain({ data: null, error: null })
     const prs = resolvedChain({
       data: [{
-        exercise: 'Back Squat', pr_type: 'weight', value: '315.00',
+        exercise: 'Front Squat', pr_type: '3rm', value: '315.00',
         previous_value: 200, achieved_at: '2026-07-26T12:00:00Z',
       }],
       error: null,
     })
     ;(prs.limit as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: [{
-        exercise: 'Back Squat', pr_type: 'weight', value: '315.00',
+        exercise: 'Front Squat', pr_type: '3rm', value: '315.00',
         previous_value: 200, achieved_at: '2026-07-26T12:00:00Z',
       }],
       error: null,
@@ -158,16 +158,16 @@ describe('dashboard narrative Supabase store', () => {
     ;(prs.limit as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: [
         {
-          id: '5', workout_id: 'workout-1', exercise: 'Back Squat',
-          pr_type: 'weight', value: '285.00', previous_value: 200, achieved_at: '2026-07-28T12:00:00Z',
+          id: '5', workout_id: 'workout-1', exercise: 'Front Squat',
+          pr_type: '3rm', value: '285.00', previous_value: 200, achieved_at: '2026-07-28T12:00:00Z',
         },
         {
-          id: '4', workout_id: 'workout-1', exercise: 'Back Squat',
-          pr_type: 'weight', value: '275.00', previous_value: 200, achieved_at: '2026-07-28T12:00:00Z',
+          id: '4', workout_id: 'workout-1', exercise: 'Front Squat',
+          pr_type: '3rm', value: '275.00', previous_value: 200, achieved_at: '2026-07-28T12:00:00Z',
         },
         {
-          id: '3', workout_id: 'workout-1', exercise: 'Back Squat',
-          pr_type: 'weight', value: '285.00', previous_value: 200, achieved_at: '2026-07-28T12:00:00Z',
+          id: '3', workout_id: 'workout-1', exercise: 'Front Squat',
+          pr_type: '3rm', value: '285.00', previous_value: 200, achieved_at: '2026-07-28T12:00:00Z',
         },
       ],
       error: null,
@@ -190,9 +190,10 @@ describe('dashboard narrative Supabase store', () => {
     const facts = await store.getFacts('user-1', '2026-07-28', 300)
 
     expect(facts.personalRecords).toEqual([
-      expect.objectContaining({ exercise: 'Back Squat', prType: 'weight', value: 285 }),
+      expect.objectContaining({ exercise: 'Front Squat', prType: '3rm', value: 285 }),
     ])
     expect(prs.order).toHaveBeenNthCalledWith(1, 'achieved_at', { ascending: false })
     expect(prs.order).toHaveBeenNthCalledWith(2, 'id', { ascending: false })
+    expect(prs.in).toHaveBeenCalledWith('pr_type', ['1rm', '3rm', '5rm'])
   })
 })

@@ -139,15 +139,12 @@ export default function LogWorkout() {
       })
 
       // Check for PRs in the background
-      if (result.workoutId && result.parsed?.blocks) {
+      if (result.workoutId) {
         try {
           const prResponse = await fetch('/api/check-prs', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              workoutId: result.workoutId,
-              blocks: result.parsed.blocks,
-            }),
+            body: JSON.stringify({ workoutId: result.workoutId }),
           })
           const prData = await prResponse.json()
           if (prData.prs && prData.prs.length > 0) {

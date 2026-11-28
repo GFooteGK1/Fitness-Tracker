@@ -1,5 +1,7 @@
 # Architecture decisions
 
+- [ADR-0057: Personal records from completed rep-max sets](ADR-0057-personal-record-rep-maxes.md) — exact lift and rep count, workout capture projections, history backfill, and release compatibility.
+
 - [ADR-0052: Start the daily draft after saving Today](ADR-0052-start-draft-after-today-check-in.md) - verified save trigger, native ChatGPT handoff and rest-day drafts.
 
 - [ADR-0051: Five-point Today check-in](ADR-0051-five-point-today-check-in.md) - exact ratings, original relative answers and cached-widget compatibility.

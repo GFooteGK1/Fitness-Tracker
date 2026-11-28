@@ -15,6 +15,7 @@ const newPending = [
   '20261122135004_coach_daily_checkin_ratings.sql',
   '20261123130203_mcp_coaching_requirements.sql',
   '20261126132624_coach_daily_session_draft.sql',
+  '20261128031405_personal_record_rep_maxes.sql',
 ]
 // Offline comparison only. This never connects to a database or repairs history.
 function pending(local: string[], applied: { version: string; name: string }[]) {
