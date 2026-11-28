@@ -1,6 +1,6 @@
 # ADR-0057 - Personal records from completed rep-max sets
 
-- **Status** — Accepted scope on November 27, 2026. Production approval is pending.
+- **Status** — Scope and production rollout approved on November 27, 2026, subject to the release checks.
 - **Related** — [ADR-0044](ADR-0044-chatgpt-activity-record-operations.md) and [ADR-0055](ADR-0055-routine-production-release-authority.md).
 
 ## Decision
@@ -18,4 +18,6 @@ Use explicit comparable set evidence from completed workouts with athlete-confir
 
 ## Release and recovery
 
-Test the migration and the app together with disposable records. Reconcile the production target and pending migrations, and get separate production migration approval before triggering the release. Verify compatibility with the identified application fallback. Earlier clients can read the existing table but do not have labels or filters for the new types. A production rollback plan must account for the app and the projection function.
+Test the migration and the app together with disposable records. Release an app-only version that reads legacy and rep-max records before merging the migration. Verify that deployment on the production domain and retain it as the Vercel rollback target. The previous application lacks labels and filters for rep-max records.
+
+Reconcile the production target and pending migrations before merging. The configured Supabase Git integration applies the approved SQL on `main`. Verify the exact ledger version and catalog state, then verify that the expected Vercel application serves the canonical domain. An application rollback uses the compatible build with the migrated database. Database recovery requires separate approval.
