@@ -69,6 +69,18 @@ describe('GET /api/pr-history', () => {
     vi.setSystemTime(new Date('2026-07-22T12:00:00Z'))
   })
 
+  it.each(['1rm', '3rm', '5rm'])('accepts the %s filter during migration rollout', async prType => {
+    const records = [{ id: 'pr-1', exercise: 'Power Clean', pr_type: prType }]
+    const { client, historyQuery } = createSupabase({ data: records, error: null, count: 1 })
+    vi.mocked(createServerClient).mockResolvedValue(client as never)
+
+    const response = await GET(request(`?prType=${prType}`))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ records })
+    expect(historyQuery.eq).toHaveBeenCalledWith('pr_type', prType)
+  })
+
   afterEach(() => {
     vi.useRealTimers()
   })
@@ -137,7 +149,7 @@ describe('GET /api/pr-history', () => {
     ['?offset=-1', 'offset must be an integer between 0 and 10000'],
     ['?offset=1.5', 'offset must be an integer between 0 and 10000'],
     ['?offset=10001', 'offset must be an integer between 0 and 10000'],
-    ['?prType=distance', 'prType must be one of: weight, reps, time, volume'],
+    ['?prType=distance', 'prType must be one of: weight, reps, time, volume, 1rm, 3rm, 5rm'],
     [`?exercise=${'x'.repeat(101)}`, 'exercise must be 100 characters or fewer'],
   ])('rejects invalid query %s', async (query, expectedError) => {
     const { client, from } = createSupabase()

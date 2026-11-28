@@ -14,6 +14,7 @@ vi.mock('@/app/components/whoop/WhoopMetricsCard', () => ({ WhoopMetricsCard: ()
 vi.mock('@/app/components/ExportDialog', () => ({ default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div role="dialog">Export options</div> : null }))
 
 import Progress from '@/app/progress/page'
+import PRHistory from '@/app/pr-history/page'
 
 const stats = { totalWorkouts: 48, monthToDate: 9, strengthSessions: 30, metcons: 20, cardio: 12, currentMonth: 'September 2026' }
 const response = (data: unknown, ok = true) => ({ ok, json: async () => data })
@@ -35,6 +36,21 @@ describe('Progress page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Export' }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'View records' })).toHaveAttribute('href', '/pr-history')
+  })
+
+  it('renders rep-max civil dates beside legacy records', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => response(url.startsWith('/api/dashboard-stats') ? stats : {
+      records: [
+        { id: 'pr-1', exercise: 'Back squat', pr_type: 'weight', value: 225, previous_value: 215, achieved_at: '2026-09-04T15:00:00Z' },
+        { id: 'pr-2', exercise: 'Power Clean', pr_type: '3rm', value: 175, previous_value: 170, achieved_at: '2026-09-01T00:00:00Z' },
+      ],
+      summary: { thisMonth: 2 },
+    })))
+    render(<Progress />)
+    expect(await screen.findByText('3RM')).toBeInTheDocument()
+    expect(screen.getByText('175 lbs')).toBeInTheDocument()
+    expect(screen.getByText('Sep 1')).toBeInTheDocument()
+    expect(screen.getByText('Max weight')).toBeInTheDocument()
   })
 
   it('distinguishes confirmed empty training and records from loading', async () => {
@@ -67,5 +83,23 @@ describe('Progress page', () => {
     expect(screen.getByText('Loading your training…')).toBeInTheDocument()
     expect(screen.getByText('Loading records…')).toBeInTheDocument()
     expect(screen.queryByText(/first results establish a baseline/)).not.toBeInTheDocument()
+  })
+})
+
+describe('Personal Records history', () => {
+  it('renders both formats and sends the rep-max filter to the API', async () => {
+    const fetch = vi.fn(async () => response({ records: [
+      { id: 'pr-1', exercise: 'Back squat', pr_type: 'weight', value: 225, previous_value: 215, achieved_at: '2026-09-04T15:00:00Z' },
+      { id: 'pr-2', exercise: 'Power Clean', pr_type: '3rm', value: 175, previous_value: 170, achieved_at: '2026-09-01T00:00:00Z' },
+    ] }))
+    vi.stubGlobal('fetch', fetch)
+    render(<PRHistory />)
+
+    expect(await screen.findByText('Power Clean')).toBeInTheDocument()
+    expect(screen.getByText('175 lbs')).toBeInTheDocument()
+    expect(screen.getByText('Sep 1, 2026')).toBeInTheDocument()
+    expect(screen.getByText('225 lbs')).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '3rm' } })
+    await waitFor(() => expect(fetch).toHaveBeenLastCalledWith('/api/pr-history?prType=3rm&limit=100'))
   })
 })

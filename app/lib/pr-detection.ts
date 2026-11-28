@@ -1,6 +1,11 @@
+export const LEGACY_PR_TYPES = ['weight', 'reps', 'time', 'volume'] as const
+export const REP_MAX_TYPES = ['1rm', '3rm', '5rm'] as const
+export const PR_TYPES = [...LEGACY_PR_TYPES, ...REP_MAX_TYPES] as const
+export type PRType = typeof PR_TYPES[number]
+
 export interface PRResult {
   isPR: boolean;
-  prType: 'weight' | 'reps' | 'time' | 'volume';
+  prType: PRType;
   previousBest: number;
   newRecord: number;
   exercise: string;
@@ -12,6 +17,18 @@ export const personalRecordLabels: Record<PRResult['prType'], string> = {
   reps: 'Rep record',
   time: 'Time record',
   volume: 'Volume record',
+  '1rm': '1RM',
+  '3rm': '3RM',
+  '5rm': '5RM',
+}
+
+export function isRepMaxType(type: string): boolean {
+  return REP_MAX_TYPES.some(repMaxType => type === repMaxType)
+}
+
+export function formatPRDate(type: PRType, date: string, options: Intl.DateTimeFormatOptions): string {
+  // Rep-max timestamps encode the workout date at UTC midnight.
+  return new Date(date).toLocaleDateString('en-US', isRepMaxType(type) ? { ...options, timeZone: 'UTC' } : options)
 }
 
 export interface WorkoutBlock {
@@ -227,7 +244,7 @@ export function formatPRValue(prType: string, value: number): string {
     const secs = Math.round(value % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
-  if (prType === 'weight') return `${value} lbs`;
+  if (prType === 'weight' || isRepMaxType(prType)) return `${value} lbs`;
   if (prType === 'reps') return `${value} reps`;
   if (prType === 'volume') return `${value} lbs`;
   return `${value}`;

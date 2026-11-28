@@ -14,7 +14,7 @@ describe('quiet record feedback', () => {
     const { container } = render(<PRNotification prs={[]} onDismiss={vi.fn()} />)
     expect(container.firstChild).toBeNull()
   })
-  it.each([['weight', 'Max weight'], ['reps', 'Repetitions'], ['time', 'Time'], ['volume', 'Session volume']] as const)('identifies the %s comparison', (prType, label) => {
+  it.each([['weight', 'Max weight'], ['reps', 'Repetitions'], ['time', 'Time'], ['volume', 'Session volume'], ['1rm', '1RM'], ['3rm', '3RM'], ['5rm', '5RM']] as const)('identifies the %s comparison', (prType, label) => {
     render(<PRNotification prs={[{ ...improvement, prType }]} onDismiss={vi.fn()} />)
     expect(screen.getByText(label)).toBeInTheDocument()
     expect(screen.getByText('Back squat')).toBeInTheDocument()
