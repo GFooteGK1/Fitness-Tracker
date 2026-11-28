@@ -933,14 +933,51 @@ describe('SociusFit dashboard', () => {
     await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
     failNextRead()
     element('whoop-refresh').click()
-    await vi.waitFor(() => expect(element('whoop-refresh-status').textContent).toBe('Could not refresh saved WHOOP data.'))
+    await vi.waitFor(() => expect(element('whoop-refresh-status').textContent).toBe('Could not check saved WHOOP data. Try again.'))
     expect(element('recovery-percent').textContent).toBe('79%')
 
     setRecovery({ recoveryScore: 63 })
     element('whoop-refresh').click()
     await vi.waitFor(() => expect(element('recovery-percent').textContent).toBe('63%'))
-    expect(element('whoop-refresh-status').textContent).toBe('Saved WHOOP readings refreshed.')
+    expect(element('whoop-refresh-status').textContent).toBe('Showing updated WHOOP readings.')
     expect(requests.at(-1)?.params?.arguments).toEqual({ tzOffset: expect.any(Number), whoopOnly: true })
+  })
+
+  it('shows the manual WHOOP check beside the button and keeps the result through a passive read', async () => {
+    const { widget, element, setRecovery, holdNextToday, releaseHeldToday } = mountWidget(initialRecommendation, todayClock())
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    const button = element('whoop-refresh') as HTMLButtonElement
+    const status = element('whoop-refresh-status')
+    expect(button.nextElementSibling).toBe(status)
+    expect(status.getAttribute('role')).toBe('status')
+
+    setRecovery({ lastSyncAt: '2026-11-20T14:00:00Z' })
+    holdNextToday()
+    button.click()
+    expect(button.disabled).toBe(true)
+    expect(status.textContent).toBe('Checking for saved WHOOP updates…')
+    releaseHeldToday()
+
+    const unchanged = 'Your last check found no new saved WHOOP readings.'
+    await vi.waitFor(() => expect(status.textContent).toBe(unchanged))
+    expect(button.disabled).toBe(false)
+
+    setRecovery({ recoveryScore: 62 })
+    vi.setSystemTime(new Date(2026, 10, 20, 14, 1))
+    widget.defaultView!.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => expect(element('recovery-percent').textContent).toBe('62%'))
+    expect(status.textContent).toBe(unchanged)
+  })
+
+  it('opens the existing WHOOP settings through a supported host', async () => {
+    const { element, requests } = mountWidget(initialRecommendation, todayClock(), { supportsRecordsLink: true })
+    await vi.waitFor(() => expect(element('today-content').hidden).toBe(false))
+    const settings = element('whoop-settings')
+    expect(settings.hidden).toBe(false)
+    settings.click()
+    expect(requests.at(-1)).toMatchObject({
+      method: 'ui/open-link', params: { url: 'https://www.sociusfit.com/profile#whoop' },
+    })
   })
 
   it('refreshes the preceding WHOOP score for the displayed workout and clears an invalidated pair', async () => {
